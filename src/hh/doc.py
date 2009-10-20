@@ -7,9 +7,6 @@ from hh import etree as et
 
 class Doc:
     def __init__(self, root_node_name='page'):
-        self.response = webob.Response()
-        self.response.content_type = 'application/xml'
-        
         self.root_node_name = root_node_name
         
         self.data = []
@@ -36,8 +33,15 @@ class Doc:
             else:
                 yield chunk_to_string(chunk)
     
+class DocResponse(object):
+    def __init__(self, root_node_name='page'):
+        self.response = webob.Response()
+        self.response.content_type = 'application/xml'
+        
+        self.doc = Doc(root_node_name)
+        
     def __call__(self, environ, start_response):
-        for chunk in self._finalize_data():
+        for chunk in self.doc._finalize_data():
             self.response.write(chunk)
         
         return self.response(environ, start_response)
