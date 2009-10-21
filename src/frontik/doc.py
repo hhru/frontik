@@ -2,8 +2,8 @@
 
 import webob
 
-import hh.future
-from hh import etree as et
+import frontik.future
+from frontik import etree as et
 
 class Doc:
     def __init__(self, root_node_name='page'):
@@ -28,7 +28,7 @@ class Doc:
                 return chunk
         
         for chunk in self.data:
-            if isinstance(chunk, hh.future.FutureVal):
+            if isinstance(chunk, frontik.future.FutureVal):
                 yield chunk_to_string(chunk.get())
             else:
                 yield chunk_to_string(chunk)

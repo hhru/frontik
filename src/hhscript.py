@@ -2,7 +2,6 @@
 
 # прототип hhscript'а без использования coev-python
 
-import webob
 import webob.exc
 
 import hh.pages
@@ -19,7 +18,7 @@ class HHScriptApp(object):
         if hasattr(hh.pages, page_name):
             page_handler = getattr(hh.pages, page_name)
             try:
-                return page_handler(req)
+                return page_handler(req)(environ, start_response)
             except webob.exc.HTTPException, e:
                 return e(environ, start_response)
         

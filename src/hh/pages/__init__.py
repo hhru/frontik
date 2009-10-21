@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from hh import Doc
-from hh.http_client import http_get
+from frontik import DocResponse
+from frontik.http_client import http_get
 
 import config
 import util
@@ -72,13 +72,13 @@ def banners_base(request):
 def article(request):
 #  <xi:include href="xml/page.xml"/>
 
-    result = Doc('article')
-    # TODO result.set_xsl('article.xsl')
+    response = DocResponse('article')
+    # TODO response.set_xsl('article.xsl')
 
     session = util.get_session(request)
         
-    result.put(get_article(session, 599))
-    result.put(get_article(session, request.GET['articleId']))
+    response.doc.put(get_article(session, 599))
+    response.doc.put(get_article(session, request.GET['articleId']))
 
 #  <xi:include href="xml/banners/article.xml"/>
 #  
@@ -87,4 +87,4 @@ def article(request):
 #  <xi:include href="xml/foot.xml"/>
 #  <xi:include href="xml/translations/index.xml"/>
 
-    return result
+    return response

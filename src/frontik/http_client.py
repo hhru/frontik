@@ -3,10 +3,10 @@
 import webob
 import urllib2
 
-from hh import etree as et
-import hh.future
+from frontik import etree as et
+import frontik.future
 
-class FutureResponse(hh.future.FutureVal):
+class FutureResponse(frontik.future.FutureVal):
     def __init__(self, request):
         self.data = et.fromstring(urllib2.urlopen(request.url).read())
         

@@ -1,7 +1,7 @@
-#Mon Oct 19 19:18:44 MSD 2009
+#Wed Oct 21 16:30:40 MSD 2009
 eclipse.preferences.version=1
-encoding//src/hh/doc.py=utf-8
-encoding//src/hh/http_client.py=utf-8
+encoding//src/frontik/doc.py=utf-8
+encoding//src/frontik/http_client.py=utf-8
 encoding//src/hh/pages/__init__.py=utf-8
 encoding//src/hh/pages/util.py=utf-8
 encoding//src/hhscript.py=utf-8

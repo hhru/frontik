@@ -2,7 +2,7 @@
 
 import urllib
 
-from hh.http_client import http_get
+from frontik.http_client import http_get
 
 import config
 
