@@ -26,8 +26,15 @@ class HHScriptApp(object):
             return webob.exc.HTTPNotFound('%s not found' % (page_name,))(environ, start_response)
 
 if __name__ == '__main__':
-    app = HHScriptApp()
+    import sys
     
-    from wsgiref.simple_server import make_server
-    httpd = make_server('localhost', 8080, app)
-    httpd.serve_forever()
+    app = HHScriptApp()
+
+    if len(sys.argv) > 1:
+        request = webob.Request.blank(sys.argv[1])
+        print ''.join(app(request.environ, lambda *args, **kw: None))
+    
+    else:
+        from wsgiref.simple_server import make_server
+        httpd = make_server('localhost', 8080, app)
+        httpd.serve_forever()

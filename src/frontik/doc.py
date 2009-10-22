@@ -39,7 +39,7 @@ class DocResponse(object):
         self.response.content_type = 'application/xml'
         
         self.doc = Doc(root_node_name)
-        
+    
     def __call__(self, environ, start_response):
         for chunk in self.doc._finalize_data():
             self.response.write(chunk)
