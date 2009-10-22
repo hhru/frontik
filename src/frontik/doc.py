@@ -11,7 +11,6 @@ class Doc:
         
         self.data = []
         
-        self.put('<?xml version="1.0" ?>\n')
         self.put('<%s>' % (self.root_node_name,))
         
     def put(self, doc):
@@ -23,15 +22,21 @@ class Doc:
         def chunk_to_string(chunk):
             # XXX изменится, при смене библиотеки!
             if isinstance(chunk, et._ElementInterface):
-                return et.tostring(chunk)
+                yield et.tostring(chunk)
+            elif isinstance(chunk, Doc):
+                for i in chunk._finalize_data():
+                    yield i
             else:
-                return chunk
+                yield chunk
         
         for chunk in self.data:
             if isinstance(chunk, frontik.future.FutureVal):
-                yield chunk_to_string(chunk.get())
+                val = chunk.get()
             else:
-                yield chunk_to_string(chunk)
+                val = chunk
+            
+            for i in chunk_to_string(val):
+                yield i
     
 class DocResponse(object):
     def __init__(self, root_node_name='page'):
@@ -41,6 +46,8 @@ class DocResponse(object):
         self.doc = Doc(root_node_name)
     
     def __call__(self, environ, start_response):
+        self.response.write('<?xml version="1.0" ?>\n')
+
         for chunk in self.doc._finalize_data():
             self.response.write(chunk)
         

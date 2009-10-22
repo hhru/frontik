@@ -2,9 +2,12 @@
 
 # прототип hhscript'а без использования coev-python
 
+import logging
 import webob.exc
 
 import hh.pages
+
+log = logging.getLogger('frontik')
 
 class HHScriptApp(object):
     def __init__(self):
@@ -14,6 +17,8 @@ class HHScriptApp(object):
         req = webob.Request(environ)
         
         page_name = req.path_info.strip('/')
+        
+        log.info('requested url: %s', req.url)
         
         if hasattr(hh.pages, page_name):
             page_handler = getattr(hh.pages, page_name)
@@ -30,6 +35,8 @@ if __name__ == '__main__':
     
     app = HHScriptApp()
 
+    logging.basicConfig(level=logging.DEBUG)
+        
     if len(sys.argv) > 1:
         request = webob.Request.blank(sys.argv[1])
         print ''.join(app(request.environ, lambda *args, **kw: None))
