@@ -11,10 +11,12 @@ import hh.util
 import hh.head
 import hh.menu
 import hh.foot
+import hh.translations
 
 def get_article(session, article_id):
-    return http_get(hh.config.planetahrHost + 'xml/article/' + 
-                    str(article_id) + '/' + session.site_code + '/' + session.lang)
+    if article_id:
+        return http_get(hh.config.planetahrHost + 'xml/article/' + 
+                        str(article_id) + '/' + session.site_code + '/' + session.lang)
 
 def article(request):
 #  <xi:include href="xml/page.xml"/>
@@ -36,7 +38,7 @@ def article(request):
     hh.menu.do_menu(response, session)
 
     hh.foot.do_foot(response)
-
-#  <xi:include href="xml/translations/index.xml"/>
+    
+    response.doc.put(hh.translations.get_translations(session, hh.translations.index_translations))
 
     return response
