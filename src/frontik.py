@@ -5,8 +5,6 @@
 import logging
 import webob.exc
 
-import hh.pages
-
 log = logging.getLogger('frontik')
 
 class HHScriptApp(object):
@@ -15,20 +13,24 @@ class HHScriptApp(object):
     
     def __call__(self, environ, start_response):
         req = webob.Request(environ)
-        
-        page_name = req.path_info.strip('/')
-        
         log.info('requested url: %s', req.url)
         
-        if hasattr(hh.pages, page_name):
-            page_handler = getattr(hh.pages, page_name)
-            try:
-                return page_handler(req)(environ, start_response)
-            except webob.exc.HTTPException, e:
-                return e(environ, start_response)
+        page_module_name = 'hh.pages.' + req.path_info.strip('/').replace('/', '.')
         
-        else:
-            return webob.exc.HTTPNotFound('%s not found' % (page_name,))(environ, start_response)
+        try:
+            try:
+                page_module = __import__(page_module_name, fromlist=['get_page'])
+            except:
+                raise webob.exc.HTTPNotFound('%s module not found' % (page_module_name,))
+            
+            try:
+                page_handler = page_module.get_page
+            except:
+                raise webob.exc.HTTPNotFound('%s.get_page method not found' % (page_module_name,))
+            
+            return page_handler(req)(environ, start_response)
+        except webob.exc.HTTPException, e:
+            return e(environ, start_response)
 
 if __name__ == '__main__':
     import sys
