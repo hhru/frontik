@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from frontik import DocResponse
-from frontik.http_client import http_get
+from frontik import DocResponse, http_get
 
 import hh.config
 import hh.util

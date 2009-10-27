@@ -6,7 +6,7 @@ import urllib2
 import logging
 
 from frontik import etree as et
-import frontik.future
+import future
 
 log = logging.getLogger('frontik.http_client')
 
@@ -33,24 +33,32 @@ def make_url(base, **query_args):
     else:
         return base 
 
-class FutureResponse(frontik.future.FutureVal):
+class FutureResponse(future.FutureVal):
     def __init__(self, request):
+        log.debug('scheduling %s', request.url)
+    
+        self.request = request
+        self.data = None
+    
+    def _fetch_data(self):
         try:
-            res = urllib2.urlopen(request.url).read()
-            log.debug('got %s %s', 200, request.url)
-            
+            res = urllib2.urlopen(self.request.url).read()
+            log.debug('got %s %s', 200, self.request.url)
+        
         except urllib2.HTTPError, e:
-            log.warn('failed %s %s', e.code, request.url)
-            self.data = et.Element('http-error', dict(url=request.url))
-            
+            log.warn('failed %s %s', e.code, self.request.url)
+            return et.Element('http-error', dict(url=self.request.url))
+        
         else:
             try:
-                self.data = et.fromstring(res)
+                return et.fromstring(res)
             except:
-                self.data = et.Element('xml-error', dict(url=request.url))
-
+                return et.Element('xml-error', dict(url=self.request.url))
         
     def get(self):
+        if not self.data:
+            self.data = self._fetch_data()
+            
         return self.data
 
 def GET(url):
@@ -67,8 +75,6 @@ def http(req):
     '''
     
     ''' TODO здесь должен быть полноценный разбор webob.Request '''
-    
-    log.debug('start %s', req.url)
     
     return FutureResponse(req)
 

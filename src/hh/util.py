@@ -3,7 +3,7 @@
 import time
 import random
 
-import frontik.http_client as http
+import frontik
 #from frontik.http_client import http_get
 
 import config
@@ -24,12 +24,12 @@ def get_session(request):
     hhtoken = request.cookies.get('hhtoken')
     hhuid = request.cookies.get('hhuid')
     
-    url = http.make_url(config.sessionHost + 'hh-session', 
+    url = frontik.make_url(config.sessionHost + 'hh-session', 
                    host = config.host,
                    hhtoken = hhtoken, 
                    hhuid = hhuid)
 
-    session_xml = http.http_get(url).get()
+    session_xml = frontik.http_get(url).get()
     
     return Session(session_xml)
 
@@ -67,7 +67,7 @@ class Banners(object):
         else:
             specializationListForBanner = ''
     
-        self.uriBanner = http.make_url(config.serviceHost + 'bannerList',
+        self.uriBanner = frontik.make_url(config.serviceHost + 'bannerList',
                                   uuid=self.unique_banner_user,
                                   userId=self.session.user_id,
                                   siteId=self.session.site_id,
@@ -77,5 +77,5 @@ class Banners(object):
         self.uriBannerMulti = self.uriBanner + '&multy=true'
     
     def get_banners(self, place_ids):
-        return http.http_get(self.uriBanner + ''.join('&placeId=%s' % (i,) for i in place_ids))
+        return frontik.http_get(self.uriBanner + ''.join('&placeId=%s' % (i,) for i in place_ids))
 

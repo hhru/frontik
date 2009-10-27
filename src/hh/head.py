@@ -1,4 +1,4 @@
-from frontik.http_client import http_get
+from frontik import http_get
 from frontik import etree as et
 
 import hh.config
