@@ -1,0 +1,11 @@
+Source: frontik
+Section: unknown
+Priority: extra
+Maintainer: Andrey Tatarinov <a.tatarinov@hh.ru>
+Build-Depends: debhelper (>= 7), python2.6
+Standards-Version: 3.8.1
+
+Package: frontik
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, python2.6
+Description: frontik - the python based XScript alternative 
