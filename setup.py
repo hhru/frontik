@@ -8,4 +8,4 @@ version='0.1',
 package_dir = {'': 'src'},
 packages = ['frontik', 'frontik.proto'],
       
-scripts = ['src/frontik.py'])
+scripts = ['src/frontik_srv.py'])

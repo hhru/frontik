@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 # прототип hhscript'а без использования coev-python
@@ -7,7 +8,7 @@ import webob.exc
 
 log = logging.getLogger('frontik')
 
-class HHScriptApp(object):
+class FrontikApp(object):
     def __init__(self):
         pass
     
@@ -35,7 +36,7 @@ class HHScriptApp(object):
 if __name__ == '__main__':
     import sys
     
-    app = HHScriptApp()
+    app = FrontikApp()
 
     logging.basicConfig(level=logging.DEBUG)
         
@@ -44,6 +45,5 @@ if __name__ == '__main__':
         print ''.join(app(request.environ, lambda *args, **kw: None))
     
     else:
-        from wsgiref.simple_server import make_server
-        httpd = make_server('localhost', 8080, app)
-        httpd.serve_forever()
+        from paste import httpserver
+        httpserver.serve(app, host='localhost', port=8080)
