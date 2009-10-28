@@ -1,10 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# прототип hhscript'а без использования coev-python
+import sys
+import os.path
 
 import logging
 import webob.exc
+import ConfigParser
 
 log = logging.getLogger('frontik')
 
@@ -34,16 +36,28 @@ class FrontikApp(object):
             return e(environ, start_response)
 
 if __name__ == '__main__':
-    import sys
-    
     app = FrontikApp()
 
     logging.basicConfig(level=logging.DEBUG)
-        
+    
+    cp = ConfigParser.ConfigParser()
+    configs = cp.read(['/etc/frontik/frontik.ini', './frontik.dev.ini'])
+    log.debug('read configs: %s', ', '.join(os.path.abspath(i) for i in configs))
+    
+    special_document_dir = cp.get('server', 'document_dir')
+    if special_document_dir:
+        log.debug('appending %s document_dir to sys.path', special_document_dir)
+        sys.path.append(special_document_dir)
+    
     if len(sys.argv) > 1:
         request = webob.Request.blank(sys.argv[1])
         print ''.join(app(request.environ, lambda *args, **kw: None))
     
     else:
         from paste import httpserver
-        httpserver.serve(app, host='localhost', port=8080)
+        
+        host=cp.get('server', 'host')
+        port=cp.getint('server', 'port')
+        log.debug('binding to %s:%s', host, port)
+        
+        httpserver.serve(app, host=host, port=port)

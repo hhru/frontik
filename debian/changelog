@@ -1,3 +1,15 @@
+frontik (0.3) unstable; urgency=low
+
+  * config parser
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Wed, 28 Oct 2009 16:53:43 +0300
+
+frontik (0.2) unstable; urgency=low
+
+  * paste http-server
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Wed, 28 Oct 2009 14:11:38 +0300
+
 frontik (0.1) unstable; urgency=low
 
   * Initial release
