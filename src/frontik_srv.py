@@ -42,7 +42,12 @@ if __name__ == '__main__':
     
     cp = ConfigParser.ConfigParser()
     configs = cp.read(['/etc/frontik/frontik.ini', './frontik.dev.ini'])
-    log.debug('read configs: %s', ', '.join(os.path.abspath(i) for i in configs))
+    
+    if configs:
+        log.debug('read configs: %s', ', '.join(os.path.abspath(i) for i in configs))
+    else:
+        log.error('failed to find any config file, aborting')
+        sys.exit(1)
     
     special_document_dir = cp.get('server', 'document_dir')
     if special_document_dir:
