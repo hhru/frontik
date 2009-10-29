@@ -8,7 +8,7 @@ import logging
 import webob.exc
 import ConfigParser
 
-log = logging.getLogger('frontik')
+log = logging.getLogger('frontik.server')
 
 class FrontikApp(object):
     def __init__(self):
@@ -18,11 +18,12 @@ class FrontikApp(object):
         req = webob.Request(environ)
         log.info('requested url: %s', req.url)
         
-        page_module_name = 'hh.pages.' + req.path_info.strip('/').replace('/', '.')
+        page_module_name = 'frontik_www.pages.' + req.path_info.strip('/').replace('/', '.')
         
         try:
             try:
                 page_module = __import__(page_module_name, fromlist=['get_page'])
+                log.debug('using %s from %s', page_module_name, page_module.__file__)
             except:
                 raise webob.exc.HTTPNotFound('%s module not found' % (page_module_name,))
             
@@ -49,9 +50,9 @@ if __name__ == '__main__':
         log.error('failed to find any config file, aborting')
         sys.exit(1)
     
-    special_document_dir = cp.get('server', 'document_dir')
+    special_document_dir = os.path.abspath(cp.get('server', 'document_dir'))
     if special_document_dir:
-        log.debug('appending %s document_dir to sys.path', special_document_dir)
+        log.debug('appending "%s" document_dir to sys.path', special_document_dir)
         sys.path.append(special_document_dir)
     
     if len(sys.argv) > 1:

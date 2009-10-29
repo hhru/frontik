@@ -4,7 +4,7 @@ from frontik import http_get
 from frontik import etree as et
 from frontik import Doc
 
-import hh.config
+import frontik_www.config
 
 career_menu = et.fromstring(
 '''<careerMenu>
@@ -22,17 +22,17 @@ def do_menu(response, session):
     menu_doc = Doc('leftMenu')
     
     if session.user_type == 'employer':
-        menu_doc.put(http_get(hh.config.searchHost + 
+        menu_doc.put(http_get(frontik_www.config.searchHost + 
                                   'callevent/exists?userId=' +
                                   session.user_id))
         
     elif session.user_type == 'applicant':
-        menu_doc.put(http_get(hh.config.serviceHost + 'applicant/leftMenuBar' + 
+        menu_doc.put(http_get(frontik_www.config.serviceHost + 'applicant/leftMenuBar' + 
                                   '?site=' + session.site_id + 
                                   '&lang=' + session.lang))
 
     if session.platform == 'JOBLIST':
-        menu_doc.put(http_get(hh.config.serviceHost + 'vacancyblocks?' +
+        menu_doc.put(http_get(frontik_www.config.serviceHost + 'vacancyblocks?' +
                                   'totalCount=4&hotCount=100'))
     
     menu_doc.put(career_menu)

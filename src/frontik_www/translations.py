@@ -1,6 +1,6 @@
 from frontik import http_get, make_url 
 
-import hh.config
+import frontik_www.config
 
 head_translations = [
     'counter.rambler',
@@ -68,7 +68,7 @@ index_translations = [
 ] + page_translations
 
 def get_translations(session, translations_list):
-    return http_get(make_url(hh.config.trlHost + 'translationList',
+    return http_get(make_url(frontik_www.config.trlHost + 'translationList',
                              site=session.site_id,
                              lang=session.lang,
                              t=translations_list)) 

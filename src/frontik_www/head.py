@@ -1,7 +1,7 @@
 from frontik import http_get
 from frontik import etree as et
 
-import hh.config
+import frontik_www.config
 
 topmenu = et.fromstring('''<topmenu>
   <item>
@@ -114,6 +114,6 @@ def do_head(response, session):
     response.doc.put(topmenu)
     response.doc.put(sites)
     
-    response.doc.put(http_get(hh.config.serviceHost + 'regionalSiteList?site=' + str(session.site_id)))
+    response.doc.put(http_get(frontik_www.config.serviceHost + 'regionalSiteList?site=' + str(session.site_id)))
     
-    response.doc.put(http_get(hh.config.searchHost + 'globalStatistics'))
+    response.doc.put(http_get(frontik_www.config.searchHost + 'globalStatistics'))
