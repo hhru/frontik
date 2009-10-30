@@ -1,8 +1,10 @@
-#Thu Oct 29 12:31:30 MSK 2009
+#Fri Oct 30 14:48:43 MSK 2009
 eclipse.preferences.version=1
+encoding//src/frontik/__init__.py=utf-8
+encoding//src/frontik/doc.py=utf-8
 encoding//src/frontik/proto/__init__.py=utf-8
-encoding//src/frontik/proto/doc.py=utf-8
 encoding//src/frontik/proto/http_client.py=utf-8
+encoding//src/frontik/util.py=utf-8
 encoding//src/frontik_srv.py=utf-8
 encoding//src/frontik_www/menu.py=utf-8
 encoding//src/frontik_www/pages/__init__.py=utf-8

@@ -2,7 +2,7 @@
 
 import webob
 
-import future
+import frontik.future
 from frontik import etree as et
 
 class Doc:
@@ -30,7 +30,7 @@ class Doc:
                 yield chunk
         
         for chunk in self.data:
-            if isinstance(chunk, future.FutureVal):
+            if isinstance(chunk, frontik.future.FutureVal):
                 val = chunk.get()
             else:
                 val = chunk
