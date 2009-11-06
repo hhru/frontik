@@ -1,7 +1,7 @@
 import logging
 import paste.httpserver
 
-log = logging.getLogger('frontik.server')
+log = logging.getLogger('frontik.proto.server')
 
 def server_main(config, app):
     host=config.get('server', 'host')

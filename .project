@@ -3,6 +3,7 @@
 	<name>frontik</name>
 	<comment></comment>
 	<projects>
+		<project>coewsgi</project>
 		<project>WebOb</project>
 	</projects>
 	<buildSpec>

@@ -23,25 +23,25 @@ def find_deps(xml_file):
             xi_href_norm = os.path.normpath(os.path.join(xml_bn, xi_href_raw))
             yield xi_href_norm
 
-import pygraphviz
-from collections import defaultdict
-
-graph = pygraphviz.AGraph(directed=True)
-
-dir_subgraphs = defaultdict(list)
-edges = []
-for xml_file in find_xml('.'):
-    dir_subgraphs[os.path.dirname(xml_file)].append(xml_file)
-    
-    for dep in find_deps(xml_file):
-        edges.append((xml_file, dep))
-        print xml_file, '->', dep
-
-for subgraph, nodes in dir_subgraphs.iteritems():
-    graph.add_nodes_from(nodes, shape='box', color='red')
-    graph.add_subgraph(nodes, 'cluster/' + subgraph)
-    
-graph.add_edges_from(edges)
-
-graph.write('xhh.dot')
-graph.draw('xhh.png', prog='fdp')
+#import pygraphviz
+#from collections import defaultdict
+#
+#graph = pygraphviz.AGraph(directed=True)
+#
+#dir_subgraphs = defaultdict(list)
+#edges = []
+#for xml_file in find_xml('.'):
+#    dir_subgraphs[os.path.dirname(xml_file)].append(xml_file)
+#    
+#    for dep in find_deps(xml_file):
+#        edges.append((xml_file, dep))
+#        print xml_file, '->', dep
+#
+#for subgraph, nodes in dir_subgraphs.iteritems():
+#    graph.add_nodes_from(nodes, shape='box', color='red')
+#    graph.add_subgraph(nodes, 'cluster/' + subgraph)
+#    
+#graph.add_edges_from(edges)
+#
+#graph.write('xhh.dot')
+#graph.draw('xhh.png', prog='fdp')

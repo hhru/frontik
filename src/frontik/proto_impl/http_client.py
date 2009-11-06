@@ -7,7 +7,7 @@ import logging
 from frontik import etree as et
 import frontik.future
 
-log = logging.getLogger('frontik.http_client')
+log = logging.getLogger('frontik.proto.http_client')
 
 class FutureResponse(frontik.future.FutureVal):
     def __init__(self, request):
