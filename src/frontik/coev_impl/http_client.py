@@ -4,7 +4,7 @@ import webob
 import urllib2
 import logging
 import pycurl
-import threading
+import thread
 import cStringIO
 import time
 
@@ -30,13 +30,12 @@ class HTTPClient(object):
         self._multi = pycurl.CurlMulti()
         self._reqs = list()
         
-        self.client_loop_thread = threading.Thread(target=self.client_loop)
-        self.client_loop_thread.start()
+        self.client_loop_thread = thread.start_new_thread(self.client_loop, tuple())
     
     # runs in client
     def fetch(self, req):
         self._reqs.append((req, coev.current()))
-        return coev.switch2scheduler()
+        return coev.stall()
 
     def pop_requests(self):
         res = self._reqs
@@ -51,18 +50,22 @@ class HTTPClient(object):
                 ret, num_handles = self._multi.perform()
                 if ret != pycurl.E_CALL_MULTI_PERFORM:
                     break
+                
+            log.debug('_mulit.perform() done')
 
             while True:
                 num_q, ok_list, err_list = self._multi.info_read()
                 for curl in ok_list:
                     #self._finish(curl)
                     # XXX это не будет работать, потому что управление не возвращается в client_loop
-                    coev.switch(curl.info['thread_id'], curl.info['buffer'].getvalue())
+                    coev.schedule(curl.info['thread_id'], curl.info['buffer'].getvalue())
                 for curl, errnum, errmsg in err_list:
                     #self._finish(curl, errnum, errmsg)
-                    coev.switch(curl.info['thread_id'], 'booblik')
+                    coev.schedule(curl.info['thread_id'], 'booblik')
                 if num_q == 0:
                     break
+
+            log.debug('_multi.info_read() done')
 
             while self._reqs and self._clients:
                 (req, thid) = self._reqs.pop()
