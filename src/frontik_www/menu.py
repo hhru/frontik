@@ -18,23 +18,23 @@ career_menu = et.fromstring(
     <item href="/web/guest/referat">Рефераты</item>
   </careerMenu>''')
   
-def do_menu(response, session):
+def do_menu(handler):
     menu_doc = Doc('leftMenu')
     
-    if session.user_type == 'employer':
+    if handler.session.user_type == 'employer':
         menu_doc.put(http_get(frontik_www.config.searchHost + 
                                   'callevent/exists?userId=' +
-                                  session.user_id))
+                                  handler.session.user_id))
         
-    elif session.user_type == 'applicant':
+    elif handler.session.user_type == 'applicant':
         menu_doc.put(http_get(frontik_www.config.serviceHost + 'applicant/leftMenuBar' + 
-                                  '?site=' + session.site_id + 
-                                  '&lang=' + session.lang))
+                                  '?site=' + handler.session.site_id + 
+                                  '&lang=' + handler.session.lang))
 
-    if session.platform == 'JOBLIST':
+    if handler.session.platform == 'JOBLIST':
         menu_doc.put(http_get(frontik_www.config.serviceHost + 'vacancyblocks?' +
                                   'totalCount=4&hotCount=100'))
     
     menu_doc.put(career_menu)
     
-    response.doc.put(menu_doc)
+    handler.doc.put(menu_doc)

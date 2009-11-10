@@ -6,6 +6,11 @@ import os.path
 import logging
 import ConfigParser
 
+import tornado.httpserver
+import tornado.ioloop
+import tornado.web
+import tornado.autoreload
+
 import webob
 
 import frontik
@@ -13,9 +18,11 @@ import frontik.app
 
 log = logging.getLogger('frontik.server')
 
-if __name__ == '__main__':
-    app = frontik.app.FrontikApp()
+app = tornado.web.Application([
+    (r'.*', frontik.app.dispatcher),
+])
 
+if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     
     config = ConfigParser.ConfigParser()
@@ -37,4 +44,15 @@ if __name__ == '__main__':
         print ''.join(app(request.environ, lambda *args, **kw: None))
     
     else:
-        frontik.server_main(config, app)
+        http_server = tornado.httpserver.HTTPServer(app)
+        
+        port = int(config.get('server', 'port'))
+        host = config.get('server', 'host') or '0.0.0.0'
+        
+        log.info('starting server on %s:%s', host, port)
+        http_server.listen(port, host)
+        
+        io_loop = tornado.ioloop.IOLoop.instance()
+        
+        tornado.autoreload.start(io_loop, 1)
+        io_loop.start()

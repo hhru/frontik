@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
 
-from frontik import DocResponse, http_get
+import tornado.web
 
-import frontik_www.config
+import tornado.httpclient
+http_client = tornado.httpclient.AsyncHTTPClient()
+
+import frontik
+from frontik import http_get, make_url
+
+import frontik_www.config as config
 import frontik_www.util
 import frontik_www.head
 import frontik_www.menu
@@ -14,25 +20,57 @@ def get_article(session, article_id):
         return http_get(frontik_www.config.planetahrHost + 'xml/article/' + 
                         str(article_id) + '/' + session.site_code + '/' + session.lang)
 
-def get_page(request):
-    response = DocResponse('article')
-    # TODO response.set_xsl('article.xsl')
+class Session:
+    def __init__(self, session_xml):
+        self.hhid = session_xml.findtext('hhid-session/account/hhid')
+        self.email = session_xml.findtext('hhid-session/account/email')
+        self.user_id = session_xml.findtext('hh-session/account/user-id')
+        self.user_type = session_xml.findtext('hh-session/account/user-type')
+        self.lang = session_xml.findtext('locale/lang')
+        self.site_id = session_xml.findtext('locale/site-id')
+        self.site_code = session_xml.findtext('locale/site-code')
+        self.platform = session_xml.findtext('locale/platform-code')
+        self.area = session_xml.findtext('locale/area-id')
 
-    session = frontik_www.util.get_session(request)
+class Page(frontik.PageHandler):
+    @tornado.web.asynchronous
+    def get(self):
+        self._get_session()
     
-    response.doc.put(get_article(session, 599))
-    response.doc.put(get_article(session, request.GET['articleId']))
+    def _get_session(self):
+        hhtoken = self.get_cookie('hhtoken', None)
+        hhuid = self.get_cookie('hhuid', None)
+        
+        url = make_url(config.sessionHost + 'hh-session', 
+                       host = config.host,
+                       hhtoken = hhtoken, 
+                       hhuid = hhuid)
     
-    banners = frontik_www.util.Banners(request, response, session)
+        http_client.fetch(url, self.async_callback(self._get_session_finish))
+
+    def _get_session_finish(self, session_response):
+        session_xml = frontik.etree.fromstring(session_response.body)
+        
+        self.session = Session(session_xml)
+        
+        return self.get_page()
     
-    response.doc.put(banners.get_banners([137, 138, 144]))
-
-    frontik_www.head.do_head(response, session)
-
-    frontik_www.menu.do_menu(response, session)
-
-    frontik_www.foot.do_foot(response)
+    def get_page(self):
+        # TODO response.set_xsl('article.xsl')
+        
+        self.doc.put(get_article(self.session, 599))
+        self.doc.put(get_article(self.session, self.request.arguments['articleId']))
+        
+        banners = frontik_www.util.Banners(self)
+        
+        self.doc.put(banners.get_banners([137, 138, 144]))
     
-    response.doc.put(frontik_www.translations.get_translations(session, frontik_www.translations.index_translations))
-
-    return response
+        frontik_www.head.do_head(self)
+    
+        frontik_www.menu.do_menu(self)
+    
+        frontik_www.foot.do_foot(self)
+        
+        self.doc.put(frontik_www.translations.get_translations(self.session, frontik_www.translations.index_translations))
+    
+        self.finish()

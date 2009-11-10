@@ -1,8 +1,5 @@
-from frontik import DocResponse
+import frontik
 
-def get_page(request):
-    response = DocResponse('hello')
-    
-    response.doc.put('Hello world!')
-    
-    return response
+class Page(frontik.PageHandler):
+    def get(self):
+        self.doc.put('hello world!')

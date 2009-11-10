@@ -110,10 +110,10 @@ sites = et.fromstring('''<sites>
 </sites>
 ''')
 
-def do_head(response, session):
-    response.doc.put(topmenu)
-    response.doc.put(sites)
+def do_head(handler):
+    handler.doc.put(topmenu)
+    handler.doc.put(sites)
     
-    response.doc.put(http_get(frontik_www.config.serviceHost + 'regionalSiteList?site=' + str(session.site_id)))
+    handler.doc.put(http_get(frontik_www.config.serviceHost + 'regionalSiteList?site=' + str(handler.session.site_id)))
     
-    response.doc.put(http_get(frontik_www.config.searchHost + 'globalStatistics'))
+    handler.doc.put(http_get(frontik_www.config.searchHost + 'globalStatistics'))

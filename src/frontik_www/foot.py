@@ -66,5 +66,5 @@ foot_xml = etree.fromstring('''<foot>
   </hh-foot>
 </foot>''')
 
-def do_foot(response):
-    response.doc.put(foot_xml)
+def do_foot(handler):
+    handler.doc.put(foot_xml)
