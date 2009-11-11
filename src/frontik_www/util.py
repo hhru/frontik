@@ -48,5 +48,5 @@ class Banners(object):
         self.uriBannerMulti = self.uriBanner + '&multy=true'
     
     def get_banners(self, place_ids):
-        return frontik.http_get(self.uriBanner + ''.join('&placeId=%s' % (i,) for i in place_ids))
+        return self.handler.fetch_url(self.uriBanner + ''.join('&placeId=%s' % (i,) for i in place_ids))
 

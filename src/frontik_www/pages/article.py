@@ -15,11 +15,6 @@ import frontik_www.menu
 import frontik_www.foot
 import frontik_www.translations
 
-def get_article(session, article_id):
-    if article_id:
-        return http_get(frontik_www.config.planetahrHost + 'xml/article/' + 
-                        str(article_id) + '/' + session.site_code + '/' + session.lang)
-
 class Session:
     def __init__(self, session_xml):
         self.hhid = session_xml.findtext('hhid-session/account/hhid')
@@ -55,22 +50,26 @@ class Page(frontik.PageHandler):
         
         return self.get_page()
     
+    def get_article(self, article_id):
+        if article_id:
+            return self.fetch_url(frontik_www.config.planetahrHost + 'xml/article/' + 
+                                  str(article_id) + '/' + self.session.site_code + '/' + self.session.lang)
+
     def get_page(self):
         # TODO response.set_xsl('article.xsl')
         
-        self.doc.put(get_article(self.session, 599))
-        self.doc.put(get_article(self.session, self.request.arguments['articleId']))
+        self.doc.put(self.get_article(599))
+        self.doc.put(self.get_article(self.get_argument('articleId')))
         
         banners = frontik_www.util.Banners(self)
-        
         self.doc.put(banners.get_banners([137, 138, 144]))
-    
+
         frontik_www.head.do_head(self)
     
         frontik_www.menu.do_menu(self)
     
         frontik_www.foot.do_foot(self)
         
-        self.doc.put(frontik_www.translations.get_translations(self.session, frontik_www.translations.index_translations))
+        self.doc.put(frontik_www.translations.get_translations(self, frontik_www.translations.index_translations))
     
         self.finish()

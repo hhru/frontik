@@ -22,18 +22,18 @@ def do_menu(handler):
     menu_doc = Doc('leftMenu')
     
     if handler.session.user_type == 'employer':
-        menu_doc.put(http_get(frontik_www.config.searchHost + 
-                                  'callevent/exists?userId=' +
-                                  handler.session.user_id))
+        menu_doc.put(handler.fetch_url(frontik_www.config.searchHost + 
+                                       'callevent/exists?userId=' +
+                                       handler.session.user_id))
         
     elif handler.session.user_type == 'applicant':
-        menu_doc.put(http_get(frontik_www.config.serviceHost + 'applicant/leftMenuBar' + 
-                                  '?site=' + handler.session.site_id + 
-                                  '&lang=' + handler.session.lang))
+        menu_doc.put(handler.fetch_url(frontik_www.config.serviceHost + 'applicant/leftMenuBar' + 
+                                       '?site=' + handler.session.site_id + 
+                                       '&lang=' + handler.session.lang))
 
     if handler.session.platform == 'JOBLIST':
-        menu_doc.put(http_get(frontik_www.config.serviceHost + 'vacancyblocks?' +
-                                  'totalCount=4&hotCount=100'))
+        menu_doc.put(handler.fetch_url(frontik_www.config.serviceHost + 'vacancyblocks?' +
+                                       'totalCount=4&hotCount=100'))
     
     menu_doc.put(career_menu)
     

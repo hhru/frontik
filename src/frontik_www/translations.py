@@ -67,8 +67,8 @@ index_translations = [
     # TODO copy/paste everything from translations/index.xml
 ] + page_translations
 
-def get_translations(session, translations_list):
-    return http_get(make_url(frontik_www.config.trlHost + 'translationList',
-                             site=session.site_id,
-                             lang=session.lang,
-                             t=translations_list)) 
+def get_translations(handler, translations_list):
+    return handler.fetch_url(make_url(frontik_www.config.trlHost + 'translationList',
+                                      site=handler.session.site_id,
+                                      lang=handler.session.lang,
+                                      t=translations_list)) 

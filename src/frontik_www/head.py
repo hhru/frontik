@@ -114,6 +114,6 @@ def do_head(handler):
     handler.doc.put(topmenu)
     handler.doc.put(sites)
     
-    handler.doc.put(http_get(frontik_www.config.serviceHost + 'regionalSiteList?site=' + str(handler.session.site_id)))
+    handler.doc.put(handler.fetch_url(frontik_www.config.serviceHost + 'regionalSiteList?site=' + str(handler.session.site_id)))
     
-    handler.doc.put(http_get(frontik_www.config.searchHost + 'globalStatistics'))
+    handler.doc.put(handler.fetch_url(frontik_www.config.searchHost + 'globalStatistics'))
