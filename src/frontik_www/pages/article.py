@@ -30,6 +30,7 @@ class Session:
 class Page(frontik.PageHandler):
     @tornado.web.asynchronous
     def get(self):
+        self.log.debug('started')
         self._get_session()
     
     def _get_session(self):
@@ -38,9 +39,9 @@ class Page(frontik.PageHandler):
         
         url = make_url(config.sessionHost + 'hh-session', 
                        host = config.host,
-                       hhtoken = hhtoken, 
+                       hhtoken = hhtoken,
                        hhuid = hhuid)
-    
+        
         http_client.fetch(url, self.async_callback(self._get_session_finish))
 
     def _get_session_finish(self, session_response):
@@ -48,7 +49,9 @@ class Page(frontik.PageHandler):
         
         self.session = Session(session_xml)
         
-        return self.get_page()
+        self.get_page()
+        
+        self.finish('')
     
     def get_article(self, article_id):
         if article_id:
@@ -65,11 +68,9 @@ class Page(frontik.PageHandler):
         self.doc.put(banners.get_banners([137, 138, 144]))
 
         frontik_www.head.do_head(self)
-    
+        
         frontik_www.menu.do_menu(self)
-    
+        
         frontik_www.foot.do_foot(self)
         
         self.doc.put(frontik_www.translations.get_translations(self, frontik_www.translations.index_translations))
-    
-        self.finish()

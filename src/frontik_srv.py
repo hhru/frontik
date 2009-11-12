@@ -23,7 +23,8 @@ app = tornado.web.Application([
 ])
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG,
+                        format='[%(asctime)s] %(name)s: %(message)s')
     
     config = ConfigParser.ConfigParser()
     configs = config.read(['/etc/frontik/frontik.ini', './frontik.dev.ini'])
@@ -39,20 +40,19 @@ if __name__ == '__main__':
         log.debug('appending "%s" document_dir to sys.path', special_document_dir)
         sys.path.append(special_document_dir)
     
-    if len(sys.argv) > 1:
-        request = webob.Request.blank(sys.argv[1])
-        print ''.join(app(request.environ, lambda *args, **kw: None))
+    http_server = tornado.httpserver.HTTPServer(app)
     
-    else:
-        http_server = tornado.httpserver.HTTPServer(app)
-        
-        port = int(config.get('server', 'port'))
-        host = config.get('server', 'host') or '0.0.0.0'
-        
-        log.info('starting server on %s:%s', host, port)
-        http_server.listen(port, host)
-        
-        io_loop = tornado.ioloop.IOLoop.instance()
-        
-        tornado.autoreload.start(io_loop, 1)
-        io_loop.start()
+    port = int(config.get('server', 'port'))
+    
+    if len(sys.argv) == 2:
+        port = int(sys.argv[1])
+    
+    host = config.get('server', 'host') or '0.0.0.0'
+    
+    log.info('starting server on %s:%s', host, port)
+    http_server.listen(port, host)
+    
+    io_loop = tornado.ioloop.IOLoop.instance()
+    
+    tornado.autoreload.start(io_loop, 1)
+    io_loop.start()

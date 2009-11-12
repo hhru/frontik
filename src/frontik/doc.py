@@ -21,7 +21,7 @@ class Doc:
         
         def chunk_to_string(chunk):
             # XXX изменится, при смене библиотеки!
-            if isinstance(chunk, et._ElementInterface):
+            if isinstance(chunk, et._Element):
                 yield et.tostring(chunk)
             elif isinstance(chunk, Doc):
                 for i in chunk._finalize_data():
