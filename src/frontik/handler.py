@@ -43,7 +43,7 @@ class PageHandler(tornado.web.RequestHandler):
         
         self.log = logging.getLogger('frontik.page_handler.%s' % (self.request_id,))
         
-        self.log.debug('started')
+        self.log.debug('started %s %s', self.request.method, self.request.uri)
     
     @classmethod
     def get_next_request_id(cls):
@@ -84,7 +84,7 @@ class PageHandler(tornado.web.RequestHandler):
     def _fetch_url_response(self, placeholder, response):
         self.n_waiting_reqs -= 1
 
-        self.log.debug('got %s %s in %s, %s requests pending', response.code, response.effective_url, response.request_time, self.n_waiting_reqs)
+        self.log.debug('got %s %s in %.3f, %s requests pending', response.code, response.effective_url, response.request_time, self.n_waiting_reqs)
         
         placeholder.set_response(self, response)
         

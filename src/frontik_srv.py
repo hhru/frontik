@@ -26,29 +26,29 @@ app = tornado.web.Application([
 ])
 
 if __name__ == '__main__':
-    tornado.options.parse_command_line()
+    tornado.options.define('host', 'localhost', str)
+    tornado.options.define('port', 8080, int)
+    tornado.options.define('document_root', None, str)
+
+    configs = tornado.options.parse_config_files(['/etc/frontik/frontik.cfg', 
+                                                  './frontik_dev.cfg'])
     
-    config = ConfigParser.ConfigParser()
-    configs = config.read(['/etc/frontik/frontik.ini', './frontik.dev.ini'])
+    tornado.options.parse_command_line()
     
     if configs:
         log.debug('read configs: %s', ', '.join(os.path.abspath(i) for i in configs))
     else:
         log.error('failed to find any config file, aborting')
         sys.exit(1)
-    
-    special_document_dir = os.path.abspath(config.get('server', 'document_dir'))
-    if special_document_dir:
+        
+    if options.document_root:
+        special_document_dir = os.path.abspath(options.document_root)
         log.debug('appending "%s" document_dir to sys.path', special_document_dir)
         sys.path.append(special_document_dir)
     
+    log.info('starting server on %s:%s', options.host, options.port)
     http_server = tornado.httpserver.HTTPServer(app)
-    
-    port = int(config.get('server', 'port'))
-    host = config.get('server', 'host') or '0.0.0.0'
-    
-    log.info('starting server on %s:%s', host, port)
-    http_server.listen(port, host)
+    http_server.listen(options.port, options.host)
     
     io_loop = tornado.ioloop.IOLoop.instance()
     
