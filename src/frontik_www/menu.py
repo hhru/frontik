@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from frontik import http_get
 from frontik import etree as et
 from frontik import Doc
 

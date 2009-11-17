@@ -1,4 +1,4 @@
-from frontik import http_get, make_url 
+from frontik import make_url 
 
 import frontik_www.config
 

@@ -6,7 +6,7 @@ import tornado.httpclient
 http_client = tornado.httpclient.AsyncHTTPClient()
 
 import frontik
-from frontik import http_get, make_url
+from frontik import make_url
 
 import frontik_www.config as config
 import frontik_www.util
@@ -30,7 +30,6 @@ class Session:
 class Page(frontik.PageHandler):
     @tornado.web.asynchronous
     def get(self):
-        self.log.debug('started')
         self._get_session()
     
     def _get_session(self):
@@ -45,13 +44,15 @@ class Page(frontik.PageHandler):
         http_client.fetch(url, self.async_callback(self._get_session_finish))
 
     def _get_session_finish(self, session_response):
+        self.log.debug('got session in %s', session_response.request_time)
+        
         session_xml = frontik.etree.fromstring(session_response.body)
         
         self.session = Session(session_xml)
         
         self.get_page()
         
-        self.finish('')
+        self.finish_page()
     
     def get_article(self, article_id):
         if article_id:

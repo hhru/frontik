@@ -10,6 +10,9 @@ import tornado.httpserver
 import tornado.ioloop
 import tornado.web
 import tornado.autoreload
+import tornado.options
+
+from tornado.options import options
 
 import webob
 
@@ -23,8 +26,7 @@ app = tornado.web.Application([
 ])
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG,
-                        format='[%(asctime)s] %(name)s: %(message)s')
+    tornado.options.parse_command_line()
     
     config = ConfigParser.ConfigParser()
     configs = config.read(['/etc/frontik/frontik.ini', './frontik.dev.ini'])
@@ -43,10 +45,6 @@ if __name__ == '__main__':
     http_server = tornado.httpserver.HTTPServer(app)
     
     port = int(config.get('server', 'port'))
-    
-    if len(sys.argv) == 2:
-        port = int(sys.argv[1])
-    
     host = config.get('server', 'host') or '0.0.0.0'
     
     log.info('starting server on %s:%s', host, port)

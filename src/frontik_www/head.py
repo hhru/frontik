@@ -1,4 +1,3 @@
-from frontik import http_get
 from frontik import etree as et
 
 import frontik_www.config
