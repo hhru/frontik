@@ -7,5 +7,8 @@ Standards-Version: 3.8.1
 
 Package: frontik
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, python2.6, python-webob, python-paste
+Depends: ${shlibs:Depends}, ${misc:Depends}, 
+  python2.6, 
+  python-tornado (= 0.2~hh1),
+  python-lxml,
 Description: frontik - the python based XScript alternative 

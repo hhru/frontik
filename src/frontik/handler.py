@@ -3,7 +3,7 @@ from frontik import etree
 from frontik.doc import Doc
 
 import logging
-log = logging.getLogger('frontik.page_handler')
+log = logging.getLogger('frontik.handler')
 
 import tornado.web
 import tornado.httpclient
@@ -41,7 +41,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.request_id = self.request.headers.get('X-Request-Id', 
                                                    self.get_next_request_id())
         
-        self.log = logging.getLogger('frontik.page_handler.%s' % (self.request_id,))
+        self.log = logging.getLogger('frontik.handler.%s' % (self.request_id,))
         
         self.log.debug('started %s %s', self.request.method, self.request.uri)
     

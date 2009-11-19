@@ -1,1 +1,1 @@
-production/frontik.ini /etc/frontik
+production/frontik.cfg /etc/frontik
