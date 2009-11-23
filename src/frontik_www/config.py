@@ -1,10 +1,10 @@
-base_host = 'http://192.168.0.59'
+base_host = 'http://dev1.hhnet.ru'
 
-trlHost = base_host + ':5000/'
+trlHost = base_host + ':8999/'
 searchHost = base_host + ':9099/'
-serviceHost = base_host + ':8998/'
-sessionHost = base_host + ':9001/'
-planetahrHost = base_host + ':9797/'
+serviceHost = base_host + ':8999/'
+sessionHost = base_host + ':9009/'
+planetahrHost = base_host + ':9799/'
 
 document_root = '/root/xhh/source/'
 

@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import webob
-
 import frontik.future
 from frontik import etree as et
 

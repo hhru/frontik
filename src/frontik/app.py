@@ -9,9 +9,9 @@ def dispatcher(application, request):
     page_module_name = 'frontik_www.pages.' + request.path.strip('/').replace('/', '.')
     
     try:
-        page_module = __import__(page_module_name, fromlist=['get_page'])
+        page_module = __import__(page_module_name, fromlist=['Page'])
         log.debug('using %s from %s', page_module_name, page_module.__file__)
-    except:
+    except ImportError:
         log.exception('%s module not found', page_module_name)
         return tornado.web.ErrorHandler(application, request, 404)
     

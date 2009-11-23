@@ -1,4 +1,11 @@
-frontik (0.6) unstable; urgency=low
+frontik (0.7) unstable; urgency=low
+
+  * init.d script working
+  * new tornado version dependency
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 23 Nov 2009 17:10:58 +0300
+
+frontik (0.6) stable; urgency=low
 
   * frontik-tornado
 
