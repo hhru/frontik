@@ -19,7 +19,8 @@ class ResponsePlaceholder(future.FutureVal):
 
     def set_response(self, handler, response):
         if not response.error:
-            self.data = etree.fromstring(response.body)
+            self.data = [etree.Comment(response.effective_url),
+                         etree.fromstring(response.body)]
         else:
             handler.log.warn('%s failed %s', response.code, 
                              response.effective_url)

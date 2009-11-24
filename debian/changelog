@@ -1,3 +1,9 @@
+frontik (0.8) unstable; urgency=low
+
+  * комментарий перед каждым блоком, полученным по http
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 24 Nov 2009 18:50:36 +0400
+
 frontik (0.7.1) unstable; urgency=low
 
   * python-daemon dependency
