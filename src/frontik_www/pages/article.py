@@ -44,15 +44,20 @@ class Page(frontik.PageHandler):
         http_client.fetch(url, self.async_callback(self._get_session_finish))
 
     def _get_session_finish(self, session_response):
-        self.log.debug('got session in %s', session_response.request_time)
+        if not session_response.error:
+            self.log.debug('got session in %s', session_response.request_time)
         
-        session_xml = frontik.etree.fromstring(session_response.body)
+            session_xml = frontik.etree.fromstring(session_response.body)
         
-        self.session = Session(session_xml)
+            self.session = Session(session_xml)
         
-        self.get_page()
+            self.get_page()
         
-        self.finish_page()
+            self.finish_page()
+        else:
+            self.log.warn('failed to get session: %s', 
+                          session_response.error)
+            raise session_response.error
     
     def get_article(self, article_id):
         if article_id:

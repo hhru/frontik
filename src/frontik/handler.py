@@ -14,15 +14,15 @@ import future
 http_client = tornado.httpclient.AsyncHTTPClient(max_clients=50)
 
 class ResponsePlaceholder(future.FutureVal):
-    def __init__(self, request):
-        self.request = request
+    def __init__(self):
         self.data = None
 
     def set_response(self, handler, response):
-        if response.code == 200:
+        if not response.error:
             self.data = etree.fromstring(response.body)
         else:
-            handler.log.warn('%s failed %s', response.code, response.effective_url)
+            handler.log.warn('%s failed %s', response.code, 
+                             response.effective_url)
             self.data = etree.Element('error', dict(url=response.effective_url))
     
     def get(self):
@@ -70,11 +70,13 @@ class PageHandler(tornado.web.RequestHandler):
         for chunk in chunks:
             self.write(str(chunk))
         
+        self.write('\n')
+
         self.log.debug('done')
         self.finish('')
     
     def fetch_url(self, req):
-        placeholder = ResponsePlaceholder(req)
+        placeholder = ResponsePlaceholder()
         self.n_waiting_reqs += 1
         
         http_client.fetch(req, self.async_callback(partial(self._fetch_url_response, placeholder)))

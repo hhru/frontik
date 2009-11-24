@@ -1,3 +1,9 @@
+frontik (0.7.1) unstable; urgency=low
+
+  * python-daemon dependency
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 23 Nov 2009 17:17:45 +0300
+
 frontik (0.7) unstable; urgency=low
 
   * init.d script working
