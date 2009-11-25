@@ -14,9 +14,12 @@ def dispatcher(application, request):
     except ImportError:
         log.exception('%s module not found', page_module_name)
         return tornado.web.ErrorHandler(application, request, 404)
+    except:
+        log.exception('error while importing %s module', page_module_name)
+        return tornado.web.ErrorHandler(application, request, 500)
     
     try:
         return page_module.Page(application, request)
     except:
         log.exception('%s.Page class not found', page_module_name)
-        return tornado.web.ErrorHandler(application, request, 404) 
+        return tornado.web.ErrorHandler(application, request, 500) 

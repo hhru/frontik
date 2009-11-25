@@ -1,11 +1,14 @@
 # -*- mode: org -*-
 
-* frontik: если не получается получить сессию - плохое сообщение об ошибке
-* таймауты
+* TODO таймауты
+** таймаут при вызове
 ** таймаут по умолчанию
-* вставка xml из файла
-* правильная выдача для /article/
-* daemon.pidlockfile
-* frontik -> frontik_srv
-* frontik_www -> frontik
-* пострелять по frontik 
+* TODO вставка xml из файла
+* TODO правильная выдача для /article/
+* TODO daemon.pidlockfile
+* TODO frontik -> frontik_srv
+* TODO frontik_www -> frontik
+* TODO пострелять по frontik 
+* DONE frontik: если не получается получить сессию - плохое сообщение об ошибке
+** DONE frontik_www.handler.SessionPageHandler
+** DONE fix сообщения об ошибке
