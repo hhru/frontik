@@ -44,10 +44,6 @@ def main():
     import frontik
     import frontik.app
 
-    app = tornado.web.Application([
-            (r'.*', frontik.app.dispatcher),
-            ])
-
     if options.document_root:
         special_document_dir = os.path.abspath(options.document_root)
         log.debug('appending "%s" document_dir to sys.path', special_document_dir)
@@ -57,12 +53,13 @@ def main():
         sys.exit(1)
     
     log.info('starting server on %s:%s', options.host, options.port)
-    http_server = tornado.httpserver.HTTPServer(app)
+    http_server = tornado.httpserver.HTTPServer(frontik.app.get_app())
     http_server.listen(options.port, options.host)
     
     io_loop = tornado.ioloop.IOLoop.instance()
     
     tornado.autoreload.start(io_loop, 1)
+
     io_loop.start()
 
 if __name__ == '__main__':

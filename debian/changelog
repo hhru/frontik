@@ -1,3 +1,11 @@
+frontik (0.9) unstable; urgency=low
+
+  * HH-9464: вставка документа из xml-файла
+  * HH-9464: /status/ с количеством отработанных страниц и сделанных
+    http-запросов
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 26 Nov 2009 14:40:21 +0400
+
 frontik (0.8) unstable; urgency=low
 
   * комментарий перед каждым блоком, полученным по http

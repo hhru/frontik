@@ -5,18 +5,6 @@ from frontik import Doc, make_url
 
 import frontik_www.config
 
-career_menu = et.fromstring(
-'''<careerMenu>
-    <item href="/applicant/searchvacancy.xml">Вакансии</item>
-    <item href="/web/guest/catalog">Компании</item>
-    <item href="http://edu.hh.ru/">Образование</item>
-    <item href="/web/guest/events">Календарь</item>
-    <item href="/web/guest/library">Статьи</item>
-    <item href="http://livehh.ru/soobshmolspetsicaru/">Общение</item>
-    <item href="/web/guest/consult">Консультант</item>
-    <item href="/web/guest/referat">Рефераты</item>
-  </careerMenu>''')
-  
 def do_menu(handler):
     menu_doc = Doc('leftMenu')
     
@@ -34,6 +22,6 @@ def do_menu(handler):
         menu_doc.put(handler.fetch_url(frontik_www.config.serviceHost + 'vacancyblocks?' +
                                        'totalCount=4&hotCount=100'))
     
-    menu_doc.put(career_menu)
+    menu_doc.put(handler.xml_from_file('frontik_www/career_menu.xml'))
     
     handler.doc.put(menu_doc)

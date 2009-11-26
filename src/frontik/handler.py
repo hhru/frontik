@@ -1,14 +1,18 @@
-from frontik import etree
+# -*- coding: utf-8 -*-
 
+import os.path
+
+from functools import partial
+
+import tornado.web
+import tornado.httpclient
+import tornado.options
+
+from frontik import etree
 from frontik.doc import Doc
 
 import logging
 log = logging.getLogger('frontik.handler')
-
-import tornado.web
-import tornado.httpclient
-
-from functools import partial
 
 import future
 http_client = tornado.httpclient.AsyncHTTPClient(max_clients=50)
@@ -29,9 +33,14 @@ class ResponsePlaceholder(future.FutureVal):
     def get(self):
         return self.data
 
+class Stats:
+    def __init__(self):
+        self.page_count = 0
+        self.http_reqs_count = 0
+
+stats = Stats()
+
 class PageHandler(tornado.web.RequestHandler):
-    current_request_id = 0
-    
     def __init__(self, *args, **kw):
         tornado.web.RequestHandler.__init__(self, *args, **kw)
         
@@ -48,9 +57,27 @@ class PageHandler(tornado.web.RequestHandler):
     
     @classmethod
     def get_next_request_id(cls):
-        cls.current_request_id += 1
-        return cls.current_request_id
+        stats.page_count += 1
+        return stats.page_count
     
+    def fetch_url(self, req):
+        placeholder = ResponsePlaceholder()
+        self.n_waiting_reqs += 1
+        stats.http_reqs_count += 1
+        
+        http_client.fetch(req, self.async_callback(partial(self._fetch_url_response, placeholder)))
+        
+        return placeholder
+        
+    def _fetch_url_response(self, placeholder, response):
+        self.n_waiting_reqs -= 1
+
+        self.log.debug('got %s %s in %.3f, %s requests pending', response.code, response.effective_url, response.request_time, self.n_waiting_reqs)
+        
+        placeholder.set_response(self, response)
+        
+        self._try_finish_page()
+
     def finish_page(self):
         self.log.debug('going to finish')
         
@@ -76,19 +103,29 @@ class PageHandler(tornado.web.RequestHandler):
         self.log.debug('done')
         self.finish('')
     
-    def fetch_url(self, req):
-        placeholder = ResponsePlaceholder()
-        self.n_waiting_reqs += 1
-        
-        http_client.fetch(req, self.async_callback(partial(self._fetch_url_response, placeholder)))
-        
-        return placeholder
-        
-    def _fetch_url_response(self, placeholder, response):
-        self.n_waiting_reqs -= 1
+    ### 
 
-        self.log.debug('got %s %s in %.3f, %s requests pending', response.code, response.effective_url, response.request_time, self.n_waiting_reqs)
-        
-        placeholder.set_response(self, response)
-        
-        self._try_finish_page()
+    # глобальный кеш
+    xml_files_cache = dict()
+
+    def xml_from_file(self, filename):
+        if filename in self.xml_files_cache:
+            self.log.debug('get %s file from cache', filename)
+            return self.xml_files_cache[filename]
+        else:
+            self.log.debug('read %s file from filesystem', filename)
+            ret = self._xml_from_file(filename)
+            self.xml_files_cache[filename] = ret
+            return ret
+
+    def _xml_from_file(self, filename):
+        real_filename = os.path.join(tornado.options.options.document_root, filename)
+
+        if os.path.exists(real_filename):
+            try:
+                return etree.parse(file(real_filename)).getroot()
+            except:
+                return etree.Element('error', dict(msg='failed to parse file: %s' % (filename,)))
+        else:
+            return etree.Element('error', dict(msg='file not found: %s' % (filename,)))
+            
