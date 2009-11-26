@@ -1,7 +1,7 @@
 #base_host = 'http://dev1.hhnet.ru'
 base_host = 'http://192.168.0.59'
 
-trlHost = base_host + ':5000/'
+trlHost = base_host + ':8998/'
 searchHost = base_host + ':9099/'
 serviceHost = base_host + ':8998/'
 sessionHost = base_host + ':9001/'

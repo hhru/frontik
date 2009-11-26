@@ -33,4 +33,4 @@ class Page(frontik_www.handler.SessionPageHandler):
         
         frontik_www.foot.do_foot(self)
         
-        self.doc.put(frontik_www.translations.get_translations(self, frontik_www.translations.index_translations))
+        frontik_www.translations.do_translations(self, frontik_www.translations.index_translations)
