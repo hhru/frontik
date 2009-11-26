@@ -1,3 +1,9 @@
+frontik (0.9.1) unstable; urgency=low
+
+  * HH-9464: logrotate-конфиг
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 26 Nov 2009 14:58:08 +0400
+
 frontik (0.9) unstable; urgency=low
 
   * HH-9464: вставка документа из xml-файла

@@ -1,0 +1,8 @@
+compress
+
+/var/log/frontik.log {
+  rotate 7
+  daily
+  copytruncate
+  nomail
+}
