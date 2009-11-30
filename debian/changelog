@@ -1,3 +1,10 @@
+frontik (0.10.1) unstable; urgency=low
+
+  * HH-9664: отдельные log- и pid-файлы
+  * HH-9664: супервизор читает конфиг в /etc
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 30 Nov 2009 18:00:28 +0400
+
 frontik (0.10) unstable; urgency=low
 
   * HH-9464: /stop/ действие
