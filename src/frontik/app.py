@@ -19,7 +19,9 @@ class StopHandler(tornado.web.RequestHandler):
 def pages_dispatcher(application, request):
     log.info('requested url: %s', request.uri)
     
-    page_module_name = 'frontik_www.pages.' + request.path.strip('/').replace('/', '.')
+    page_module_name_parts = request.path.strip('/').split('/')[1:]
+
+    page_module_name = 'frontik_www.pages.' + '.'.join(page_module_name_parts)
     
     try:
         page_module = __import__(page_module_name, fromlist=['Page'])
