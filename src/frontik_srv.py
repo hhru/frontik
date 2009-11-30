@@ -44,6 +44,8 @@ def main():
     import frontik
     import frontik.app
 
+    logging.getLogger('tornado.httpclient').setLevel(logging.WARN)
+
     if options.document_root:
         special_document_dir = os.path.abspath(options.document_root)
         log.debug('appending "%s" document_dir to sys.path', special_document_dir)

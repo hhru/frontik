@@ -1,4 +1,5 @@
 import tornado.web
+import tornado.ioloop
 import logging
 
 log = logging.getLogger('frontik.server')        
@@ -9,6 +10,11 @@ class StatusHandler(tornado.web.RequestHandler):
     def get(self):
         self.write('pages served: %s\n' % (handler.stats.page_count,))
         self.write('http reqs made: %s\n' % (handler.stats.http_reqs_count,))
+
+class StopHandler(tornado.web.RequestHandler):
+    def get(self):
+        log.info('requested shutdown')
+        tornado.ioloop.IOLoop.instance().stop()
 
 def pages_dispatcher(application, request):
     log.info('requested url: %s', request.uri)
@@ -34,6 +40,7 @@ def pages_dispatcher(application, request):
 def get_app():
     return tornado.web.Application([
             (r'/status/', StatusHandler),
-            (r'.*', pages_dispatcher),
+            (r'/stop/', StopHandler),
+            (r'/page/.*', pages_dispatcher),
             ])
 

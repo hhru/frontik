@@ -1,3 +1,10 @@
+frontik (0.10) unstable; urgency=low
+
+  * HH-9464: /stop/ действие
+  * HH-9664: /usr/bin/frontik_supervisor.py
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 30 Nov 2009 17:25:56 +0400
+
 frontik (0.9.1) unstable; urgency=low
 
   * HH-9464: logrotate-конфиг
