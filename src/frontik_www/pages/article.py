@@ -5,7 +5,7 @@ from frontik import make_url
 
 import frontik_www.config as config
 import frontik_www.handler
-import frontik_www.util
+import frontik_www.banners
 import frontik_www.head
 import frontik_www.menu
 import frontik_www.foot
@@ -24,8 +24,7 @@ class Page(frontik_www.handler.SessionPageHandler):
         self.doc.put(self.get_article(599))
         self.doc.put(self.get_article(self.get_argument('articleId')))
         
-        banners = frontik_www.util.Banners(self)
-        self.doc.put(banners.get_banners([137, 138, 144]))
+        frontik_www.banners.do_banners(self, [137, 138, 144])
 
         frontik_www.head.do_head(self)
         

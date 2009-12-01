@@ -17,8 +17,13 @@ class Session:
         self.lang = session_xml.findtext('locale/lang')
         self.site_id = session_xml.findtext('locale/site-id')
         self.site_code = session_xml.findtext('locale/site-code')
-        self.platform = session_xml.findtext('locale/platform-code')
         self.area = session_xml.findtext('locale/area-id')
+
+        platform = session_xml.findtext('locale/platform-code')
+        if platform in ['JOBLIST', 'CAREER_RU']:
+            self.platform = platform
+        else:
+            self.platform = 'XHH'
 
 class SessionPageHandler(frontik.PageHandler):
     @tornado.web.asynchronous
