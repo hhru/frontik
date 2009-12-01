@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import webob
-
 import frontik.future
 from frontik import etree as et
 
@@ -21,11 +19,15 @@ class Doc:
         
         def chunk_to_string(chunk):
             # XXX изменится, при смене библиотеки!
-            if isinstance(chunk, et._ElementInterface):
+            if isinstance(chunk, et._Element):
                 yield et.tostring(chunk)
             elif isinstance(chunk, Doc):
                 for i in chunk._finalize_data():
                     yield i
+            elif isinstance(chunk, list):
+                for i in chunk:
+                    for x in chunk_to_string(i):
+                        yield x
             else:
                 yield chunk
         
@@ -37,18 +39,6 @@ class Doc:
             
             for i in chunk_to_string(val):
                 yield i
-    
-class DocResponse(object):
-    def __init__(self, root_node_name='page'):
-        self.response = webob.Response()
-        self.response.content_type = 'application/xml'
-        
-        self.doc = Doc(root_node_name)
-    
-    def __call__(self, environ, start_response):
-        self.response.write('<?xml version="1.0" ?>\n')
 
-        for chunk in self.doc._finalize_data():
-            self.response.write(chunk)
-        
-        return self.response(environ, start_response)
+    def to_string(self):
+        return ''.join(self._finalize_data())

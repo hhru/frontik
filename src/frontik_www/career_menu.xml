@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<careerMenu>
+  <item href="/applicant/searchvacancy.xml">Вакансии</item>
+  <item href="/web/guest/catalog">Компании</item>
+  <item href="http://edu.hh.ru/">Образование</item>
+  <item href="/web/guest/events">Календарь</item>
+  <item href="/web/guest/library">Статьи</item>
+  <item href="http://livehh.ru/soobshmolspetsicaru/">Общение</item>
+  <item href="/web/guest/consult">Консультант</item>
+  <item href="/web/guest/referat">Рефераты</item>
+</careerMenu>

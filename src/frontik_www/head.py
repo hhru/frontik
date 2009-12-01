@@ -1,4 +1,3 @@
-from frontik import http_get
 from frontik import etree as et
 
 import frontik_www.config
@@ -110,10 +109,10 @@ sites = et.fromstring('''<sites>
 </sites>
 ''')
 
-def do_head(response, session):
-    response.doc.put(topmenu)
-    response.doc.put(sites)
+def do_head(self):
+    self.doc.put(topmenu)
+    self.doc.put(sites)
     
-    response.doc.put(http_get(frontik_www.config.serviceHost + 'regionalSiteList?site=' + str(session.site_id)))
+    self.doc.put(self.fetch_url(frontik_www.config.serviceHost + 'regionalSiteList?site=' + str(self.session.site_id)))
     
-    response.doc.put(http_get(frontik_www.config.searchHost + 'globalStatistics'))
+    self.doc.put(self.fetch_url(frontik_www.config.searchHost + 'globalStatistics'))

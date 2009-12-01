@@ -1,3 +1,62 @@
+frontik (0.10.2) unstable; urgency=low
+
+  * HH-9664: bugfix frontik.app
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 30 Nov 2009 18:23:35 +0400
+
+frontik (0.10.1) unstable; urgency=low
+
+  * HH-9664: отдельные log- и pid-файлы
+  * HH-9664: супервизор читает конфиг в /etc
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 30 Nov 2009 18:00:28 +0400
+
+frontik (0.10) unstable; urgency=low
+
+  * HH-9464: /stop/ действие
+  * HH-9664: /usr/bin/frontik_supervisor.py
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 30 Nov 2009 17:25:56 +0400
+
+frontik (0.9.1) unstable; urgency=low
+
+  * HH-9464: logrotate-конфиг
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 26 Nov 2009 14:58:08 +0400
+
+frontik (0.9) unstable; urgency=low
+
+  * HH-9464: вставка документа из xml-файла
+  * HH-9464: /status/ с количеством отработанных страниц и сделанных
+    http-запросов
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 26 Nov 2009 14:40:21 +0400
+
+frontik (0.8) unstable; urgency=low
+
+  * комментарий перед каждым блоком, полученным по http
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 24 Nov 2009 18:50:36 +0400
+
+frontik (0.7.1) unstable; urgency=low
+
+  * python-daemon dependency
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 23 Nov 2009 17:17:45 +0300
+
+frontik (0.7) unstable; urgency=low
+
+  * init.d script working
+  * new tornado version dependency
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 23 Nov 2009 17:10:58 +0300
+
+frontik (0.6) stable; urgency=low
+
+  * frontik-tornado
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Wed, 18 Nov 2009 15:38:23 +0300
+
 frontik (0.5) unstable; urgency=low
 
   * hh -> frontik_www

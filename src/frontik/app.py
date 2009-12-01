@@ -1,31 +1,48 @@
-import webob.exc
+import tornado.web
+import tornado.ioloop
 import logging
 
-log = logging.getLogger('frontik.server')
+log = logging.getLogger('frontik.server')        
 
-class FrontikApp(object):
-    def __init__(self):
-        pass
+import handler
+
+class StatusHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.write('pages served: %s\n' % (handler.stats.page_count,))
+        self.write('http reqs made: %s\n' % (handler.stats.http_reqs_count,))
+
+class StopHandler(tornado.web.RequestHandler):
+    def get(self):
+        log.info('requested shutdown')
+        tornado.ioloop.IOLoop.instance().stop()
+
+def pages_dispatcher(application, request):
+    log.info('requested url: %s', request.uri)
     
-    def __call__(self, environ, start_response):
-        req = webob.Request(environ)
-        log.info('requested url: %s', req.url)
-        
-        page_module_name = 'frontik_www.pages.' + req.path_info.strip('/').replace('/', '.')
-        
-        try:
-            try:
-                page_module = __import__(page_module_name, fromlist=['get_page'])
-                log.debug('using %s from %s', page_module_name, page_module.__file__)
-            except:
-                raise webob.exc.HTTPNotFound('%s module not found' % (page_module_name,))
-            
-            try:
-                page_handler = page_module.get_page
-            except:
-                raise webob.exc.HTTPNotFound('%s.get_page method not found' % (page_module_name,))
-            
-            return page_handler(req)(environ, start_response)
-        except webob.exc.HTTPException, e:
-            return e(environ, start_response)
+    page_module_name_parts = request.path.strip('/').split('/')[1:]
+
+    page_module_name = 'frontik_www.pages.' + '.'.join(page_module_name_parts)
+    
+    try:
+        page_module = __import__(page_module_name, fromlist=['Page'])
+        log.debug('using %s from %s', page_module_name, page_module.__file__)
+    except ImportError:
+        log.exception('%s module not found', page_module_name)
+        return tornado.web.ErrorHandler(application, request, 404)
+    except:
+        log.exception('error while importing %s module', page_module_name)
+        return tornado.web.ErrorHandler(application, request, 500)
+    
+    try:
+        return page_module.Page(application, request)
+    except:
+        log.exception('%s.Page class not found', page_module_name)
+        return tornado.web.ErrorHandler(application, request, 500) 
+
+def get_app():
+    return tornado.web.Application([
+            (r'/status/', StatusHandler),
+            (r'/stop/', StopHandler),
+            (r'/page/.*', pages_dispatcher),
+            ])
 

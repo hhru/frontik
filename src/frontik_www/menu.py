@@ -1,40 +1,27 @@
 # -*- coding: utf-8 -*-
 
-from frontik import http_get
 from frontik import etree as et
-from frontik import Doc
+from frontik import Doc, make_url
 
 import frontik_www.config
 
-career_menu = et.fromstring(
-'''<careerMenu>
-    <item href="/applicant/searchvacancy.xml">Вакансии</item>
-    <item href="/web/guest/catalog">Компании</item>
-    <item href="http://edu.hh.ru/">Образование</item>
-    <item href="/web/guest/events">Календарь</item>
-    <item href="/web/guest/library">Статьи</item>
-    <item href="http://livehh.ru/soobshmolspetsicaru/">Общение</item>
-    <item href="/web/guest/consult">Консультант</item>
-    <item href="/web/guest/referat">Рефераты</item>
-  </careerMenu>''')
-  
-def do_menu(response, session):
+def do_menu(handler):
     menu_doc = Doc('leftMenu')
     
-    if session.user_type == 'employer':
-        menu_doc.put(http_get(frontik_www.config.searchHost + 
-                                  'callevent/exists?userId=' +
-                                  session.user_id))
-        
-    elif session.user_type == 'applicant':
-        menu_doc.put(http_get(frontik_www.config.serviceHost + 'applicant/leftMenuBar' + 
-                                  '?site=' + session.site_id + 
-                                  '&lang=' + session.lang))
+    if handler.session.user_type == 'applicant':
+        menu_doc.put(handler.fetch_url(make_url(frontik_www.config.serviceHost + 'applicant/leftMenuBar', 
+                                                site=handler.session.site_id,
+                                                lang=handler.session.lang)))
+    else:
+        menu_doc.put(handler.fetch_url(make_url(frontik_www.config.serviceHost + 'leftMenuBar',
+                                                userId=handler.session.user_id,
+                                                site=handler.session.site_id,
+                                                lang=handler.session.lang)))
 
-    if session.platform == 'JOBLIST':
-        menu_doc.put(http_get(frontik_www.config.serviceHost + 'vacancyblocks?' +
-                                  'totalCount=4&hotCount=100'))
+    if handler.session.platform == 'JOBLIST':
+        menu_doc.put(handler.fetch_url(frontik_www.config.serviceHost + 'vacancyblocks?' +
+                                       'totalCount=4&hotCount=100'))
     
-    menu_doc.put(career_menu)
+    menu_doc.put(handler.xml_from_file('frontik_www/career_menu.xml'))
     
-    response.doc.put(menu_doc)
+    handler.doc.put(menu_doc)
