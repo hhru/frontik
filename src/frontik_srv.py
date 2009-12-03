@@ -15,6 +15,7 @@ def bootstrap():
     tornado.options.define('port', 8080, int)
     tornado.options.define('document_root', None, str)
     tornado.options.define('daemonize', True, bool)
+    tornado.options.define('autoreload', True, bool)
 
     configs = tornado.options.parse_config_files(['/etc/frontik/frontik.cfg', 
                                                   './frontik_dev.cfg'])
@@ -36,6 +37,17 @@ def bootstrap():
         sys.exit(1)
 
 def main():
+    if options.document_root:
+        special_document_dir = os.path.abspath(options.document_root)
+        log.debug('appending "%s" document_dir to sys.path', special_document_dir)
+        sys.path.append(special_document_dir)
+
+    try:
+        import frontik_www
+    except ImportError:
+        log.error('frontik_www module cannot be found')
+        sys.exit(1)
+    
     import tornado.httpserver
     import tornado.ioloop
     import tornado.web
@@ -46,21 +58,14 @@ def main():
 
     logging.getLogger('tornado.httpclient').setLevel(logging.WARN)
 
-    if options.document_root:
-        special_document_dir = os.path.abspath(options.document_root)
-        log.debug('appending "%s" document_dir to sys.path', special_document_dir)
-        sys.path.append(special_document_dir)
-    else:
-        log.error('no document root given')
-        sys.exit(1)
-    
     log.info('starting server on %s:%s', options.host, options.port)
     http_server = tornado.httpserver.HTTPServer(frontik.app.get_app())
     http_server.listen(options.port, options.host)
     
     io_loop = tornado.ioloop.IOLoop.instance()
     
-    tornado.autoreload.start(io_loop, 1)
+    if options.autoreload:
+        tornado.autoreload.start(io_loop, 1000)
 
     io_loop.start()
 
