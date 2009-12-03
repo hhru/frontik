@@ -1,3 +1,9 @@
+frontik (0.10.4) unstable; urgency=low
+
+  * production-конфиг: биндиться на 0.0.0.0
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu,  3 Dec 2009 16:07:19 +0400
+
 frontik (0.10.3) unstable; urgency=low
 
   * увеличить период автоперезагрузки с 1 миллисекунды до 1 секунды
