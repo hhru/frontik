@@ -21,19 +21,24 @@ http_client = tornado.httpclient.AsyncHTTPClient(max_clients=50)
 
 class ResponsePlaceholder(future.FutureVal):
     def __init__(self):
-        self.data = None
+        pass
 
     def set_response(self, handler, response):
         if not response.error:
-            self.data = [etree.Comment(response.effective_url),
-                         etree.fromstring(response.body)]
+            self.has_response = True
+            self.response = response
         else:
             handler.log.warn('%s failed %s', response.code, 
                              response.effective_url)
+            self.has_response = False
             self.data = etree.Element('error', dict(url=response.effective_url))
     
     def get(self):
-        return self.data
+        if self.has_response:
+            return [etree.Comment(self.response.effective_url),
+                    etree.fromstring(self.response.body)]
+        else:
+            return self.data
 
 class Stats:
     def __init__(self):
