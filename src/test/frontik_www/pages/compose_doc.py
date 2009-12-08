@@ -1,0 +1,17 @@
+import frontik
+from frontik import etree, Doc
+
+class Page(frontik.PageHandler):
+    def get(self):
+        a = Doc('a')
+        a.put('aaa')
+        self.doc.put(a)
+        
+        b = Doc('b')
+        b.put('bbb')
+        self.doc.put(b)
+
+        c = Doc('c')
+        self.doc.put(c)
+
+        self.finish_page()

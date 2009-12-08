@@ -16,9 +16,16 @@ def bootstrap():
     tornado.options.define('document_root', None, str)
     tornado.options.define('daemonize', True, bool)
     tornado.options.define('autoreload', True, bool)
+    tornado.options.define('config', None, str)
 
-    configs = tornado.options.parse_config_files(['/etc/frontik/frontik.cfg', 
-                                                  './frontik_dev.cfg'])
+    tornado.options.parse_command_line()
+    if options.config:
+        configs_to_read = [options.config]
+    else:
+        configs_to_read = ['/etc/frontik/frontik.cfg', 
+                           './frontik_dev.cfg']
+
+    configs = tornado.options.parse_config_files(configs_to_read)
     
     tornado.options.parse_command_line()
 
