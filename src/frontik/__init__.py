@@ -7,4 +7,4 @@ import lxml.etree as etree
 from doc import Doc
 from util import make_url
 
-from handler import PageHandler
+#from handler import PageHandler

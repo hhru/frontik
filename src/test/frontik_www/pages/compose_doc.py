@@ -1,7 +1,7 @@
-import frontik
+import frontik.handler
 from frontik import etree, Doc
 
-class Page(frontik.PageHandler):
+class Page(frontik.handler.PageHandler):
     def get(self):
         a = Doc('a')
         a.put('aaa')
