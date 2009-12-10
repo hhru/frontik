@@ -9,14 +9,13 @@ class Doc:
         
         self.data = []
         
-        self.put('<%s>' % (self.root_node_name,))
-        
-    def put(self, doc):
-        self.data.append(doc)
+    def put(self, chunk):
+        if isinstance(chunk, list):
+            self.data.extend(chunk)
+        else:
+            self.data.append(chunk)
     
     def _finalize_data(self):
-        self.put('</%s>' % (self.root_node_name,))
-        
         def chunk_to_string(chunk):
             # XXX изменится, при смене библиотеки!
             if isinstance(chunk, et._Element):
@@ -40,5 +39,52 @@ class Doc:
             for i in chunk_to_string(val):
                 yield i
 
+    def to_etree_element(self):
+        res = et.Element(self.root_node_name)
+
+        def chunk_to_element(chunk):
+            # XXX изменится, при смене библиотеки!
+            if isinstance(chunk, list):
+                for chunk_i in chunk:
+                    for i in chunk_to_element(chunk_i):
+                        yield i
+
+            elif isinstance(chunk, frontik.future.FutureVal):
+                for i in chunk_to_element(chunk.get()):
+                    yield i
+
+            elif isinstance(chunk, et._Element):
+                yield chunk
+
+            elif isinstance(chunk, Doc):
+                yield chunk.to_etree_element()
+
+            elif isinstance(chunk, basestring):
+                yield chunk
+
+            else:
+                yield str(chunk)
+
+        last_element = None
+        for chunk_element in chunk_to_element(self.data):
+
+            if isinstance(chunk_element, basestring):
+                if last_element:
+                    if last_element.tail:
+                        last_element.tail += chunk_element
+                    else:
+                        last_element.tail = chunk_element
+                else:
+                    if res.text:
+                        res.text += chunk_element
+                    else:
+                        res.text = chunk_element
+
+            else:
+                res.append(chunk_element)
+                last_element = chunk_element
+
+        return res
+
     def to_string(self):
-        return ''.join(self._finalize_data())
+        return et.tostring(self.to_etree_element())

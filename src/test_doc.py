@@ -1,6 +1,7 @@
 import unittest
 
 import frontik
+import frontik.future
 
 class MockFuture(frontik.future.FutureVal):
     def __init__(self, data):

@@ -17,7 +17,8 @@ import logging
 log = logging.getLogger('frontik.handler')
 
 import future
-http_client = tornado.httpclient.AsyncHTTPClient(max_clients=50)
+http_client = tornado.httpclient.AsyncHTTPClient(max_clients=200, 
+                                                 max_simultaneous_connections=200)
 
 class ResponsePlaceholder(future.FutureVal):
     def __init__(self):
@@ -67,12 +68,18 @@ class PageHandler(tornado.web.RequestHandler):
         stats.page_count += 1
         return stats.page_count
     
-    def fetch_url(self, req):
+    def fetch_url(self, url):
         placeholder = ResponsePlaceholder()
         self.n_waiting_reqs += 1
         stats.http_reqs_count += 1
         
-        http_client.fetch(req, self.async_callback(partial(self._fetch_url_response, placeholder)))
+        http_client.fetch(
+            tornado.httpclient.HTTPRequest(
+                url=url,
+                headers={
+                    'Connection':'Keep-Alive',
+                    'Keep-Alive':'1000'}), 
+            self.async_callback(partial(self._fetch_url_response, placeholder)))
         
         return placeholder
         
@@ -97,17 +104,12 @@ class PageHandler(tornado.web.RequestHandler):
     
     def _real_finish(self):
         self.log.debug('finishing')
-        chunks = list(self.doc._finalize_data())
-        
+
         self.set_header('Content-Type', 'application/xml')
-        self.write('<?xml version="1.0" ?>\n')
-        
-        for chunk in chunks:
-            self.write(str(chunk))
-        
-        self.write('\n')
+        self.write(self.doc.to_string())
 
         self.log.debug('done')
+
         self.finish('')
     
     ### 

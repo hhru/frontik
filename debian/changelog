@@ -1,3 +1,22 @@
+frontik (0.10.9) unstable; urgency=low
+
+  * делать один рендеринг в строку на документ
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 10 Dec 2009 17:52:49 +0400
+
+frontik (0.10.8) unstable; urgency=low
+
+  * profile-friendly рефакторинг, модуль frontik.server
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 10 Dec 2009 16:58:42 +0400
+
+frontik (0.10.7) unstable; urgency=low
+
+  * поднять количество клиентов и количество одновременных соединений для
+    HTTP-клиента
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 10 Dec 2009 14:00:57 +0400
+
 frontik (0.10.6) unstable; urgency=low
 
   * logrotate для /var/log/frontik.*.log файлов
