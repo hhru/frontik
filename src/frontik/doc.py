@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import cStringIO
+
 import frontik.future
 from frontik import etree as et
 
@@ -87,4 +89,6 @@ class Doc:
         return res
 
     def to_string(self):
-        return et.tostring(self.to_etree_element())
+        sio = cStringIO.StringIO()
+        et.ElementTree(self.to_etree_element()).write(sio, encoding='utf8')
+        return sio.getvalue()
