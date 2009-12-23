@@ -4,8 +4,6 @@
 import sys
 import os.path
 
-import frontik.app
-
 import tornado.options
 from tornado.options import options
 
@@ -40,5 +38,6 @@ if __name__ == '__main__':
         ]:
         logging.getLogger(log_channel_name).setLevel(logging.WARN)
 
+    import frontik.app
     tornado_util.server.main(frontik.app.get_app())
 
