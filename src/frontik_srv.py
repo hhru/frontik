@@ -35,7 +35,10 @@ if __name__ == '__main__':
         log.error('frontik_www module cannot be found')
         sys.exit(1)
 
-    logging.getLogger('tornado.httpclient').setLevel(logging.WARN)
+    for log_channel_name in [
+        #'tornado.httpclient'
+        ]:
+        logging.getLogger(log_channel_name).setLevel(logging.WARN)
 
     tornado_util.server.main(frontik.app.get_app())
 
