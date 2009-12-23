@@ -1,26 +1,32 @@
 import logging
 log = logging.getLogger('frontik.server')
 
-def bootstrap():
+import tornado.options
+from tornado.options import options
+
+def bootstrap(config_file):
+    '''
+    - объявить стандартные опции config, host, port, daemonize, autoreload
+    - прочитать командную строку, конфигурационный файл
+    - демонизироваться
+    - инициализировать протоколирование
+    '''
+
     import sys
     import os.path
 
-    import tornado.options
-    from tornado.options import options
+    tornado.options.define('config', None, str)
 
-    tornado.options.define('host', 'localhost', str)
+    tornado.options.define('host', '0.0.0.0', str)
     tornado.options.define('port', 8080, int)
-    tornado.options.define('document_root', None, str)
     tornado.options.define('daemonize', True, bool)
     tornado.options.define('autoreload', True, bool)
-    tornado.options.define('config', None, str)
 
     tornado.options.parse_command_line()
     if options.config:
         configs_to_read = [options.config]
     else:
-        configs_to_read = ['/etc/frontik/frontik.cfg', 
-                           './frontik_dev.cfg']
+        configs_to_read = [config_file]
 
     configs = tornado.options.parse_config_files(configs_to_read)
     
@@ -40,18 +46,15 @@ def bootstrap():
         sys.stderr.write('failed to find any config file, aborting\n')
         sys.exit(1)
 
-    if options.document_root:
-        special_document_dir = os.path.abspath(options.document_root)
-        log.debug('appending "%s" document_dir to sys.path', special_document_dir)
-        sys.path.append(special_document_dir)
+def main(app):
+    '''
+    - запустить веб-сервер на указанных в параметрах host:port
+    - запустить автоперезагрузку сервера, при изменении исходников
+    '''
 
-def main(host, port, autoreload):
     import tornado.httpserver
     import tornado.ioloop
     import tornado.web
-
-    import frontik
-    import frontik.app
 
     try:
         import frontik_www
@@ -62,13 +65,13 @@ def main(host, port, autoreload):
     logging.getLogger('tornado.httpclient').setLevel(logging.WARN)
 
     try:
-        log.info('starting server on %s:%s', host, port)
-        http_server = tornado.httpserver.HTTPServer(frontik.app.get_app())
-        http_server.listen(port, host)
+        log.info('starting server on %s:%s', options.host, options.port)
+        http_server = tornado.httpserver.HTTPServer(app)
+        http_server.listen(options.port, options.host)
     
         io_loop = tornado.ioloop.IOLoop.instance()
     
-        if autoreload:
+        if options.autoreload:
             import tornado.autoreload
             tornado.autoreload.start(io_loop, 1000)
 

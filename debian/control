@@ -14,4 +14,5 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
   python-daemon,
   python-lxml,
   python-simplejson,
+  python-tornado-util,
 Description: frontik - the python based XScript alternative 

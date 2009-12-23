@@ -11,8 +11,6 @@ import tornado.options
 from frontik import etree
 from frontik.doc import Doc
 
-import frontik_www
-
 import logging
 log = logging.getLogger('frontik.handler')
 
@@ -126,10 +124,12 @@ class PageHandler(tornado.web.RequestHandler):
             self.xml_files_cache[filename] = ret
             return ret
 
-    frontik_www_dir = os.path.dirname(frontik_www.__file__)
 
     def _xml_from_file(self, filename):
-        real_filename = os.path.join(self.frontik_www_dir, filename)
+        import frontik_www
+
+        frontik_www_dir = os.path.dirname(frontik_www.__file__)
+        real_filename = os.path.join(frontik_www_dir, filename)
 
         self.log.debug('read %s file from %s', filename, real_filename)
 
