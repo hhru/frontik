@@ -2,17 +2,21 @@ Source: frontik
 Section: unknown
 Priority: extra
 Maintainer: Andrey Tatarinov <a.tatarinov@hh.ru>
-Build-Depends: debhelper (>= 7), python2.5
+Build-Depends: 
+  cdbs,
+  debhelper (>= 7), 
+  python-support,
+  python2.5,
 Standards-Version: 3.8.1
 
 Package: frontik
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, 
-  python2.5, 
-  python-tornado (>= 0.2~hh3),
-  python-tornado (< 0.3),
   python-daemon,
   python-lxml,
   python-simplejson,
-  python-tornado-util,
+  python-tornado (< 0.3),
+  python-tornado (>= 0.2~hh3),
+  python-tornado-util (>= 0.2),
+  python2.5, 
 Description: frontik - the python based XScript alternative 
