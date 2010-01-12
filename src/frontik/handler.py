@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import with_statement
+
 import os.path
 
 from functools import partial
@@ -17,6 +19,20 @@ log = logging.getLogger('frontik.handler')
 import future
 http_client = tornado.httpclient.AsyncHTTPClient(max_clients=200, 
                                                  max_simultaneous_connections=200)
+
+
+
+def http_header_out(*args, **kwargs):
+    pass
+
+def set_http_status(*args, **kwargs):
+    pass
+
+# TODO cleanup this vim:d5d
+ns = etree.FunctionNamespace('http://www.yandex.ru/xscript')
+ns.prefix = 'x'
+ns['http-header-out'] = http_header_out
+ns['set-http-status'] = set_http_status 
 
 class ResponsePlaceholder(future.FutureVal):
     def __init__(self):
@@ -53,6 +69,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.doc = Doc()
         self.n_waiting_reqs = 0
         self.finishing = False
+        self.transform = None
         
         self.request_id = self.request.headers.get('X-Request-Id', 
                                                    self.get_next_request_id())
@@ -60,6 +77,8 @@ class PageHandler(tornado.web.RequestHandler):
         self.log = logging.getLogger('frontik.handler.%s' % (self.request_id,))
         
         self.log.debug('started %s %s', self.request.method, self.request.uri)
+
+
     
     @classmethod
     def get_next_request_id(cls):
@@ -98,12 +117,32 @@ class PageHandler(tornado.web.RequestHandler):
     
     def _try_finish_page(self):
         if self.finishing and self.n_waiting_reqs == 0:
-            self._real_finish()
+            if (self.transform):
+                self._real_finish_with_xsl()
+            else:
+                self._real_finish()
+
+    def _real_finish_with_xsl(self):
+        self.log.debug('finishing')
+        self.log.debug('applying XSLT %s', self.transform_filename)
+
+        self.set_header('Content-Type', 'text/html')
+        wrapped_doc = etree.Element("doc")
+        doc_etree = self.doc.to_etree_element()
+        wrapped_doc.append(doc_etree)
+        
+        self.write(str(self.transform(wrapped_doc)))
+
+        self.log.debug('done')
+
+        self.finish('')
+
     
     def _real_finish(self):
         self.log.debug('finishing')
 
         self.set_header('Content-Type', 'application/xml')
+
         self.write(self.doc.to_string())
 
         self.log.debug('done')
@@ -141,3 +180,15 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             return etree.Element('error', dict(msg='file not found: %s' % (filename,)))
             
+    def set_xsl(self, filename):
+        import frontik_www
+
+        frontik_www_dir = os.path.dirname(frontik_www.__file__)
+        real_filename = os.path.join(frontik_www_dir, "../", filename)
+
+        with open(real_filename, "rb") as fp:
+            self.log.debug('read %s file from %s', filename, real_filename)
+
+            tree = etree.parse(fp)
+            self.transform = etree.XSLT(tree)
+            self.transform_filename = real_filename
