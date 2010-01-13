@@ -3,6 +3,7 @@
 from __future__ import with_statement
 
 import os.path
+import traceback
 
 from functools import partial
 
@@ -17,10 +18,7 @@ import logging
 log = logging.getLogger('frontik.handler')
 
 import future
-http_client = tornado.httpclient.AsyncHTTPClient(max_clients=200, 
-                                                 max_simultaneous_connections=200)
-
-
+http_client = tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200)
 
 def http_header_out(*args, **kwargs):
     pass
@@ -28,7 +26,7 @@ def http_header_out(*args, **kwargs):
 def set_http_status(*args, **kwargs):
     pass
 
-# TODO cleanup this vim:d5d
+# TODO cleanup this
 ns = etree.FunctionNamespace('http://www.yandex.ru/xscript')
 ns.prefix = 'x'
 ns['http-header-out'] = http_header_out
@@ -43,15 +41,13 @@ class ResponsePlaceholder(future.FutureVal):
             self.has_response = True
             self.response = response
         else:
-            handler.log.warn('%s failed %s', response.code, 
-                             response.effective_url)
+            handler.log.warn('%s failed %s', response.code, response.effective_url)
             self.has_response = False
             self.data = etree.Element('error', dict(url=response.effective_url))
     
     def get(self):
         if self.has_response:
-            return [etree.Comment(self.response.effective_url),
-                    etree.fromstring(self.response.body)]
+            return [etree.Comment(self.response.effective_url), etree.fromstring(self.response.body)]
         else:
             return self.data
 
@@ -71,13 +67,11 @@ class PageHandler(tornado.web.RequestHandler):
         self.finishing = False
         self.transform = None
         
-        self.request_id = self.request.headers.get('X-Request-Id', 
-                                                   self.get_next_request_id())
+        self.request_id = self.request.headers.get('X-Request-Id', self.get_next_request_id())
         
         self.log = logging.getLogger('frontik.handler.%s' % (self.request_id,))
         
         self.log.debug('started %s %s', self.request.method, self.request.uri)
-
 
     
     @classmethod
@@ -124,17 +118,19 @@ class PageHandler(tornado.web.RequestHandler):
 
     def _real_finish_with_xsl(self):
         self.log.debug('finishing')
-        self.log.debug('applying XSLT %s', self.transform_filename)
-
         self.set_header('Content-Type', 'text/html')
         wrapped_doc = etree.Element("doc")
-        doc_etree = self.doc.to_etree_element()
-        wrapped_doc.append(doc_etree)
+        wrapped_doc.append(self.doc.to_etree_element())
+
+        try:
+            result = str(self.transform(wrapped_doc))
+            self.log.debug('applying XSLT %s', self.transform_filename)
+        except:
+            result = ""
+            self.log.error('failed transformation with XSL %s' % self.transform_filename)
         
-        self.write(str(self.transform(wrapped_doc)))
-
+        self.write(result)
         self.log.debug('done')
-
         self.finish('')
 
     
@@ -153,6 +149,7 @@ class PageHandler(tornado.web.RequestHandler):
 
     # глобальный кеш
     xml_files_cache = dict()
+    xsl_files_cache = dict()
 
     def xml_from_file(self, filename):
         if filename in self.xml_files_cache:
@@ -162,7 +159,6 @@ class PageHandler(tornado.web.RequestHandler):
             ret = self._xml_from_file(filename)
             self.xml_files_cache[filename] = ret
             return ret
-
 
     def _xml_from_file(self, filename):
         import frontik_www
@@ -186,9 +182,24 @@ class PageHandler(tornado.web.RequestHandler):
         frontik_www_dir = os.path.dirname(frontik_www.__file__)
         real_filename = os.path.join(frontik_www_dir, "../", filename)
 
-        with open(real_filename, "rb") as fp:
-            self.log.debug('read %s file from %s', filename, real_filename)
-
+        def gen_transformation():                        
             tree = etree.parse(fp)
-            self.transform = etree.XSLT(tree)
+            self.log.debug('parsed XSL file %s', real_filename)
+            transform = etree.XSLT(tree)
+            self.log.debug('generated transformation from XSL file %s', real_filename)
+            return transform
+
+        with open(real_filename, "rb") as fp:
+            self.log.debug('read file %s', real_filename)
+
+            try:
+                self.transform = self.xsl_files_cache.setdefault(real_filename, gen_transformation())
+            except etree.XMLSyntaxError, error:
+                self.log.error('failed parsing XSL file %s' % real_filename)
+                self.log.debug(traceback.format_exception_only(type(error), error))
+                raise
+            except Exception, error:
+                self.log.debug(traceback.format_exception_only(type(error), error))
+                raise
+                
             self.transform_filename = real_filename
