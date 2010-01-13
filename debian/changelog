@@ -1,3 +1,9 @@
+frontik (0.11.2) unstable; urgency=low
+
+  * LSB info in init.d script
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Wed, 13 Jan 2010 14:51:57 +0400
+
 frontik (0.11.1) unstable; urgency=low
 
   * python-tornado-util >= 0.2 dependency
