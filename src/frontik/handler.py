@@ -177,9 +177,8 @@ class PageHandler(tornado.web.RequestHandler):
             return etree.Element('error', dict(msg='file not found: %s' % (filename,)))
             
     def set_xsl(self, filename):
-        import frontik_www
 
-        frontik_www_dir = os.path.dirname(frontik_www.__file__)
+        frontik_www_dir = os.path.dirname(self.request.config.__file__)
         real_filename = os.path.join(frontik_www_dir, "../", filename)
 
         def gen_transformation():                        

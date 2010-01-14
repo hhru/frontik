@@ -16,33 +16,39 @@ class StopHandler(tornado.web.RequestHandler):
         log.info('requested shutdown')
         tornado.ioloop.IOLoop.instance().stop()
 
-def pages_dispatcher(application, request):
-    log.info('requested url: %s', request.uri)
-    
-    page_module_name_parts = request.path.strip('/').split('/')[1:]
+class PagesDispatcher(object):
 
-    page_module_name = 'frontik_www.pages.' + '.'.join(page_module_name_parts)
-    
-    try:
-        page_module = __import__(page_module_name, fromlist=['Page'])
-        log.debug('using %s from %s', page_module_name, page_module.__file__)
-    except ImportError:
-        log.exception('%s module not found', page_module_name)
-        return tornado.web.ErrorHandler(application, request, 404)
-    except:
-        log.exception('error while importing %s module', page_module_name)
-        return tornado.web.ErrorHandler(application, request, 500)
-    
-    try:
-        return page_module.Page(application, request)
-    except:
-        log.exception('%s.Page class not found', page_module_name)
-        return tornado.web.ErrorHandler(application, request, 500) 
+    def __init__(self, *args, **kwargs):
+        self.frontik_www_config = kwargs["config"]
 
-def get_app():
+    def pages_dispatcher(self, application, request):
+        log.info('requested url: %s', request.uri)
+        
+        page_module_name_parts = request.path.strip('/').split('/')[1:]
+
+        page_module_name = 'frontik_www.pages.' + '.'.join(page_module_name_parts)
+        
+        try:
+            page_module = __import__(page_module_name, fromlist=['Page'])
+            log.debug('using %s from %s', page_module_name, page_module.__file__)
+        except ImportError:
+            log.exception('%s module not found', page_module_name)
+            return tornado.web.ErrorHandler(application, request, 404)
+        except:
+            log.exception('error while importing %s module', page_module_name)
+            return tornado.web.ErrorHandler(application, request, 500)
+        
+        try:
+            request.config = self.frontik_www_config
+            return page_module.Page(application, request)
+        except:
+            log.exception('%s.Page class not found', page_module_name)
+            return tornado.web.ErrorHandler(application, request, 500) 
+
+def get_app(config):
     return tornado.web.Application([
             (r'/status/', StatusHandler),
             (r'/stop/', StopHandler),
-            (r'/page/.*', pages_dispatcher),
+            (r'/page/.*', PagesDispatcher(config=config).pages_dispatcher),
             ])
 
