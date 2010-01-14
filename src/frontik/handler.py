@@ -193,7 +193,10 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.debug('read file %s', real_filename)
 
             try:
-                self.transform = self.xsl_files_cache.setdefault(real_filename, gen_transformation())
+                if self.xsl_files_cache.has_key(real_filename):
+                    self.transform = self.xsl_files_cache[real_filename]
+                else:
+                    self.xsl_files_cache[real_filename] = self.transform
             except etree.XMLSyntaxError, error:
                 self.log.error('failed parsing XSL file %s' % real_filename)
                 self.log.debug(traceback.format_exception_only(type(error), error))
