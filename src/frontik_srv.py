@@ -31,7 +31,7 @@ if __name__ == '__main__':
         import frontik_www
         import frontik_www.config
     except ImportError:
-        log.error('frontik_www module cannot be found')
+        log.exception('frontik_www module cannot be found')
         sys.exit(1)
 
     for log_channel_name in [
