@@ -125,6 +125,7 @@ class PageHandler(tornado.web.RequestHandler):
         try:
             result = str(self.transform(wrapped_doc))
             self.log.debug('applying XSLT %s', self.transform_filename)
+
         except:
             result = ""
             self.log.error('failed transformation with XSL %s' % self.transform_filename)
@@ -144,8 +145,6 @@ class PageHandler(tornado.web.RequestHandler):
         self.log.debug('done')
 
         self.finish('')
-    
-    ### 
 
     # глобальный кеш
     xml_files_cache = dict()
@@ -161,11 +160,7 @@ class PageHandler(tornado.web.RequestHandler):
             return ret
 
     def _xml_from_file(self, filename):
-        import frontik_www
-
-        frontik_www_dir = os.path.dirname(frontik_www.__file__)
-        real_filename = os.path.join(frontik_www_dir, filename)
-
+        real_filename = os.path.join(self.request.config.document_root, filename)
         self.log.debug('read %s file from %s', filename, real_filename)
 
         if os.path.exists(real_filename):
@@ -175,13 +170,11 @@ class PageHandler(tornado.web.RequestHandler):
                 return etree.Element('error', dict(msg='failed to parse file: %s' % (filename,)))
         else:
             return etree.Element('error', dict(msg='file not found: %s' % (filename,)))
-            
+
     def set_xsl(self, filename):
+        real_filename = os.path.join(self.request.config.XSL_root, filename)
 
-        frontik_www_dir = os.path.dirname(self.request.config.__file__)
-        real_filename = os.path.join(frontik_www_dir, "../", filename)
-
-        def gen_transformation():                        
+        def gen_transformation():
             tree = etree.parse(fp)
             self.log.debug('parsed XSL file %s', real_filename)
             transform = etree.XSLT(tree)
@@ -199,11 +192,8 @@ class PageHandler(tornado.web.RequestHandler):
                     self.transform = etree.XSLT(tree)
                     self.xsl_files_cache[real_filename] = self.transform
             except etree.XMLSyntaxError, error:
-                self.log.error('failed parsing XSL file %s' % real_filename)
-                self.log.debug(traceback.format_exception_only(type(error), error))
-                raise
-            except Exception, error:
-                self.log.debug(traceback.format_exception_only(type(error), error))
-                raise
+                self.log.exception('failed parsing XSL file %s' % real_filename)
+            except:
+                self.log.exception('XSL transformation error with file %s' % real_filename)
                 
             self.transform_filename = real_filename
