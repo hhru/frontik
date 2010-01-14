@@ -195,6 +195,8 @@ class PageHandler(tornado.web.RequestHandler):
                 if self.xsl_files_cache.has_key(real_filename):
                     self.transform = self.xsl_files_cache[real_filename]
                 else:
+                    tree = etree.parse(fp)
+                    self.transform = etree.XSLT(tree)
                     self.xsl_files_cache[real_filename] = self.transform
             except etree.XMLSyntaxError, error:
                 self.log.error('failed parsing XSL file %s' % real_filename)
