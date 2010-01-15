@@ -160,7 +160,7 @@ class PageHandler(tornado.web.RequestHandler):
             return ret
 
     def _xml_from_file(self, filename):
-        real_filename = os.path.join(self.request.config.document_root, filename)
+        real_filename = os.path.join(self.request.config.XML_root, filename)
         self.log.debug('read %s file from %s', filename, real_filename)
 
         if os.path.exists(real_filename):
