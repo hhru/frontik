@@ -119,11 +119,9 @@ class PageHandler(tornado.web.RequestHandler):
     def _real_finish_with_xsl(self):
         self.log.debug('finishing')
         self.set_header('Content-Type', 'text/html')
-        wrapped_doc = etree.Element("doc")
-        wrapped_doc.append(self.doc.to_etree_element())
 
         try:
-            result = str(self.transform(wrapped_doc))
+            result = str(self.transform(self.doc.to_etree_element()))
             self.log.debug('applying XSLT %s', self.transform_filename)
 
         except:

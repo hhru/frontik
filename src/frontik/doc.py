@@ -6,7 +6,7 @@ import frontik.future
 from frontik import etree as et
 
 class Doc:
-    def __init__(self, root_node_name='page'):
+    def __init__(self, root_node_name='doc'):
         self.root_node_name = root_node_name
         
         self.data = []
