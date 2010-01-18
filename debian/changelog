@@ -1,3 +1,9 @@
+frontik (0.12.2) karmic; urgency=low
+
+  * ubuntu rebuild
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 18 Jan 2010 15:40:35 +0400
+
 frontik (0.12.1) unstable; urgency=low
 
   * use correct config variable
