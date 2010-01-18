@@ -28,8 +28,8 @@ def stop_worker(port):
     except httplib.BadStatusLine:
         pass
 
-def get_page(port, page):
-    return etree.fromstring(urllib2.urlopen('http://localhost:%s/page/%s/' % (port, page)).read())
+def get_page(port, page, xsl=False):
+    return etree.fromstring(urllib2.urlopen('http://localhost:%s/page/%s/%s' % (port, page, "?noxsl=true" if not xsl else "" )).read())
 
 def wait_for(fun, n=10):
     for i in range(n):
@@ -81,6 +81,11 @@ def compose_doc_test():
 
         assert(not xml.find('c') is None)
         assert(xml.findtext('c') is None)
+
+def xsl_transformation_test():
+    with FrontikTestInstance() as srv_port:
+        html = get_page(srv_port, 'simple', xsl=True)
+        assert (etree.tostring(html) == "<html><body><h1>ok</h1></body></html>")
 
 if __name__ == '__main__':
     nose.main()

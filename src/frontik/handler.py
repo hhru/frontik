@@ -127,7 +127,7 @@ class PageHandler(tornado.web.RequestHandler):
         except:
             result = ""
             self.log.error('failed transformation with XSL %s' % self.transform_filename)
-        
+
         self.write(result)
         self.log.debug('done')
         self.finish('')
