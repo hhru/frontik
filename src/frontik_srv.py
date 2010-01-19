@@ -13,8 +13,9 @@ import logging
 log = logging.getLogger('frontik')
 
 if __name__ == '__main__':
-    if os.path.exists('.svn'):
-        config = './frontik_dev.cfg'
+    dev_config = os.path.join(os.path.dirname(__file__), 'frontik_dev.cfg')
+    if os.path.exists(dev_config):
+        config = dev_config
     else:
         config = '/etc/frontik/frontik.cfg'
 
@@ -30,7 +31,7 @@ if __name__ == '__main__':
     try:
         import frontik_www
         import frontik_www.config
-    except ImportError:
+    except:
         log.exception('frontik_www module cannot be found')
         sys.exit(1)
 
