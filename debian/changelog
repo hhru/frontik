@@ -1,3 +1,15 @@
+frontik (0.12.4) unstable; urgency=low
+
+  * sane error logging
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 19 Jan 2010 18:26:36 +0400
+
+frontik (0.12.3) unstable; urgency=low
+
+  * fix repository; karmic -> unstable
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 19 Jan 2010 17:38:26 +0400
+
 frontik (0.12.2) karmic; urgency=low
 
   * ubuntu rebuild
