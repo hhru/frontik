@@ -19,8 +19,6 @@ if __name__ == '__main__':
     else:
         config = '/etc/frontik/frontik.cfg'
 
-    config_paths = [config]
-
     tornado.options.define('document_root', None, str)
     tornado_util.server.bootstrap(config)
 
@@ -36,13 +34,8 @@ if __name__ == '__main__':
         log.exception('frontik_www module cannot be found')
         sys.exit(1)
 
-    config_paths.append(frontik_www.config.cfg_filename)
-
-    for log_channel_name in [
-        #'tornado.httpclient'
-        ]:
-        logging.getLogger(log_channel_name).setLevel(logging.WARN)
+    watch_paths = getattr(frontik_www.config, "watch_paths", []).append(config)
 
     import frontik.app
-    tornado_util.server.main(frontik.app.get_app(frontik_www.config), paths=config_paths)
+    tornado_util.server.main(frontik.app.get_app(frontik_www.config), paths=watch_paths)
 
