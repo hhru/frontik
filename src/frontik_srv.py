@@ -20,22 +20,38 @@ if __name__ == '__main__':
         config = '/etc/frontik/frontik.cfg'
 
     tornado.options.define('document_root', None, str)
+    tornado.options.define('suppressed_loggers', ['tornado.httpclient'], list)
+
     tornado_util.server.bootstrap(config)
 
     if options.document_root:
-        special_document_dir = os.path.abspath(options.document_root)
-        log.debug('appending "%s" document_dir to sys.path', special_document_dir)
-        sys.path.append(special_document_dir)
+        abs_document_root = os.path.abspath(options.document_root)
+        log.debug('appending "%s" document_dir to sys.path', abs_document_root)
+        sys.path.insert(0, abs_document_root)
 
     try:
         import frontik_www
         import frontik_www.config
+
     except:
         log.exception('frontik_www module cannot be found')
         sys.exit(1)
 
+    if options.document_root:
+        if not frontik_www.__file__.startswith(abs_document_root):
+            log.error('frontik_www module is found at %s when %s expected', 
+                      frontik_www.__file__,
+                      abs_document_root)
+            sys.exit(1)
+
     watch_paths = getattr(frontik_www.config, "watch_paths", []).append(config)
 
+    for log_channel_name in options.suppressed_loggers:
+        logging.getLogger(log_channel_name).setLevel(logging.WARN)
+
     import frontik.app
-    tornado_util.server.main(frontik.app.get_app(frontik_www.config), paths=watch_paths)
+    tornado_util.server.main(frontik.app.get_app(frontik_www.config), 
+                             # rollback feature which depends on unreleased package
+                             # paths=watch_paths
+                             )
 
