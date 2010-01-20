@@ -144,9 +144,8 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.finish('')
 
-    # глобальный кеш
+    ###
     xml_files_cache = dict()
-    xsl_files_cache = dict()
 
     def xml_from_file(self, filename):
         if filename in self.xml_files_cache:
@@ -155,7 +154,8 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             ret = self._xml_from_file(filename)
             self.xml_files_cache[filename] = ret
-            return ret
+            return [etree.Comment('file: %s' % (filename,)),
+                    ret]
 
     def _xml_from_file(self, filename):
         real_filename = os.path.join(self.request.config.XML_root, filename)
@@ -168,6 +168,9 @@ class PageHandler(tornado.web.RequestHandler):
                 return etree.Element('error', dict(msg='failed to parse file: %s' % (filename,)))
         else:
             return etree.Element('error', dict(msg='file not found: %s' % (filename,)))
+
+    ###
+    xsl_files_cache = dict()
 
     def set_xsl(self, filename):
 
