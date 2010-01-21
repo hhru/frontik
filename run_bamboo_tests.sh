@@ -12,6 +12,6 @@ git clone http://github.com/elephantum/tornado-util.git
 git clone http://github.com/elephantum/python-daemon.git
 
 cd ../src
-export PYTHONPATH=/home/bamboo/python-bamboo-libs/:tmp/tornado:tmp/tornado-util:tmp/python-daemon:test 
+export PYTHONPATH=/home/bamboo/python-bamboo-libs/:../tmp/tornado:../tmp/tornado-util:../tmp/python-daemon:test 
 
 /home/bamboo/python-bamboo-libs/nosetests --with-nosexunit
