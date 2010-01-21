@@ -50,8 +50,5 @@ if __name__ == '__main__':
         logging.getLogger(log_channel_name).setLevel(logging.WARN)
 
     import frontik.app
-    tornado_util.server.main(frontik.app.get_app(frontik_www.config), 
-                             # rollback feature which depends on unreleased package
-                             # paths=watch_paths
-                             )
+    tornado_util.server.main(frontik.app.get_app(frontik_www.config), watch_paths=watch_paths)
 
