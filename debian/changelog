@@ -1,3 +1,9 @@
+frontik (0.12.7) unstable; urgency=low
+
+  * version bump
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 28 Jan 2010 17:25:14 +0400
+
 frontik (0.12.6) unstable; urgency=low
 
   * do not use document_root setting in production
