@@ -41,9 +41,9 @@ class PagesDispatcher(object):
         try:
             request.config = self.frontik_www_config
             return page_module.Page(application, request)
-        except:
+        except Exception, error:
             log.exception('%s.Page class not found', page_module_name)
-            return tornado.web.ErrorHandler(application, request, 500) 
+            return tornado.web.ErrorHandler(application, request, 404) 
 
 def get_app(config):
     return tornado.web.Application([

@@ -169,12 +169,10 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             return etree.Element('error', dict(msg='file not found: %s' % (filename,)))
 
-    ###
     xsl_files_cache = dict()
 
     def set_xsl(self, filename):
-
-        if self.get_argument('noxsl', None):
+        if not self.request.config.apply_xsl or self.get_argument('noxsl', None):
             return
 
         real_filename = os.path.join(self.request.config.XSL_root, filename)
