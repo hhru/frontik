@@ -7,15 +7,16 @@ import __builtin__
 from functools import partial
 
 def import_path(name, path=None, expose_name=None):
+    print "*"*20, path
     f, filename, description = imp.find_module(name, [path])
     m = imp.load_module(expose_name or name, f, filename, description)
     f.close()
     return m
    
 def import_hook(document_roots, name, globals=None, locals=None, fromlist=None):    
-    if name.startswith("app.") and "%s/src" % os.path.commonprefix([os.path.dirname(globals["__file__"])] + document_roots.values()) in document_roots.values():
+    if name.startswith("app.") and os.path.commonprefix([os.path.dirname(globals["__file__"])] + document_roots.values()) in document_roots.values():
         dirname = os.path.dirname(globals["__file__"])
-        app_name = "app__%s" % dict([(v, k) for k, v in document_roots.iteritems()])[os.path.join("/", *dirname.split("/")[:-2])]
+        app_name = "app__%s" % dict([(v, k) for k, v in document_roots.iteritems()])[os.path.join("/", *dirname.split("/")[:-1])]
 
         if sys.modules.has_key(name):
             return sys.modules[app_name]

@@ -32,7 +32,7 @@ class PagesDispatcher(object):
         page_module_name = page_module_name_parts[-1:][0]
         
         try:
-            page_module_path = os.path.join(self.options.document_roots[application_name], application_name)
+            page_module_path = self.options.document_roots[application_name]
             page_module = importer.import_path(page_module_name, os.path.join(page_module_path, "pages/"), "frontik_app__%s" % application_name)
             page_config = importer.import_path("config", page_module_path, "frontik_app__%s__config" % application_name)
 
