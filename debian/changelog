@@ -6,9 +6,13 @@ frontik (0.12.7) unstable; urgency=low
 
 frontik (0.12.6) unstable; urgency=low
 
+  [ Andrey Tatarinov ]
   * do not use document_root setting in production
 
- -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 21 Jan 2010 16:39:41 +0400
+  [ Dmitry Zubov ]
+  * debuild learning 
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Fri, 22 Jan 2010 12:24:49 +0300
 
 frontik (0.12.5) unstable; urgency=low
 
