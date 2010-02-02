@@ -12,6 +12,8 @@ import tornado_util.server
 import logging
 log = logging.getLogger('frontik')
 
+from frontik.importer import set_import_hooks
+
 if __name__ == '__main__':
     dev_config = os.path.join(os.path.dirname(__file__), 'frontik_dev.cfg')
 
@@ -26,6 +28,7 @@ if __name__ == '__main__':
 
     for app, path in options.document_roots.iteritems():
         options.document_roots[app] = os.path.abspath(path)
+    set_import_hooks(options.document_roots)
     
     for log_channel_name in options.suppressed_loggers:
         logging.getLogger(log_channel_name).setLevel(logging.WARN)

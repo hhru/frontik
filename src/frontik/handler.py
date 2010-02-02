@@ -74,7 +74,6 @@ class PageHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     def get(self):
         self.application_object.get()
-        self.finish_page()
     
     @classmethod
     def get_next_request_id(cls):

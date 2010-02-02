@@ -1,41 +1,40 @@
+#coding: utf8
+
 import os
 import sys
 import imp
 import __builtin__
-
-class Dummy(object):
-    __name__ = "app"
-    __path__ = "./"
+from functools import partial
 
 def import_path(name, path=None, expose_name=None):
     f, filename, description = imp.find_module(name, [path])
     m = imp.load_module(expose_name or name, f, filename, description)
     f.close()
-
     return m
-    
-def import_hook(name, globals=None, locals=None, fromlist=None):
-    if (name.startswith("app.")):
+   
+def import_hook(document_roots, name, globals=None, locals=None, fromlist=None):    
+    if name.startswith("app.") and "%s/src" % os.path.commonprefix([os.path.dirname(globals["__file__"])] + document_roots.values()) in document_roots.values():
+        dirname = os.path.dirname(globals["__file__"])
+        app_name = "app__%s" % dict([(v, k) for k, v in document_roots.iteritems()])[os.path.join("/", *dirname.split("/")[:-2])]
 
         if sys.modules.has_key(name):
-            return sys.modules["app"]
+            return sys.modules[app_name]
+        
+        if sys.modules.has_key(app_name):
+            parent = sys.modules[app_name]
+        else:
+            parent_path = os.path.abspath(os.path.join(dirname, "../"))
+            parent = imp.load_source(app_name, "%s/__init__.py" % parent_path)
+            parent.__path__ = parent_path
+            sys.modules[app_name] = parent
 
-        parent_path = os.path.abspath(os.path.join(os.path.dirname(globals["__file__"]), "../"))
-        parent = imp.load_source("app", "%s/__init__.py" % parent_path)
-        parent.__path__ = parent_path
-
-        sys.modules["app"] = parent
         module_name = name.split(".")[-1:][0]
-
-        f, filename, description = imp.find_module(module_name, [os.path.dirname(globals["__file__"]), parent_path])
-        m = imp.load_module("app.%s" % module_name, f, filename, description)
+        f, filename, description = imp.find_module(module_name, [os.path.dirname(globals["__file__"]), parent.__path__])
+        m = imp.load_module("%s.%s" % (app_name, module_name), f, filename, description)
         f.close()
-
         setattr(parent, module_name, m)
         sys.modules[name] = m
-
         return parent
-
     else:
         parent = determine_parent(globals)
         q, tail = find_head_package(parent, name)
@@ -148,10 +147,10 @@ def reload_hook(module):
     parent = sys.modules[pname]
     return import_module(name[i+1:], name, parent)
 
-def set_import_hooks():
+def set_import_hooks(document_roots):
     original_import = __builtin__.__import__
     original_reload = __builtin__.reload
 
-    __builtin__.__import__ = import_hook
+    __builtin__.__import__ = partial(import_hook, document_roots)
     __builtin__.reload = reload_hook
 
