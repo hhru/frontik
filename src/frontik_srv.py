@@ -16,12 +16,10 @@ from frontik.importer import set_import_hooks
 
 if __name__ == '__main__':
     dev_config = os.path.join(os.path.dirname(__file__), 'frontik_dev.cfg')
-
     if os.path.exists(dev_config):
         config = dev_config
     else:
         config = '/etc/frontik/frontik.cfg'
-
     tornado.options.define('document_roots', None, dict)
     tornado.options.define('suppressed_loggers', ['tornado.httpclient'], list)
     tornado_util.server.bootstrap(config)
