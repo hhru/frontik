@@ -61,19 +61,18 @@ stats = Stats()
 class PageHandler(tornado.web.RequestHandler):
     def __init__(self, *args, **kw):
         tornado.web.RequestHandler.__init__(self, *args, **kw)
+        
+        self.doc = Doc()
         self.n_waiting_reqs = 0
         self.finishing = False
         self.transform = None
         
-
-        self.application_object = self.request.application_class(self, self.request.application_config)        
-        self.request_id = self.request.headers.get('X-Request-Id', self.get_next_request_id())        
-        self.log = logging.getLogger('frontik.handler.%s' % (self.request_id,))        
+        self.request_id = self.request.headers.get('X-Request-Id', self.get_next_request_id())
+        
+        self.log = logging.getLogger('frontik.handler.%s' % (self.request_id,))
+        
         self.log.debug('started %s %s', self.request.method, self.request.uri)
 
-    @tornado.web.asynchronous
-    def get(self):
-        self.application_object.get()
     
     @classmethod
     def get_next_request_id(cls):
@@ -87,7 +86,8 @@ class PageHandler(tornado.web.RequestHandler):
         
         http_client.fetch(
             tornado.httpclient.HTTPRequest(
-                url=url, headers={
+                url=url,
+                headers={
                     'Connection':'Keep-Alive',
                     'Keep-Alive':'1000'}), 
             self.async_callback(partial(self._fetch_url_response, placeholder)))
@@ -96,8 +96,11 @@ class PageHandler(tornado.web.RequestHandler):
         
     def _fetch_url_response(self, placeholder, response):
         self.n_waiting_reqs -= 1
+
         self.log.debug('got %s %s in %.3f, %s requests pending', response.code, response.effective_url, response.request_time, self.n_waiting_reqs)
+        
         placeholder.set_response(self, response)
+        
         self._try_finish_page()
 
     def finish_page(self):
@@ -118,12 +121,13 @@ class PageHandler(tornado.web.RequestHandler):
         self.set_header('Content-Type', 'text/html')
 
         try:
-            result = str(self.transform(self.application_object.doc.to_etree_element()))
+            result = str(self.transform(self.doc.to_etree_element()))
             self.log.debug('applying XSLT %s', self.transform_filename)
 
         except:
             result = ""
             self.log.error('failed transformation with XSL %s' % self.transform_filename)
+
         self.write(result)
         self.log.debug('done')
         self.finish('')
@@ -134,7 +138,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.set_header('Content-Type', 'application/xml')
 
-        self.write(self.application_object.doc.to_string())
+        self.write(self.doc.to_string())
 
         self.log.debug('done')
 
@@ -154,7 +158,7 @@ class PageHandler(tornado.web.RequestHandler):
                     ret]
 
     def _xml_from_file(self, filename):
-        real_filename = os.path.join(self.request.application_config.XML_root, filename)
+        real_filename = os.path.join(self.request.config.XML_root, filename)
         self.log.debug('read %s file from %s', filename, real_filename)
 
         if os.path.exists(real_filename):
@@ -165,13 +169,15 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             return etree.Element('error', dict(msg='file not found: %s' % (filename,)))
 
+    ###
     xsl_files_cache = dict()
 
     def set_xsl(self, filename):
-        if not self.request.application_config.apply_xsl or self.get_argument('noxsl', None):
+
+        if self.get_argument('noxsl', None):
             return
 
-        real_filename = os.path.join(self.request.application_config.XSL_root, filename)
+        real_filename = os.path.join(self.request.config.XSL_root, filename)
 
         def gen_transformation():
             tree = etree.parse(fp)
