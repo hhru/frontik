@@ -25,3 +25,10 @@ def make_url(base, **query_args):
     else:
         return base 
 
+import os
+
+def get_all_files(root, extension=None):
+    out = list()
+    for subdir, dirs, files in os.walk(root):
+        out += [os.path.abspath(file) for file in files if extension and file.endswith(extension)]
+    return out

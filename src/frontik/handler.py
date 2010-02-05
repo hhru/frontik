@@ -37,19 +37,23 @@ class ResponsePlaceholder(future.FutureVal):
         pass
 
     def set_response(self, handler, response):
+        self._error = etree.Element('error', dict(url=response.effective_url))
+
         if not response.error:
-            self.has_response = True
+            self.has_response = True 
             self.response = response
         else:
             handler.log.warn('%s failed %s', response.code, response.effective_url)
             self.has_response = False
-            self.data = etree.Element('error', dict(url=response.effective_url))
     
     def get(self):
         if self.has_response:
-            return [etree.Comment(self.response.effective_url), etree.fromstring(self.response.body)]
+            try:
+                return [etree.Comment(self.response.effective_url), etree.fromstring(self.response.body)]
+            except:
+                return self._error
         else:
-            return self.data
+            return self._error
 
 class Stats:
     def __init__(self):
@@ -96,11 +100,9 @@ class PageHandler(tornado.web.RequestHandler):
         
     def _fetch_url_response(self, placeholder, response):
         self.n_waiting_reqs -= 1
-
         self.log.debug('got %s %s in %.3f, %s requests pending', response.code, response.effective_url, response.request_time, self.n_waiting_reqs)
         
         placeholder.set_response(self, response)
-        
         self._try_finish_page()
 
     def finish_page(self):
@@ -127,6 +129,7 @@ class PageHandler(tornado.web.RequestHandler):
         except:
             result = ""
             self.log.error('failed transformation with XSL %s' % self.transform_filename)
+
 
         self.write(result)
         self.log.debug('done')
@@ -173,10 +176,8 @@ class PageHandler(tornado.web.RequestHandler):
     xsl_files_cache = dict()
 
     def set_xsl(self, filename):
-
         if self.get_argument('noxsl', None):
             return
-
         real_filename = os.path.join(self.request.config.XSL_root, filename)
 
         def gen_transformation():
@@ -188,7 +189,6 @@ class PageHandler(tornado.web.RequestHandler):
 
         with open(real_filename, "rb") as fp:
             self.log.debug('read file %s', real_filename)
-
             try:
                 if self.xsl_files_cache.has_key(real_filename):
                     self.transform = self.xsl_files_cache[real_filename]
@@ -200,5 +200,4 @@ class PageHandler(tornado.web.RequestHandler):
                 self.log.exception('failed parsing XSL file %s' % real_filename)
             except:
                 self.log.exception('XSL transformation error with file %s' % real_filename)
-                
             self.transform_filename = real_filename
