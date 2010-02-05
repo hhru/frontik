@@ -37,23 +37,19 @@ class ResponsePlaceholder(future.FutureVal):
         pass
 
     def set_response(self, handler, response):
-        self._error = etree.Element('error', dict(url=response.effective_url))
+        self.response = response
 
-        if not response.error:
-            self.has_response = True 
-            self.response = response
-        else:
+        if response.error:
             handler.log.warn('%s failed %s', response.code, response.effective_url)
-            self.has_response = False
-    
+
     def get(self):
-        if self.has_response:
+        if not self.response.error:
             try:
                 return [etree.Comment(self.response.effective_url), etree.fromstring(self.response.body)]
             except:
-                return self._error
+                return etree.Element('error', dict(url=response.effective_url, reason='invalid XML'))
         else:
-            return self._error
+            return etree.Element('error', dict(url=response.effective_url, reason=self.response.error.message))
 
 class Stats:
     def __init__(self):
