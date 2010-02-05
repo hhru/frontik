@@ -47,9 +47,9 @@ class ResponsePlaceholder(future.FutureVal):
             try:
                 return [etree.Comment(self.response.effective_url), etree.fromstring(self.response.body)]
             except:
-                return etree.Element('error', dict(url=response.effective_url, reason='invalid XML'))
+                return etree.Element('error', dict(url=self.response.effective_url, reason='invalid XML'))
         else:
-            return etree.Element('error', dict(url=response.effective_url, reason=self.response.error.message))
+            return etree.Element('error', dict(url=self.response.effective_url, reason=self.response.error.message))
 
 class Stats:
     def __init__(self):
