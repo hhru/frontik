@@ -1,8 +1,9 @@
 frontik (0.12.8) unstable; urgency=low
 
   * correct tornado, tornado-util dependecies
+  * bug fixes 
 
- --
+ -- Dmitry Zubov <d.zubov@hh.ru>  Thu, 11 Feb 2010 18:45:51 +0300
 
 frontik (0.12.7) unstable; urgency=low
 

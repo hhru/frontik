@@ -37,6 +37,9 @@ if __name__ == '__main__':
         log.exception('frontik_www module cannot be found')
         sys.exit(1)
 
+    
+    log.debug('%s %s', "*"*30, options.document_root)
+
     if options.document_root:
         if not frontik_www.__file__.startswith(abs_document_root):
             log.error('frontik_www module is found at %s when %s expected', 
