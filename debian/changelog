@@ -1,3 +1,10 @@
+frontik (0.12.11) unstable; urgency=low
+
+  * HH-10898 fix major memory leak in frontik due to caching of
+    unique-per-request handlers
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Fri, 12 Feb 2010 20:28:41 +0400
+
 frontik (0.12.10) unstable; urgency=low
 
   * tornado-util >= 0.2.8

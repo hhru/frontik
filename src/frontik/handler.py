@@ -58,6 +58,32 @@ class Stats:
 
 stats = Stats()
 
+class PageLogger(object):
+    '''
+    This class is supposed to fix huge memory 'leak' in logging
+    module. I.e. every call to logging.getLogger(some_unique_name)
+    wastes memory as resulting logger is memoized by
+    module. PageHandler used to create unique logger on each request
+    by call logging.getLogger('frontik.handler.%s' %
+    (self.request_id,)). This lead to wasting about 10Mb per 10K
+    requests.
+    '''
+    
+    def __init__(self, request_id):
+        self.request_id = request_id
+
+    def _proxy_method(method_name):
+        def proxy(self, msg, *args):
+            return getattr(log, method_name)('{%s} %s' % (self.request_id, msg), *args)
+        return proxy
+
+    debug = _proxy_method('debug')
+    info = _proxy_method('info')
+    warn = _proxy_method('warn')
+    error = _proxy_method('error')
+    critical = _proxy_method('critical')
+
+
 class PageHandler(tornado.web.RequestHandler):
     def __init__(self, *args, **kw):
         tornado.web.RequestHandler.__init__(self, *args, **kw)
@@ -69,7 +95,7 @@ class PageHandler(tornado.web.RequestHandler):
         
         self.request_id = self.request.headers.get('X-Request-Id', self.get_next_request_id())
         
-        self.log = logging.getLogger('frontik.handler.%s' % (self.request_id,))
+        self.log = PageLogger(self.request_id)
         
         self.log.debug('started %s %s', self.request.method, self.request.uri)
 
