@@ -90,5 +90,5 @@ class Doc:
 
     def to_string(self):
         sio = cStringIO.StringIO()
-        et.ElementTree(self.to_etree_element()).write(sio, encoding='utf8')
+        et.ElementTree(self.to_etree_element()).write(sio, encoding='utf-8', xml_declaration=True)
         return sio.getvalue()

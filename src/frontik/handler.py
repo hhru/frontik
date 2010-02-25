@@ -141,7 +141,7 @@ class PageHandler(tornado.web.RequestHandler):
                 self._real_finish()
 
     def _real_finish_with_xsl(self):
-        self.log.debug('finishing')
+        self.log.debug('finishing with xsl')
         self.set_header('Content-Type', 'text/html')
 
         try:
@@ -151,6 +151,8 @@ class PageHandler(tornado.web.RequestHandler):
         except:
             result = ""
             self.log.error('failed transformation with XSL %s' % self.transform_filename)
+            import traceback, sys
+            traceback.print_exc(file=sys.stdout)
 
 
         self.write(result)
@@ -159,7 +161,7 @@ class PageHandler(tornado.web.RequestHandler):
 
     
     def _real_finish(self):
-        self.log.debug('finishing')
+        self.log.debug('finishing wo xsl')
 
         self.set_header('Content-Type', 'application/xml')
 
@@ -198,8 +200,9 @@ class PageHandler(tornado.web.RequestHandler):
     xsl_files_cache = dict()
 
     def set_xsl(self, filename):
-        if self.get_argument('noxsl', None):
+        if not self.request.config.apply_xsl or self.get_argument('noxsl', None):
             return
+
         real_filename = os.path.join(self.request.config.XSL_root, filename)
 
         def gen_transformation():

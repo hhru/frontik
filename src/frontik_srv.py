@@ -3,13 +3,11 @@
 
 import sys
 import os.path
-
 import tornado.options
 from tornado.options import options
-
 import tornado_util.server
-
 import logging
+
 log = logging.getLogger('frontik')
 
 if __name__ == '__main__':
