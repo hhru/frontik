@@ -15,26 +15,26 @@ class TestDoc(unittest.TestCase):
         d = frontik.Doc('a')
         d.put('111')
 
-        self.assertEqual(d.to_string(), '<a>111</a>')
+        self.assertEqual(d.to_string(), '''<?xml version='1.0' encoding='utf-8'?>\n<a>111</a>''')
 
     def test_future_simple(self):
         d = frontik.Doc('a')
         d.put(MockFuture('111'))
 
-        self.assertEqual(d.to_string(), '<a>111</a>')
+        self.assertEqual(d.to_string(), '''<?xml version='1.0' encoding='utf-8'?>\n<a>111</a>''')
 
     def test_future_return_node(self):
         d = frontik.Doc('a')
         d.put(MockFuture(frontik.etree.Element('b')))
 
-        self.assertEqual(d.to_string(), '<a><b/></a>')
+        self.assertEqual(d.to_string(), '''<?xml version='1.0' encoding='utf-8'?>\n<a><b/></a>''')
 
     def test_future_return_some_nodes(self):
         d = frontik.Doc('a')
         d.put(MockFuture([frontik.etree.Comment('ccc'),
                           frontik.etree.Element('bbb')]))
         
-        self.assertEqual(d.to_string(), '<a><!--ccc--><bbb/></a>')
+        self.assertEqual(d.to_string(), '''<?xml version='1.0' encoding='utf-8'?>\n<a><!--ccc--><bbb/></a>''')
 
     def test_doc(self):
         a = frontik.Doc('a')
@@ -44,7 +44,7 @@ class TestDoc(unittest.TestCase):
 
         a.put(b)
 
-        self.assertEqual(a.to_string(), '<a><b>1</b></a>')
+        self.assertEqual(a.to_string(), '''<?xml version='1.0' encoding='utf-8'?>\n<a><b>1</b></a>''')
 
 if __name__ == '__main__':
     unittest.main()
