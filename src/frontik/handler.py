@@ -4,6 +4,7 @@ from __future__ import with_statement
 
 import os.path
 import traceback
+import urllib
 
 from functools import partial
 
@@ -16,21 +17,28 @@ from frontik.doc import Doc
 
 import logging
 log = logging.getLogger('frontik.handler')
+log_xsl = logging.getLogger('frontik.handler.xsl')
 
 import future
 http_client = tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200)
 
 def http_header_out(*args, **kwargs):
-    pass
+    log_xsl.debug('x:http-header-out called')
 
 def set_http_status(*args, **kwargs):
-    pass
+    log_xsl.debug('x:set-http-status called')
+
+def x_urlencode(context, params):
+    log_xsl.debug('x:urlencode called')
+    if params:
+        return urllib.quote(params[0].text or '')
 
 # TODO cleanup this
 ns = etree.FunctionNamespace('http://www.yandex.ru/xscript')
 ns.prefix = 'x'
 ns['http-header-out'] = http_header_out
-ns['set-http-status'] = set_http_status 
+ns['set-http-status'] = set_http_status
+ns['urlencode'] = x_urlencode
 
 class ResponsePlaceholder(future.FutureVal):
     def __init__(self):
@@ -82,6 +90,7 @@ class PageLogger(object):
     warn = _proxy_method('warn')
     error = _proxy_method('error')
     critical = _proxy_method('critical')
+    exception = _proxy_method('exception')
 
 
 class PageHandler(tornado.web.RequestHandler):
