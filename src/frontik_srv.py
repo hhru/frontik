@@ -42,12 +42,9 @@ if __name__ == '__main__':
                       abs_document_root)
             sys.exit(1)
 
-    watch_paths = getattr(frontik_www.config, "watch_paths", [])
-    watch_paths.append(config)
-
     for log_channel_name in options.suppressed_loggers:
         logging.getLogger(log_channel_name).setLevel(logging.WARN)
 
     import frontik.app
-    tornado_util.server.main(frontik.app.get_app(frontik_www.config), watch_paths=watch_paths)
+    tornado_util.server.main(frontik.app.get_app(frontik_www.config))
 

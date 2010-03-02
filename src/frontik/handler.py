@@ -8,6 +8,7 @@ import urllib
 
 from functools import partial
 
+import tornado.autoreload
 import tornado.web
 import tornado.httpclient
 import tornado.options
@@ -188,8 +189,11 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.debug('got %s file from cache', filename)
             return self.xml_files_cache[filename]
         else:
-            ret = self._xml_from_file(filename)
-            self.xml_files_cache[filename] = ret
+            ok, ret = self._xml_from_file(filename)
+
+            if ok:
+                self.xml_files_cache[filename] = ret
+
             return [etree.Comment('file: %s' % (filename,)),
                     ret]
 
@@ -199,11 +203,15 @@ class PageHandler(tornado.web.RequestHandler):
 
         if os.path.exists(real_filename):
             try:
-                return etree.parse(file(real_filename)).getroot()
+                res = etree.parse(file(real_filename)).getroot()
+
+                tornado.autoreload.watch_file(real_filename)
+                
+                return True, res
             except:
-                return etree.Element('error', dict(msg='failed to parse file: %s' % (filename,)))
+                return False, etree.Element('error', dict(msg='failed to parse file: %s' % (filename,)))
         else:
-            return etree.Element('error', dict(msg='file not found: %s' % (filename,)))
+            return False, etree.Element('error', dict(msg='file not found: %s' % (filename,)))
 
     ###
     xsl_files_cache = dict()
@@ -221,17 +229,21 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.debug('generated transformation from XSL file %s', real_filename)
             return transform
 
-        with open(real_filename, "rb") as fp:
-            self.log.debug('read file %s', real_filename)
-            try:
-                if self.xsl_files_cache.has_key(real_filename):
-                    self.transform = self.xsl_files_cache[real_filename]
-                else:
+        try:
+            if self.xsl_files_cache.has_key(real_filename):
+                self.transform = self.xsl_files_cache[real_filename]
+            else:
+                with open(real_filename, "rb") as fp:
+                    self.log.debug('read file %s', real_filename)
                     tree = etree.parse(fp)
                     self.transform = etree.XSLT(tree)
                     self.xsl_files_cache[real_filename] = self.transform
-            except etree.XMLSyntaxError, error:
-                self.log.exception('failed parsing XSL file %s' % real_filename)
-            except:
-                self.log.exception('XSL transformation error with file %s' % real_filename)
-            self.transform_filename = real_filename
+                tornado.autoreload.watch_file(real_filename)
+
+        except etree.XMLSyntaxError, error:
+            self.log.exception('failed parsing XSL file %s' % real_filename)
+
+        except:
+            self.log.exception('XSL transformation error with file %s' % real_filename)
+
+        self.transform_filename = real_filename
