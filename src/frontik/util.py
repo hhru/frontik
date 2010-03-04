@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import urllib
+import new_urlencode
+
+def _encode(s):
+    if isinstance(s, unicode):
+        return s.encode('utf-8')
+    else:
+        return s
 
 def make_qs(query_args):
     kv_pairs = []
@@ -8,11 +14,11 @@ def make_qs(query_args):
         if val:
             if isinstance(val, list):
                 for v in val:
-                    kv_pairs.append((key, v))
+                    kv_pairs.append((key, _encode(v)))
             else:
-                kv_pairs.append((key, val))
+                kv_pairs.append((key, _encode(val)))
 
-    qs = urllib.urlencode(kv_pairs)
+    qs = new_urlencode.urlencode(kv_pairs)
 
     return qs
 

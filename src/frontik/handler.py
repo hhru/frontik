@@ -131,7 +131,21 @@ class PageHandler(tornado.web.RequestHandler):
         
         return placeholder
 
-    get_url = fetch_url
+    def get_url(self, url, data={}):
+        placeholder = ResponsePlaceholder()
+        self.n_waiting_reqs += 1
+        stats.http_reqs_count += 1
+
+        http_client.fetch(
+            tornado.httpclient.HTTPRequest(
+                url=frontik.util.make_url(url, **data),
+                headers={
+                    'Connection':'Keep-Alive',
+                    'Keep-Alive':'1000'}),
+            self.async_callback(partial(self._fetch_url_response, placeholder)))
+
+        return placeholder
+        
 
     def post_url(self, url, data={}, headers={}):
         placeholder = ResponsePlaceholder()
@@ -141,8 +155,8 @@ class PageHandler(tornado.web.RequestHandler):
         http_client.fetch(
             tornado.httpclient.HTTPRequest(
                 method='POST',
-                body=frontik.util.make_qs(data),
                 url=url,
+                body=frontik.util.make_qs(data),
                 headers={
                     'Connection':'Keep-Alive',
                     'Keep-Alive':'1000',
