@@ -13,6 +13,7 @@ import tornado.web
 import tornado.httpclient
 import tornado.options
 
+import frontik.util
 from frontik import etree
 from frontik.doc import Doc
 
@@ -129,7 +130,27 @@ class PageHandler(tornado.web.RequestHandler):
             self.async_callback(partial(self._fetch_url_response, placeholder)))
         
         return placeholder
-        
+
+    get_url = fetch_url
+
+    def post_url(self, url, data={}, headers={}):
+        placeholder = ResponsePlaceholder()
+        self.n_waiting_reqs += 1
+        stats.http_reqs_count += 1
+
+        http_client.fetch(
+            tornado.httpclient.HTTPRequest(
+                method='POST',
+                body=frontik.util.make_qs(data),
+                url=url,
+                headers={
+                    'Connection':'Keep-Alive',
+                    'Keep-Alive':'1000',
+                    'Content-Type' : 'application/x-www-form-urlencoded'}),
+            self.async_callback(partial(self._fetch_url_response, placeholder)))
+
+        return placeholder
+
     def _fetch_url_response(self, placeholder, response):
         self.n_waiting_reqs -= 1
         self.log.debug('got %s %s in %.3f, %s requests pending', response.code, response.effective_url, response.request_time, self.n_waiting_reqs)

@@ -48,7 +48,7 @@ class FrontikTestInstance:
         else:
             raise AssertionError('no empty port in 9000-10000 for frontik test instance')
 
-        subprocess.Popen(['python',
+        subprocess.Popen(['python2.6',
                           '../src/frontik_srv.py',
                           '--logfile=./frontik_test.log',
                           '--loglevel=debug',
@@ -80,7 +80,7 @@ def compose_doc_test():
         assert(xml.findtext('b') == 'bbb')
 
         assert(not xml.find('c') is None)
-        assert(xml.findtext('c') is None)
+        assert(xml.findtext('c') in [None, ''])
 
 def xsl_transformation_test():
     with FrontikTestInstance() as srv_port:

@@ -2,13 +2,7 @@
 
 import urllib
 
-def make_url(base, **query_args):
-    ''' 
-    построить URL из базового урла и набора CGI-параметров
-    параметры с пустым значением пропускаются, удобно для последовательности:
-    make_url(base, hhtoken=request.cookies.get('hhtoken'))
-    '''
-    
+def make_qs(query_args):
     kv_pairs = []
     for (key, val) in query_args.iteritems():
         if val:
@@ -17,9 +11,20 @@ def make_url(base, **query_args):
                     kv_pairs.append((key, v))
             else:
                 kv_pairs.append((key, val))
-    
+
     qs = urllib.urlencode(kv_pairs)
-    
+
+    return qs
+
+def make_url(base, **query_args):
+    ''' 
+    построить URL из базового урла и набора CGI-параметров
+    параметры с пустым значением пропускаются, удобно для последовательности:
+    make_url(base, hhtoken=request.cookies.get('hhtoken'))
+    '''
+
+    qs = make_qs(query_args)
+
     if qs:
         return base + '?' + qs
     else:
