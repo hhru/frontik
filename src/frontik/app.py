@@ -28,7 +28,7 @@ class PagesDispatcher(object):
         page_module_name_parts = request.path.strip('/').split('/')[1:]
 
         if page_module_name_parts:
-            page_module_name = '{0}.pages.{1}'.format('.'.join(options.app_package, page_module_name_parts))
+            page_module_name = '{0}.pages.{1}'.format(options.app_package, '.'.join(page_module_name_parts))
         else:
             page_module_name = '{0}.pages'.format(options.app_package)
         

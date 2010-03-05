@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import new_urlencode
+from urllib import urlencode
 
 def list_unique(l):
     return list(set(l))
@@ -21,7 +21,7 @@ def make_qs(query_args):
             else:
                 kv_pairs.append((key, _encode(val)))
 
-    qs = new_urlencode.urlencode(kv_pairs)
+    qs = urlencode(kv_pairs)
 
     return qs
 
