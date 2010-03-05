@@ -33,7 +33,7 @@ def set_http_status(*args, **kwargs):
 def x_urlencode(context, params):
     log_xsl.debug('x:urlencode called')
     if params:
-        return urllib.quote(params[0].text or '')
+        return urllib.quote(params[0].text.encode("utf8") or "")
 
 # TODO cleanup this
 ns = etree.FunctionNamespace('http://www.yandex.ru/xscript')
@@ -115,7 +115,7 @@ class PageHandler(tornado.web.RequestHandler):
     def get_next_request_id(cls):
         stats.page_count += 1
         return stats.page_count
-    
+
     def fetch_url(self, url):
         placeholder = ResponsePlaceholder()
         self.n_waiting_reqs += 1
@@ -192,13 +192,9 @@ class PageHandler(tornado.web.RequestHandler):
         try:
             result = str(self.transform(self.doc.to_etree_element()))
             self.log.debug('applying XSLT %s', self.transform_filename)
-
         except:
             result = ""
-            self.log.error('failed transformation with XSL %s' % self.transform_filename)
-            import traceback, sys
-            traceback.print_exc(file=sys.stdout)
-
+            self.log.exception('failed transformation with XSL %s' % self.transform_filename)
 
         self.write(result)
         self.log.debug('done')
@@ -274,11 +270,13 @@ class PageHandler(tornado.web.RequestHandler):
                     self.transform = etree.XSLT(tree)
                     self.xsl_files_cache[real_filename] = self.transform
                 tornado.autoreload.watch_file(real_filename)
-
         except etree.XMLSyntaxError, error:
-            self.log.exception('failed parsing XSL file %s' % real_filename)
-
+            self.log.exception('failed parsing XSL file {0} (XML syntax)'.format(real_filename))
+            raise tornado.web.HTTPError(500, 'failed parsing XSL file %s (XML syntax)', real_filename)
+        except etree.XSLTParseError, error:
+            self.log.exception('failed parsing XSL file {0} (dumb xsl)'.format(real_filename))
+            raise tornado.web.HTTPError(500, 'failed parsing XSL file %s (dumb xsl)', real_filename)
         except:
             self.log.exception('XSL transformation error with file %s' % real_filename)
-
+            raise tornado.web.HTTPError(500)
         self.transform_filename = real_filename

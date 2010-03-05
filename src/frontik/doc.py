@@ -6,8 +6,9 @@ import frontik.future
 from frontik import etree as et
 
 class Doc:
-    def __init__(self, root_node_name='doc'):
+    def __init__(self, root_node_name='doc', root_node=None):
         self.root_node_name = root_node_name
+        self.root_node = root_node
         
         self.data = []
         
@@ -42,7 +43,10 @@ class Doc:
                 yield i
 
     def to_etree_element(self):
-        res = et.Element(self.root_node_name)
+        if self.root_node is not None:
+            res = self.root_node
+        else:
+            res = et.Element(self.root_node_name)
 
         def chunk_to_element(chunk):
             # XXX изменится, при смене библиотеки!
@@ -89,6 +93,10 @@ class Doc:
         return res
 
     def to_string(self):
-        sio = cStringIO.StringIO()
-        et.ElementTree(self.to_etree_element()).write(sio, encoding='utf-8', xml_declaration=True)
-        return sio.getvalue()
+        return etree_to_xml(self.to_etree_element())
+
+def etree_to_xml(string):
+    sio = cStringIO.StringIO()
+    et.ElementTree(string).write(sio, encoding='utf-8', xml_declaration=True)
+    return sio.getvalue()
+

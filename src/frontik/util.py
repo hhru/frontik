@@ -2,6 +2,9 @@
 
 import new_urlencode
 
+def list_unique(l):
+    return list(set(l))
+
 def _encode(s):
     if isinstance(s, unicode):
         return s.encode('utf-8')
@@ -28,7 +31,6 @@ def make_url(base, **query_args):
     параметры с пустым значением пропускаются, удобно для последовательности:
     make_url(base, hhtoken=request.cookies.get('hhtoken'))
     '''
-
     qs = make_qs(query_args)
 
     if qs:

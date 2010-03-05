@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
+#coding:utf8
 
 import sys
 import os.path
@@ -18,6 +18,8 @@ if __name__ == '__main__':
         config = '/etc/frontik/frontik.cfg'
 
     tornado.options.define('document_root', None, str)
+    tornado.options.define('use_standart_doc', True, bool)
+    tornado.options.define('app_package', None, str)
     tornado.options.define('suppressed_loggers', ['tornado.httpclient'], list)
 
     tornado_util.server.bootstrap(config)
@@ -28,23 +30,20 @@ if __name__ == '__main__':
         sys.path.insert(0, abs_document_root)
 
     try:
-        import frontik_www
-        import frontik_www.config
-
+        app_package = __import__(options.app_package)
+        app_package.config = __import__("{0}.config".format(options.app_package), fromlist=['config'])
     except:
-        log.exception('frontik_www module cannot be found')
+        log.exception('app_package module cannot be found')
         sys.exit(1)
 
     if options.document_root:
-        if not frontik_www.__file__.startswith(abs_document_root):
-            log.error('frontik_www module is found at %s when %s expected', 
-                      frontik_www.__file__,
-                      abs_document_root)
+        if not app_package.__file__.startswith(abs_document_root):
+            log.error('app_package module is found at %s when %s expected', app_package.__file__, abs_document_root)
             sys.exit(1)
 
     for log_channel_name in options.suppressed_loggers:
         logging.getLogger(log_channel_name).setLevel(logging.WARN)
 
     import frontik.app
-    tornado_util.server.main(frontik.app.get_app(frontik_www.config))
+    tornado_util.server.main(frontik.app.get_app(app_package.config))
 

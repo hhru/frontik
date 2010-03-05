@@ -6,5 +6,7 @@ import lxml.etree as etree
 # Doc, DocResponse классы для формирования XML-ответа
 from doc import Doc
 from util import make_url
+from util import list_unique
+from util import make_http_query 
 
 #from handler import PageHandler
