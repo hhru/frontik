@@ -7,6 +7,6 @@ import lxml.etree as etree
 from doc import Doc
 from util import make_url
 from util import list_unique
-from util import make_http_query 
+from util import make_qs
 
 #from handler import PageHandler
