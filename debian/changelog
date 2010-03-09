@@ -1,3 +1,10 @@
+frontik (0.14.1) unstable; urgency=low
+
+  * +put_url/get_url
+  * fix make_url
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu,  4 Mar 2010 21:20:15 +0400
+
 frontik (0.13.2) unstable; urgency=low
 
   * Ability to use defferent from frontik-www app

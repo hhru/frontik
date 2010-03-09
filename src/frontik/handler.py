@@ -275,14 +275,21 @@ class PageHandler(tornado.web.RequestHandler):
                     tree = etree.parse(fp)
                     self.transform = etree.XSLT(tree)
                     self.xsl_files_cache[real_filename] = self.transform
+                    
+                    xsl_includes = xsl_util.find_includes(tree)
+                
                 tornado.autoreload.watch_file(real_filename)
+
         except etree.XMLSyntaxError, error:
             self.log.exception('failed parsing XSL file {0} (XML syntax)'.format(real_filename))
             raise tornado.web.HTTPError(500, 'failed parsing XSL file %s (XML syntax)', real_filename)
+
         except etree.XSLTParseError, error:
             self.log.exception('failed parsing XSL file {0} (dumb xsl)'.format(real_filename))
             raise tornado.web.HTTPError(500, 'failed parsing XSL file %s (dumb xsl)', real_filename)
+
         except:
             self.log.exception('XSL transformation error with file %s' % real_filename)
             raise tornado.web.HTTPError(500)
+
         self.transform_filename = real_filename
