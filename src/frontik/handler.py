@@ -121,7 +121,7 @@ class PageHandler(tornado.web.RequestHandler):
         stats.page_count += 1
         return stats.page_count
 
-    def fetch_url(self, url, callback=None):
+    def fetch_url(self, url, callback=None): #TODO вычистить
         placeholder = ResponsePlaceholder()
         self.n_waiting_reqs += 1
         stats.http_reqs_count += 1
@@ -132,7 +132,7 @@ class PageHandler(tornado.web.RequestHandler):
                 headers={
                     'Connection':'Keep-Alive',
                     'Keep-Alive':'1000'}), 
-            self.async_callback(partial(self._fetch_url_response, placeholder=placeholder, callback=callback)))
+            self.async_callback(partial(self._fetch_url_response, placeholder, callback)))
         
         return placeholder
 
@@ -148,7 +148,6 @@ class PageHandler(tornado.web.RequestHandler):
                     'Connection':'Keep-Alive',
                     'Keep-Alive':'1000'}),
             self.async_callback(partial(self._fetch_url_response, placeholder, callback)))
-
         return placeholder
         
 
@@ -167,12 +166,12 @@ class PageHandler(tornado.web.RequestHandler):
                     'Keep-Alive':'1000',
                     'Content-Type' : 'application/x-www-form-urlencoded'}),
             self.async_callback(partial(self._fetch_url_response, placeholder, callback)))
-
         return placeholder
 
     def _fetch_url_response(self, placeholder, callback, response):
         self.n_waiting_reqs -= 1
         self.log.debug('got %s %s in %.3f, %s requests pending', response.code, response.effective_url, response.request_time, self.n_waiting_reqs)
+        
         placeholder.set_response(self, response, callback)
         self._try_finish_page()
 
@@ -273,21 +272,14 @@ class PageHandler(tornado.web.RequestHandler):
                     tree = etree.parse(fp)
                     self.transform = etree.XSLT(tree)
                     self.xsl_files_cache[real_filename] = self.transform
-                    
-                    xsl_includes = xsl_util.find_includes(tree)
-                
                 tornado.autoreload.watch_file(real_filename)
-
         except etree.XMLSyntaxError, error:
             self.log.exception('failed parsing XSL file {0} (XML syntax)'.format(real_filename))
             raise tornado.web.HTTPError(500, 'failed parsing XSL file %s (XML syntax)', real_filename)
-
         except etree.XSLTParseError, error:
             self.log.exception('failed parsing XSL file {0} (dumb xsl)'.format(real_filename))
             raise tornado.web.HTTPError(500, 'failed parsing XSL file %s (dumb xsl)', real_filename)
-
         except:
             self.log.exception('XSL transformation error with file %s' % real_filename)
             raise tornado.web.HTTPError(500)
-
         self.transform_filename = real_filename
