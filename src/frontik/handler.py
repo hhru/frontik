@@ -46,8 +46,9 @@ class ResponsePlaceholder(future.FutureVal):
     def __init__(self):
         pass
 
-    def set_response(self, handler, response):
+    def set_response(self, handler, response, callback=None):
         self.response = response
+        self.callback = callback
 
         if response.error:
             handler.log.warn('%s failed %s', response.code, response.effective_url)
@@ -55,7 +56,12 @@ class ResponsePlaceholder(future.FutureVal):
     def get(self):
         if not self.response.error:
             try:
-                return [etree.Comment(self.response.effective_url), etree.fromstring(self.response.body)]
+                element = etree.fromstring(self.response.body)
+
+                if self.callback:
+                    self.callback(element)
+
+                return [etree.Comment(self.response.effective_url), element]
             except:
                 return etree.Element('error', dict(url=self.response.effective_url, reason='invalid XML'))
         else:
@@ -116,7 +122,7 @@ class PageHandler(tornado.web.RequestHandler):
         stats.page_count += 1
         return stats.page_count
 
-    def fetch_url(self, url):
+    def fetch_url(self, url, callback=None):
         placeholder = ResponsePlaceholder()
         self.n_waiting_reqs += 1
         stats.http_reqs_count += 1
@@ -127,11 +133,11 @@ class PageHandler(tornado.web.RequestHandler):
                 headers={
                     'Connection':'Keep-Alive',
                     'Keep-Alive':'1000'}), 
-            self.async_callback(partial(self._fetch_url_response, placeholder)))
+            self.async_callback(partial(self._fetch_url_response, placeholder=placeholder, callback=callback)))
         
         return placeholder
 
-    def get_url(self, url, data={}):
+    def get_url(self, url, data={}, callback=None):
         placeholder = ResponsePlaceholder()
         self.n_waiting_reqs += 1
         stats.http_reqs_count += 1
@@ -142,12 +148,12 @@ class PageHandler(tornado.web.RequestHandler):
                 headers={
                     'Connection':'Keep-Alive',
                     'Keep-Alive':'1000'}),
-            self.async_callback(partial(self._fetch_url_response, placeholder)))
+            self.async_callback(partial(self._fetch_url_response, placeholder, callback)))
 
         return placeholder
         
 
-    def post_url(self, url, data={}, headers={}):
+    def post_url(self, url, data={}, headers={}, callback=None):
         placeholder = ResponsePlaceholder()
         self.n_waiting_reqs += 1
         stats.http_reqs_count += 1
@@ -161,15 +167,15 @@ class PageHandler(tornado.web.RequestHandler):
                     'Connection':'Keep-Alive',
                     'Keep-Alive':'1000',
                     'Content-Type' : 'application/x-www-form-urlencoded'}),
-            self.async_callback(partial(self._fetch_url_response, placeholder)))
+            self.async_callback(partial(self._fetch_url_response, placeholder, callback)))
 
         return placeholder
 
-    def _fetch_url_response(self, placeholder, response):
+    def _fetch_url_response(self, placeholder, callback, response):
         self.n_waiting_reqs -= 1
         self.log.debug('got %s %s in %.3f, %s requests pending', response.code, response.effective_url, response.request_time, self.n_waiting_reqs)
         
-        placeholder.set_response(self, response)
+        placeholder.set_response(self, response, callback)
         self._try_finish_page()
 
     def finish_page(self):
