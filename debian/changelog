@@ -1,3 +1,10 @@
+frontik (0.15) unstable; urgency=low
+
+  * watch for xsl includes for autoreload
+  * fix integration test port selection
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue,  9 Mar 2010 18:12:41 +0400
+
 frontik (0.14.2) unstable; urgency=low
 
   * callback function for get_url and post_url

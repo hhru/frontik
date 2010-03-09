@@ -17,6 +17,8 @@ import frontik.util
 from frontik import etree
 from frontik.doc import Doc
 
+import xml_util
+
 import logging
 log = logging.getLogger('frontik.handler')
 log_xsl = logging.getLogger('frontik.handler.xsl')
@@ -254,32 +256,26 @@ class PageHandler(tornado.web.RequestHandler):
         if not self.request.config.apply_xsl or self.get_argument('noxsl', None):
             return
 
-        real_filename = os.path.join(self.request.config.XSL_root, filename)
-
-        def gen_transformation():
-            tree = etree.parse(fp)
-            self.log.debug('parsed XSL file %s', real_filename)
-            transform = etree.XSLT(tree)
-            self.log.debug('generated transformation from XSL file %s', real_filename)
-            return transform
+        self.transform_filename = os.path.join(self.request.config.XSL_root, filename)
 
         try:
-            if self.xsl_files_cache.has_key(real_filename):
-                self.transform = self.xsl_files_cache[real_filename]
+            if self.xsl_files_cache.has_key(self.transform_filename):
+                self.transform = self.xsl_files_cache[self.transform_filename]
             else:
-                with open(real_filename, "rb") as fp:
-                    self.log.debug('read file %s', real_filename)
-                    tree = etree.parse(fp)
-                    self.transform = etree.XSLT(tree)
-                    self.xsl_files_cache[real_filename] = self.transform
-                tornado.autoreload.watch_file(real_filename)
+                self.transform, xsl_files = xml_util.read_xsl(self.transform_filename, self.log)
+                self.xsl_files_cache[self.transform_filename] = self.transform
+                
+                for xsl_file in xsl_files:
+                    tornado.autoreload.watch_file(xsl_file)
+
         except etree.XMLSyntaxError, error:
-            self.log.exception('failed parsing XSL file {0} (XML syntax)'.format(real_filename))
-            raise tornado.web.HTTPError(500, 'failed parsing XSL file %s (XML syntax)', real_filename)
+            self.log.exception('failed parsing XSL file {0} (XML syntax)'.format(self.transform_filename))
+            raise tornado.web.HTTPError(500, 'failed parsing XSL file %s (XML syntax)', self.transform_filename)
+
         except etree.XSLTParseError, error:
-            self.log.exception('failed parsing XSL file {0} (dumb xsl)'.format(real_filename))
-            raise tornado.web.HTTPError(500, 'failed parsing XSL file %s (dumb xsl)', real_filename)
+            self.log.exception('failed parsing XSL file {0} (dumb xsl)'.format(self.transform_filename))
+            raise tornado.web.HTTPError(500, 'failed parsing XSL file %s (dumb xsl)', self.transform_filename)
+
         except:
-            self.log.exception('XSL transformation error with file %s' % real_filename)
+            self.log.exception('XSL transformation error with file %s' % self.transform_filename)
             raise tornado.web.HTTPError(500)
-        self.transform_filename = real_filename

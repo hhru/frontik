@@ -2,6 +2,7 @@
 
 from __future__ import with_statement
 
+import socket
 import subprocess
 import nose
 import urllib2
@@ -42,9 +43,14 @@ def wait_for(fun, n=10):
 class FrontikTestInstance:
     def __enter__(self):
         for port in xrange(9000, 10000):
-            if not is_running(port):
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.bind(('', port))
+                s.close()
                 self.port = port
                 break
+            except:
+                pass
         else:
             raise AssertionError('no empty port in 9000-10000 for frontik test instance')
 
