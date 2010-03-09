@@ -60,7 +60,6 @@ class ResponsePlaceholder(future.FutureVal):
 
                 if self.callback:
                     self.callback(element)
-
                 return [etree.Comment(self.response.effective_url), element]
             except:
                 return etree.Element('error', dict(url=self.response.effective_url, reason='invalid XML'))
@@ -174,7 +173,6 @@ class PageHandler(tornado.web.RequestHandler):
     def _fetch_url_response(self, placeholder, callback, response):
         self.n_waiting_reqs -= 1
         self.log.debug('got %s %s in %.3f, %s requests pending', response.code, response.effective_url, response.request_time, self.n_waiting_reqs)
-        
         placeholder.set_response(self, response, callback)
         self._try_finish_page()
 

@@ -1,3 +1,9 @@
+frontik (0.14.2) unstable; urgency=low
+
+  * callback function for get_url and post_url
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Tue, 09 Mar 2010 13:52:35 +0300
+
 frontik (0.14.1) unstable; urgency=low
 
   * +put_url/get_url
