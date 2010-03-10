@@ -56,23 +56,29 @@ def dict_concat(dict1, dict2):
 import httplib
 import mimetools, mimetypes
 
-ENCODE_TEMPLATE= 
-'--%(boundary)s'
-'Content-Disposition: form-data; name="%(name)s'
-'%(value)s'
+ENCODE_TEMPLATE= '\r\n'.join([
+'--%(boundary)s',
+'Content-Disposition: form-data; name="%(name)s',
+'%(data)s'
+])
 
 
 ENCODE_TEMPLATE_FILE = """--%(boundary)s
-Content-Disposition: form-data; name="%(name)s"; filename="%(filename)s"
+Content-Disposition: form-data; name="%(name)s; "filename="%(filename)s"
 Content-Type: %(contenttype)s
 
-%(value)s
+%(data)s
 """.replace('\n','\r\n')
 
 def get_content_type(filename):
     return mimetypes.guess_type(filename)[0] or 'application/octet-stream'
 
 def make_mfd(fields, files):
+    ''' 
+    fields :: { field_name : field_value }
+    files :: { field_name: [{ "filename" : fn, "body" : bytes }]}
+    '''
+
     BOUNDARY = mimetools.choose_boundary()
     body = ""
 
@@ -95,14 +101,15 @@ def make_mfd(fields, files):
                         'data': _encode(data)
                     }
 
-    for file in files:
-        body += ENCODE_TEMPLATE_FILE % {
-                    'boundary': BOUNDARY,
-                    'name': str(name),
-                    'data': _encode(file["body"]),
-                    'filename': _encode(file["filename"]),
-                    'contenttype': str(get_content_type(file["filename"]))
-                }
+    for name, files in files.iteritems():
+        for file in files:
+            body += ENCODE_TEMPLATE_FILE % {
+                        'boundary': BOUNDARY,
+                        'data': _encode(file["body"]),
+                        'name': name,
+                        'filename': _encode(file["filename"]),
+                        'contenttype': str(get_content_type(file["filename"]))
+                    }
 
     body += '--%s--\n\r' % BOUNDARY
     content_type = 'multipart/form-data; boundary=%s' % BOUNDARY
