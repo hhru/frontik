@@ -3,7 +3,6 @@
 from __future__ import with_statement
 
 import os.path
-import traceback
 import urllib
 
 from functools import partial
@@ -153,20 +152,18 @@ class PageHandler(tornado.web.RequestHandler):
         return placeholder
         
 
-    def post_url(self, url, data={}, headers={}, callback=None):
+    def post_url(self, url, data={}, headers={}, files={}, callback=None):
         placeholder = ResponsePlaceholder()
         self.n_waiting_reqs += 1
         stats.http_reqs_count += 1
+        body, content_type = frontik.util.make_mfd(data, files) if files else frontik.util.make_qs(data), 'application/x-www-form-urlencoded'
+        headers = {'Connection':'Keep-Alive',
+                   'Keep-Alive':'1000',
+                   'Content-Type' : content_type,
+                   'Content-Length': str(len(body))}
 
         http_client.fetch(
-            tornado.httpclient.HTTPRequest(
-                method='POST',
-                url=url,
-                body=frontik.util.make_qs(data),
-                headers={
-                    'Connection':'Keep-Alive',
-                    'Keep-Alive':'1000',
-                    'Content-Type' : 'application/x-www-form-urlencoded'}),
+            tornado.httpclient.HTTPRequest( method='POST', url=url, body=body, headers=headers),
             self.async_callback(partial(self._fetch_url_response, placeholder, callback)))
         return placeholder
 
