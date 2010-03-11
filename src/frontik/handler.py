@@ -69,6 +69,8 @@ class ResponsePlaceholder(future.FutureVal):
         if self.callback:
             self.callback(element=element, response=self.response)
 
+        return out
+
 class Stats:
     def __init__(self):
         self.page_count = 0
