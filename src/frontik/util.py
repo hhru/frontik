@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+def test():
+    print 1
+
 from urllib import urlencode
 
 def list_unique(l):
@@ -49,6 +52,9 @@ def get_all_files(root, extension=None):
 from copy import copy
 
 def dict_concat(dict1, dict2):
+    """
+    Returns content of dict1 after dict1.update(dict2)? without its modification
+    """
     dict3 = copy(dict1)
     dict3.update(dict2)
     return dict3
@@ -56,25 +62,16 @@ def dict_concat(dict1, dict2):
 import httplib
 import mimetools, mimetypes
 
-ENCODE_TEMPLATE= '\r\n'.join([
-'--%(boundary)s',
-'Content-Disposition: form-data; name="%(name)s',
-'%(data)s'
-])
-
-
-ENCODE_TEMPLATE_FILE = """--%(boundary)s
-Content-Disposition: form-data; name="%(name)s; "filename="%(filename)s"
-Content-Type: %(contenttype)s
-
-%(data)s
-""".replace('\n','\r\n')
+ENCODE_TEMPLATE= '--%(boundary)s\r\nContent-Disposition: form-data; name="%(name)s\r\n\r\n%(data)s\r\n'
+ENCODE_TEMPLATE_FILE = '--%(boundary)s\r\nContent-Disposition: form-data; name="%(name)s"; filename="%(filename)s"\r\nContent-Type: %(contenttype)s\r\n\r\n%(data)s\r\n'
 
 def get_content_type(filename):
     return mimetypes.guess_type(filename)[0] or 'application/octet-stream'
 
 def make_mfd(fields, files):
     ''' 
+    Constructs request body in multipart/form-data format
+
     fields :: { field_name : field_value }
     files :: { field_name: [{ "filename" : fn, "body" : bytes }]}
     '''
@@ -111,7 +108,6 @@ def make_mfd(fields, files):
                         'contenttype': str(get_content_type(file["filename"]))
                     }
 
-    body += '--%s--\n\r' % BOUNDARY
+    body += '--%s\n\r' % BOUNDARY
     content_type = 'multipart/form-data; boundary=%s' % BOUNDARY
-
     return body, content_type

@@ -9,12 +9,10 @@ logging.basicConfig(level=logging.DEBUG)
 class Acceptor(tornado.web.RequestHandler):
     def post(self):
         print time.time()
+        #print self.request.files
 
 app = tornado.web.Application([('/', Acceptor)])
-
 server = tornado.httpserver.HTTPServer(app)
 server.listen(11111, '')
-
 io = tornado.ioloop.IOLoop.instance()
-
 io.start()

@@ -1,3 +1,9 @@
+frontik (0.15.1) unstable; urgency=low
+
+  * post_url can post files 
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Thu, 11 Mar 2010 14:51:43 +0300
+
 frontik (0.15) unstable; urgency=low
 
   * watch for xsl includes for autoreload
