@@ -158,7 +158,7 @@ class PageHandler(tornado.web.RequestHandler):
         placeholder = ResponsePlaceholder()
         self.n_waiting_reqs += 1
         stats.http_reqs_count += 1
-        body, content_type = frontik.util.make_mfd(data, files) if files else frontik.util.make_qs(data), 'application/x-www-form-urlencoded'
+        body, content_type = frontik.util.make_mfd(data, files) if files else (frontik.util.make_qs(data), 'application/x-www-form-urlencoded')
         headers = {'Connection':'Keep-Alive',
                    'Keep-Alive':'1000',
                    'Content-Type' : content_type,

@@ -102,7 +102,7 @@ def make_mfd(fields, files):
         for file in files:
             body += ENCODE_TEMPLATE_FILE % {
                         'boundary': BOUNDARY,
-                        'data': _encode(file["body"]),
+                        'data': file["body"],
                         'name': name,
                         'filename': _encode(file["filename"]),
                         'contenttype': str(get_content_type(file["filename"]))
