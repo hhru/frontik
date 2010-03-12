@@ -8,8 +8,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 class Acceptor(tornado.web.RequestHandler):
     def post(self):
-        print time.time()
-        #print self.request.files
+        print self.request.headers
 
 app = tornado.web.Application([('/', Acceptor)])
 server = tornado.httpserver.HTTPServer(app)

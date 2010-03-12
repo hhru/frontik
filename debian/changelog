@@ -1,3 +1,9 @@
+frontik (0.15.2fixi2) unstable; urgency=low
+
+  * Fixed `make_mfd` 
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Fri, 12 Mar 2010 16:27:57 +0300
+
 frontik (0.15.2fix1) unstable; urgency=low
 
   * Fixed `None` placeholders and more 

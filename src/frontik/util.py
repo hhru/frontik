@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 
-def test():
-    print 1
-
 from urllib import urlencode
 
 def list_unique(l):
@@ -108,6 +105,6 @@ def make_mfd(fields, files):
                         'contenttype': str(get_content_type(file["filename"]))
                     }
 
-    body += '--%s\n\r' % BOUNDARY
+    body += '--%s--\r\n' % BOUNDARY
     content_type = 'multipart/form-data; boundary=%s' % BOUNDARY
     return body, content_type
