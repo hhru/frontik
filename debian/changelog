@@ -1,3 +1,9 @@
+frontik (0.15.2fix1) unstable; urgency=low
+
+  * Fixed `None` placeholders and more 
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Fri, 12 Mar 2010 12:35:39 +0300
+
 frontik (0.15.2) unstable; urgency=low
 
   * Improved callback function for get_url and post_url
