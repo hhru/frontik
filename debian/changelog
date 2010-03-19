@@ -1,3 +1,9 @@
+frontik (0.16.1) unstable; urgency=low
+
+  * рефакторинг frontik.app/frontik.handler
+
+ -- Andrey Tatarinov <elephantum@yandex-team.ru>  Fri, 19 Mar 2010 17:15:07 +0400
+
 frontik (0.15.2fixi2) unstable; urgency=low
 
   * Fixed `make_mfd` 

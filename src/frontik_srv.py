@@ -24,26 +24,12 @@ if __name__ == '__main__':
 
     tornado_util.server.bootstrap(config)
 
-    if options.document_root:
-        abs_document_root = os.path.abspath(options.document_root)
-        log.debug('appending "%s" document_dir to sys.path', abs_document_root)
-        sys.path.insert(0, abs_document_root)
-
-    try:
-        app_package = __import__(options.app_package)
-        app_package.config = __import__("{0}.config".format(options.app_package), fromlist=['config'])
-    except:
-        log.exception('app_package module cannot be found')
-        sys.exit(1)
-
-    if options.document_root:
-        if not app_package.__file__.startswith(abs_document_root):
-            log.error('app_package module is found at %s when %s expected', app_package.__file__, abs_document_root)
-            sys.exit(1)
+    import frontik.app
+    app_package = frontik.app.init_app_package(options.document_root, options.app_package)
 
     for log_channel_name in options.suppressed_loggers:
         logging.getLogger(log_channel_name).setLevel(logging.WARN)
 
     import frontik.app
-    tornado_util.server.main(frontik.app.get_app(app_package.config))
+    tornado_util.server.main(frontik.app.get_app(app_package))
 

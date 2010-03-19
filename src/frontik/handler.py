@@ -21,6 +21,7 @@ import xml_util
 import logging
 log = logging.getLogger('frontik.handler')
 log_xsl = logging.getLogger('frontik.handler.xsl')
+log_fileloader = logging.getLogger('frontik.server.fileloader')
 
 import future
 http_client = tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200)
@@ -105,10 +106,92 @@ class PageLogger(object):
     exception = _proxy_method('exception')
 
 
+class FileCache:
+    def __init__(self, root_dir, load_fn):
+        '''
+        load_fn :: filename -> (status, result)
+        '''
+
+        self.root_dir = root_dir
+        self.load_fn = load_fn
+
+        self.cache = dict()
+
+    def load(self, filename):
+        if filename in self.cache:
+            log_fileloader.debug('got %s file from cache', filename)
+            return self.cache[filename]
+        else:
+            real_filename = os.path.normpath(os.path.join(self.root_dir, filename))
+
+            log_fileloader.debug('reading %s file from %s', filename, real_filename)
+            ok, ret = self.load_fn(real_filename)
+
+        if ok:
+            self.cache[filename] = ret
+
+        return ret
+
+
+def xml_from_file(filename):
+    ''' 
+    filename -> (status, et.Element)
+
+    status == True - результат хороший можно кешировать
+           == False - результат плохой, нужно вернуть, но не кешировать
+    '''
+
+    if os.path.exists(filename):
+        try:
+            res = etree.parse(file(filename)).getroot()
+            tornado.autoreload.watch_file(real_filename)
+
+            return True, [etree.Comment('file: %s' % (filename,)), res]
+        except:
+            log.exception('failed to parse %s', filename)
+            return False, etree.Element('error', dict(msg='failed to parse file: %s' % (filename,)))
+    else:
+        log.error('file not found: %s', filename)
+        return False, etree.Element('error', dict(msg='file not found: %s' % (filename,)))
+
+
+def xsl_from_file(filename):
+    '''
+    filename -> (True, et.XSLT)
+    
+    в случае ошибки выкидывает исключение
+    '''
+
+    transform, xsl_files = xml_util.read_xsl(filename)
+    
+    for xsl_file in xsl_files:
+        tornado.autoreload.watch_file(xsl_file)
+
+    return True, transform
+
+
+class PageHandlerGlobals:
+    '''
+    Объект с настройками для всех хендлеров
+    '''
+    def __init__(self, app_package):
+        self.config = app_package.config
+        self.xml_cache = FileCache(app_package.config.XML_root, xml_from_file)
+        self.xsl_cache = FileCache(app_package.config.XSL_root, xsl_from_file)
+
+
 class PageHandler(tornado.web.RequestHandler):
-    def __init__(self, *args, **kw):
-        tornado.web.RequestHandler.__init__(self, *args, **kw)
-        
+    '''
+    Хендлер для конкретного запроса. Создается на каждый запрос.
+    '''
+    
+    def __init__(self, ph_globals, application, request):
+        tornado.web.RequestHandler.__init__(self, application, request)
+
+        self.config = ph_globals.config
+        self.xml_cache = ph_globals.xml_cache
+        self.xsl_cache = ph_globals.xsl_cache
+
         self.doc = Doc()
         self.n_waiting_reqs = 0
         self.finishing = False
@@ -219,64 +302,32 @@ class PageHandler(tornado.web.RequestHandler):
         self.finish('')
 
     ###
-    xml_files_cache = dict()
-
     def xml_from_file(self, filename):
-        if filename in self.xml_files_cache:
-            self.log.debug('got %s file from cache', filename)
-            return self.xml_files_cache[filename]
-        else:
-            ok, ret = self._xml_from_file(filename)
+        return self.xml_cache.load(filename)
 
-            if ok:
-                self.xml_files_cache[filename] = ret
 
-            return [etree.Comment('file: %s' % (filename,)),
-                    ret]
-
-    def _xml_from_file(self, filename):
-        real_filename = os.path.join(self.request.config.XML_root, filename)
-        self.log.debug('read %s file from %s', filename, real_filename)
-
-        if os.path.exists(real_filename):
-            try:
-                res = etree.parse(file(real_filename)).getroot()
-
-                tornado.autoreload.watch_file(real_filename)
-                
-                return True, res
-            except:
-                return False, etree.Element('error', dict(msg='failed to parse file: %s' % (filename,)))
-        else:
-            return False, etree.Element('error', dict(msg='file not found: %s' % (filename,)))
-
-    ###
-    xsl_files_cache = dict()
+    def _set_xsl_log_and_raise(self, msg_template):
+        msg = msg_template.format(self.transform_filename)
+        self.log.exception(msg)
+        raise tornado.web.HTTPError(500, msg)
 
     def set_xsl(self, filename):
-        if not self.request.config.apply_xsl or self.get_argument('noxsl', None):
+        if not self.config.apply_xsl:
+            self.log.debug('ignored set_xsl(%s) because config.apply_xsl=%s', filename, self.config.apply_xsl)        
             return
 
-        self.transform_filename = os.path.join(self.request.config.XSL_root, filename)
+        if self.get_argument('noxsl', None):
+            self.log.debug('ignored set_xsl(%s) because noxsl=%s', filename, self.get_argument('noxsl'))
+            return
+                           
+        self.transform_filename = filename
 
         try:
-            if self.xsl_files_cache.has_key(self.transform_filename):
-                self.transform = self.xsl_files_cache[self.transform_filename]
-            else:
-                self.transform, xsl_files = xml_util.read_xsl(self.transform_filename, self.log)
-                self.xsl_files_cache[self.transform_filename] = self.transform
-                
-                for xsl_file in xsl_files:
-                    tornado.autoreload.watch_file(xsl_file)
+            self.transform = self.xsl_cache.load(filename)
 
         except etree.XMLSyntaxError, error:
-            self.log.exception('failed parsing XSL file {0} (XML syntax)'.format(self.transform_filename))
-            raise tornado.web.HTTPError(500, 'failed parsing XSL file %s (XML syntax)', self.transform_filename)
-
+            self._set_xsl_log_and_raise('failed parsing XSL file {0} (XML syntax)')
         except etree.XSLTParseError, error:
-            self.log.exception('failed parsing XSL file {0} (dumb xsl)'.format(self.transform_filename))
-            raise tornado.web.HTTPError(500, 'failed parsing XSL file %s (dumb xsl)', self.transform_filename)
-
+            self._set_xsl_log_and_raise('failed parsing XSL file {0} (dumb xsl)')
         except:
-            self.log.exception('XSL transformation error with file %s' % self.transform_filename)
-            raise tornado.web.HTTPError(500)
+            self._set_xsl_log_and_raise('XSL transformation error with file {0}')
