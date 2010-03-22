@@ -1,8 +1,15 @@
+frontik (0.16.2) unstable; urgency=low
+
+  * значение по умолчанию для опции app_package = "frontik_www"
+  * fix frontik.app.init_app_package in case app_dir == None
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 22 Mar 2010 14:37:14 +0400
+
 frontik (0.16.1) unstable; urgency=low
 
   * рефакторинг frontik.app/frontik.handler
 
- -- Andrey Tatarinov <elephantum@yandex-team.ru>  Fri, 19 Mar 2010 17:15:07 +0400
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Fri, 19 Mar 2010 17:15:07 +0400
 
 frontik (0.15.2fixi2) unstable; urgency=low
 

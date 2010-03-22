@@ -11,9 +11,10 @@ log = logging.getLogger('frontik.server')
 import handler
 
 def init_app_package(app_dir, app_package_name):
-    abs_app_dir = os.path.abspath(app_dir)
-    log.debug('appending "%s" document_dir to sys.path', abs_app_dir)
-    sys.path.insert(0, abs_app_dir)
+    if app_dir:
+        abs_app_dir = os.path.abspath(app_dir)
+        log.debug('appending "%s" document_dir to sys.path', abs_app_dir)
+        sys.path.insert(0, abs_app_dir)
 
     try:
         app_package = __import__(app_package_name)
@@ -27,11 +28,12 @@ def init_app_package(app_dir, app_package_name):
         log.error('%s.config module cannot be found', app_package_name)
         raise
 
-    if not app_package.__file__.startswith(abs_app_dir):
-        msg = '%s module is found at %s while %s expected' % ( 
-            app_package_name, app_package.__file__, abs_app_dir)
-        log.error(msg)
-        raise Exception(msg)
+    if app_dir:
+        if not app_package.__file__.startswith(abs_app_dir):
+            msg = '%s module is found at %s while %s expected' % ( 
+                app_package_name, app_package.__file__, abs_app_dir)
+            log.error(msg)
+            raise Exception(msg)
 
     return app_package
 
