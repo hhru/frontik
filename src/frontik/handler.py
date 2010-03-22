@@ -144,7 +144,7 @@ def xml_from_file(filename):
     if os.path.exists(filename):
         try:
             res = etree.parse(file(filename)).getroot()
-            tornado.autoreload.watch_file(real_filename)
+            tornado.autoreload.watch_file(filename)
 
             return True, [etree.Comment('file: %s' % (filename,)), res]
         except:

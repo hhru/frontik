@@ -1,3 +1,9 @@
+frontik (0.16.3) unstable; urgency=low
+
+  * bugfix frontik.handler.xml_from_file
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 22 Mar 2010 16:54:53 +0400
+
 frontik (0.16.2) unstable; urgency=low
 
   * значение по умолчанию для опции app_package = "frontik_www"
