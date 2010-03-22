@@ -1,3 +1,9 @@
+frontik (0.16.4) unstable; urgency=low
+
+  * frontik.handler.{get,post}_url: +{connect,request}_timeout parameter
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 22 Mar 2010 17:51:46 +0400
+
 frontik (0.16.3) unstable; urgency=low
 
   * bugfix frontik.handler.xml_from_file

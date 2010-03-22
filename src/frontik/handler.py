@@ -224,7 +224,7 @@ class PageHandler(tornado.web.RequestHandler):
         
         return placeholder
 
-    def get_url(self, url, data={}, callback=None):
+    def get_url(self, url, data={}, connect_timeout=0.5, request_timeout=0.5, callback=None):
         placeholder = ResponsePlaceholder()
         self.n_waiting_reqs += 1
         stats.http_reqs_count += 1
@@ -234,23 +234,41 @@ class PageHandler(tornado.web.RequestHandler):
                 url=frontik.util.make_url(url, **data),
                 headers={
                     'Connection':'Keep-Alive',
-                    'Keep-Alive':'1000'}),
+                    'Keep-Alive':'1000'},
+                connect_timeout=connect_timeout,
+                request_timeout=request_timeout),
             self.async_callback(partial(self._fetch_url_response, placeholder, callback)))
         return placeholder
         
 
-    def post_url(self, url, data={}, headers={}, files={}, callback=None):
+    def post_url(self,
+                 url,
+                 data={},
+                 headers={},
+                 files={},
+                 connect_timeout=0.5, request_timeout=0.5,
+                 callback=None):
+        
         placeholder = ResponsePlaceholder()
+        
         self.n_waiting_reqs += 1
         stats.http_reqs_count += 1
+        
         body, content_type = frontik.util.make_mfd(data, files) if files else (frontik.util.make_qs(data), 'application/x-www-form-urlencoded')
+        
         headers = {'Connection':'Keep-Alive',
                    'Keep-Alive':'1000',
                    'Content-Type' : content_type,
                    'Content-Length': str(len(body))}
 
         http_client.fetch(
-            tornado.httpclient.HTTPRequest( method='POST', url=url, body=body, headers=headers),
+            tornado.httpclient.HTTPRequest(
+                method='POST',
+                url=url,
+                body=body,
+                headers=headers,
+                connect_timeout=connect_timeout,
+                request_timeout=request_timeout),
             self.async_callback(partial(self._fetch_url_response, placeholder, callback)))
         return placeholder
 
