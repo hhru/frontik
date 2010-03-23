@@ -24,7 +24,6 @@ log_xsl = logging.getLogger('frontik.handler.xsl')
 log_fileloader = logging.getLogger('frontik.server.fileloader')
 
 import future
-http_client = tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200)
 
 def http_header_out(*args, **kwargs):
     log_xsl.debug('x:http-header-out called')
@@ -198,6 +197,9 @@ class PageHandler(tornado.web.RequestHandler):
         self.transform = None
         
         self.request_id = self.request.headers.get('X-Request-Id', self.get_next_request_id())
+
+        self.http_client = tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200)
+
         
         self.log = PageLogger(self.request_id)
         
@@ -214,7 +216,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.n_waiting_reqs += 1
         stats.http_reqs_count += 1
         
-        http_client.fetch(
+        self.http_client.fetch(
             tornado.httpclient.HTTPRequest(
                 url=url,
                 headers={
@@ -229,7 +231,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.n_waiting_reqs += 1
         stats.http_reqs_count += 1
 
-        http_client.fetch(
+        self.http_client.fetch(
             tornado.httpclient.HTTPRequest(
                 url=frontik.util.make_url(url, **data),
                 headers={
@@ -261,7 +263,7 @@ class PageHandler(tornado.web.RequestHandler):
                    'Content-Type' : content_type,
                    'Content-Length': str(len(body))}
 
-        http_client.fetch(
+        self.http_client.fetch(
             tornado.httpclient.HTTPRequest(
                 method='POST',
                 url=url,

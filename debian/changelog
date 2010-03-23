@@ -1,3 +1,9 @@
+frontik (0.16.5) unstable; urgency=low
+
+  * создавать новый AsyncHTTPClient на каждый запрос
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 23 Mar 2010 13:42:03 +0400
+
 frontik (0.16.4) unstable; urgency=low
 
   * frontik.handler.{get,post}_url: +{connect,request}_timeout parameter
