@@ -2,6 +2,7 @@ frontik (0.16.5) unstable; urgency=low
 
   * создавать новый AsyncHTTPClient на каждый запрос
   * зависимость от нового python-tornado=0.2~hh11
+  * + тест на вставку XML-файлов из файловой системы
 
  --
 

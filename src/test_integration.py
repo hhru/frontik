@@ -10,6 +10,7 @@ import httplib
 import time
 from functools import partial
 import lxml.etree as etree
+import contextlib
 
 # XXX взять эти функции из frontik.supervisor, когда он появится
 def is_running(port):
@@ -30,7 +31,9 @@ def stop_worker(port):
         pass
 
 def get_page(port, page, xsl=False):
-    return etree.fromstring(urllib2.urlopen('http://localhost:%s/page/%s/%s' % (port, page, "?noxsl=true" if not xsl else "" )).read())
+    data = urllib2.urlopen('http://localhost:%s/page/%s/%s' % (port, page, "?noxsl=true" if not xsl else "" )).read()
+    
+    return data
 
 def wait_for(fun, n=10):
     for i in range(n):
@@ -70,15 +73,29 @@ class FrontikTestInstance:
         stop_worker(self.port)
         wait_for(lambda: not(is_running(self.port)))
 
-def simple_test():
+@contextlib.contextmanager
+def frontik_get_page_xml(page_name, xsl=True):
     with FrontikTestInstance() as srv_port:
-        xml = get_page(srv_port, 'simple')
-        assert(not xml.find('ok') is None)
+        data = get_page(srv_port, page_name, xsl)
+        
+        try:
+            yield etree.fromstring(data)
+        except:
+            print 'failed to parse xml: "%s"' % (data,)
+            raise
+
+@contextlib.contextmanager
+def frontik_get_page_text(page_name, xsl=True):
+    with FrontikTestInstance() as srv_port:
+        data = get_page(srv_port, page_name, xsl)
+        yield data
+
+def simple_test():
+    with frontik_get_page_text('simple') as html:
+        assert(not html.find('ok') is None)
 
 def compose_doc_test():
-    with FrontikTestInstance() as srv_port:
-        xml = get_page(srv_port, 'compose_doc')
-
+    with frontik_get_page_xml('compose_doc') as xml:
         assert(not xml.find('a') is None)
         assert(xml.findtext('a') == 'aaa')
 
@@ -89,9 +106,12 @@ def compose_doc_test():
         assert(xml.findtext('c') in [None, ''])
 
 def xsl_transformation_test():
-    with FrontikTestInstance() as srv_port:
-        html = get_page(srv_port, 'simple', xsl=True)
+    with frontik_get_page_xml('simple') as html:
         assert (etree.tostring(html) == "<html><body><h1>ok</h1></body></html>")
+
+def xml_include_test():
+    with frontik_get_page_xml('include_xml') as xml:
+        assert(xml.findtext('a') == 'aaa')
 
 if __name__ == '__main__':
     nose.main()
