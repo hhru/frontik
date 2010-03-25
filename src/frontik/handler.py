@@ -47,29 +47,31 @@ class ResponsePlaceholder(future.FutureVal):
     def __init__(self):
         pass
 
-    def set_response(self, handler, response, callback=None):
+    def set_response(self, handler, response):
+        '''
+        return :: response_as_xml
+
+        None - в случае ошибки парсинга
+        '''
         self.response = response
-        self.callback = callback
+
+        ret = None
 
         if response.error:
             handler.log.warn('%s failed %s', response.code, response.effective_url)
-
-    def get(self):
-        element = None
-
-        if not self.response.error:
+            self.data = etree.Element('error', dict(url=self.response.effective_url, reason=self.response.error.message))
+        else:
             try:
                 element = etree.fromstring(self.response.body)
-                out = [etree.Comment(self.response.effective_url), element]
+                self.data = [etree.Comment(self.response.effective_url), element]
+                ret = element
             except:
-                out = etree.Element('error', dict(url=self.response.effective_url, reason='invalid XML'))
-        else:
-            out = etree.Element('error', dict(url=self.response.effective_url, reason=self.response.error.message))
+                self.data = etree.Element('error', dict(url=self.response.effective_url, reason='invalid XML'))
 
-        if self.callback:
-            self.callback(element=element, response=self.response)
+        return ret
 
-        return out
+    def get(self):
+        return self.data
 
 class Stats:
     def __init__(self):
@@ -278,7 +280,11 @@ class PageHandler(tornado.web.RequestHandler):
         self.n_waiting_reqs -= 1
         self.log.debug('got %s %s in %.3f, %s requests pending', response.code, response.effective_url, response.request_time, self.n_waiting_reqs)
         
-        placeholder.set_response(self, response, callback)
+        xml = placeholder.set_response(self, response)
+
+        if callback:
+            callback(xml, response)
+
         self._try_finish_page()
 
     def finish_page(self):

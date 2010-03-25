@@ -3,8 +3,9 @@ frontik (0.16.5) unstable; urgency=low
   * создавать новый AsyncHTTPClient на каждый запрос
   * зависимость от нового python-tornado=0.2~hh11
   * + тест на вставку XML-файлов из файловой системы
+  * + buider для Doc.put
 
- --
+ -- Dmitry Zubov <d.zubov@hh.ru>  Thu, 25 Mar 2010 17:59:24 +0400
 
 frontik (0.16.4) unstable; urgency=low
 
@@ -30,6 +31,12 @@ frontik (0.16.1) unstable; urgency=low
   * рефакторинг frontik.app/frontik.handler
 
  -- Andrey Tatarinov <a.tatarinov@hh.ru>  Fri, 19 Mar 2010 17:15:07 +0400
+
+frontik (0.15.3) unstable; urgency=low
+
+  * changed get_page and post_page callback internal proccessing. 
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Thu, 18 Mar 2010 16:19:24 +0300
 
 frontik (0.15.2fixi2) unstable; urgency=low
 
