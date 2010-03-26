@@ -20,6 +20,7 @@ if __name__ == '__main__':
     tornado.options.define('document_root', None, str)
     tornado.options.define('use_standart_doc', True, bool)
     tornado.options.define('app_package', 'frontik_www', str)
+    tornado.options.define('app_config', '', str)
     tornado.options.define('suppressed_loggers', ['tornado.httpclient'], list)
 
     tornado_util.server.bootstrap(config)
