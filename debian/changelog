@@ -1,3 +1,10 @@
+frontik (0.16.7) unstable; urgency=low
+
+  * Проверка на наличие XML_root и XSL_root для нормальной работы
+    frontikr-negotiations
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Tue, 30 Mar 2010 13:44:33 +0400
+
 frontik (0.16.6) unstable; urgency=low
 
   * Порт по умолчанию 9300 
