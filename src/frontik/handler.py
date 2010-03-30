@@ -177,6 +177,8 @@ class PageHandlerGlobals:
     '''
     def __init__(self, app_package):
         self.config = app_package.config
+        self.xml_cache = None
+        self.xsl_cache = None
 
         if getattr(app_package.config, "XML_root", None):
             self.xml_cache = FileCache(app_package.config.XML_root, xml_from_file)
