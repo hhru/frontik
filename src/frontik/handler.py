@@ -171,20 +171,30 @@ def xsl_from_file(filename):
     return True, transform
 
 
+class InvalidOptionCache:
+    def __init__(self, option):
+        self.option = option
+
+    def load(self, filename):
+        raise Exception('{0} option is undefined'.format(self.option))
+
+
+def make_file_cache(option_name, option_value, fun):
+    if option_value:
+        return FileCache(option_value, fun)
+    else:
+        return InvalidOptionCache(option_name)
+
+
 class PageHandlerGlobals:
     '''
     Объект с настройками для всех хендлеров
     '''
     def __init__(self, app_package):
         self.config = app_package.config
-        self.xml_cache = None
-        self.xsl_cache = None
 
-        if getattr(app_package.config, "XML_root", None):
-            self.xml_cache = FileCache(app_package.config.XML_root, xml_from_file)
-
-        if getattr(app_package.config, "XSL_root", None):
-            self.xsl_cache = FileCache(app_package.config.XSL_root, xsl_from_file)
+        self.xml_cache = make_file_cache('XML_root', getattr(app_package.config, 'XML_root'), xml_from_file)
+        self.xsl_cache = make_file_cache('XML_root', getattr(app_package.config, 'XSL_root'), xsl_from_file)
 
 
 class PageHandler(tornado.web.RequestHandler):

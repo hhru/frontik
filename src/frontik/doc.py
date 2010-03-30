@@ -18,7 +18,7 @@ class Doc:
         else:
             self.data.append(chunk)
 
-        return self #Builder нах!
+        return self
     
     def _finalize_data(self):
         def chunk_to_string(chunk):
