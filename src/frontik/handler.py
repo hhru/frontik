@@ -1,4 +1,4 @@
-#coding:utf-8
+# -*- coding: utf-8 -*-
 
 from __future__ import with_statement
 
@@ -244,11 +244,9 @@ class PageHandler(tornado.web.RequestHandler):
         
         return placeholder
 
-    def get_url(self, url, data={}, connect_timeout=0.5, request_timeout=0.5, callback=None, register=True):
+    def get_url(self, url, data={}, connect_timeout=0.5, request_timeout=0.5, callback=None):
         placeholder = ResponsePlaceholder()
-
-        if register:
-            self.n_waiting_reqs += 1
+        self.n_waiting_reqs += 1
         stats.http_reqs_count += 1
 
         self.http_client.fetch(
@@ -259,24 +257,29 @@ class PageHandler(tornado.web.RequestHandler):
                     'Keep-Alive':'1000'},
                 connect_timeout=connect_timeout,
                 request_timeout=request_timeout),
-                self.async_callback(partial(self._fetch_url_response, placeholder, callback)) if register else None
-                )
+            self.async_callback(partial(self._fetch_url_response, placeholder, callback)))
         return placeholder
         
 
-    def post_url(self, url, data={}, headers={}, files={}, connect_timeout=0.5, request_timeout=0.5, callback=None, register=True):
+    def post_url(self,
+                 url,
+                 data={},
+                 headers={},
+                 files={},
+                 connect_timeout=0.5, request_timeout=0.5,
+                 callback=None):
+        
         placeholder = ResponsePlaceholder()
-
-        if register:
-            self.n_waiting_reqs += 1
+        
+        self.n_waiting_reqs += 1
         stats.http_reqs_count += 1
         
         body, content_type = frontik.util.make_mfd(data, files) if files else (frontik.util.make_qs(data), 'application/x-www-form-urlencoded')
+        
         headers = {'Connection':'Keep-Alive',
                    'Keep-Alive':'1000',
                    'Content-Type' : content_type,
                    'Content-Length': str(len(body))}
-        
 
         self.http_client.fetch(
             tornado.httpclient.HTTPRequest(
@@ -286,8 +289,7 @@ class PageHandler(tornado.web.RequestHandler):
                 headers=headers,
                 connect_timeout=connect_timeout,
                 request_timeout=request_timeout),
-                self.async_callback(partial(self._fetch_url_response, placeholder, callback)) if register else None
-                )
+            self.async_callback(partial(self._fetch_url_response, placeholder, callback)))
         return placeholder
 
     def _fetch_url_response(self, placeholder, callback, response):
