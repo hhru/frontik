@@ -193,8 +193,8 @@ class PageHandlerGlobals:
     def __init__(self, app_package):
         self.config = app_package.config
 
-        self.xml_cache = make_file_cache('XML_root', getattr(app_package.config, 'XML_root'), xml_from_file)
-        self.xsl_cache = make_file_cache('XML_root', getattr(app_package.config, 'XSL_root'), xsl_from_file)
+        self.xml_cache = make_file_cache('XML_root', getattr(app_package.config, 'XML_root', None), xml_from_file)
+        self.xsl_cache = make_file_cache('XML_root', getattr(app_package.config, 'XSL_root', None), xsl_from_file)
 
 
 class PageHandler(tornado.web.RequestHandler):
