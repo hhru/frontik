@@ -318,7 +318,7 @@ class PageHandler(tornado.web.RequestHandler):
 
     def _real_finish_with_xsl(self):
         self.log.debug('finishing with xsl')
-        if not self.request.headers.get("Content-Type", None):
+        if not self._headers.get("Content-Type", None):
             self.set_header('Content-Type', 'text/html')
 
         try:
@@ -335,7 +335,7 @@ class PageHandler(tornado.web.RequestHandler):
     
     def _real_finish(self):
         self.log.debug('finishing wo xsl')
-        if not self.request.headers.get("Content-Type", None):
+        if not self._headers.get("Content-Type", None):
             self.set_header('Content-Type', 'application/xml')
 
         self.write(self.doc.to_string())
