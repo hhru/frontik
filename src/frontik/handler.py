@@ -318,7 +318,8 @@ class PageHandler(tornado.web.RequestHandler):
 
     def _real_finish_with_xsl(self):
         self.log.debug('finishing with xsl')
-        self.set_header('Content-Type', 'text/html')
+        if not self.request.headers.get("Content-Type", None):
+            self.set_header('Content-Type', 'text/html')
 
         try:
             result = str(self.transform(self.doc.to_etree_element()))
@@ -334,8 +335,8 @@ class PageHandler(tornado.web.RequestHandler):
     
     def _real_finish(self):
         self.log.debug('finishing wo xsl')
-
-        self.set_header('Content-Type', 'application/xml')
+        if not self.request.headers.get("Content-Type", None):
+            self.set_header('Content-Type', 'application/xml')
 
         self.write(self.doc.to_string())
 
