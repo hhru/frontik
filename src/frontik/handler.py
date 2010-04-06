@@ -204,6 +204,7 @@ class PageHandler(tornado.web.RequestHandler):
     
     def __init__(self, ph_globals, application, request):
         tornado.web.RequestHandler.__init__(self, application, request)
+        del self._headers["Content-Type"] # нет никакого типа по умолчанию 
 
         self.config = ph_globals.config
         self.xml_cache = ph_globals.xml_cache
