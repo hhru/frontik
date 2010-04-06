@@ -31,7 +31,7 @@ def stop_worker(port):
         pass
 
 def get_page(port, page, xsl=False):
-    data = urllib2.urlopen('http://localhost:%s/page/%s/%s' % (port, page, "?noxsl=true" if not xsl else "" )).read()
+    data = urllib2.urlopen('http://localhost:%s/page/%s/%s' % (port, page, "?noxsl=true" if not xsl else "" ))
     
     return data
 
@@ -76,7 +76,7 @@ class FrontikTestInstance:
 @contextlib.contextmanager
 def frontik_get_page_xml(page_name, xsl=True):
     with FrontikTestInstance() as srv_port:
-        data = get_page(srv_port, page_name, xsl)
+        data = get_page(srv_port, page_name, xsl).read()
         
         try:
             yield etree.fromstring(data)
@@ -87,7 +87,7 @@ def frontik_get_page_xml(page_name, xsl=True):
 @contextlib.contextmanager
 def frontik_get_page_text(page_name, xsl=True):
     with FrontikTestInstance() as srv_port:
-        data = get_page(srv_port, page_name, xsl)
+        data = get_page(srv_port, page_name, xsl).read()
         yield data
 
 def simple_test():
@@ -108,6 +108,14 @@ def compose_doc_test():
 def xsl_transformation_test():
     with frontik_get_page_xml('simple') as html:
         assert (etree.tostring(html) == "<html><body><h1>ok</h1></body></html>")
+
+def test_content_type_with_xsl():
+    with FrontikTestInstance() as srv_port:
+        assert(get_page(srv_port, 'simple', xsl=True).headers['content-type'].startswith('text/html'))
+
+def test_content_type_wo_xsl():
+    with FrontikTestInstance() as srv_port:
+        assert(get_page(srv_port, 'simple', xsl=False).headers['content-type'].startswith('application/xml'))
 
 def xml_include_test():
     with frontik_get_page_xml('include_xml') as xml:
