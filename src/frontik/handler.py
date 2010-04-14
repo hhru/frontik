@@ -294,19 +294,16 @@ class PageHandler(tornado.web.RequestHandler):
         return placeholder
 
     def _fetch_url_response(self, placeholder, callback, response):
-        self.n_waiting_reqs -= 1
         self.log.debug('got %s %s in %.3f, %s requests pending', response.code, response.effective_url, response.request_time, self.n_waiting_reqs)
-        
         xml = placeholder.set_response(self, response)
 
         if callback:
             callback(xml, response)
-
+        self.n_waiting_reqs -= 1
         self._try_finish_page()
 
     def finish_page(self):
         self.log.debug('going to finish')
-        
         self.finishing = True
         self._try_finish_page()
     
