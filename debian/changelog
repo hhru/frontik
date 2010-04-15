@@ -1,3 +1,11 @@
+frontik (0.17.0) unstable; urgency=low
+
+  * frontik.app: выделен FrontikModuleDispatcher, загружатель страниц из python-модулей
+  * frontik.handler: выделен FinishLock, убрано состояние _finishing, теперь страница завершается как только не
+    остается запросов на ожидание
+
+ --
+
 frontik (0.16.8fix2) unstable; urgency=low
 
   * https://jira.hh.ru/browse/HH-12119

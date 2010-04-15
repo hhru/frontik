@@ -66,6 +66,15 @@ class ResponsePlaceholder(future.FutureVal):
                 self.data = [etree.Comment(self.response.effective_url), element]
                 ret = element
             except:
+                if len(self.response.body) > 100:
+                    body_preview = '{0}...'.format(self.response.body[:100])
+                else:
+                    body_preview = self.response.body
+
+                handler.log.warn('failed to parse XML response from %s data "%s"',
+                                 self.response.effective_url,
+                                 body_preview)
+                
                 self.data = etree.Element('error', dict(url=self.response.effective_url, reason='invalid XML'))
 
         return ret
@@ -77,6 +86,10 @@ class Stats:
     def __init__(self):
         self.page_count = 0
         self.http_reqs_count = 0
+
+    def get_next_request_id(self):
+        self.page_count += 1
+        return self.page_count
 
 stats = Stats()
 
@@ -186,7 +199,21 @@ def make_file_cache(option_name, option_value, fun):
         return InvalidOptionCache(option_name)
 
 
-class PageHandlerGlobals:
+class FinishLock(object):
+    def __init__(self):
+        self.counter = 0
+
+    def acquire(self):
+        self.counter += 1
+
+    def release(self):
+        self.counter -= 1
+
+    def is_free(self):
+        return self.counter == 0
+
+
+class PageHandlerGlobals(object):
     '''
     Объект с настройками для всех хендлеров
     '''
@@ -210,29 +237,20 @@ class PageHandler(tornado.web.RequestHandler):
         self.xml_cache = ph_globals.xml_cache
         self.xsl_cache = ph_globals.xsl_cache
 
-        self.doc = Doc()
-        self.n_waiting_reqs = 0
-        self.finishing = False
-        self.transform = None
-        
-        self.request_id = self.request.headers.get('X-Request-Id', self.get_next_request_id())
-
+        self.request_id = self.request.headers.get('X-Request-Id', stats.get_next_request_id())
         self.http_client = tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200)
-
-        
         self.log = PageLogger(self.request_id)
-        
-        self.log.debug('started %s %s', self.request.method, self.request.uri)
 
-    
-    @classmethod
-    def get_next_request_id(cls):
-        stats.page_count += 1
-        return stats.page_count
+        self.doc = Doc()
+        self.transform = None
+
+        self.finish_lock = FinishLock()
+
+        self.log.debug('started %s %s', self.request.method, self.request.uri)
 
     def fetch_url(self, url, callback=None): #TODO вычистить
         placeholder = ResponsePlaceholder()
-        self.n_waiting_reqs += 1
+        self.finish_lock.acquire()
         stats.http_reqs_count += 1
         
         self.http_client.fetch(
@@ -247,7 +265,7 @@ class PageHandler(tornado.web.RequestHandler):
 
     def get_url(self, url, data={}, connect_timeout=0.5, request_timeout=0.5, callback=None):
         placeholder = ResponsePlaceholder()
-        self.n_waiting_reqs += 1
+        self.finish_lock.acquire()
         stats.http_reqs_count += 1
 
         self.http_client.fetch(
@@ -272,7 +290,7 @@ class PageHandler(tornado.web.RequestHandler):
         
         placeholder = ResponsePlaceholder()
         
-        self.n_waiting_reqs += 1
+        self.finish_lock.acquire()
         stats.http_reqs_count += 1
         
         body, content_type = frontik.util.make_mfd(data, files) if files else (frontik.util.make_qs(data), 'application/x-www-form-urlencoded')
@@ -294,25 +312,25 @@ class PageHandler(tornado.web.RequestHandler):
         return placeholder
 
     def _fetch_url_response(self, placeholder, callback, response):
+        self.finish_lock.release()
         self.log.debug('got %s %s in %.3f, %s requests pending', response.code, response.effective_url, response.request_time, self.n_waiting_reqs)
+        
         xml = placeholder.set_response(self, response)
 
         if callback:
             callback(xml, response)
-        self.n_waiting_reqs -= 1
+
         self._try_finish_page()
 
     def finish_page(self):
-        self.log.debug('going to finish')
-        self.finishing = True
         self._try_finish_page()
-    
+
     def _try_finish_page(self):
-        if self.finishing and self.n_waiting_reqs == 0:
+        if self.finish_lock.is_free():
             if (self.transform):
                 self._real_finish_with_xsl()
             else:
-                self._real_finish()
+                self._real_finish_wo_xsl()
 
     def _real_finish_with_xsl(self):
         self.log.debug('finishing with xsl')
@@ -331,7 +349,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.finish('')
 
     
-    def _real_finish(self):
+    def _real_finish_wo_xsl(self):
         self.log.debug('finishing wo xsl')
         if not self._headers.get("Content-Type", None):
             self.set_header('Content-Type', 'application/xml')
