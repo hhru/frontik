@@ -3,8 +3,9 @@ frontik (0.17.0) unstable; urgency=low
   * frontik.app: выделен FrontikModuleDispatcher, загружатель страниц из python-модулей
   * frontik.handler: выделен FinishLock, убрано состояние _finishing, теперь страница завершается как только не
     остается запросов на ожидание
+  * атрибут `frontik` у корневого элемента
 
- --
+ -- Dmitry Zubov <d.zubov@hh.ru>  Fri, 16 Apr 2010 15:45:00 +4000
 
 frontik (0.16.8fix2) unstable; urgency=low
 
