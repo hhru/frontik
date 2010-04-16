@@ -60,6 +60,8 @@ class ResponsePlaceholder(future.FutureVal):
         if response.error:
             handler.log.warn('%s failed %s', response.code, response.effective_url)
             self.data = etree.Element('error', dict(url=self.response.effective_url, reason=self.response.error.message))
+            if self.response.body:
+                self.data.append(etree.Comment(self.response.body))
         else:
             try:
                 element = etree.fromstring(self.response.body)
@@ -87,7 +89,7 @@ class Stats:
         self.page_count = 0
         self.http_reqs_count = 0
 
-    def get_next_request_id(self):
+    def next_request_id(self):
         self.page_count += 1
         return self.page_count
 
@@ -221,7 +223,7 @@ class PageHandlerGlobals(object):
         self.config = app_package.config
 
         self.xml_cache = make_file_cache('XML_root', getattr(app_package.config, 'XML_root', None), xml_from_file)
-        self.xsl_cache = make_file_cache('XML_root', getattr(app_package.config, 'XSL_root', None), xsl_from_file)
+        self.xsl_cache = make_file_cache('XSL_root', getattr(app_package.config, 'XSL_root', None), xsl_from_file)
 
 
 class PageHandler(tornado.web.RequestHandler):
@@ -231,17 +233,16 @@ class PageHandler(tornado.web.RequestHandler):
     
     def __init__(self, ph_globals, application, request):
         tornado.web.RequestHandler.__init__(self, application, request)
-        del self._headers["Content-Type"] # нет никакого типа по умолчанию 
 
         self.config = ph_globals.config
         self.xml_cache = ph_globals.xml_cache
         self.xsl_cache = ph_globals.xsl_cache
 
-        self.request_id = self.request.headers.get('X-Request-Id', stats.get_next_request_id())
+        self.request_id = self.request.headers.get('X-Request-Id', stats.next_request_id())
         self.http_client = tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200)
         self.log = PageLogger(self.request_id)
 
-        self.doc = Doc()
+        self.doc = Doc(root_node=etree.Element('doc', frontik='true'))
         self.transform = None
 
         self.finish_lock = FinishLock()

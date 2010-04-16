@@ -77,12 +77,14 @@ class FrontikTestInstance:
 def frontik_get_page_xml(page_name, xsl=True):
     with FrontikTestInstance() as srv_port:
         data = get_page(srv_port, page_name, xsl).read()
-        
+
         try:
-            yield etree.fromstring(data)
+            res = etree.fromstring(data)
         except:
             print 'failed to parse xml: "%s"' % (data,)
             raise
+
+        yield res
 
 @contextlib.contextmanager
 def frontik_get_page_text(page_name, xsl=True):
@@ -120,6 +122,11 @@ def test_content_type_wo_xsl():
 def xml_include_test():
     with frontik_get_page_xml('include_xml') as xml:
         assert(xml.findtext('a') == 'aaa')
+
+def test_root_node_frontik_attribute():
+    with frontik_get_page_xml('simple_xml') as xml:
+        assert(xml.get('frontik') == 'true')
+        assert(xml.find('doc').get('frontik', None) is None)
 
 if __name__ == '__main__':
     nose.main()

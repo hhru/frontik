@@ -50,9 +50,6 @@ class Doc:
         else:
             res = et.Element(self.root_node_name)
 
-        if res.tag == "doc":
-            res.set("frontik", "true")
-
         def chunk_to_element(chunk):
             # XXX изменится, при смене библиотеки!
             if isinstance(chunk, list):
