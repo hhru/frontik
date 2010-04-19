@@ -314,7 +314,7 @@ class PageHandler(tornado.web.RequestHandler):
 
     def _fetch_url_response(self, placeholder, callback, response):
         self.finish_lock.release()
-        self.log.debug('got %s %s in %.3f, %s requests pending', response.code, response.effective_url, response.request_time, self.n_waiting_reqs)
+        self.log.debug('got %s %s in %.3f, %s requests pending', response.code, response.effective_url, response.request_time, self.finish_lock.counter)
         
         xml = placeholder.set_response(self, response)
 
