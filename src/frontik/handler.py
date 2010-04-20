@@ -65,7 +65,7 @@ class ResponsePlaceholder(future.FutureVal):
         else:
             try:
                 element = etree.fromstring(self.response.body)
-                self.data = [etree.Comment(self.response.effective_url).replace("--", "%2D%2D"), element]
+                self.data = [etree.Comment(self.response.effective_url.replace("--", "%2D%2D")), element]
                 ret = element
             except:
                 if len(self.response.body) > 100:
