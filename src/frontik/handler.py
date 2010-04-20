@@ -65,7 +65,7 @@ class ResponsePlaceholder(future.FutureVal):
         else:
             try:
                 element = etree.fromstring(self.response.body)
-                self.data = [etree.Comment(self.response.effective_url), element]
+                self.data = [etree.Comment(self.response.effective_url).replace("--", "%2D%2D"), element]
                 ret = element
             except:
                 if len(self.response.body) > 100:
@@ -249,21 +249,6 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.log.debug('started %s %s', self.request.method, self.request.uri)
 
-    def fetch_url(self, url, callback=None): #TODO вычистить
-        placeholder = ResponsePlaceholder()
-        self.finish_lock.acquire()
-        stats.http_reqs_count += 1
-        
-        self.http_client.fetch(
-            tornado.httpclient.HTTPRequest(
-                url=url,
-                headers={
-                    'Connection':'Keep-Alive',
-                    'Keep-Alive':'1000'}), 
-            self.async_callback(partial(self._fetch_url_response, placeholder, callback)))
-        
-        return placeholder
-
     def get_url(self, url, data={}, connect_timeout=0.5, request_timeout=0.5, callback=None):
         placeholder = ResponsePlaceholder()
         self.finish_lock.acquire()
@@ -280,6 +265,23 @@ class PageHandler(tornado.web.RequestHandler):
             self.async_callback(partial(self._fetch_url_response, placeholder, callback)))
         return placeholder
         
+    def fetch_url(self, url, callback=None):
+        """
+        Прокси метод для get_url, логирующий употребления fetch_url
+        """
+        from urlparse import parse_qs, urlparse
+        import traceback
+
+        self.log.error("Used deprecated method `fetch_url`. %s", traceback.format_stack()[-2][:-1])
+        scheme, netloc, path, params, query, fragment = urlparse(url)
+        new_url = "{0}://{1}{2}".format(scheme, netloc, path)
+        query = parse_qs(query)
+        
+        for key, value in query.iteritems():
+            if len(value) == 1:
+                query[key] = value[0]
+
+        return self.get_url(new_url, data=query, callback=callback)
 
     def post_url(self,
                  url,

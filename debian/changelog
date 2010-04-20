@@ -1,10 +1,8 @@
 frontik (0.17.1) unstable; urgency=low
 
-  * HH-12245: frontik.handler: в случае ошибочного http-ответа комментарий с полным телом ответа внутри тега <error/> 
-  * атрибут `frontik` у корневого элемента, сделанный правильно
-  * протоколировать ошибки импорта frontik_www.config
+  * Замена 2 минусов в комментариях 
 
- --  Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 19 Apr 2010 12:51:46 +0400
+ -- Dmitry Zubov <d.zubov@hh.ru>  Tue, 20 Apr 2010 14:07:37 +0400
 
 frontik (0.17.0) unstable; urgency=low
 
