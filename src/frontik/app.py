@@ -44,7 +44,7 @@ class FrontikModuleDispatcher(object):
         try:
             app_package.config = __import__("{0}.config".format(app_package_name), fromlist=['config'])
         except:
-            log.error('%s.config module cannot be found', app_package_name)
+            log.exception('%s.config module cannot be found', app_package_name)
             raise
 
         if app_dir:
