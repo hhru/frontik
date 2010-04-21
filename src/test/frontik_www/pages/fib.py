@@ -1,0 +1,35 @@
+import tornado.web
+
+import frontik.doc
+import frontik.handler
+
+class Page(frontik.handler.PageHandler):
+    @tornado.web.asynchronous
+    def get(self):
+        n = int(self.get_argument('n'))
+
+        if n >= 2:
+            self.acc = 0
+
+            def intermediate_cb(xml, response):
+                self.acc += int(xml.text)
+
+            def final_cb():
+                self.log.debug('n=%s', self.acc)
+                self.doc.put(str(self.acc))
+
+            grp = frontik.handler.AsyncGroup(final_cb)
+
+            self.get_url(
+                'http://localhost:{0}/page/fib/'.format(self.get_argument('port')),
+                dict(port=self.get_argument('port'), n=str(n-1)),
+                callback=grp.add(intermediate_cb))
+
+            self.get_url(
+                'http://localhost:{0}/page/fib/'.format(self.get_argument('port')),
+                dict(port=self.get_argument('port'), n=str(n-2)),
+                callback=grp.add(intermediate_cb))
+        else:
+            self.doc.put('1')
+
+        self.finish_page()

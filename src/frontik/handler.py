@@ -65,8 +65,6 @@ class ResponsePlaceholder(future.FutureVal):
         else:
             try:
                 element = etree.fromstring(self.response.body)
-                self.data = [etree.Comment(self.response.effective_url.replace("--", "%2D%2D")), element]
-                ret = element
             except:
                 if len(self.response.body) > 100:
                     body_preview = '{0}...'.format(self.response.body[:100])
@@ -78,6 +76,9 @@ class ResponsePlaceholder(future.FutureVal):
                                  body_preview)
                 
                 self.data = etree.Element('error', dict(url=self.response.effective_url, reason='invalid XML'))
+            else:
+                self.data = [etree.Comment(self.response.effective_url.replace("--", "%2D%2D")), element]
+                ret = element
 
         return ret
 
@@ -201,18 +202,31 @@ def make_file_cache(option_name, option_value, fun):
         return InvalidOptionCache(option_name)
 
 
-class FinishLock(object):
-    def __init__(self):
-        self.counter = 0
+class AsyncGroup(object):
+    ''' группировка нескольких асинхронных запросов '''
 
-    def acquire(self):
+    def __init__(self, finish_cb, log=log):
+        self.counter = 0
+        self.finished = False
+        self.finish_cb = finish_cb
+        self.log = log
+
+    def try_finish(self):
+        if self.counter == 0 and not self.finished:
+            self.log.debug('finishing group with %s', self.finish_cb)
+            self.finished = True
+            self.finish_cb()
+
+    def add(self, intermediate_cb):
         self.counter += 1
 
-    def release(self):
-        self.counter -= 1
+        def new_cb(*args, **kwargs):
+            self.counter -= 1
+            self.log.debug('%s requests pending', self.counter)
+            intermediate_cb(*args, **kwargs)
+            self.try_finish()
 
-    def is_free(self):
-        return self.counter == 0
+        return new_cb
 
 
 class PageHandlerGlobals(object):
@@ -245,13 +259,31 @@ class PageHandler(tornado.web.RequestHandler):
         self.doc = Doc(root_node=etree.Element('doc', frontik='true'))
         self.transform = None
 
-        self.finish_lock = FinishLock()
+        self.async_group = AsyncGroup(self._finish_page, log=self.log)
 
         self.log.debug('started %s %s', self.request.method, self.request.uri)
 
+    ###
+
+    # эта заляпа сливает обработчики get и post запросов
+    @tornado.web.asynchronous
+    def post(self, *args, **kw):
+        self.get(*args, **kw)
+
+    @tornado.web.asynchronous
+    def get(self, *args, **kw):
+        self.get_page()
+        self.finish_page()
+
+    def get_page(self):
+        ''' Эта функция должна быть переопределена в наследнике и
+        выполнять актуальную работу хендлера '''
+        pass
+
+    ###
+
     def get_url(self, url, data={}, connect_timeout=0.5, request_timeout=0.5, callback=None):
         placeholder = ResponsePlaceholder()
-        self.finish_lock.acquire()
         stats.http_reqs_count += 1
 
         self.http_client.fetch(
@@ -262,7 +294,7 @@ class PageHandler(tornado.web.RequestHandler):
                     'Keep-Alive':'1000'},
                 connect_timeout=connect_timeout,
                 request_timeout=request_timeout),
-            self.async_callback(partial(self._fetch_url_response, placeholder, callback)))
+            self.async_callback(self.async_group.add(partial(self._fetch_url_response, placeholder, callback))))
         return placeholder
         
     def fetch_url(self, url, callback=None):
@@ -293,7 +325,6 @@ class PageHandler(tornado.web.RequestHandler):
         
         placeholder = ResponsePlaceholder()
         
-        self.finish_lock.acquire()
         stats.http_reqs_count += 1
         
         body, content_type = frontik.util.make_mfd(data, files) if files else (frontik.util.make_qs(data), 'application/x-www-form-urlencoded')
@@ -311,49 +342,45 @@ class PageHandler(tornado.web.RequestHandler):
                 headers=headers,
                 connect_timeout=connect_timeout,
                 request_timeout=request_timeout),
-            self.async_callback(partial(self._fetch_url_response, placeholder, callback)))
+            self.async_callback(self.async_group.add(partial(self._fetch_url_response, placeholder, callback))))
         return placeholder
 
     def _fetch_url_response(self, placeholder, callback, response):
-        self.finish_lock.release()
-        self.log.debug('got %s %s in %.3f, %s requests pending', response.code, response.effective_url, response.request_time, self.finish_lock.counter)
+        self.log.debug('got %s %s in %.3f', response.code, response.effective_url, response.request_time)
         
         xml = placeholder.set_response(self, response)
 
         if callback:
             callback(xml, response)
 
-        self._try_finish_page()
-
     def finish_page(self):
-        self._try_finish_page()
+        self.async_group.try_finish()
 
-    def _try_finish_page(self):
-        if self.finish_lock.is_free():
-            if (self.transform):
-                self._real_finish_with_xsl()
-            else:
-                self._real_finish_wo_xsl()
+    def _finish_page(self):
+        if self.transform:
+            self._real_finish_with_xsl()
+        else:
+            self._real_finish_wo_xsl()
 
     def _real_finish_with_xsl(self):
         self.log.debug('finishing with xsl')
+
         if not self._headers.get("Content-Type", None):
             self.set_header('Content-Type', 'text/html')
 
         try:
             result = str(self.transform(self.doc.to_etree_element()))
             self.log.debug('applying XSLT %s', self.transform_filename)
+            self.write(result)
+            self.log.debug('done')
+            self.finish('')
         except:
-            result = ""
             self.log.exception('failed transformation with XSL %s' % self.transform_filename)
-
-        self.write(result)
-        self.log.debug('done')
-        self.finish('')
-
+            raise
     
     def _real_finish_wo_xsl(self):
         self.log.debug('finishing wo xsl')
+
         if not self._headers.get("Content-Type", None):
             self.set_header('Content-Type', 'application/xml')
 
@@ -364,6 +391,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.finish('')
 
     ###
+    
     def xml_from_file(self, filename):
         return self.xml_cache.load(filename)
 

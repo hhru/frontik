@@ -128,5 +128,28 @@ def test_root_node_frontik_attribute():
         assert(xml.get('frontik') == 'true')
         assert(xml.find('doc').get('frontik', None) is None)
 
+def test_fib0():
+    with FrontikTestInstance() as srv_port:
+        xml = etree.fromstring(urllib2.urlopen('http://localhost:{0}/page/fib/?port={0}&n=0'.format(srv_port)).read())
+        # 0 1 2 3 4 5 6
+        # 1 1 2 3 5 8 13
+        assert(int(xml.text) == 1)
+
+def test_fib2():
+    with FrontikTestInstance() as srv_port:
+        xml = etree.fromstring(urllib2.urlopen('http://localhost:{0}/page/fib/?port={0}&n=2'.format(srv_port)).read())
+        # 0 1 2 3 4 5 6
+        # 1 1 2 3 5 8 13
+        print xml.text
+        assert(int(xml.text) == 2)
+
+def test_fib6():
+    with FrontikTestInstance() as srv_port:
+        xml = etree.fromstring(urllib2.urlopen('http://localhost:{0}/page/fib/?port={0}&n=6'.format(srv_port)).read())
+        # 0 1 2 3 4 5 6
+        # 1 1 2 3 5 8 13
+        print xml.text
+        assert(int(xml.text) == 13)
+
 if __name__ == '__main__':
     nose.main()
