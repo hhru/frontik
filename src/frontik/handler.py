@@ -359,6 +359,8 @@ class PageHandler(tornado.web.RequestHandler):
     def _finish_page(self):
         if self.transform:
             self._real_finish_with_xsl()
+        elif getattr(self, "text", None):
+            self._real_finish_plaintext()
         else:
             self._real_finish_wo_xsl()
 
@@ -390,7 +392,10 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.finish('')
 
-    ###
+    def _real_finish_plaintext(self):
+        self.log.debug("finishing plaintext")
+        self.write(self.text)
+        self.finish('')
     
     def xml_from_file(self, filename):
         return self.xml_cache.load(filename)
