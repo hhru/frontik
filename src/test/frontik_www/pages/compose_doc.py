@@ -2,7 +2,7 @@ import frontik.handler
 from frontik import etree, Doc
 
 class Page(frontik.handler.PageHandler):
-    def get(self):
+    def get_page(self):
         a = Doc('a')
         a.put('aaa')
         self.doc.put(a)
@@ -13,5 +13,3 @@ class Page(frontik.handler.PageHandler):
 
         c = Doc('c')
         self.doc.put(c)
-
-        self.finish_page()

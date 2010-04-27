@@ -5,6 +5,7 @@ from __future__ import with_statement
 import os.path
 import urllib
 
+import functools
 from functools import partial
 
 import tornado.autoreload
@@ -61,7 +62,7 @@ class ResponsePlaceholder(future.FutureVal):
             handler.log.warn('%s failed %s', response.code, response.effective_url)
             self.data = etree.Element('error', dict(url=self.response.effective_url, reason=self.response.error.message))
             if self.response.body:
-                self.data.append(etree.Comment(self.response.body))
+                self.data.append(etree.Comment(self.response.body.replace("--", "%2D%2D")))
         else:
             try:
                 element = etree.fromstring(self.response.body)
@@ -223,8 +224,11 @@ class AsyncGroup(object):
         def new_cb(*args, **kwargs):
             self.counter -= 1
             self.log.debug('%s requests pending', self.counter)
-            intermediate_cb(*args, **kwargs)
-            self.try_finish()
+            
+            try:
+                intermediate_cb(*args, **kwargs)
+            finally:
+                self.try_finish()
 
         return new_cb
 
@@ -259,7 +263,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.doc = Doc(root_node=etree.Element('doc', frontik='true'))
         self.transform = None
 
-        self.async_group = AsyncGroup(self._finish_page, log=self.log)
+        self.finish_group = AsyncGroup(self._finish_page, log=self.log)
 
         self.log.debug('started %s %s', self.request.method, self.request.uri)
 
@@ -282,21 +286,24 @@ class PageHandler(tornado.web.RequestHandler):
 
     ###
 
-    def get_url(self, url, data={}, connect_timeout=0.5, request_timeout=0.5, callback=None):
-        placeholder = ResponsePlaceholder()
-        stats.http_reqs_count += 1
+    def async_callback(self, callback, *args, **kw):
+        return tornado.web.RequestHandler.async_callback(self, self.check_finished(callback, *args, **kw))
 
-        self.http_client.fetch(
-            tornado.httpclient.HTTPRequest(
-                url=frontik.util.make_url(url, **data),
-                headers={
-                    'Connection':'Keep-Alive',
-                    'Keep-Alive':'1000'},
-                connect_timeout=connect_timeout,
-                request_timeout=request_timeout),
-            self.async_callback(self.async_group.add(partial(self._fetch_url_response, placeholder, callback))))
-        return placeholder
+    def check_finished(self, callback, *args, **kwargs):
+        if args or kwargs:
+            callback = partial(callback, *args, **kwargs)
+
+        @functools.wraps(callback)
+        def wrapper(*args, **kwargs):
+            if self._finished:
+                self.log.warn('Page was already finished, %s ignored', callback)
+            else:
+                callback(*args, **kwargs)
         
+        return wrapper
+
+    ###
+
     def fetch_url(self, url, callback=None):
         """
         Прокси метод для get_url, логирующий употребления fetch_url
@@ -308,13 +315,34 @@ class PageHandler(tornado.web.RequestHandler):
         scheme, netloc, path, params, query, fragment = urlparse(url)
         new_url = "{0}://{1}{2}".format(scheme, netloc, path)
         query = parse_qs(query)
-        
-        for key, value in query.iteritems():
-            if len(value) == 1:
-                query[key] = value[0]
 
         return self.get_url(new_url, data=query, callback=callback)
 
+    def _fetch_http_request(self, req, callback):
+        if not self._finished:
+            stats.http_reqs_count += 1
+
+            return self.http_client.fetch(
+                    req,
+                    self.async_callback(self.finish_group.add(callback)))
+        else:
+            self.log.warn('attempted to make http request to %s while page is already finished; ignoring', req.url)
+
+    def get_url(self, url, data={}, connect_timeout=0.5, request_timeout=0.5, callback=None):
+        placeholder = ResponsePlaceholder()
+
+        self._fetch_http_request(
+            tornado.httpclient.HTTPRequest(
+                url=frontik.util.make_url(url, **data),
+                headers={
+                    'Connection':'Keep-Alive',
+                    'Keep-Alive':'1000'},
+                connect_timeout=connect_timeout,
+                request_timeout=request_timeout),
+            partial(self._fetch_url_response, placeholder, callback))
+
+        return placeholder
+        
     def post_url(self,
                  url,
                  data={},
@@ -325,8 +353,6 @@ class PageHandler(tornado.web.RequestHandler):
         
         placeholder = ResponsePlaceholder()
         
-        stats.http_reqs_count += 1
-        
         body, content_type = frontik.util.make_mfd(data, files) if files else (frontik.util.make_qs(data), 'application/x-www-form-urlencoded')
         
         headers = {'Connection':'Keep-Alive',
@@ -334,7 +360,7 @@ class PageHandler(tornado.web.RequestHandler):
                    'Content-Type' : content_type,
                    'Content-Length': str(len(body))}
 
-        self.http_client.fetch(
+        self._fetch_http_request(
             tornado.httpclient.HTTPRequest(
                 method='POST',
                 url=url,
@@ -342,7 +368,8 @@ class PageHandler(tornado.web.RequestHandler):
                 headers=headers,
                 connect_timeout=connect_timeout,
                 request_timeout=request_timeout),
-            self.async_callback(self.async_group.add(partial(self._fetch_url_response, placeholder, callback))))
+            partial(self._fetch_url_response, placeholder, callback))
+        
         return placeholder
 
     def _fetch_url_response(self, placeholder, callback, response):
@@ -354,15 +381,18 @@ class PageHandler(tornado.web.RequestHandler):
             callback(xml, response)
 
     def finish_page(self):
-        self.async_group.try_finish()
+        self.finish_group.try_finish()
 
     def _finish_page(self):
-        if self.transform:
-            self._real_finish_with_xsl()
+        if not self._finished:
+            if self.transform:
+                self._real_finish_with_xsl()
+            else:
+                self._real_finish_wo_xsl()
         elif getattr(self, "text", None):
             self._real_finish_plaintext()
         else:
-            self._real_finish_wo_xsl()
+            log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
     def _real_finish_with_xsl(self):
         self.log.debug('finishing with xsl')
@@ -396,10 +426,11 @@ class PageHandler(tornado.web.RequestHandler):
         self.log.debug("finishing plaintext")
         self.write(self.text)
         self.finish('')
-    
+
+    ###
+
     def xml_from_file(self, filename):
         return self.xml_cache.load(filename)
-
 
     def _set_xsl_log_and_raise(self, msg_template):
         msg = msg_template.format(self.transform_filename)

@@ -39,7 +39,7 @@ def wait_for(fun, n=10):
     for i in range(n):
         if fun():
             return
-        time.sleep(0.1)
+        time.sleep(0.5)
 
     assert(fun())
 

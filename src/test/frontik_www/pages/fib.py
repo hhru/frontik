@@ -4,8 +4,7 @@ import frontik.doc
 import frontik.handler
 
 class Page(frontik.handler.PageHandler):
-    @tornado.web.asynchronous
-    def get(self):
+    def get_page(self):
         n = int(self.get_argument('n'))
 
         if n >= 2:
@@ -31,5 +30,3 @@ class Page(frontik.handler.PageHandler):
                 callback=grp.add(intermediate_cb))
         else:
             self.doc.put('1')
-
-        self.finish_page()
