@@ -18,6 +18,7 @@ from frontik import etree
 from frontik.doc import Doc
 
 import xml_util
+import httplib
 
 import logging
 log = logging.getLogger('frontik.handler')
@@ -43,6 +44,12 @@ ns.prefix = 'x'
 ns['http-header-out'] = http_header_out
 ns['set-http-status'] = set_http_status
 ns['urlencode'] = x_urlencode
+
+class HTTPError(tornado.web.HTTPError):
+    """An exception that will turn into an HTTP error response."""
+    def __init__(self, status_code, log_message=None, *args, **kwargs):
+        tornado.web.HTTPError.__init__(self, status_code, log_message=None, *args)
+        self.browser_message = kwargs.get("browser_message", None)
 
 class ResponsePlaceholder(future.FutureVal):
     def __init__(self):
@@ -267,7 +274,15 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.log.debug('started %s %s', self.request.method, self.request.uri)
 
-    ###
+    def get_error_html(self, status_code, **kwargs):
+        if getattr(kwargs.get("exception", None) ,"browser_message", None):
+            return kwargs["exception"].browser_message
+        else:
+            return "<html><title>%(code)d: %(message)s</title>" \
+                "<body>%(code)d: %(message)s</body></html>" % {
+                "code": status_code,
+                "message": httplib.responses[status_code],
+            }
 
     # эта заляпа сливает обработчики get и post запросов
     @tornado.web.asynchronous
