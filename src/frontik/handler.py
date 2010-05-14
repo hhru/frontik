@@ -210,6 +210,18 @@ def make_file_cache(option_name, option_value, fun):
         return InvalidOptionCache(option_name)
 
 
+def before(before_fun):
+    '''before_fun :: f(self, cb)'''
+
+    def before_fun_deco(fun):
+        def new_fun(self, *args, **kw):
+            def cb():
+                fun(self, *args, **kw)
+            before_fun(self, self.async_callback(cb))
+        return new_fun
+    return before_fun_deco
+        
+
 class AsyncGroup(object):
     ''' группировка нескольких асинхронных запросов '''
 
@@ -274,6 +286,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.log.debug('started %s %s', self.request.method, self.request.uri)
 
+    # TODO возможно, это нужно специализировать под конкретный Use Case
     def get_error_html(self, status_code, **kwargs):
         if getattr(kwargs.get("exception", None) ,"browser_message", None):
             return kwargs["exception"].browser_message
@@ -283,6 +296,8 @@ class PageHandler(tornado.web.RequestHandler):
                 "code": status_code,
                 "message": httplib.responses[status_code],
             }
+
+    ###
 
     # эта заляпа сливает обработчики get и post запросов
     @tornado.web.asynchronous
@@ -308,7 +323,6 @@ class PageHandler(tornado.web.RequestHandler):
         if args or kwargs:
             callback = partial(callback, *args, **kwargs)
 
-        @functools.wraps(callback)
         def wrapper(*args, **kwargs):
             if self._finished:
                 self.log.warn('Page was already finished, %s ignored', callback)
@@ -339,7 +353,7 @@ class PageHandler(tornado.web.RequestHandler):
 
             return self.http_client.fetch(
                     req,
-                    self.async_callback(self.finish_group.add(callback)))
+                    self.finish_group.add(self.async_callback(callback)))
         else:
             self.log.warn('attempted to make http request to %s while page is already finished; ignoring', req.url)
 
