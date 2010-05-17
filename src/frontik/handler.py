@@ -16,6 +16,7 @@ import tornado.options
 import frontik.util
 from frontik import etree
 from frontik.doc import Doc
+import frontik.async
 
 import xml_util
 import httplib
@@ -263,6 +264,8 @@ class PageHandlerGlobals(object):
         self.xsl_cache = make_file_cache('XSL_root', getattr(app_package.config, 'XSL_root', None), xsl_from_file)
 
 
+handlers_pool = frontik.async.AsyncWorkPool(100)        
+
 class PageHandler(tornado.web.RequestHandler):
     '''
     Хендлер для конкретного запроса. Создается на каждый запрос.
@@ -306,6 +309,15 @@ class PageHandler(tornado.web.RequestHandler):
 
     @tornado.web.asynchronous
     def get(self, *args, **kw):
+        handlers_pool.add_task(self.async_callback(self._handle_request))
+
+    def finish(self, *args, **kw):
+        try:
+            tornado.web.RequestHandler.finish(self, *args, **kw)
+        finally:
+            handlers_pool.release()
+
+    def _handle_request(self):
         self.get_page()
         self.finish_page()
 

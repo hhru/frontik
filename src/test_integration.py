@@ -59,11 +59,7 @@ class FrontikTestInstance:
 
         subprocess.Popen(['python2.6',
                           '../src/frontik_srv.py',
-                          '--logfile=./frontik_test.log',
-                          '--loglevel=debug',
-                          '--host=localhost',
-                          '--daemonize=False',
-                          '--document_root=./test/',
+                          '--config=./test/frontik.cfg',
                           '--port=%s' % (self.port,)])
         wait_for(lambda: is_running(self.port))
 
