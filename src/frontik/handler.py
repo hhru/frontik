@@ -46,10 +46,13 @@ ns['http-header-out'] = http_header_out
 ns['set-http-status'] = set_http_status
 ns['urlencode'] = x_urlencode
 
+# TODO cleanup this after release of frontik with frontik.async
+AsyncGroup = frontik.async.AsyncGroup
+
 class HTTPError(tornado.web.HTTPError):
     """An exception that will turn into an HTTP error response."""
-    def __init__(self, status_code, log_message=None, *args, **kwargs):
-        tornado.web.HTTPError.__init__(self, status_code, log_message=None, *args)
+    def __init__(self, status_code, *args, **kwargs):
+        tornado.web.HTTPError.__init__(self, status_code, *args, **kwargs)
         self.browser_message = kwargs.get("browser_message", None)
 
 class ResponsePlaceholder(future.FutureVal):
@@ -211,48 +214,6 @@ def make_file_cache(option_name, option_value, fun):
         return InvalidOptionCache(option_name)
 
 
-def before(before_fun):
-    '''before_fun :: f(self, cb)'''
-
-    def before_fun_deco(fun):
-        def new_fun(self, *args, **kw):
-            def cb():
-                fun(self, *args, **kw)
-            before_fun(self, self.async_callback(cb))
-        return new_fun
-    return before_fun_deco
-        
-
-class AsyncGroup(object):
-    ''' группировка нескольких асинхронных запросов '''
-
-    def __init__(self, finish_cb, log=log):
-        self.counter = 0
-        self.finished = False
-        self.finish_cb = finish_cb
-        self.log = log
-
-    def try_finish(self):
-        if self.counter == 0 and not self.finished:
-            self.log.debug('finishing group with %s', self.finish_cb)
-            self.finished = True
-            self.finish_cb()
-
-    def add(self, intermediate_cb):
-        self.counter += 1
-
-        def new_cb(*args, **kwargs):
-            self.counter -= 1
-            self.log.debug('%s requests pending', self.counter)
-            
-            try:
-                intermediate_cb(*args, **kwargs)
-            finally:
-                self.try_finish()
-
-        return new_cb
-
-
 class PageHandlerGlobals(object):
     '''
     Объект с настройками для всех хендлеров
@@ -285,7 +246,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.doc = Doc(root_node=etree.Element('doc', frontik='true'))
         self.transform = None
 
-        self.finish_group = AsyncGroup(self._finish_page, log=self.log)
+        self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log)
 
         self.log.debug('started %s %s', self.request.method, self.request.uri)
 
