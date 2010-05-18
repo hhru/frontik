@@ -15,8 +15,8 @@ import tornado.options
 
 import frontik.util
 import frontik.http
+import frontik.doc
 from frontik import etree
-from frontik.doc import Doc
 import frontik.async
 
 import xml_util
@@ -246,7 +246,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.request_id = self.request.headers.get('X-Request-Id', stats.next_request_id())
         self.log = PageLogger(self.request_id)
 
-        self.doc = Doc(root_node=etree.Element('doc', frontik='true'))
+        self.doc = frontik.doc.Doc(root_node=etree.Element('doc', frontik='true'))
         self.transform = None
 
         self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log)
