@@ -6,22 +6,8 @@ import weakref
 
 
 class Fetch(object):
-    def __init__(self, req, cb):
-        self.req = req
-        self.cb = cb
+    def __init__(self):
         self.done = False
-
-    def timeout(self):
-        if not self.done:
-            self.done = True
-            self.cb(tornado.httpclient.HTTPResponse(
-                    self.req, 599,
-                    error=tornado.httpclient.CurlError(None, 'timeout')))
-
-    def response(self, resp):
-        if not self.done:
-            self.done = True
-            self.cb(resp)
 
 
 class TimeoutingHttpFetcher(object):
@@ -31,6 +17,21 @@ class TimeoutingHttpFetcher(object):
     def fetch(self, req, cb):
         finish_time = time.time() + req.request_timeout
 
-        f = Fetch(req, cb)
-        self.http_client.io_loop.add_timeout(finish_time, f.timeout)
-        self.http_client.fetch(req, f.response)
+        f = Fetch()
+
+        def timeout_cb():
+            if not f.done:
+                f.done = True
+                cb(tornado.httpclient.HTTPResponse(
+                   req, 599,
+                   error=tornado.httpclient.CurlError(None, 'timeout')))
+
+        timeout = self.http_client.io_loop.add_timeout(finish_time, timeout_cb)
+
+        def response_cb(resp):
+            if not f.done:
+                f.done = True
+                self.http_client.io_loop.remove_timeout(timeout)
+                cb(resp)
+
+        self.http_client.fetch(req, response_cb)
