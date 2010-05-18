@@ -2,6 +2,7 @@ import tornado.web
 
 import frontik.doc
 import frontik.handler
+import frontik.async
 
 class Page(frontik.handler.PageHandler):
     def get_page(self):
@@ -17,7 +18,7 @@ class Page(frontik.handler.PageHandler):
                 self.log.debug('n=%s', self.acc)
                 self.doc.put(str(self.acc))
 
-            grp = frontik.handler.AsyncGroup(final_cb)
+            grp = frontik.async.AsyncGroup(final_cb)
 
             self.get_url(
                 'http://localhost:{0}/page/fib/'.format(self.get_argument('port')),

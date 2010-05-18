@@ -16,6 +16,7 @@ import tornado.options
 import frontik.util
 from frontik import etree
 from frontik.doc import Doc
+import frontik.async
 
 import xml_util
 import httplib
@@ -45,10 +46,13 @@ ns['http-header-out'] = http_header_out
 ns['set-http-status'] = set_http_status
 ns['urlencode'] = x_urlencode
 
+# TODO cleanup this after release of frontik with frontik.async
+AsyncGroup = frontik.async.AsyncGroup
+
 class HTTPError(tornado.web.HTTPError):
     """An exception that will turn into an HTTP error response."""
-    def __init__(self, status_code, log_message=None, *args, **kwargs):
-        tornado.web.HTTPError.__init__(self, status_code, log_message=None, *args)
+    def __init__(self, status_code, *args, **kwargs):
+        tornado.web.HTTPError.__init__(self, status_code, *args, **kwargs)
         self.browser_message = kwargs.get("browser_message", None)
 
 class ResponsePlaceholder(future.FutureVal):
@@ -210,48 +214,6 @@ def make_file_cache(option_name, option_value, fun):
         return InvalidOptionCache(option_name)
 
 
-def before(before_fun):
-    '''before_fun :: f(self, cb)'''
-
-    def before_fun_deco(fun):
-        def new_fun(self, *args, **kw):
-            def cb():
-                fun(self, *args, **kw)
-            before_fun(self, self.async_callback(cb))
-        return new_fun
-    return before_fun_deco
-        
-
-class AsyncGroup(object):
-    ''' группировка нескольких асинхронных запросов '''
-
-    def __init__(self, finish_cb, log=log):
-        self.counter = 0
-        self.finished = False
-        self.finish_cb = finish_cb
-        self.log = log
-
-    def try_finish(self):
-        if self.counter == 0 and not self.finished:
-            self.log.debug('finishing group with %s', self.finish_cb)
-            self.finished = True
-            self.finish_cb()
-
-    def add(self, intermediate_cb):
-        self.counter += 1
-
-        def new_cb(*args, **kwargs):
-            self.counter -= 1
-            self.log.debug('%s requests pending', self.counter)
-            
-            try:
-                intermediate_cb(*args, **kwargs)
-            finally:
-                self.try_finish()
-
-        return new_cb
-
-
 class PageHandlerGlobals(object):
     '''
     Объект с настройками для всех хендлеров
@@ -262,6 +224,7 @@ class PageHandlerGlobals(object):
         self.xml_cache = make_file_cache('XML_root', getattr(app_package.config, 'XML_root', None), xml_from_file)
         self.xsl_cache = make_file_cache('XSL_root', getattr(app_package.config, 'XSL_root', None), xsl_from_file)
 
+working_handlers_count = 0
 
 class PageHandler(tornado.web.RequestHandler):
     '''
@@ -282,9 +245,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.doc = Doc(root_node=etree.Element('doc', frontik='true'))
         self.transform = None
 
-        self.finish_group = AsyncGroup(self._finish_page, log=self.log)
-
-        self.log.debug('started %s %s', self.request.method, self.request.uri)
+        self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log)
 
     # TODO возможно, это нужно специализировать под конкретный Use Case
     def get_error_html(self, status_code, **kwargs):
@@ -306,8 +267,27 @@ class PageHandler(tornado.web.RequestHandler):
 
     @tornado.web.asynchronous
     def get(self, *args, **kw):
-        self.get_page()
-        self.finish_page()
+        global working_handlers_count
+
+        if working_handlers_count < tornado.options.options.workers_count:
+            working_handlers_count += 1
+
+            self.log.debug('started %s %s (workers_count = %s)',
+                           self.request.method, self.request.uri, working_handlers_count)
+
+            self.get_page()
+            self.finish_page()
+        else:
+            self.log.warn('dropping %s %s; too many workers', self.request.method, self.request.uri)
+            raise tornado.web.HTTPError(502)
+
+
+    def finish(self, *args, **kw):
+        try:
+            tornado.web.RequestHandler.finish(self, *args, **kw)
+        finally:
+            global working_handlers_count
+            working_handlers_count -= 1
 
     def get_page(self):
         ''' Эта функция должна быть переопределена в наследнике и
