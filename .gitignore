@@ -1,3 +1,11 @@
 *.pyc
 frontik.iml
 src/frontik_test.log
+debian/files
+debian/*.debhelper
+debian/*.debhelper.log
+debian/*.substvars
+debian/frontik
+build
+debian/pycompat
+debian/python-module-stampdir/
