@@ -1,3 +1,10 @@
+frontik (0.19.5) unstable; urgency=low
+
+  * handler.PageHandler.set_plaintext_response for non-XML responses
+  * fixed plaintext responses in handler._finish_page
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Tue, 18 May 2010 16:58:42 +0400
+
 frontik (0.19.4) unstable; urgency=low
 
   * workers_count -> handlers_count (fix homonymy with tornado_util option)
