@@ -249,6 +249,8 @@ class PageHandler(tornado.web.RequestHandler):
         self.doc = frontik.doc.Doc(root_node=etree.Element('doc', frontik='true'))
         self.transform = None
 
+        self.text = None
+
         self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log)
 
     # TODO возможно, это нужно специализировать под конкретный Use Case
@@ -400,7 +402,7 @@ class PageHandler(tornado.web.RequestHandler):
 
     def _finish_page(self):
         if not self._finished:
-            if getattr(self, "text", None):
+            if self.text is not None:
                 self._real_finish_plaintext()
             elif self.transform:
                 self._real_finish_with_xsl()
