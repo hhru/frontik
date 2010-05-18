@@ -274,15 +274,14 @@ class PageHandler(tornado.web.RequestHandler):
         global working_handlers_count
         working_handlers_count += 1
 
-        if working_handlers_count < tornado.options.options.workers_count:
-
+        if working_handlers_count < tornado.options.options.handlers_count:
             self.log.debug('started %s %s (workers_count = %s)',
                            self.request.method, self.request.uri, working_handlers_count)
 
             self.get_page()
             self.finish_page()
         else:
-            self.log.warn('dropping %s %s; too many workers', self.request.method, self.request.uri)
+            self.log.warn('dropping %s %s; too many workers (%s)', self.request.method, self.request.uri, working_handlers_count)
             raise tornado.web.HTTPError(502)
 
 

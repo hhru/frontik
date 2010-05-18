@@ -21,7 +21,7 @@ if __name__ == '__main__':
     tornado.options.define('app_package', 'frontik_www', str)
     tornado.options.define('app_config', '', str)
     tornado.options.define('suppressed_loggers', ['tornado.httpclient'], list)
-    tornado.options.define('workers_count', 100, int)
+    tornado.options.define('handlers_count', 100, int)
 
     tornado_util.server.bootstrap(config)
 
