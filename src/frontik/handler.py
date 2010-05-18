@@ -224,8 +224,7 @@ class PageHandlerGlobals(object):
         self.xml_cache = make_file_cache('XML_root', getattr(app_package.config, 'XML_root', None), xml_from_file)
         self.xsl_cache = make_file_cache('XSL_root', getattr(app_package.config, 'XSL_root', None), xsl_from_file)
 
-
-handlers_pool = frontik.async.AsyncWorkPool(100)        
+working_handlers_count = 0
 
 class PageHandler(tornado.web.RequestHandler):
     '''
@@ -248,8 +247,6 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log)
 
-        self.log.debug('started %s %s', self.request.method, self.request.uri)
-
     # TODO возможно, это нужно специализировать под конкретный Use Case
     def get_error_html(self, status_code, **kwargs):
         if getattr(kwargs.get("exception", None) ,"browser_message", None):
@@ -270,17 +267,27 @@ class PageHandler(tornado.web.RequestHandler):
 
     @tornado.web.asynchronous
     def get(self, *args, **kw):
-        handlers_pool.add_task(self.async_callback(self._handle_request))
+        global working_handlers_count
+
+        if working_handlers_count < tornado.options.options.workers_count:
+            working_handlers_count += 1
+
+            self.log.debug('started %s %s (workers_count = %s)',
+                           self.request.method, self.request.uri, working_handlers_count)
+
+            self.get_page()
+            self.finish_page()
+        else:
+            self.log.warn('dropping %s %s; too many workers', self.request.method, self.request.uri)
+            raise tornado.web.HTTPError(502)
+
 
     def finish(self, *args, **kw):
         try:
             tornado.web.RequestHandler.finish(self, *args, **kw)
         finally:
-            handlers_pool.release()
-
-    def _handle_request(self):
-        self.get_page()
-        self.finish_page()
+            global working_handlers_count
+            working_handlers_count -= 1
 
     def get_page(self):
         ''' Эта функция должна быть переопределена в наследнике и
