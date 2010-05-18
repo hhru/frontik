@@ -392,17 +392,20 @@ class PageHandler(tornado.web.RequestHandler):
         if callback:
             callback(xml, response)
 
+    def set_plaintext_response(self, text):
+        self.text = text
+
     def finish_page(self):
         self.finish_group.try_finish()
 
     def _finish_page(self):
         if not self._finished:
-            if self.transform:
+            if getattr(self, "text", None):
+                self._real_finish_plaintext()
+            elif self.transform:
                 self._real_finish_with_xsl()
             else:
                 self._real_finish_wo_xsl()
-        elif getattr(self, "text", None):
-            self._real_finish_plaintext()
         else:
             log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
