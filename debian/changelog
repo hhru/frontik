@@ -1,8 +1,9 @@
 frontik (0.19.0) unstable; urgency=low
 
   * HH-12498 поддержан сценарий досрочного завершения формирования страницы
+  * limit number of simultaneous requests
 
- -- 
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 18 May 2010 14:28:58 +0400
 
 frontik (0.18.0) unstable; urgency=low
 
