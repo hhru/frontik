@@ -139,6 +139,7 @@ def test_fib2():
         print xml.text
         assert(int(xml.text) == 2)
 
+
 def test_fib6():
     with FrontikTestInstance() as srv_port:
         xml = etree.fromstring(urllib2.urlopen('http://localhost:{0}/page/fib/?port={0}&n=6'.format(srv_port)).read())
@@ -146,6 +147,13 @@ def test_fib6():
         # 1 1 2 3 5 8 13
         print xml.text
         assert(int(xml.text) == 13)
+
+
+def test_timeout():
+    with FrontikTestInstance() as srv_port:
+        xml = etree.fromstring(urllib2.urlopen('http://localhost:{0}/page/long_page_request/?port={0}'.format(srv_port)).read())
+
+        assert(xml.text == 'error')
 
 if __name__ == '__main__':
     nose.main()

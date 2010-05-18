@@ -14,6 +14,7 @@ import tornado.httpclient
 import tornado.options
 
 import frontik.util
+import frontik.http
 from frontik import etree
 from frontik.doc import Doc
 import frontik.async
@@ -86,7 +87,7 @@ class ResponsePlaceholder(future.FutureVal):
                 handler.log.warn('failed to parse XML response from %s data "%s"',
                                  self.response.effective_url,
                                  body_preview)
-                
+
                 self.data = etree.Element('error', dict(url=self.response.effective_url, reason='invalid XML'))
             else:
                 self.data = [etree.Comment(self.response.effective_url.replace("--", "%2D%2D")), element]
@@ -224,6 +225,9 @@ class PageHandlerGlobals(object):
         self.xml_cache = make_file_cache('XML_root', getattr(app_package.config, 'XML_root', None), xml_from_file)
         self.xsl_cache = make_file_cache('XSL_root', getattr(app_package.config, 'XSL_root', None), xsl_from_file)
 
+        self.http_client = frontik.http.TimeoutingHttpFetcher(
+                tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200))
+
 working_handlers_count = 0
 
 class PageHandler(tornado.web.RequestHandler):
@@ -237,9 +241,9 @@ class PageHandler(tornado.web.RequestHandler):
         self.config = ph_globals.config
         self.xml_cache = ph_globals.xml_cache
         self.xsl_cache = ph_globals.xsl_cache
+        self.http_client = ph_globals.http_client
 
         self.request_id = self.request.headers.get('X-Request-Id', stats.next_request_id())
-        self.http_client = tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200)
         self.log = PageLogger(self.request_id)
 
         self.doc = Doc(root_node=etree.Element('doc', frontik='true'))
@@ -337,7 +341,7 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             self.log.warn('attempted to make http request to %s while page is already finished; ignoring', req.url)
 
-    def get_url(self, url, data={}, connect_timeout=0.5, request_timeout=0.5, callback=None):
+    def get_url(self, url, data={}, connect_timeout=0.5, request_timeout=2, callback=None):
         placeholder = ResponsePlaceholder()
 
         self._fetch_http_request(
@@ -357,7 +361,7 @@ class PageHandler(tornado.web.RequestHandler):
                  data={},
                  headers={},
                  files={},
-                 connect_timeout=0.5, request_timeout=0.5,
+                 connect_timeout=0.5, request_timeout=2,
                  callback=None):
         
         placeholder = ResponsePlaceholder()
