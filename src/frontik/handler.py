@@ -268,9 +268,9 @@ class PageHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     def get(self, *args, **kw):
         global working_handlers_count
+        working_handlers_count += 1
 
         if working_handlers_count < tornado.options.options.workers_count:
-            working_handlers_count += 1
 
             self.log.debug('started %s %s (workers_count = %s)',
                            self.request.method, self.request.uri, working_handlers_count)
