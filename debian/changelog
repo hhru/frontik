@@ -1,3 +1,9 @@
+frontik (0.19.7) unstable; urgency=low
+
+  * log reason of http request failure
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Wed, 19 May 2010 14:56:07 +0400
+
 frontik (0.19.6) unstable; urgency=low
 
   * fix working handlers counting (there was an error of multiple dereferencing)
