@@ -22,6 +22,7 @@ if __name__ == '__main__':
     tornado.options.define('app_config', '', str)
     tornado.options.define('suppressed_loggers', ['tornado.httpclient'], list)
     tornado.options.define('handlers_count', 100, int)
+    tornado.options.define('debug', False, bool)
 
     tornado_util.server.bootstrap(config)
 

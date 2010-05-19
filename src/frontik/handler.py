@@ -4,6 +4,9 @@ from __future__ import with_statement
 
 import os.path
 import urllib
+import xml.sax.saxutils
+import datetime
+import traceback
 
 import functools
 from functools import partial
@@ -13,11 +16,11 @@ import tornado.web
 import tornado.httpclient
 import tornado.options
 
+import frontik.async
 import frontik.util
 import frontik.http
 import frontik.doc
 from frontik import etree
-import frontik.async
 
 import xml_util
 import httplib
@@ -136,6 +139,31 @@ class PageLogger(object):
     exception = _proxy_method('exception')
 
 
+class DebugPageLogger(object):
+    def __init__(self, request_id):
+        self.log_data = []
+        self.request_id = request_id
+
+    def _proxy_method(method_name):
+        def proxy(self, msg, *args, **kw):
+            self.log_data.append('{time} {level}: {message}'.format(time=datetime.datetime.now(),
+                                                                    level=method_name,
+                                                                    message=str(msg) % args))
+            if 'exc_info' in kw:
+                self.log_data.append(repr(kw['exc_info']))
+            #    self.log_data.append(traceback.format_exception(*kw['exc_info']))
+            return getattr(log, method_name)('{%s} %s' % (self.request_id, msg), *args, **kw)
+        return proxy
+
+    debug = _proxy_method('debug')
+    info = _proxy_method('info')
+    warn = _proxy_method('warn')
+    warning = _proxy_method('warning')
+    error = _proxy_method('error')
+    critical = _proxy_method('critical')
+    exception = _proxy_method('exception')
+
+
 class FileCache:
     def __init__(self, root_dir, load_fn):
         '''
@@ -236,15 +264,17 @@ class PageHandler(tornado.web.RequestHandler):
     '''
     
     def __init__(self, ph_globals, application, request):
-        tornado.web.RequestHandler.__init__(self, application, request)
+        self.request_id = request.headers.get('X-Request-Id', stats.next_request_id())
+
+        if tornado.options.options.debug:
+            self.log = DebugPageLogger(self.request_id)
+        else:
+            self.log = PageLogger(self.request_id)
 
         self.config = ph_globals.config
         self.xml_cache = ph_globals.xml_cache
         self.xsl_cache = ph_globals.xsl_cache
         self.http_client = ph_globals.http_client
-
-        self.request_id = self.request.headers.get('X-Request-Id', stats.next_request_id())
-        self.log = PageLogger(self.request_id)
 
         self.doc = frontik.doc.Doc(root_node=etree.Element('doc', frontik='true'))
         self.transform = None
@@ -255,10 +285,22 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.should_dec_whc = False
 
+        tornado.web.RequestHandler.__init__(self, application, request, logger=self.log)
+
     # TODO возможно, это нужно специализировать под конкретный Use Case
     def get_error_html(self, status_code, **kwargs):
-        if getattr(kwargs.get("exception", None) ,"browser_message", None):
+        if tornado.options.options.debug:
+            return '<html><title>{code}</title>' \
+                '<body>' \
+                '<h1>{code}</h1>' \
+                '<pre>{log}</pre></body>' \
+                '</html>'.format(code=status_code,
+                                 log='\n'.join(xml.sax.saxutils.escape(i) for i in self.log.log_data))
+
+        # TODO probably this branch is not needed anymore
+        elif getattr(kwargs.get("exception", None) ,"browser_message", None):
             return kwargs["exception"].browser_message
+        
         else:
             return "<html><title>%(code)d: %(message)s</title>" \
                 "<body>%(code)d: %(message)s</body></html>" % {
