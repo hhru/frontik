@@ -10,6 +10,11 @@ class Fetch(object):
         self.done = False
 
 
+class FetchTimeout(Exception):
+    def __init__(self, url):
+        Exception.__init__(self, 'timeout')
+        self.url = url
+
 class TimeoutingHttpFetcher(object):
     def __init__(self, http_client):
         self.http_client = http_client
@@ -24,7 +29,8 @@ class TimeoutingHttpFetcher(object):
                 f.done = True
                 cb(tornado.httpclient.HTTPResponse(
                    req, 599,
-                   error=tornado.httpclient.CurlError(None, 'timeout')))
+                   error=FetchTimeout(req.url),
+                   request_time=req.request_timeout))
 
         timeout = self.http_client.io_loop.add_timeout(finish_time, timeout_cb)
 

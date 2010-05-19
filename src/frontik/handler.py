@@ -71,8 +71,8 @@ class ResponsePlaceholder(future.FutureVal):
         ret = None
 
         if response.error:
-            handler.log.warn('%s failed %s', response.code, response.effective_url)
-            self.data = etree.Element('error', dict(url=self.response.effective_url, reason=self.response.error.message))
+            handler.log.warn('%s failed %s (%s)', response.code, response.effective_url, str(self.response.error))
+            self.data = etree.Element('error', dict(url=self.response.effective_url, reason=str(self.response.error)))
             if self.response.body:
                 self.data.append(etree.Comment(self.response.body.replace("--", "%2D%2D")))
         else:
@@ -391,7 +391,7 @@ class PageHandler(tornado.web.RequestHandler):
         return placeholder
 
     def _fetch_url_response(self, placeholder, callback, response):
-        self.log.debug('got %s %s in %.3f', response.code, response.effective_url, response.request_time)
+        self.log.debug('got %s %s in %.2fms', response.code, response.effective_url, response.request_time*1000)
         
         xml = placeholder.set_response(self, response)
 
