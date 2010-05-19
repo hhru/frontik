@@ -253,6 +253,8 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log)
 
+        self.should_dec_whc = False
+
     # TODO возможно, это нужно специализировать под конкретный Use Case
     def get_error_html(self, status_code, **kwargs):
         if getattr(kwargs.get("exception", None) ,"browser_message", None):
@@ -275,6 +277,7 @@ class PageHandler(tornado.web.RequestHandler):
     def get(self, *args, **kw):
         global working_handlers_count
         working_handlers_count += 1
+        self.should_dec_whc = True
 
         if working_handlers_count < tornado.options.options.handlers_count:
             self.log.debug('started %s %s (workers_count = %s)',
@@ -288,11 +291,12 @@ class PageHandler(tornado.web.RequestHandler):
 
 
     def finish(self, *args, **kw):
-        try:
-            tornado.web.RequestHandler.finish(self, *args, **kw)
-        finally:
+        if self.should_dec_whc:
             global working_handlers_count
             working_handlers_count -= 1
+            self.should_dec_whc = False
+
+        tornado.web.RequestHandler.finish(self, *args, **kw)
 
     def get_page(self):
         ''' Эта функция должна быть переопределена в наследнике и
