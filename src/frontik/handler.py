@@ -249,13 +249,13 @@ class PageHandler(tornado.web.RequestHandler):
             raise tornado.web.HTTPError(502)
 
 
-    def finish(self, *args, **kw):
+    def finish(self, chunk=None):
         if self.should_dec_whc:
             global working_handlers_count
             working_handlers_count -= 1
             self.should_dec_whc = False
 
-        tornado.web.RequestHandler.finish(self, *args, **kw)
+        tornado.web.RequestHandler.finish(self, chunk)
 
     def get_page(self):
         ''' Эта функция должна быть переопределена в наследнике и
@@ -314,25 +314,21 @@ class PageHandler(tornado.web.RequestHandler):
 
         return placeholder
 
-    def get_url_retry_count(self, url, data={}, retry_count=3, request_timeout=2, callback=None):
+    def get_url_retry(self, url, data={}, retry_count=3, connect_timeout=0.5, request_timeout=2, callback=None):
         placeholder = future.Placeholder()
 
         req = frontik.util.make_get_request(url, data, connect_timeout, request_timeout)
 
         def cb(retry_count, response):
-            if response.error and retry_count:
-                self.log.warn('failed to get %s; retrying', response.effective_url)
+            if response.error and retry_count > 0:
+                self.log.warn('failed to get %s; retrying; retries left = %s', response.effective_url, retry_count)
                 self.http_client.fetch(req,
-                                       self.finish_group.add(
-                                               self.async_callback(
-                                                       partial(cb, retry_count - 1))))
+                                       self.finish_group.add(self.async_callback(partial(cb, retry_count - 1))))
             else:
                 self._fetch_request_response(placeholder, callback, response)
 
         self.http_client.fetch(req,
-                               self.finish_group.add(
-                                       self.async_callback(
-                                               partial(cb, retry_count))))
+                               self.finish_group.add(self.async_callback(partial(cb, retry_count - 1))))
         
         return placeholder
 
