@@ -324,8 +324,11 @@ class PageHandler(tornado.web.RequestHandler):
             if response.error and retry_count > 0:
                 self.log.warn('failed to get %s; retries left = %s; retrying', response.effective_url, retry_count)
                 # TODO use handler-specific ioloop
-                tornado.ioloop.IOLoop.instance().add_timeout(time.time() + retry_delay,
-                    self.finish_group.add(self.async_callback(partial(step2, retry_count))))
+                if retry_delay > 0:
+                    tornado.ioloop.IOLoop.instance().add_timeout(time.time() + retry_delay,
+                        self.finish_group.add(self.async_callback(partial(step2, retry_count))))
+                else:
+                    step2(retry_count)
             else:
                 if response.error and retry_count == 0:
                     self.log.warn('failed to get %s; no more retries left; give up retrying', response.effective_url)
