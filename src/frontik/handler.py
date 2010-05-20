@@ -4,6 +4,7 @@ from __future__ import with_statement
 
 import os.path
 import urllib
+import time
 
 import functools
 from functools import partial
@@ -314,21 +315,29 @@ class PageHandler(tornado.web.RequestHandler):
 
         return placeholder
 
-    def get_url_retry(self, url, data={}, retry_count=3, connect_timeout=0.5, request_timeout=2, callback=None):
+    def get_url_retry(self, url, data={}, retry_count=3, retry_delay=0.1, connect_timeout=0.5, request_timeout=2, callback=None):
         placeholder = future.Placeholder()
 
         req = frontik.util.make_get_request(url, data, connect_timeout, request_timeout)
 
-        def cb(retry_count, response):
+        def step1(retry_count, response):
             if response.error and retry_count > 0:
-                self.log.warn('failed to get %s; retrying; retries left = %s', response.effective_url, retry_count)
-                self.http_client.fetch(req,
-                                       self.finish_group.add(self.async_callback(partial(cb, retry_count - 1))))
+                self.log.warn('failed to get %s; retries left = %s; retrying', response.effective_url, retry_count)
+                # TODO use handler-specific ioloop
+                tornado.ioloop.IOLoop.instance().add_timeout(time.time() + retry_delay,
+                    self.finish_group.add(self.async_callback(partial(step2, retry_count))))
             else:
+                if response.error and retry_count == 0:
+                    self.log.warn('failed to get %s; no more retries left; give up retrying', response.effective_url)
+
                 self._fetch_request_response(placeholder, callback, response)
 
+        def step2(retry_count):
+            self.http_client.fetch(req,
+                                   self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
+
         self.http_client.fetch(req,
-                               self.finish_group.add(self.async_callback(partial(cb, retry_count - 1))))
+                               self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
         
         return placeholder
 
