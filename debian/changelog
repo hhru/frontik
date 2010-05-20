@@ -1,3 +1,15 @@
+frontik (0.19.7~retrycount2) unstable; urgency=low
+
+  * sleep a little between retries
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 20 May 2010 17:44:26 +0400
+
+frontik (0.19.7~retrycount1) unstable; urgency=low
+
+  * add get_url_retry to frontik.handler
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 20 May 2010 16:59:53 +0400
+
 frontik (0.19.7) unstable; urgency=low
 
   * log reason of http request failure
