@@ -56,48 +56,6 @@ class HTTPError(tornado.web.HTTPError):
         tornado.web.HTTPError.__init__(self, status_code, *args, **kwargs)
         self.browser_message = kwargs.get("browser_message", None)
 
-class ResponsePlaceholder(future.FutureVal):
-    def __init__(self):
-        pass
-
-    def set_response(self, handler, response):
-        '''
-        return :: response_as_xml
-
-        None - в случае ошибки парсинга
-        '''
-        self.response = response
-
-        ret = None
-
-        if response.error:
-            handler.log.warn('%s failed %s (%s)', response.code, response.effective_url, str(self.response.error))
-            self.data = etree.Element('error', dict(url=self.response.effective_url, reason=str(self.response.error)))
-            if self.response.body:
-                self.data.append(etree.Comment(self.response.body.replace("--", "%2D%2D")))
-        else:
-            try:
-                element = etree.fromstring(self.response.body)
-            except:
-                if len(self.response.body) > 100:
-                    body_preview = '{0}...'.format(self.response.body[:100])
-                else:
-                    body_preview = self.response.body
-
-                handler.log.warn('failed to parse XML response from %s data "%s"',
-                                 self.response.effective_url,
-                                 body_preview)
-
-                self.data = etree.Element('error', dict(url=self.response.effective_url, reason='invalid XML'))
-            else:
-                self.data = [etree.Comment(self.response.effective_url.replace("--", "%2D%2D")), element]
-                ret = element
-
-        return ret
-
-    def get(self):
-        return self.data
-
 class Stats:
     def __init__(self):
         self.page_count = 0
@@ -336,7 +294,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         return self.get_url(new_url, data=query, callback=callback)
 
-    def _fetch_http_request(self, req, callback):
+    def fetch_request(self, req, callback):
         if not self._finished:
             stats.http_reqs_count += 1
 
@@ -347,9 +305,9 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.warn('attempted to make http request to %s while page is already finished; ignoring', req.url)
 
     def get_url(self, url, data={}, connect_timeout=0.5, request_timeout=2, callback=None):
-        placeholder = ResponsePlaceholder()
+        placeholder = future.Placeholder()
 
-        self._fetch_http_request(
+        self.fetch_request(
             tornado.httpclient.HTTPRequest(
                 url=frontik.util.make_url(url, **data),
                 headers={
@@ -369,7 +327,7 @@ class PageHandler(tornado.web.RequestHandler):
                  connect_timeout=0.5, request_timeout=2,
                  callback=None):
         
-        placeholder = ResponsePlaceholder()
+        placeholder = future.Placeholder()
         
         body, content_type = frontik.util.make_mfd(data, files) if files else (frontik.util.make_qs(data), 'application/x-www-form-urlencoded')
         
@@ -378,7 +336,7 @@ class PageHandler(tornado.web.RequestHandler):
                    'Content-Type' : content_type,
                    'Content-Length': str(len(body))}
 
-        self._fetch_http_request(
+        self.fetch_request(
             tornado.httpclient.HTTPRequest(
                 method='POST',
                 url=url,
@@ -390,10 +348,46 @@ class PageHandler(tornado.web.RequestHandler):
         
         return placeholder
 
+    def _parse_response(self, response):
+        '''
+        return :: (placeholder_data, response_as_xml)
+
+        None - в случае ошибки парсинга
+        '''
+        
+        data = None
+        xml = None
+
+        if response.error:
+            self.log.warn('%s failed %s (%s)', response.code, response.effective_url, str(response.error))
+            data = [etree.Element('error', dict(url=response.effective_url, reason=str(response.error)))]
+            if response.body:
+                data.append(etree.Comment(response.body.replace("--", "%2D%2D")))
+        else:
+            try:
+                element = etree.fromstring(response.body)
+            except:
+                if len(response.body) > 100:
+                    body_preview = '{0}...'.format(response.body[:100])
+                else:
+                    body_preview = response.body
+
+                self.log.warn('failed to parse XML response from %s data "%s"',
+                                 response.effective_url,
+                                 body_preview)
+
+                data = etree.Element('error', dict(url=response.effective_url, reason='invalid XML'))
+            else:
+                data = [etree.Comment(response.effective_url.replace("--", "%2D%2D")), element]
+                xml = element
+
+        return (data, xml)
+
     def _fetch_url_response(self, placeholder, callback, response):
         self.log.debug('got %s %s in %.2fms', response.code, response.effective_url, response.request_time*1000)
         
-        xml = placeholder.set_response(self, response)
+        data, xml = self._parse_response(response)
+        placeholder.set_data(data)
 
         if callback:
             callback(xml, response)
