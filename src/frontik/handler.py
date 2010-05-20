@@ -186,6 +186,7 @@ class PageHandlerGlobals(object):
         self.http_client = frontik.http.TimeoutingHttpFetcher(
                 tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200))
 
+        
 working_handlers_count = 0
 
 class PageHandler(tornado.web.RequestHandler):
@@ -308,20 +309,34 @@ class PageHandler(tornado.web.RequestHandler):
         placeholder = future.Placeholder()
 
         self.fetch_request(
-            tornado.httpclient.HTTPRequest(
-                url=frontik.util.make_url(url, **data),
-                headers={
-                    'Connection':'Keep-Alive',
-                    'Keep-Alive':'1000'},
-                connect_timeout=connect_timeout,
-                request_timeout=request_timeout),
-            partial(self._fetch_url_response, placeholder, callback))
+            frontik.util.make_get_request(url, data, connect_timeout, request_timeout),
+            partial(self._fetch_request_response, placeholder, callback))
 
         return placeholder
+
+    def get_url_retry_count(self, url, data={}, retry_count=3, request_timeout=2, callback=None):
+        placeholder = future.Placeholder()
+
+        req = frontik.util.make_get_request(url, data, connect_timeout, request_timeout)
+
+        def cb(retry_count, response):
+            if response.error and retry_count:
+                self.log.warn('failed to get %s; retrying', response.effective_url)
+                self.http_client.fetch(req,
+                                       self.finish_group.add(
+                                               self.async_callback(
+                                                       partial(cb, retry_count - 1))))
+            else:
+                self._fetch_request_response(placeholder, callback, response)
+
+        self.http_client.fetch(req,
+                               self.finish_group.add(
+                                       self.async_callback(
+                                               partial(cb, retry_count))))
         
-    def post_url(self,
-                 url,
-                 data={},
+        return placeholder
+
+    def post_url(self, url, data={},
                  headers={},
                  files={},
                  connect_timeout=0.5, request_timeout=2,
@@ -329,40 +344,25 @@ class PageHandler(tornado.web.RequestHandler):
         
         placeholder = future.Placeholder()
         
-        body, content_type = frontik.util.make_mfd(data, files) if files else (frontik.util.make_qs(data), 'application/x-www-form-urlencoded')
-        
-        headers = {'Connection':'Keep-Alive',
-                   'Keep-Alive':'1000',
-                   'Content-Type' : content_type,
-                   'Content-Length': str(len(body))}
-
         self.fetch_request(
-            tornado.httpclient.HTTPRequest(
-                method='POST',
-                url=url,
-                body=body,
-                headers=headers,
-                connect_timeout=connect_timeout,
-                request_timeout=request_timeout),
-            partial(self._fetch_url_response, placeholder, callback))
+            frontik.util.make_post_request(url, data, headers, files, connect_timeout, request_timeout),
+            partial(self._fetch_request_response, placeholder, callback))
         
         return placeholder
 
     def _parse_response(self, response):
         '''
         return :: (placeholder_data, response_as_xml)
-
         None - в случае ошибки парсинга
         '''
-        
-        data = None
-        xml = None
 
         if response.error:
             self.log.warn('%s failed %s (%s)', response.code, response.effective_url, str(response.error))
             data = [etree.Element('error', dict(url=response.effective_url, reason=str(response.error)))]
             if response.body:
                 data.append(etree.Comment(response.body.replace("--", "%2D%2D")))
+
+            return (data, None)
         else:
             try:
                 element = etree.fromstring(response.body)
@@ -376,14 +376,14 @@ class PageHandler(tornado.web.RequestHandler):
                                  response.effective_url,
                                  body_preview)
 
-                data = etree.Element('error', dict(url=response.effective_url, reason='invalid XML'))
+                return (etree.Element('error', dict(url=response.effective_url, reason='invalid XML')),
+                        None)
+
             else:
-                data = [etree.Comment(response.effective_url.replace("--", "%2D%2D")), element]
-                xml = element
+                return ([etree.Comment(response.effective_url.replace("--", "%2D%2D")), element],
+                        element)
 
-        return (data, xml)
-
-    def _fetch_url_response(self, placeholder, callback, response):
+    def _fetch_request_response(self, placeholder, callback, response):
         self.log.debug('got %s %s in %.2fms', response.code, response.effective_url, response.request_time*1000)
         
         data, xml = self._parse_response(response)
@@ -392,8 +392,12 @@ class PageHandler(tornado.web.RequestHandler):
         if callback:
             callback(xml, response)
 
+    ###
+
     def set_plaintext_response(self, text):
         self.text = text
+
+    ###
 
     def finish_page(self):
         self.finish_group.try_finish()
