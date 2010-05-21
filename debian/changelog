@@ -1,8 +1,12 @@
 frontik (0.20.0) unstable; urgency=low
 
+  [ Andrey Tatarinov ]
   * merge branch 'retry-count'
 
- -- Andrey Tatarinov <a.tatarinov@hh.ru>  Fri, 21 May 2010 13:31:06 +0400
+  [ Dmitry Zubov ]
+  * make_put_request, make_delete_request methods 
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Fri, 21 May 2010 13:49:06 +0400
 
 frontik (0.19.7~retrycount2) unstable; urgency=low
 

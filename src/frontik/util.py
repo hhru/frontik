@@ -138,3 +138,18 @@ def make_post_request(url, data={}, headers={}, files={},
                 connect_timeout=connect_timeout,
                 request_timeout=request_timeout)
 
+def make_put_request(url, data={}, body="", connect_timeout=0.5, request_timeout=2):
+    return tornado.httpclient.HTTPRequest(
+                    url=make_url(url, **data),
+                    method='PUT',
+                    body=body,
+                    connect_timeout=connect_timeout,
+                    request_timeout=request_timeout)
+
+def make_delete_request(url, data={}, connect_timeout=0.5, request_timeout=2):
+    return tornado.httpclient.HTTPRequest(
+                    url=make_url(url, **data),
+                    method='DELETE',
+                    connect_timeout=connect_timeout,
+                    request_timeout=request_timeout)
+
