@@ -4,6 +4,7 @@ from __future__ import with_statement
 
 import os.path
 import urllib
+import time
 
 import functools
 from functools import partial
@@ -55,48 +56,6 @@ class HTTPError(tornado.web.HTTPError):
     def __init__(self, status_code, *args, **kwargs):
         tornado.web.HTTPError.__init__(self, status_code, *args, **kwargs)
         self.browser_message = kwargs.get("browser_message", None)
-
-class ResponsePlaceholder(future.FutureVal):
-    def __init__(self):
-        pass
-
-    def set_response(self, handler, response):
-        '''
-        return :: response_as_xml
-
-        None - в случае ошибки парсинга
-        '''
-        self.response = response
-
-        ret = None
-
-        if response.error:
-            handler.log.warn('%s failed %s (%s)', response.code, response.effective_url, str(self.response.error))
-            self.data = etree.Element('error', dict(url=self.response.effective_url, reason=str(self.response.error)))
-            if self.response.body:
-                self.data.append(etree.Comment(self.response.body.replace("--", "%2D%2D")))
-        else:
-            try:
-                element = etree.fromstring(self.response.body)
-            except:
-                if len(self.response.body) > 100:
-                    body_preview = '{0}...'.format(self.response.body[:100])
-                else:
-                    body_preview = self.response.body
-
-                handler.log.warn('failed to parse XML response from %s data "%s"',
-                                 self.response.effective_url,
-                                 body_preview)
-
-                self.data = etree.Element('error', dict(url=self.response.effective_url, reason='invalid XML'))
-            else:
-                self.data = [etree.Comment(self.response.effective_url.replace("--", "%2D%2D")), element]
-                ret = element
-
-        return ret
-
-    def get(self):
-        return self.data
 
 class Stats:
     def __init__(self):
@@ -228,6 +187,7 @@ class PageHandlerGlobals(object):
         self.http_client = frontik.http.TimeoutingHttpFetcher(
                 tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200))
 
+        
 working_handlers_count = 0
 
 class PageHandler(tornado.web.RequestHandler):
@@ -290,13 +250,13 @@ class PageHandler(tornado.web.RequestHandler):
             raise tornado.web.HTTPError(502)
 
 
-    def finish(self, *args, **kw):
+    def finish(self, chunk=None):
         if self.should_dec_whc:
             global working_handlers_count
             working_handlers_count -= 1
             self.should_dec_whc = False
 
-        tornado.web.RequestHandler.finish(self, *args, **kw)
+        tornado.web.RequestHandler.finish(self, chunk)
 
     def get_page(self):
         ''' Эта функция должна быть переопределена в наследнике и
@@ -336,7 +296,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         return self.get_url(new_url, data=query, callback=callback)
 
-    def _fetch_http_request(self, req, callback):
+    def fetch_request(self, req, callback):
         if not self._finished:
             stats.http_reqs_count += 1
 
@@ -347,59 +307,105 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.warn('attempted to make http request to %s while page is already finished; ignoring', req.url)
 
     def get_url(self, url, data={}, connect_timeout=0.5, request_timeout=2, callback=None):
-        placeholder = ResponsePlaceholder()
+        placeholder = future.Placeholder()
 
-        self._fetch_http_request(
-            tornado.httpclient.HTTPRequest(
-                url=frontik.util.make_url(url, **data),
-                headers={
-                    'Connection':'Keep-Alive',
-                    'Keep-Alive':'1000'},
-                connect_timeout=connect_timeout,
-                request_timeout=request_timeout),
-            partial(self._fetch_url_response, placeholder, callback))
+        self.fetch_request(
+            frontik.util.make_get_request(url, data, connect_timeout, request_timeout),
+            partial(self._fetch_request_response, placeholder, callback))
 
         return placeholder
+
+    def get_url_retry(self, url, data={}, retry_count=3, retry_delay=0.1, connect_timeout=0.5, request_timeout=2, callback=None):
+        placeholder = future.Placeholder()
+
+        req = frontik.util.make_get_request(url, data, connect_timeout, request_timeout)
+
+        def step1(retry_count, response):
+            if response.error and retry_count > 0:
+                self.log.warn('failed to get %s; retries left = %s; retrying', response.effective_url, retry_count)
+                # TODO use handler-specific ioloop
+                if retry_delay > 0:
+                    tornado.ioloop.IOLoop.instance().add_timeout(time.time() + retry_delay,
+                        self.finish_group.add(self.async_callback(partial(step2, retry_count))))
+                else:
+                    step2(retry_count)
+            else:
+                if response.error and retry_count == 0:
+                    self.log.warn('failed to get %s; no more retries left; give up retrying', response.effective_url)
+
+                self._fetch_request_response(placeholder, callback, response)
+
+        def step2(retry_count):
+            self.http_client.fetch(req,
+                                   self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
+
+        self.http_client.fetch(req,
+                               self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
         
-    def post_url(self,
-                 url,
-                 data={},
+        return placeholder
+
+    def post_url(self, url, data={},
                  headers={},
                  files={},
                  connect_timeout=0.5, request_timeout=2,
                  callback=None):
         
-        placeholder = ResponsePlaceholder()
+        placeholder = future.Placeholder()
         
-        body, content_type = frontik.util.make_mfd(data, files) if files else (frontik.util.make_qs(data), 'application/x-www-form-urlencoded')
-        
-        headers = {'Connection':'Keep-Alive',
-                   'Keep-Alive':'1000',
-                   'Content-Type' : content_type,
-                   'Content-Length': str(len(body))}
-
-        self._fetch_http_request(
-            tornado.httpclient.HTTPRequest(
-                method='POST',
-                url=url,
-                body=body,
-                headers=headers,
-                connect_timeout=connect_timeout,
-                request_timeout=request_timeout),
-            partial(self._fetch_url_response, placeholder, callback))
+        self.fetch_request(
+            frontik.util.make_post_request(url, data, headers, files, connect_timeout, request_timeout),
+            partial(self._fetch_request_response, placeholder, callback))
         
         return placeholder
 
-    def _fetch_url_response(self, placeholder, callback, response):
+    def _parse_response(self, response):
+        '''
+        return :: (placeholder_data, response_as_xml)
+        None - в случае ошибки парсинга
+        '''
+
+        if response.error:
+            self.log.warn('%s failed %s (%s)', response.code, response.effective_url, str(response.error))
+            data = [etree.Element('error', dict(url=response.effective_url, reason=str(response.error)))]
+            if response.body:
+                data.append(etree.Comment(response.body.replace("--", "%2D%2D")))
+
+            return (data, None)
+        else:
+            try:
+                element = etree.fromstring(response.body)
+            except:
+                if len(response.body) > 100:
+                    body_preview = '{0}...'.format(response.body[:100])
+                else:
+                    body_preview = response.body
+
+                self.log.warn('failed to parse XML response from %s data "%s"',
+                                 response.effective_url,
+                                 body_preview)
+
+                return (etree.Element('error', dict(url=response.effective_url, reason='invalid XML')),
+                        None)
+
+            else:
+                return ([etree.Comment(response.effective_url.replace("--", "%2D%2D")), element],
+                        element)
+
+    def _fetch_request_response(self, placeholder, callback, response):
         self.log.debug('got %s %s in %.2fms', response.code, response.effective_url, response.request_time*1000)
         
-        xml = placeholder.set_response(self, response)
+        data, xml = self._parse_response(response)
+        placeholder.set_data(data)
 
         if callback:
             callback(xml, response)
 
+    ###
+
     def set_plaintext_response(self, text):
         self.text = text
+
+    ###
 
     def finish_page(self):
         self.finish_group.try_finish()
