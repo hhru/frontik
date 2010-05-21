@@ -22,6 +22,12 @@ class StopHandler(tornado.web.RequestHandler):
         tornado.ioloop.IOLoop.instance().stop()
 
 
+class PdbHandler(tornado.web.RequestHandler):
+    def get(self):
+        import pdb
+        pdb.set_trace()
+
+
 class FrontikModuleDispatcher(object):
     def __init__(self, app_dir, app_package_name='frontik_www'):
         self.app_dir = app_dir
@@ -87,6 +93,7 @@ def get_app(pages_dispatcher):
     return tornado.web.Application([
             (r'/status/', StatusHandler),
             (r'/stop/', StopHandler),
+            (r'/pdb/', PdbHandler),
             (r'/page/.*', pages_dispatcher),
             ])
 

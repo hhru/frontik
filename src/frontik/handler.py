@@ -7,6 +7,7 @@ import urllib
 import xml.sax.saxutils
 import datetime
 import traceback
+import weakref
 
 import functools
 from functools import partial
@@ -112,7 +113,7 @@ class Stats:
 
 stats = Stats()
 
-class PageLogger(object):
+class PageLogger(logging.Logger):
     '''
     This class is supposed to fix huge memory 'leak' in logging
     module. I.e. every call to logging.getLogger(some_unique_name)
@@ -124,44 +125,21 @@ class PageLogger(object):
     '''
     
     def __init__(self, request_id):
-        self.request_id = request_id
+        logging.Logger.__init__(self, 'frontik.handler.{0}'.format(request_id))
 
-    def _proxy_method(method_name):
-        def proxy(self, msg, *args):
-            return getattr(log, method_name)('{%s} %s' % (self.request_id, msg), *args)
-        return proxy
-
-    debug = _proxy_method('debug')
-    info = _proxy_method('info')
-    warn = _proxy_method('warn')
-    error = _proxy_method('error')
-    critical = _proxy_method('critical')
-    exception = _proxy_method('exception')
+    def handle(self, record):
+        return log.handle(record)
 
 
-class DebugPageLogger(object):
+_debug_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+class DebugPageLogger(logging.Logger):
     def __init__(self, request_id):
+        logging.Logger.__init__(self, 'frontik.handler.{0}'.format(request_id))
         self.log_data = []
-        self.request_id = request_id
 
-    def _proxy_method(method_name):
-        def proxy(self, msg, *args, **kw):
-            self.log_data.append('{time} {level}: {message}'.format(time=datetime.datetime.now(),
-                                                                    level=method_name,
-                                                                    message=str(msg) % args))
-            if 'exc_info' in kw:
-                self.log_data.append(repr(kw['exc_info']))
-            #    self.log_data.append(traceback.format_exception(*kw['exc_info']))
-            return getattr(log, method_name)('{%s} %s' % (self.request_id, msg), *args, **kw)
-        return proxy
-
-    debug = _proxy_method('debug')
-    info = _proxy_method('info')
-    warn = _proxy_method('warn')
-    warning = _proxy_method('warning')
-    error = _proxy_method('error')
-    critical = _proxy_method('critical')
-    exception = _proxy_method('exception')
+    def handle(self, record):
+        self.log_data.append(_debug_formatter.format(record))
+        return log.handle(record)
 
 
 class FileCache:
@@ -258,6 +236,9 @@ class PageHandlerGlobals(object):
 
 working_handlers_count = 0
 
+def weakrefd_callback(cb):
+    return lambda *args, **kw: cb()(*args, **kw) if cb() else None
+
 class PageHandler(tornado.web.RequestHandler):
     '''
     Хендлер для конкретного запроса. Создается на каждый запрос.
@@ -281,7 +262,8 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.text = None
 
-        self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log)
+        self.finish_group = frontik.async.AsyncGroup(weakrefd_callback(weakref.ref(self._finish_page)),
+                                                     log=weakrefd_callback(weakref.ref(self.log.debug)))
 
         self.should_dec_whc = False
 
@@ -293,9 +275,9 @@ class PageHandler(tornado.web.RequestHandler):
             return '<html><title>{code}</title>' \
                 '<body>' \
                 '<h1>{code}</h1>' \
-                '<pre>{log}</pre></body>' \
+                '{log}</body>' \
                 '</html>'.format(code=status_code,
-                                 log='\n'.join(xml.sax.saxutils.escape(i) for i in self.log.log_data))
+                                 log='<br/>'.join(xml.sax.saxutils.escape(i).replace('\n', '<br/>').replace(' ', '&nbsp;') for i in self.log.log_data))
 
         # TODO probably this branch is not needed anymore
         elif getattr(kwargs.get("exception", None) ,"browser_message", None):
@@ -330,7 +312,6 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             self.log.warn('dropping %s %s; too many workers (%s)', self.request.method, self.request.uri, working_handlers_count)
             raise tornado.web.HTTPError(502)
-
 
     def finish(self, *args, **kw):
         if self.should_dec_whc:

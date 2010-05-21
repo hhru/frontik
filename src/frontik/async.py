@@ -28,7 +28,7 @@ class AsyncGroup(object):
     Frontik uses this class to find the right moment to finish page.
     '''
 
-    def __init__(self, finish_cb, log=log):
+    def __init__(self, finish_cb, log=log.debug):
         self.counter = 0
         self.finished = False
         self.finish_cb = finish_cb
@@ -36,7 +36,7 @@ class AsyncGroup(object):
 
     def try_finish(self):
         if self.counter == 0 and not self.finished:
-            self.log.debug('finishing group with %s', self.finish_cb)
+            self.log('finishing group with %s', self.finish_cb)
             self.finished = True
             self.finish_cb()
 
@@ -45,7 +45,7 @@ class AsyncGroup(object):
 
         def new_cb(*args, **kwargs):
             self.counter -= 1
-            self.log.debug('%s requests pending', self.counter)
+            self.log('%s requests pending', self.counter)
 
             try:
                 intermediate_cb(*args, **kwargs)
