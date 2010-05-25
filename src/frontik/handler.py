@@ -7,6 +7,11 @@ import urllib
 
 import functools
 from functools import partial
+import httplib
+import os.path
+import time
+import urllib
+import weakref
 
 import tornado.autoreload
 import tornado.web
@@ -20,7 +25,6 @@ from frontik import etree
 import frontik.async
 
 import xml_util
-import httplib
 
 import logging
 log = logging.getLogger('frontik.handler')
@@ -230,6 +234,9 @@ class PageHandlerGlobals(object):
 
 working_handlers_count = 0
 
+def weakrefd_callback(cb):
+    return lambda *args, **kw: cb()(*args, **kw) if cb() else None
+
 class PageHandler(tornado.web.RequestHandler):
     '''
     Хендлер для конкретного запроса. Создается на каждый запрос.
@@ -251,9 +258,13 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.text = None
 
-        self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log)
+        self.finish_group = frontik.async.AsyncGroup(weakrefd_callback(weakref.ref(self._finish_page)),
+                                                     log=weakrefd_callback(weakref.ref(self.log.debug)))
 
         self.should_dec_whc = False
+
+    def __del__(self):
+        self.log.debug('handler deleted')
 
     # TODO возможно, это нужно специализировать под конкретный Use Case
     def get_error_html(self, status_code, **kwargs):
