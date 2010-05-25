@@ -22,6 +22,20 @@ class StopHandler(tornado.web.RequestHandler):
         tornado.ioloop.IOLoop.instance().stop()
 
 
+class CountPageHandlerInstances(tornado.web.RequestHandler):
+    def get(self):
+        import gc
+        import frontik.handler
+        hh = tuple([i for i in gc.get_objects()
+                    if isinstance(i, frontik.handler.PageHandler)])
+
+        if len(hh) > 0:
+            import pdb; pdb.set_trace()
+
+        self.finish('{0}\n{1}'.format(len(hh), [i for i in gc.get_referrers(*hh)
+                                                if i is not hh]))
+
+
 class FrontikModuleDispatcher(object):
     def __init__(self, app_dir, app_package_name='frontik_www'):
         self.app_dir = app_dir
@@ -87,6 +101,7 @@ def get_app(pages_dispatcher):
     return tornado.web.Application([
             (r'/status/', StatusHandler),
             (r'/stop/', StopHandler),
+            (r'/ph_count/', CountPageHandlerInstances),
             (r'/page/.*', pages_dispatcher),
             ])
 
