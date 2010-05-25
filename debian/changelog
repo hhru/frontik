@@ -1,3 +1,9 @@
+frontik (0.20.2) unstable; urgency=low
+
+  * dependency from tornado >= 0.2~hh17
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 25 May 2010 16:09:39 +0400
+
 frontik (0.20.1) unstable; urgency=low
 
   * merge with 'haxo/master'
@@ -25,6 +31,19 @@ frontik (0.19.7~retrycount1) unstable; urgency=low
   * add get_url_retry to frontik.handler
 
  -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 20 May 2010 16:59:53 +0400
+
+frontik (0.19.7fix3) unstable; urgency=low
+
+  * dependency from tornado >= 0.2~hh17
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 25 May 2010 14:52:23 +0400
+
+frontik (0.19.7fix2) unstable; urgency=low
+
+  * fix memory leak with cycle references with self.finish_group
+  * (fix1 was already taken)
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 25 May 2010 13:33:58 +0400
 
 frontik (0.19.7) unstable; urgency=low
 
