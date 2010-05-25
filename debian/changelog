@@ -1,8 +1,18 @@
+frontik (0.20.3) unstable; urgency=low
+
+  * version bumb 
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Tue, 25 May 2010 14:31:01 +0400
+
 frontik (0.20.1) unstable; urgency=low
 
+  [ Andrey Tatarinov ]
   * merge with 'haxo/master'
 
- -- Andrey Tatarinov <a.tatarinov@hh.ru>  Fri, 21 May 2010 14:50:59 +0400
+  [ Dmitry Zubov ]
+  * test build 
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Tue, 25 May 2010 14:25:02 +0400
 
 frontik (0.20.0) unstable; urgency=low
 
