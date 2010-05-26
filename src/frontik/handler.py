@@ -215,9 +215,6 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.should_dec_whc = False
 
-    def __del__(self):
-        self.log.debug('handler deleted')
-
     # TODO возможно, это нужно специализировать под конкретный Use Case
     def get_error_html(self, status_code, **kwargs):
         if getattr(kwargs.get("exception", None) ,"browser_message", None):
