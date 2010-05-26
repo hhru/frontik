@@ -38,9 +38,18 @@ class AsyncGroup(object):
         if self.counter == 0 and not self.finished:
             self.log('finishing group with %s', self.finish_cb)
             self.finished = True
-            self.finish_cb()
+
+            try:
+                self.finish_cb()
+            finally:
+
+                # prevent possible cycle references
+                self.finish_cb = None
+                self.log = None
 
     def add(self, intermediate_cb):
+        assert(not self.finished)
+        
         self.counter += 1
 
         def new_cb(*args, **kwargs):

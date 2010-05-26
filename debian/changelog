@@ -1,3 +1,56 @@
+frontik (0.20.2) unstable; urgency=low
+
+  * dependency from tornado >= 0.2~hh17
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 25 May 2010 16:09:39 +0400
+
+frontik (0.20.1) unstable; urgency=low
+
+  * merge with 'haxo/master'
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Fri, 21 May 2010 14:50:59 +0400
+
+frontik (0.20.0) unstable; urgency=low
+
+  [ Andrey Tatarinov ]
+  * merge branch 'retry-count'
+
+  [ Dmitry Zubov ]
+  * make_put_request, make_delete_request methods 
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Fri, 21 May 2010 13:49:06 +0400
+
+frontik (0.19.7~retrycount2) unstable; urgency=low
+
+  * sleep a little between retries
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 20 May 2010 17:44:26 +0400
+
+frontik (0.19.7~retrycount1) unstable; urgency=low
+
+  * add get_url_retry to frontik.handler
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 20 May 2010 16:59:53 +0400
+
+frontik (0.19.7fix3) unstable; urgency=low
+
+  * dependency from tornado >= 0.2~hh17
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 25 May 2010 14:52:23 +0400
+
+frontik (0.19.7fix2) unstable; urgency=low
+
+  * fix memory leak with cycle references with self.finish_group
+  * (fix1 was already taken)
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 25 May 2010 13:33:58 +0400
+
+frontik (0.19.7) unstable; urgency=low
+
+  * log reason of http request failure
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Wed, 19 May 2010 14:56:07 +0400
+
 frontik (0.19.6) unstable; urgency=low
 
   * fix working handlers counting (there was an error of multiple dereferencing)

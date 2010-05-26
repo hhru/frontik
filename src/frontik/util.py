@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
 
+import os
+import httplib
+import mimetools
+import mimetypes
+
 from urllib import urlencode
+
+import tornado.httpclient
 
 def list_unique(l):
     return list(set(l))
@@ -38,8 +45,6 @@ def make_url(base, **query_args):
     else:
         return base 
 
-import os
-
 def get_all_files(root, extension=None):
     out = list()
     for subdir, dirs, files in os.walk(root):
@@ -55,9 +60,6 @@ def dict_concat(dict1, dict2):
     dict3 = copy(dict1)
     dict3.update(dict2)
     return dict3
-
-import httplib
-import mimetools, mimetypes
 
 ENCODE_TEMPLATE= '--%(boundary)s\r\nContent-Disposition: form-data; name="%(name)s\r\n\r\n%(data)s\r\n'
 ENCODE_TEMPLATE_FILE = '--%(boundary)s\r\nContent-Disposition: form-data; name="%(name)s"; filename="%(filename)s"\r\nContent-Type: %(contenttype)s\r\n\r\n%(data)s\r\n'
@@ -108,3 +110,46 @@ def make_mfd(fields, files):
     body += '--%s--\r\n' % BOUNDARY
     content_type = 'multipart/form-data; boundary=%s' % BOUNDARY
     return body, content_type
+
+def make_get_request(url, data={}, connect_timeout=0.5, request_timeout=2):
+    return tornado.httpclient.HTTPRequest(
+                    url=make_url(url, **data),
+                    connect_timeout=connect_timeout,
+                    request_timeout=request_timeout)
+
+
+def make_post_request(url, data={}, headers={}, files={},
+        connect_timeout=0.5, request_timeout=2):
+
+    if files:
+        body, content_type = make_mfd(data, files)
+    else:
+        body = make_qs(data)
+        content_type = 'application/x-www-form-urlencoded'
+
+    headers = {'Content-Type' : content_type,
+               'Content-Length': str(len(body))}
+
+    return tornado.httpclient.HTTPRequest(
+                method='POST',
+                url=url,
+                body=body,
+                headers=headers,
+                connect_timeout=connect_timeout,
+                request_timeout=request_timeout)
+
+def make_put_request(url, data={}, body="", connect_timeout=0.5, request_timeout=2):
+    return tornado.httpclient.HTTPRequest(
+                    url=make_url(url, **data),
+                    method='PUT',
+                    body=body,
+                    connect_timeout=connect_timeout,
+                    request_timeout=request_timeout)
+
+def make_delete_request(url, data={}, connect_timeout=0.5, request_timeout=2):
+    return tornado.httpclient.HTTPRequest(
+                    url=make_url(url, **data),
+                    method='DELETE',
+                    connect_timeout=connect_timeout,
+                    request_timeout=request_timeout)
+
