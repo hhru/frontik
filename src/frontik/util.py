@@ -111,9 +111,10 @@ def make_mfd(fields, files):
     content_type = 'multipart/form-data; boundary=%s' % BOUNDARY
     return body, content_type
 
-def make_get_request(url, data={}, connect_timeout=0.5, request_timeout=2):
+def make_get_request(url, data={}, headers={}, connect_timeout=0.5, request_timeout=2):
     return tornado.httpclient.HTTPRequest(
                     url=make_url(url, **data),
+                    headers=headers,
                     connect_timeout=connect_timeout,
                     request_timeout=request_timeout)
 
@@ -127,29 +128,31 @@ def make_post_request(url, data={}, headers={}, files={},
         body = make_qs(data)
         content_type = 'application/x-www-form-urlencoded'
 
-    headers = {'Content-Type' : content_type,
-               'Content-Length': str(len(body))}
+    headers.update({'Content-Type' : content_type,
+               'Content-Length': str(len(body))})
 
     return tornado.httpclient.HTTPRequest(
                 method='POST',
+                headers=headers,
                 url=url,
                 body=body,
-                headers=headers,
                 connect_timeout=connect_timeout,
                 request_timeout=request_timeout)
 
-def make_put_request(url, data={}, body="", connect_timeout=0.5, request_timeout=2):
+def make_put_request(url, data={}, headers={}, body="", connect_timeout=0.5, request_timeout=2):
     return tornado.httpclient.HTTPRequest(
                     url=make_url(url, **data),
                     method='PUT',
+                    headers=headers,
                     body=body,
                     connect_timeout=connect_timeout,
                     request_timeout=request_timeout)
 
-def make_delete_request(url, data={}, connect_timeout=0.5, request_timeout=2):
+def make_delete_request(url, data={}, headers={}, connect_timeout=0.5, request_timeout=2):
     return tornado.httpclient.HTTPRequest(
                     url=make_url(url, **data),
                     method='DELETE',
+                    headers=headers,
                     connect_timeout=connect_timeout,
                     request_timeout=request_timeout)
 
