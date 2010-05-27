@@ -1,3 +1,10 @@
+frontik (0.20.5) unstable; urgency=low
+
+  * frontik.handler.HTTPError with custom parameters `xml` for error message, `xsl` for
+    transformation and `text` for plaintext response.
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Thu, 27 May 2010 19:11:57 +0400
+
 frontik (0.20.4) unstable; urgency=low
 
   *  `headers` parameter for the high level http requesting methods.

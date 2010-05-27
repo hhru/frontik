@@ -53,8 +53,16 @@ AsyncGroup = frontik.async.AsyncGroup
 class HTTPError(tornado.web.HTTPError):
     """An exception that will turn into an HTTP error response."""
     def __init__(self, status_code, *args, **kwargs):
+
+        def export_and_delete_kwargs(*args):
+            for kwarg in args:
+                setattr(self, kwarg, kwargs.setdefault(kwarg, None)) 
+                del kwargs[kwarg]
+
+        export_and_delete_kwargs("text", "xml", "xsl")
+
         tornado.web.HTTPError.__init__(self, status_code, *args, **kwargs)
-        self.browser_message = kwargs.get("browser_message", None)
+
 
 class Stats:
     def __init__(self):
@@ -218,18 +226,41 @@ class PageHandler(tornado.web.RequestHandler):
     def __del__(self):
         self.log.debug('handler deleted')
 
-    # TODO возможно, это нужно специализировать под конкретный Use Case
-    def get_error_html(self, status_code, **kwargs):
-        if getattr(kwargs.get("exception", None) ,"browser_message", None):
-            return kwargs["exception"].browser_message
-        else:
-            return "<html><title>%(code)d: %(message)s</title>" \
-                "<body>%(code)d: %(message)s</body></html>" % {
-                "code": status_code,
-                "message": httplib.responses[status_code],
-            }
+    def send_error(self, status_code=500, **kwargs):
 
-    ###
+        def standard_send_error():
+            return super(PageHandler, self).send_error(status_code, **kwargs)
+
+        def xsl_send_error():
+            return
+
+        def plaintext_send_error():
+            return
+            
+        exception = kwargs.get("exception", None)
+
+        if exception:
+            self.set_status(status_code)
+
+            if getattr(exception, "text", None) is not None:
+                self.set_plaintext_response(exception.text)
+                return plaintext_send_error()
+
+            if getattr(exception, "xml", None) is not None:
+                self.doc.put(exception.xml)
+
+                if getattr(exception, "xsl", None) is not None:
+                    self.set_xsl(exception.xsl)
+                    return xsl_send_error()
+
+                elif self.transform:
+                    return xsl_send_error()
+
+                else:
+                    return standard_send_error()
+
+        return standard_send_error()
+
 
     # эта заляпа сливает обработчики get и post запросов
     @tornado.web.asynchronous
