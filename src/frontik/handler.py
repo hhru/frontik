@@ -53,14 +53,9 @@ AsyncGroup = frontik.async.AsyncGroup
 class HTTPError(tornado.web.HTTPError):
     """An exception that will turn into an HTTP error response."""
     def __init__(self, status_code, *args, **kwargs):
-
-        def export_and_delete_kwargs(*args):
-            for kwarg in args:
-                setattr(self, kwarg, kwargs.setdefault(kwarg, None)) 
-                del kwargs[kwarg]
-
-        export_and_delete_kwargs("text", "xml", "xsl")
-
+        for kwarg in ["text", "xml", "xsl"]:
+            setattr(self, kwarg, kwargs.setdefault(kwarg, None)) 
+            del kwargs[kwarg]
         tornado.web.HTTPError.__init__(self, status_code, *args, **kwargs)
 
 
@@ -252,13 +247,10 @@ class PageHandler(tornado.web.RequestHandler):
                 if getattr(exception, "xsl", None) is not None:
                     self.set_xsl(exception.xsl)
                     return xsl_send_error()
-
                 elif self.transform:
                     return xsl_send_error()
-
                 else:
                     return standard_send_error()
-
         return standard_send_error()
 
 
