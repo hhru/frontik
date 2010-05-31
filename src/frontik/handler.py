@@ -53,8 +53,11 @@ AsyncGroup = frontik.async.AsyncGroup
 class HTTPError(tornado.web.HTTPError):
     """An exception that will turn into an HTTP error response."""
     def __init__(self, status_code, *args, **kwargs):
+        for kwarg in ["text", "xml", "xsl"]:
+            setattr(self, kwarg, kwargs.setdefault(kwarg, None)) 
+            del kwargs[kwarg]
         tornado.web.HTTPError.__init__(self, status_code, *args, **kwargs)
-        self.browser_message = kwargs.get("browser_message", None)
+
 
 class Stats:
     def __init__(self):
@@ -215,18 +218,37 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.should_dec_whc = False
 
-    # TODO возможно, это нужно специализировать под конкретный Use Case
-    def get_error_html(self, status_code, **kwargs):
-        if getattr(kwargs.get("exception", None) ,"browser_message", None):
-            return kwargs["exception"].browser_message
-        else:
-            return "<html><title>%(code)d: %(message)s</title>" \
-                "<body>%(code)d: %(message)s</body></html>" % {
-                "code": status_code,
-                "message": httplib.responses[status_code],
-            }
+    def send_error(self, status_code=500, **kwargs):
 
-    ###
+        def standard_send_error():
+            return super(PageHandler, self).send_error(status_code, **kwargs)
+
+        def xsl_send_error():
+            return
+
+        def plaintext_send_error():
+            return
+            
+        exception = kwargs.get("exception", None)
+
+        if exception:
+            self.set_status(status_code)
+
+            if getattr(exception, "text", None) is not None:
+                self.set_plaintext_response(exception.text)
+                return plaintext_send_error()
+
+            if getattr(exception, "xml", None) is not None:
+                self.doc.put(exception.xml)
+
+                if getattr(exception, "xsl", None) is not None:
+                    self.set_xsl(exception.xsl)
+                    return xsl_send_error()
+                elif self.transform:
+                    return xsl_send_error()
+                else:
+                    return standard_send_error()
+        return standard_send_error()
 
     # эта заляпа сливает обработчики get и post запросов
     @tornado.web.asynchronous
@@ -306,19 +328,19 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             self.log.warn('attempted to make http request to %s while page is already finished; ignoring', req.url)
 
-    def get_url(self, url, data={}, connect_timeout=0.5, request_timeout=2, callback=None):
+    def get_url(self, url, data={}, headers={}, connect_timeout=0.5, request_timeout=2, callback=None):
         placeholder = future.Placeholder()
 
         self.fetch_request(
-            frontik.util.make_get_request(url, data, connect_timeout, request_timeout),
+            frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout),
             partial(self._fetch_request_response, placeholder, callback))
 
         return placeholder
 
-    def get_url_retry(self, url, data={}, retry_count=3, retry_delay=0.1, connect_timeout=0.5, request_timeout=2, callback=None):
+    def get_url_retry(self, url, data={}, headers={}, retry_count=3, retry_delay=0.1, connect_timeout=0.5, request_timeout=2, callback=None):
         placeholder = future.Placeholder()
 
-        req = frontik.util.make_get_request(url, data, connect_timeout, request_timeout)
+        req = frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout)
 
         def step1(retry_count, response):
             if response.error and retry_count > 0:
