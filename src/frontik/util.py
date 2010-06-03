@@ -156,3 +156,10 @@ def make_delete_request(url, data={}, headers={}, connect_timeout=0.5, request_t
                     connect_timeout=connect_timeout,
                     request_timeout=request_timeout)
 
+def xpath_find(element, expression):
+    result = element.xpath(expression)
+    if isinstance(result, list) and len(result) > 0:
+        return result[0]
+    return None
+
+

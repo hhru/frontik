@@ -1,3 +1,10 @@
+frontik (0.20.7) unstable; urgency=low
+
+  * fixed disability to get Non-ASCII urls
+  * xpath_find method 
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Thu, 03 Jun 2010 17:43:37 +0400
+
 frontik (0.20.6) unstable; urgency=low
 
   * merge with 'haxo/master'

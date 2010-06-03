@@ -410,7 +410,7 @@ class PageHandler(tornado.web.RequestHandler):
                         None)
 
             else:
-                return ([etree.Comment(response.effective_url.replace("--", "%2D%2D")), element],
+                return ([etree.Comment(unicode(response.effective_url.replace("--", "%2D%2D"), "utf8")), element],
                         element)
 
     def _fetch_request_response(self, placeholder, callback, response):
