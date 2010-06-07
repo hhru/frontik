@@ -61,11 +61,13 @@ def dict_concat(dict1, dict2):
     dict3.update(dict2)
     return dict3
 
+
 ENCODE_TEMPLATE= '--%(boundary)s\r\nContent-Disposition: form-data; name="%(name)s\r\n\r\n%(data)s\r\n'
 ENCODE_TEMPLATE_FILE = '--%(boundary)s\r\nContent-Disposition: form-data; name="%(name)s"; filename="%(filename)s"\r\nContent-Type: %(contenttype)s\r\n\r\n%(data)s\r\n'
 
 def get_content_type(filename):
     return mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+
 
 def make_mfd(fields, files):
     ''' 
@@ -111,6 +113,7 @@ def make_mfd(fields, files):
     content_type = 'multipart/form-data; boundary=%s' % BOUNDARY
     return body, content_type
 
+
 def make_get_request(url, data={}, headers={}, connect_timeout=0.5, request_timeout=2):
     return tornado.httpclient.HTTPRequest(
                     url=make_url(url, **data),
@@ -139,6 +142,7 @@ def make_post_request(url, data={}, headers={}, files={},
                 connect_timeout=connect_timeout,
                 request_timeout=request_timeout)
 
+
 def make_put_request(url, data={}, headers={}, body="", connect_timeout=0.5, request_timeout=2):
     return tornado.httpclient.HTTPRequest(
                     url=make_url(url, **data),
@@ -148,6 +152,7 @@ def make_put_request(url, data={}, headers={}, body="", connect_timeout=0.5, req
                     connect_timeout=connect_timeout,
                     request_timeout=request_timeout)
 
+
 def make_delete_request(url, data={}, headers={}, connect_timeout=0.5, request_timeout=2):
     return tornado.httpclient.HTTPRequest(
                     url=make_url(url, **data),
@@ -156,3 +161,12 @@ def make_delete_request(url, data={}, headers={}, connect_timeout=0.5, request_t
                     connect_timeout=connect_timeout,
                     request_timeout=request_timeout)
 
+
+def _asciify_url_char(c):
+    if ord(c) > 127:
+        return hex(ord(c)).replace('0x', '%')
+    else:
+        return c
+
+def asciify_url(url):
+    return ''.join(map(_asciify_url_char, url))

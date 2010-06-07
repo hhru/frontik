@@ -2,11 +2,12 @@
 
 from __future__ import with_statement
 
-import functools
 from functools import partial
+import functools
 import httplib
 import os.path
 import time
+import traceback
 import urllib
 
 import tornado.autoreload
@@ -124,6 +125,9 @@ class FileCache:
         return ret
 
 
+def _source_comment(src):
+    return etree.Comment('Source: {0}'.format(frontik.util.asciify_url(src).replace('--', '%2D%2D')))
+
 def xml_from_file(filename):
     ''' 
     filename -> (status, et.Element)
@@ -137,7 +141,7 @@ def xml_from_file(filename):
             res = etree.parse(file(filename)).getroot()
             tornado.autoreload.watch_file(filename)
 
-            return True, [etree.Comment('file: %s' % (filename,)), res]
+            return True, [_source_comment(filename), res]
         except:
             log.exception('failed to parse %s', filename)
             return False, etree.Element('error', dict(msg='failed to parse file: %s' % (filename,)))
@@ -309,7 +313,6 @@ class PageHandler(tornado.web.RequestHandler):
         Прокси метод для get_url, логирующий употребления fetch_url
         """
         from urlparse import parse_qs, urlparse
-        import traceback
 
         self.log.error("Used deprecated method `fetch_url`. %s", traceback.format_stack()[-2][:-1])
         scheme, netloc, path, params, query, fragment = urlparse(url)
@@ -410,7 +413,7 @@ class PageHandler(tornado.web.RequestHandler):
                         None)
 
             else:
-                return ([etree.Comment(response.effective_url.replace("--", "%2D%2D")), element],
+                return ([_source_comment(response.effective_url), element],
                         element)
 
     def _fetch_request_response(self, placeholder, callback, response):
