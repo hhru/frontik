@@ -1,3 +1,9 @@
+frontik (0.20.6fix1) unstable; urgency=low
+
+  * pass X-Request-Id to all http requests to backends
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 10 Jun 2010 18:52:52 +0400
+
 frontik (0.20.6) unstable; urgency=low
 
   * merge with 'haxo/master'

@@ -322,6 +322,8 @@ class PageHandler(tornado.web.RequestHandler):
         if not self._finished:
             stats.http_reqs_count += 1
 
+            req.headers['X-Request-Id'] = self.request_id
+
             return self.http_client.fetch(
                     req,
                     self.finish_group.add(self.async_callback(callback)))
