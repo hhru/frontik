@@ -452,8 +452,10 @@ class PageHandler(tornado.web.RequestHandler):
             self.set_header('Content-Type', 'text/html')
 
         try:
+            t = time.time()
             result = str(self.transform(self.doc.to_etree_element()))
-            self.log.debug('applying XSLT %s', self.transform_filename)
+            self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
+            
             self.write(result)
             self.log.debug('done')
             self.finish('')
