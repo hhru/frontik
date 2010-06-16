@@ -6,14 +6,24 @@ import tornado.ioloop
 import logging
 from tornado.options import options
 
+from version import version
+from frontik import etree
+from frontik.doc import etree_to_xml
+
 log = logging.getLogger('frontik.server')        
 
 import handler
 
 class VersionHandler(tornado.web.RequestHandler):
     def get(self):
-        from version import version
-        self.write(version)
+        self.set_header('Content-Type', 'text/xml')
+
+        project_el = etree.Element("project", name="frontik")
+        version_el = etree.Element("version")
+        project_el.append(version_el)
+
+        version_el.text = version
+        self.write(etree_to_xml(project_el))
 
 class StatusHandler(tornado.web.RequestHandler):
     def get(self):
