@@ -10,6 +10,11 @@ log = logging.getLogger('frontik.server')
 
 import handler
 
+class VersionHandler(tornado.web.RequestHandler):
+    def get(self):
+        from version import version
+        self.write(version)
+
 class StatusHandler(tornado.web.RequestHandler):
     def get(self):
         self.write('pages served: %s\n' % (handler.stats.page_count,))
@@ -99,6 +104,7 @@ class FrontikModuleDispatcher(object):
 
 def get_app(pages_dispatcher):
     return tornado.web.Application([
+            (r'/version/', VersionHandler),
             (r'/status/', StatusHandler),
             (r'/stop/', StopHandler),
             (r'/ph_count/', CountPageHandlerInstances),
