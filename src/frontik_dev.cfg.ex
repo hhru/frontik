@@ -12,3 +12,7 @@ pidfile = None
 document_root = '../../frontik-www'
 app_package = "frontik_www"
 use_standart_doc = False
+
+debug = True
+debug_login = "hh"
+debug_password = "12345"

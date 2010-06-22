@@ -22,6 +22,7 @@ import frontik.util
 import frontik.http
 import frontik.doc
 from frontik import etree
+from frontik.basic_auth import require_basic_auth
 
 import xml_util
 
@@ -220,22 +221,22 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.text = None
 
-        self.finish_group = frontik.async.AsyncGroup(self._finish_page,
-                                                     log=self.log.debug)
+        self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log.debug)
 
         self.should_dec_whc = False
 
         tornado.web.RequestHandler.__init__(self, application, request, logger=self.log)
 
+    def _get_debug_page(self, status_code, **kwargs):
+        return '<html><title>{code}</title>' \
+            '<body>' \
+            '<h1>{code}</h1>' \
+            '{log}</body>' \
+            '</html>'.format(code=status_code, log='<br/>'.join(xml.sax.saxutils.escape(i).replace('\n', '<br/>').replace(' ', '&nbsp;') for i in self.log.log_data))
+
     def get_error_html(self, status_code, **kwargs):
         if tornado.options.options.debug:
-            return '<html><title>{code}</title>' \
-                '<body>' \
-                '<h1>{code}</h1>' \
-                '{log}</body>' \
-                '</html>'.format(code=status_code,
-                                 log='<br/>'.join(xml.sax.saxutils.escape(i).replace('\n', '<br/>').replace(' ', '&nbsp;') for i in self.log.log_data))
-
+            return self._get_debug_page(status_code, **kwargs)
         else:
             return tornado.web.RequestHandler.get_error_html(self, status_code, **kwargs)
 
@@ -451,9 +452,13 @@ class PageHandler(tornado.web.RequestHandler):
     def finish_page(self):
         self.finish_group.try_finish()
 
-    def _finish_page(self):
+    def _finish_page(self):        
         if not self._finished:
-            if self.text is not None:
+            if "debug" in self.request.arguments:
+                self._real_finish_debug_mode()
+            elif "noxsl" in self.request.arguments:
+                self._real_finish_noxsl_mode()
+            elif self.text is not None:
                 self._real_finish_plaintext()
             elif self.transform:
                 self._real_finish_with_xsl()
@@ -462,6 +467,17 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
+    @require_basic_auth(tornado.options.options.debug_login, tornado.options.options.debug_password)
+    def _real_finish_debug_mode(self):
+        self.set_header('Content-Type', 'text/html')
+        self.write(self._get_debug_page(self._status_code))
+        self.log.debug('done')
+        self.finish('')
+
+    @require_basic_auth(tornado.options.options.debug_login, tornado.options.options.debug_password)
+    def _real_finish_noxsl_mode(self):
+        self._real_finish_wo_xsl()
+    
     def _real_finish_with_xsl(self):
         self.log.debug('finishing with xsl')
 
@@ -477,7 +493,7 @@ class PageHandler(tornado.web.RequestHandler):
         except:
             self.log.exception('failed transformation with XSL %s' % self.transform_filename)
             raise
-    
+
     def _real_finish_wo_xsl(self):
         self.log.debug('finishing wo xsl')
 

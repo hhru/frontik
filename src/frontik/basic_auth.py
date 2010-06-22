@@ -3,7 +3,8 @@ import tornado.web
 def _require_auth(handler):
     handler.set_header('WWW-Authenticate', 'Basic realm="Secure Area"')
     handler.set_status(401)
-
+    handler.finish("")
+        
 def require_basic_auth(real_login, real_passwd):
     def new_deco(fun):
         def new_fun(handler, *args, **kw):
@@ -17,6 +18,7 @@ def require_basic_auth(real_login, real_passwd):
                     _require_auth(handler)
             else:
                 _require_auth(handler)
-
         return new_fun
     return new_deco
+
+
