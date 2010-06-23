@@ -394,8 +394,12 @@ class PageHandler(tornado.web.RequestHandler):
             data = [etree.Element('error', dict(url=response.effective_url, reason=str(response.error), code=str(response.code)))]
 
             if response.body:
-                data.append(etree.Comment(response.body.replace("--", "%2D%2D")))
-
+                _response = response.body.replace("--", "%2D%2D")
+                try:
+                    data.append(etree.Comment(_response))
+                except ValueError:
+                    data.append(etree.Comment(urllib.quote(_response)))
+                    
             return (data, None)
         else:
             try:
