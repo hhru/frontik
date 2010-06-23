@@ -394,11 +394,10 @@ class PageHandler(tornado.web.RequestHandler):
             data = [etree.Element('error', dict(url=response.effective_url, reason=str(response.error), code=str(response.code)))]
 
             if response.body:
-                _response = response.body.replace("--", "%2D%2D")
                 try:
-                    data.append(etree.Comment(_response))
+                    data.append(etree.Comment(response.body.replace("--", "%2D%2D")))
                 except ValueError:
-                    data.append(etree.Comment(urllib.quote(_response)))
+                    self.log.warn("Could not add debug info in XML comment with unparseable response.body. non-ASCII response.")
                     
             return (data, None)
         else:
