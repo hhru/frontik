@@ -1,3 +1,9 @@
+frontik (0.20.11) unstable; urgency=low
+
+  * logging for ValueError during putting comment with debug info.
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Wed, 23 Jun 2010 15:25:16 +0400
+
 frontik (0.20.10) unstable; urgency=low
 
   * /version/ URL  
