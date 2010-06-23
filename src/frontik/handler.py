@@ -22,7 +22,6 @@ import frontik.util
 import frontik.http
 import frontik.doc
 from frontik import etree
-from frontik.basic_auth import require_basic_auth
 
 import xml_util
 
@@ -206,11 +205,6 @@ class PageHandler(tornado.web.RequestHandler):
     def __init__(self, ph_globals, application, request):
         self.request_id = request.headers.get('X-Request-Id', stats.next_request_id())
 
-        if tornado.options.options.debug:
-            self.log = DebugPageLogger(self.request_id)
-        else:
-            self.log = PageLogger(self.request_id)
-
         self.config = ph_globals.config
         self.xml_cache = ph_globals.xml_cache
         self.xsl_cache = ph_globals.xsl_cache
@@ -220,12 +214,32 @@ class PageHandler(tornado.web.RequestHandler):
         self.transform = None
 
         self.text = None
-
-        self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log.debug)
-
         self.should_dec_whc = False
 
-        tornado.web.RequestHandler.__init__(self, application, request, logger=self.log)
+        tornado.web.RequestHandler.__init__(self, application, request)
+
+        if tornado.options.options.debug or "debug" in self.request.arguments:
+            self.log = DebugPageLogger(self.request_id)
+        else:
+            self.log = PageLogger(self.request_id)
+        self._logger = self.log
+
+        if "debug" in self.request.arguments or "noxsl" in self.request.arguments:
+            # Checks if query has `debug` or `noxsl` arguments and applies for HTTP basic auth. 
+            auth_header = self.request.headers.get('Authorization')
+
+            if auth_header:
+                method, auth_b64 = auth_header.split(' ')
+                login, passwd = auth_b64.decode('base64').split(':')
+
+                if login != tornado.options.options.debug_login or passwd != tornado.options.options.debug_password:
+                    self._real_finish_require_auth()
+                    return self
+            else:
+                self._real_finish_require_auth()
+                return self
+
+        self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log.debug)
 
     def _get_debug_page(self, status_code, **kwargs):
         return '<html><title>{code}</title>' \
@@ -378,11 +392,9 @@ class PageHandler(tornado.web.RequestHandler):
                 self._fetch_request_response(placeholder, callback, response)
 
         def step2(retry_count):
-            self.http_client.fetch(req,
-                                   self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
+            self.http_client.fetch(req, self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
 
-        self.http_client.fetch(req,
-                               self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
+        self.http_client.fetch(req, self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
         
         return placeholder
 
@@ -456,8 +468,6 @@ class PageHandler(tornado.web.RequestHandler):
         if not self._finished:
             if "debug" in self.request.arguments:
                 self._real_finish_debug_mode()
-            elif "noxsl" in self.request.arguments:
-                self._real_finish_noxsl_mode()
             elif self.text is not None:
                 self._real_finish_plaintext()
             elif self.transform:
@@ -467,16 +477,16 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
-    @require_basic_auth(tornado.options.options.debug_login, tornado.options.options.debug_password)
     def _real_finish_debug_mode(self):
         self.set_header('Content-Type', 'text/html')
         self.write(self._get_debug_page(self._status_code))
         self.log.debug('done')
         self.finish('')
 
-    @require_basic_auth(tornado.options.options.debug_login, tornado.options.options.debug_password)
-    def _real_finish_noxsl_mode(self):
-        self._real_finish_wo_xsl()
+    def _real_finish_require_auth(self):
+        self.set_header('WWW-Authenticate', 'Basic realm="Secure Area"')
+        self.set_status(401)
+        self.finish("")
     
     def _real_finish_with_xsl(self):
         self.log.debug('finishing with xsl')
