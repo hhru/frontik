@@ -1,3 +1,9 @@
+frontik (0.20.6fix3) unstable; urgency=low
+
+  * /types_count/ handler
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Thu, 24 Jun 2010 15:35:33 +0400
+
 frontik (0.20.6fix2) unstable; urgency=low
 
   * log XSL apply times
