@@ -60,7 +60,7 @@ class HTTPError(tornado.web.HTTPError):
         tornado.web.HTTPError.__init__(self, status_code, *args, **kwargs)
 
 
-class Stats:
+class Stats(object):
     def __init__(self):
         self.page_count = 0
         self.http_reqs_count = 0
@@ -98,7 +98,7 @@ class PageLogger(object):
     exception = _proxy_method('exception')
 
 
-class FileCache:
+class FileCache(object):
     def __init__(self, root_dir, load_fn):
         '''
         load_fn :: filename -> (status, result)
@@ -165,7 +165,7 @@ def xsl_from_file(filename):
     return True, transform
 
 
-class InvalidOptionCache:
+class InvalidOptionCache(object):
     def __init__(self, option):
         self.option = option
 
@@ -325,6 +325,8 @@ class PageHandler(tornado.web.RequestHandler):
         if not self._finished:
             stats.http_reqs_count += 1
 
+            req.headers['X-Request-Id'] = self.request_id
+
             return self.http_client.fetch(
                     req,
                     self.finish_group.add(self.async_callback(callback)))
@@ -457,8 +459,10 @@ class PageHandler(tornado.web.RequestHandler):
             self.set_header('Content-Type', 'text/html')
 
         try:
+            t = time.time()
             result = str(self.transform(self.doc.to_etree_element()))
-            self.log.debug('applying XSLT %s', self.transform_filename)
+            self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
+            
             self.write(result)
             self.log.debug('done')
             self.finish('')

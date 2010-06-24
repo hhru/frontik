@@ -5,7 +5,7 @@ import cStringIO
 import frontik.future
 from frontik import etree as et
 
-class Doc:
+class Doc(object):
     def __init__(self, root_node_name='doc', root_node=None):
         self.root_node_name = root_node_name
         self.root_node = root_node

@@ -44,7 +44,7 @@ def wait_for(fun, n=10):
     assert(fun())
 
 
-class FrontikTestInstance:
+class FrontikTestInstance(object):
     def __enter__(self):
         for port in xrange(9000, 10000):
             try:

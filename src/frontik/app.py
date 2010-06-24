@@ -25,6 +25,7 @@ class VersionHandler(tornado.web.RequestHandler):
         version_el.text = version
         self.write(etree_to_xml(project_el))
 
+
 class StatusHandler(tornado.web.RequestHandler):
     def get(self):
         self.write('pages served: %s\n' % (handler.stats.page_count,))
@@ -37,18 +38,34 @@ class StopHandler(tornado.web.RequestHandler):
         tornado.ioloop.IOLoop.instance().stop()
 
 
-class CountPageHandlerInstances(tornado.web.RequestHandler):
+class CountPageHandlerInstancesHandler(tornado.web.RequestHandler):
     def get(self):
         import gc
         import frontik.handler
         hh = tuple([i for i in gc.get_objects()
                     if isinstance(i, frontik.handler.PageHandler)])
 
-        if len(hh) > 0:
-            import pdb; pdb.set_trace()
+        #if len(hh) > 0:
+        #    import pdb; pdb.set_trace()
 
         self.finish('{0}\n{1}'.format(len(hh), [i for i in gc.get_referrers(*hh)
                                                 if i is not hh]))
+
+
+class CountTypesHandler(tornado.web.RequestHandler):
+    def get(self):
+        import gc
+        from collections import defaultdict
+
+        counts = defaultdict(int)
+
+        for o in gc.get_objects():
+            counts[type(o)] += 1
+
+        for k, v in sorted(counts.items(), key=lambda x:x[0]):
+            self.write('%s\t%s\n' % (v, k))
+
+        self.finish()
 
 
 class FrontikModuleDispatcher(object):
@@ -114,10 +131,11 @@ class FrontikModuleDispatcher(object):
 
 def get_app(pages_dispatcher):
     return tornado.web.Application([
-            (r'/version/', VersionHandler),
-            (r'/status/', StatusHandler),
-            (r'/stop/', StopHandler),
-            (r'/ph_count/', CountPageHandlerInstances),
-            (r'/page/.*', pages_dispatcher),
-            ])
+        (r'/version/', VersionHandler),
+        (r'/status/', StatusHandler),
+        (r'/stop/', StopHandler),
+        (r'/types_count/', CountTypesHandler),
+        (r'/ph_count/', CountPageHandlerInstancesHandler),
+        (r'/page/.*', pages_dispatcher),
+        ])
 
