@@ -485,11 +485,6 @@ class PageHandler(tornado.web.RequestHandler):
         self.log.debug('done')
         self.finish('')
 
-    def _real_finish_require_auth(self):
-        self.set_header('WWW-Authenticate', 'Basic realm="Secure Area"')
-        self.set_status(401)
-        self.finish("")
-    
     def _real_finish_with_xsl(self):
         self.log.debug('finishing with xsl')
 
