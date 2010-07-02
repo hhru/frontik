@@ -178,5 +178,18 @@ def test_timeout():
 
         time.sleep(2)
 
+
+def test_basic_auth():
+    with frontik_server() as srv_port:
+        try:
+            urllib2.urlopen('http://localhost:{0}/page/basic_auth/'.format(srv_port)).info()
+        except urllib2.HTTPError, e:
+            assert(e.code == 401)
+
+        #res = urllib2.urlopen('http://localhost:{0}/page/basic_auth/').info()
+
+        #assert(res.status == 401)
+        #assert(res.getheader('WWW-Authenticate') is not None)
+
 if __name__ == '__main__':
     nose.main()

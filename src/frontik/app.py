@@ -38,6 +38,12 @@ class StopHandler(tornado.web.RequestHandler):
         tornado.ioloop.IOLoop.instance().stop()
 
 
+class PdbHandler(tornado.web.RequestHandler):
+    def get(self):
+        import pdb
+        pdb.set_trace()
+
+
 class CountPageHandlerInstancesHandler(tornado.web.RequestHandler):
     def get(self):
         import gc
@@ -50,7 +56,6 @@ class CountPageHandlerInstancesHandler(tornado.web.RequestHandler):
 
         self.finish('{0}\n{1}'.format(len(hh), [i for i in gc.get_referrers(*hh)
                                                 if i is not hh]))
-
 
 class CountTypesHandler(tornado.web.RequestHandler):
     def get(self):
@@ -135,6 +140,7 @@ def get_app(pages_dispatcher):
         (r'/status/', StatusHandler),
         (r'/stop/', StopHandler),
         (r'/types_count/', CountTypesHandler),
+        (r'/pdb/', PdbHandler),
         (r'/ph_count/', CountPageHandlerInstancesHandler),
         (r'/page/.*', pages_dispatcher),
         ])

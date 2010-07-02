@@ -2,6 +2,8 @@
 
 from __future__ import with_statement
 
+import datetime
+import functools
 from functools import partial
 import functools
 import httplib
@@ -9,17 +11,18 @@ import os.path
 import time
 import traceback
 import urllib
+import xml.sax.saxutils
 
 import tornado.autoreload
 import tornado.web
 import tornado.httpclient
 import tornado.options
 
+import frontik.async
 import frontik.util
 import frontik.http
 import frontik.doc
 from frontik import etree
-import frontik.async
 
 import xml_util
 
@@ -71,7 +74,7 @@ class Stats(object):
 
 stats = Stats()
 
-class PageLogger(object):
+class PageLogger(logging.Logger):
     '''
     This class is supposed to fix huge memory 'leak' in logging
     module. I.e. every call to logging.getLogger(some_unique_name)
@@ -83,19 +86,21 @@ class PageLogger(object):
     '''
     
     def __init__(self, request_id):
-        self.request_id = request_id
+        logging.Logger.__init__(self, 'frontik.handler.{0}'.format(request_id))
 
-    def _proxy_method(method_name):
-        def proxy(self, msg, *args):
-            return getattr(log, method_name)('{%s} %s' % (self.request_id, msg), *args)
-        return proxy
+    def handle(self, record):
+        return log.handle(record)
 
-    debug = _proxy_method('debug')
-    info = _proxy_method('info')
-    warn = _proxy_method('warn')
-    error = _proxy_method('error')
-    critical = _proxy_method('critical')
-    exception = _proxy_method('exception')
+
+_debug_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+class DebugPageLogger(logging.Logger):
+    def __init__(self, request_id):
+        logging.Logger.__init__(self, 'frontik.handler.{0}'.format(request_id))
+        self.log_data = []
+
+    def handle(self, record):
+        self.log_data.append(_debug_formatter.format(record))
+        return log.handle(record)
 
 
 class FileCache(object):
@@ -202,28 +207,58 @@ class PageHandler(tornado.web.RequestHandler):
     '''
     
     def __init__(self, ph_globals, application, request):
-        tornado.web.RequestHandler.__init__(self, application, request)
+        self.request_id = request.headers.get('X-Request-Id', stats.next_request_id())
 
         self.config = ph_globals.config
         self.xml_cache = ph_globals.xml_cache
         self.xsl_cache = ph_globals.xsl_cache
         self.http_client = ph_globals.http_client
 
-        self.request_id = self.request.headers.get('X-Request-Id', stats.next_request_id())
-        self.log = PageLogger(self.request_id)
-
         self.doc = frontik.doc.Doc(root_node=etree.Element('doc', frontik='true'))
         self.transform = None
 
         self.text = None
-
-        self.finish_group = frontik.async.AsyncGroup(self._finish_page,
-                                                     log=self.log.debug)
-
         self.should_dec_whc = False
 
-    def send_error(self, status_code=500, **kwargs):
+        tornado.web.RequestHandler.__init__(self, application, request)
 
+        if tornado.options.options.debug or "debug" in self.request.arguments:
+            self.log = DebugPageLogger(self.request_id)
+        else:
+            self.log = PageLogger(self.request_id)
+        self._logger = self.log
+
+        if "debug" in self.request.arguments or "noxsl" in self.request.arguments:
+            # Checks if query has `debug` or `noxsl` arguments and applies for HTTP basic auth. 
+            auth_header = self.request.headers.get('Authorization')
+
+            if auth_header:
+                method, auth_b64 = auth_header.split(' ')
+                login, passwd = auth_b64.decode('base64').split(':')
+
+                if login != tornado.options.options.debug_login or passwd != tornado.options.options.debug_password:
+                    self._real_finish_require_auth()
+                    return self
+            else:
+                self._real_finish_require_auth()
+                return self
+
+        self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log.debug)
+
+    def _get_debug_page(self, status_code, **kwargs):
+        return '<html><title>{code}</title>' \
+            '<body>' \
+            '<h1>{code}</h1>' \
+            '{log}</body>' \
+            '</html>'.format(code=status_code, log='<br/>'.join(xml.sax.saxutils.escape(i).replace('\n', '<br/>').replace(' ', '&nbsp;') for i in self.log.log_data))
+
+    def get_error_html(self, status_code, **kwargs):
+        if tornado.options.options.debug:
+            return self._get_debug_page(status_code, **kwargs)
+        else:
+            return tornado.web.RequestHandler.get_error_html(self, status_code, **kwargs)
+
+    def send_error(self, status_code=500, **kwargs):
         def standard_send_error():
             return super(PageHandler, self).send_error(status_code, **kwargs)
 
@@ -274,7 +309,6 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             self.log.warn('dropping %s %s; too many workers (%s)', self.request.method, self.request.uri, working_handlers_count)
             raise tornado.web.HTTPError(502)
-
 
     def finish(self, chunk=None):
         if self.should_dec_whc:
@@ -363,11 +397,9 @@ class PageHandler(tornado.web.RequestHandler):
                 self._fetch_request_response(placeholder, callback, response)
 
         def step2(retry_count):
-            self.http_client.fetch(req,
-                                   self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
+            self.http_client.fetch(req, self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
 
-        self.http_client.fetch(req,
-                               self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
+        self.http_client.fetch(req, self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
         
         return placeholder
 
@@ -441,9 +473,11 @@ class PageHandler(tornado.web.RequestHandler):
     def finish_page(self):
         self.finish_group.try_finish()
 
-    def _finish_page(self):
+    def _finish_page(self):        
         if not self._finished:
-            if self.text is not None:
+            if "debug" in self.request.arguments:
+                self._real_finish_debug_mode()
+            elif self.text is not None:
                 self._real_finish_plaintext()
             elif self.transform:
                 self._real_finish_with_xsl()
@@ -452,6 +486,17 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
+    def _real_finish_debug_mode(self):
+        self.set_header('Content-Type', 'text/html')
+        self.write(self._get_debug_page(self._status_code))
+        self.log.debug('done')
+        self.finish('')
+
+    def _real_finish_require_auth(self):
+        self.set_header('WWW-Authenticate', 'Basic realm="Secure Area"')
+        self.set_status(401)
+        self.finish("")
+    
     def _real_finish_with_xsl(self):
         self.log.debug('finishing with xsl')
 
@@ -469,7 +514,7 @@ class PageHandler(tornado.web.RequestHandler):
         except:
             self.log.exception('failed transformation with XSL %s' % self.transform_filename)
             raise
-    
+
     def _real_finish_wo_xsl(self):
         self.log.debug('finishing wo xsl')
 
