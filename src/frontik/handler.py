@@ -19,6 +19,7 @@ import tornado.httpclient
 import tornado.options
 
 import frontik.async
+import frontik.auth
 import frontik.util
 import frontik.http
 import frontik.doc
@@ -230,17 +231,9 @@ class PageHandler(tornado.web.RequestHandler):
 
         if "debug" in self.request.arguments or "noxsl" in self.request.arguments:
             # Checks if query has `debug` or `noxsl` arguments and applies for HTTP basic auth. 
-            auth_header = self.request.headers.get('Authorization')
-
-            if auth_header:
-                method, auth_b64 = auth_header.split(' ')
-                login, passwd = auth_b64.decode('base64').split(':')
-
-                if login != tornado.options.options.debug_login or passwd != tornado.options.options.debug_password:
-                    self._real_finish_require_auth()
-                    return self
-            else:
-                self._real_finish_require_auth()
+            try:
+                frontik.auth.basic(self)
+            except frontik.auth.AuthError:
                 return self
 
         self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log.debug)
