@@ -242,7 +242,7 @@ class PageHandler(tornado.web.RequestHandler):
         return '<html><title>{code}</title>' \
             '<body>' \
             '<h1>{code}</h1>' \
-            '{log}</body>' \
+            '<pre>{log}</pre></body>' \
             '</html>'.format(code=status_code, log='<br/>'.join(xml.sax.saxutils.escape(i).replace('\n', '<br/>').replace(' ', '&nbsp;') for i in self.log.log_data))
 
     def get_error_html(self, status_code, **kwargs):
