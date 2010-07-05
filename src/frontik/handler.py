@@ -443,16 +443,26 @@ class PageHandler(tornado.web.RequestHandler):
 
     def _finish_page(self):
         if not self._finished:
+            res = None
             if self.text is not None:
-                self._real_finish_plaintext()
+                res = self._prepare_finish_plaintext()
             elif self.transform:
-                self._real_finish_with_xsl()
+                res = self._prepare_finish_with_xsl()
             else:
-                self._real_finish_wo_xsl()
+                res = self._prepare_finish_wo_xsl()
+            if hasattr(self.config, 'postprocessor'):
+                self.config.postprocessor(res, self, self._end_finish_page)
+            else:
+                self._end_finish_page(res)
+
         else:
             log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
+    
+    def _end_finish_page(self, data):
+        self.write(data)
+        self.finish('')
 
-    def _real_finish_with_xsl(self):
+    def _prepare_finish_with_xsl(self):
         self.log.debug('finishing with xsl')
 
         if not self._headers.get("Content-Type", None):
@@ -462,30 +472,23 @@ class PageHandler(tornado.web.RequestHandler):
             t = time.time()
             result = str(self.transform(self.doc.to_etree_element()))
             self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
-            
-            self.write(result)
-            self.log.debug('done')
-            self.finish('')
+            return result           
         except:
             self.log.exception('failed transformation with XSL %s' % self.transform_filename)
             raise
     
-    def _real_finish_wo_xsl(self):
+    def _prepare_finish_wo_xsl(self):
         self.log.debug('finishing wo xsl')
 
         if not self._headers.get("Content-Type", None):
             self.set_header('Content-Type', 'application/xml')
 
-        self.write(self.doc.to_string())
+        return self.doc.to_string()
+       
 
-        self.log.debug('done')
-
-        self.finish('')
-
-    def _real_finish_plaintext(self):
+    def _prepare_finish_plaintext(self):
         self.log.debug("finishing plaintext")
-        self.write(self.text)
-        self.finish('')
+        return self.text
 
     ###
 
