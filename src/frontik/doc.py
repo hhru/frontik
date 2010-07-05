@@ -19,7 +19,7 @@ class Doc(object):
             self.data.append(chunk)
 
         return self
-    
+
     def _finalize_data(self):
         def chunk_to_string(chunk):
             # XXX изменится, при смене библиотеки!
