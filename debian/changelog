@@ -1,6 +1,7 @@
 frontik (0.21.0) unstable; urgency=low
 
   * merge 0.20.6fix{1,2,3}
+  * merge 'dborovikov/fuchakubutsu'
 
  --
 
