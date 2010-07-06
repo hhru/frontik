@@ -481,7 +481,9 @@ class PageHandler(tornado.web.RequestHandler):
             else:
                 res = self._prepare_finish_wo_xsl()
             
+            self.postprocessor_started = None
             if hasattr(self.config, 'postprocessor'):
+                self.postprocessor_started = time.time()
                 self.config.postprocessor(res, self, self._end_finish_page)
             else:
                 self._end_finish_page(res)
@@ -490,6 +492,11 @@ class PageHandler(tornado.web.RequestHandler):
             log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
     
     def _end_finish_page(self, data):
+        if self.postprocessor_started:
+            self.log.debug("applied postprocessor '%s.%s' in %.2fms",
+                    self.config.postprocessor.__module__,
+                    self.config.postprocessor.__name__,
+                    (time.time() - self.postprocessor_started)*1000)
         self.finish(data)
         self.log.debug('done')
 
