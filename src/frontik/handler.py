@@ -208,6 +208,8 @@ class PageHandler(tornado.web.RequestHandler):
     '''
     
     def __init__(self, ph_globals, application, request):
+        self.handler_started = time.time()
+        
         self.request_id = request.headers.get('X-Request-Id', stats.next_request_id())
 
         self.config = ph_globals.config
@@ -489,16 +491,15 @@ class PageHandler(tornado.web.RequestHandler):
                 self._end_finish_page(res)
 
         else:
-            log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
-    
+            self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
+
     def _end_finish_page(self, data):
         if self.postprocessor_started:
-            self.log.debug("applied postprocessor '%s.%s' in %.2fms",
-                    self.config.postprocessor.__module__,
-                    self.config.postprocessor.__name__,
+            self.log.debug("applied postprocessor '%s' in %.2fms",
+                    self.config.postprocessor,
                     (time.time() - self.postprocessor_started)*1000)
         self.finish(data)
-        self.log.debug('done')
+        self.log.debug('done in %.2fms', (time.time() - self.handler_started)*1000)
 
     def _prepare_finish_debug_mode(self):
         self.set_header('Content-Type', 'text/html')
