@@ -68,18 +68,18 @@ class PageLogger(logging.Logger):
         logging.Logger.__init__(self, 'frontik.handler.{0}'.format(request_id))
 
     def handle(self, record):
-        return log.handle(record)
+        logging.Logger.handle(self, record)
+        log.handle(record)
 
 
 _debug_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-class DebugPageLogger(logging.Logger):
-    def __init__(self, request_id):
-        logging.Logger.__init__(self, 'frontik.handler.{0}'.format(request_id))
+class DebugPageHandler(logging.Handler):
+    def __init__(self):
+        logging.Handler.__init__(self, logging.DEBUG)
         self.log_data = []
 
     def handle(self, record):
         self.log_data.append(_debug_formatter.format(record))
-        return log.handle(record)
 
 
 class PageHandlerGlobals(object):
@@ -104,24 +104,22 @@ class PageHandler(tornado.web.RequestHandler):
     '''
     
     def __init__(self, ph_globals, application, request):
-        tornado.web.RequestHandler.__init__(self, application, request)
         self.handler_started = time.time()
 
         self.request_id = request.headers.get('X-Request-Id', stats.next_request_id())
+        self.log = PageLogger(self.request_id)
 
+        tornado.web.RequestHandler.__init__(self, application, request, logger=self.log)
+
+        if tornado.options.options.debug or "debug" in self.request.arguments:
+            self.debug_log_handler = DebugPageHandler()
+            self.log.addHandler(self.debug_log_handler)
+
+            self.log.debug('using debug mode')
 
         self.ph_globals = ph_globals
         self.config = ph_globals.config
         self.http_client = ph_globals.http_client
-
-
-        if tornado.options.options.debug or "debug" in self.request.arguments:
-            self.log = DebugPageLogger(self.request_id)
-        else:
-            self.log = PageLogger(self.request_id)
-        # RequestHandler._logger
-        self._logger = self.log
-
 
         self.xml = frontik.handler_xml.PageHandlerXML(self)
         self.doc = self.xml.doc # backwards compatibility for self.doc.put
@@ -144,7 +142,9 @@ class PageHandler(tornado.web.RequestHandler):
             '<body>' \
             '<h1>{code}</h1>' \
             '<pre>{log}</pre></body>' \
-            '</html>'.format(code=status_code, log='<br/>'.join(xml.sax.saxutils.escape(i).replace('\n', '<br/>').replace(' ', '&nbsp;') for i in self.log.log_data))
+            '</html>'.format(code=status_code,
+                             log='<br/>'.join(xml.sax.saxutils.escape(i).replace('\n', '<br/>').replace(' ', '&nbsp;')
+                                              for i in self.debug_log_handler.log_data))
 
     def get_error_html(self, status_code, **kwargs):
         if tornado.options.options.debug:
