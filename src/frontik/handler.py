@@ -89,8 +89,7 @@ class PageHandlerGlobals(object):
     def __init__(self, app_package):
         self.config = app_package.config
 
-        self.xml_cache = frontik.handler_xml.make_file_cache('XML_root', getattr(app_package.config, 'XML_root', None), frontik.handler_xml.xml_from_file)
-        self.xsl_cache = frontik.handler_xml.make_file_cache('XSL_root', getattr(app_package.config, 'XSL_root', None), frontik.handler_xml.xsl_from_file)
+        self.xml = frontik.handler_xml.PageHandlerXMLGlobals(app_package.config)
 
         self.http_client = frontik.http.TimeoutingHttpFetcher(
                 tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200))
@@ -112,10 +111,17 @@ class PageHandler(tornado.web.RequestHandler):
         tornado.web.RequestHandler.__init__(self, application, request, logger=self.log)
 
         if tornado.options.options.debug or "debug" in self.request.arguments:
+            self.debug_mode = True
             self.debug_log_handler = DebugPageHandler()
             self.log.addHandler(self.debug_log_handler)
 
             self.log.debug('using debug mode')
+        else:
+            self.debug_mode = False
+
+        if not tornado.options.options.debug and self.debug_mode:
+            frontik.auth.require_basic_auth(self, tornado.options.options.debug_login,
+                                            tornado.options.options.debug_password)
 
         self.ph_globals = ph_globals
         self.config = ph_globals.config
@@ -125,13 +131,6 @@ class PageHandler(tornado.web.RequestHandler):
         self.doc = self.xml.doc # backwards compatibility for self.doc.put
         
         self.text = None
-
-        if not tornado.options.options.debug and "debug" in self.request.arguments:
-            try:
-                frontik.auth.require_basic_auth(self, tornado.options.options.debug_login,
-                                                tornado.options.options.debug_password)
-            except frontik.auth.AuthError:
-                return
 
         self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log.debug)
 
@@ -147,7 +146,7 @@ class PageHandler(tornado.web.RequestHandler):
                                               for i in self.debug_log_handler.log_data))
 
     def get_error_html(self, status_code, **kwargs):
-        if tornado.options.options.debug:
+        if self.debug_mode:
             return self._get_debug_page(status_code, **kwargs)
         else:
             return tornado.web.RequestHandler.get_error_html(self, status_code, **kwargs)
@@ -211,6 +210,7 @@ class PageHandler(tornado.web.RequestHandler):
             self.should_dec_whc = False
 
         tornado.web.RequestHandler.finish(self, chunk)
+        self.log.debug('done in %.2fms', (time.time() - self.handler_started)*1000)
 
     def get_page(self):
         ''' Эта функция должна быть переопределена в наследнике и
@@ -371,7 +371,7 @@ class PageHandler(tornado.web.RequestHandler):
         if not self._finished:
             res = None
             
-            if "debug" in self.request.arguments:
+            if self.debug_mode:
                 res = self._prepare_finish_debug_mode()
             elif self.text is not None:
                 res = self._prepare_finish_plaintext()
@@ -380,21 +380,18 @@ class PageHandler(tornado.web.RequestHandler):
             
             self.postprocessor_started = None
             if hasattr(self.config, 'postprocessor'):
-                self.postprocessor_started = time.time()
-                self.config.postprocessor(res, self, self._end_finish_page)
+                self.config.postprocessor(res, self, partial(self._wait_postprocessor, time.time()))
             else:
-                self._end_finish_page(res)
+                self.finish(res)
 
         else:
             self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
-    def _end_finish_page(self, data):
-        if self.postprocessor_started:
-            self.log.debug("applied postprocessor '%s' in %.2fms",
-                    self.config.postprocessor,
-                    (time.time() - self.postprocessor_started)*1000)
+    def _wait_postprocessor(self, start_time, data):
+        self.log.debug("applied postprocessor '%s' in %.2fms",
+                self.config.postprocessor,
+                (time.time() - start_time)*1000)
         self.finish(data)
-        self.log.debug('done in %.2fms', (time.time() - self.handler_started)*1000)
 
     def _prepare_finish_debug_mode(self):
         self.set_header('Content-Type', 'text/html')

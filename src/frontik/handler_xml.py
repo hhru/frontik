@@ -119,13 +119,19 @@ def make_file_cache(option_name, option_value, fun):
         return InvalidOptionCache(option_name)
 
 
+class PageHandlerXMLGlobals(object):
+    def __init__(self, config):
+        self.xml_cache = make_file_cache('XML_root', getattr(config, 'XML_root', None), xml_from_file)
+        self.xsl_cache = make_file_cache('XSL_root', getattr(config, 'XSL_root', None), xsl_from_file)
+
+
 class PageHandlerXML(object):
     def __init__(self, handler):
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
         
-        self.xml_cache = self.handler.ph_globals.xml_cache
-        self.xsl_cache = self.handler.ph_globals.xsl_cache
+        self.xml_cache = self.handler.ph_globals.xml.xml_cache
+        self.xsl_cache = self.handler.ph_globals.xml.xsl_cache
 
         self.doc = frontik.doc.Doc(root_node=etree.Element('doc', frontik='true'))
         self.transform = None
