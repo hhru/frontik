@@ -17,9 +17,7 @@ if __name__ == '__main__':
     else:
         config = '/etc/frontik/frontik.cfg'
 
-    tornado.options.define('document_root', None, str)
-    tornado.options.define('app_package', 'frontik_www', str)
-    tornado.options.define('app_config', '', str)
+    tornado.options.define('apps', {}, dict)
     tornado.options.define('suppressed_loggers', ['tornado.httpclient'], list)
     tornado.options.define('handlers_count', 100, int)
     tornado.options.define('debug', False, bool)
@@ -32,7 +30,6 @@ if __name__ == '__main__':
         logging.getLogger(log_channel_name).setLevel(logging.WARN)
 
     import frontik.app
-    pages_dispatcher = frontik.app.FrontikModuleDispatcher(options.document_root, options.app_package).pages_dispatcher
     
-    tornado_util.server.main(frontik.app.get_app(pages_dispatcher))
+    tornado_util.server.main(frontik.app.get_app(options.apps))
 

@@ -31,7 +31,7 @@ def stop_worker(port):
         pass
 
 def get_page(port, page, xsl=False):
-    data = urllib2.urlopen('http://localhost:%s/page/%s/%s' % (port, page, "?noxsl=true" if not xsl else "" ))
+    data = urllib2.urlopen('http://localhost:%s/%s/%s' % (port, page, "?noxsl=true" if not xsl else "" ))
     
     return data
 
@@ -104,12 +104,12 @@ def frontik_get_page_text(page_name, xsl=True):
 
 
 def simple_test():
-    with frontik_get_page_text('simple') as html:
+    with frontik_get_page_text('page/simple') as html:
         assert(not html.find('ok') is None)
 
 
 def compose_doc_test():
-    with frontik_get_page_xml('compose_doc') as xml:
+    with frontik_get_page_xml('page/compose_doc') as xml:
         assert(not xml.find('a') is None)
         assert(xml.findtext('a') == 'aaa')
 
@@ -121,27 +121,27 @@ def compose_doc_test():
 
 
 def xsl_transformation_test():
-    with frontik_get_page_xml('simple') as html:
+    with frontik_get_page_xml('page/simple') as html:
         assert (etree.tostring(html) == "<html><body><h1>ok</h1></body></html>")
 
 
 def test_content_type_with_xsl():
     with FrontikTestInstance() as srv_port:
-        assert(get_page(srv_port, 'simple', xsl=True).headers['content-type'].startswith('text/html'))
+        assert(get_page(srv_port, 'page/simple', xsl=True).headers['content-type'].startswith('text/html'))
 
 
 def test_content_type_wo_xsl():
     with FrontikTestInstance() as srv_port:
-        assert(get_page(srv_port, 'simple', xsl=False).headers['content-type'].startswith('application/xml'))
+        assert(get_page(srv_port, 'page/simple', xsl=False).headers['content-type'].startswith('application/xml'))
 
 
 def xml_include_test():
-    with frontik_get_page_xml('include_xml') as xml:
+    with frontik_get_page_xml('page/include_xml') as xml:
         assert(xml.findtext('a') == 'aaa')
 
 
 def test_root_node_frontik_attribute():
-    with frontik_get_page_xml('simple_xml') as xml:
+    with frontik_get_page_xml('page/simple_xml') as xml:
         assert(xml.get('frontik') == 'true')
         assert(xml.find('doc').get('frontik', None) is None)
 
@@ -203,6 +203,10 @@ def test_basic_auth_pass():
 
         assert(res.getcode() == 200)
     
+
+def test_multi_app_simple():
+    with frontik_get_page_xml('a/use_lib') as xml:
+        assert xml.text == '10'
 
 if __name__ == '__main__':
     nose.main()
