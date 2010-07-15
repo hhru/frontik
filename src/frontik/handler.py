@@ -111,11 +111,16 @@ class PageHandler(tornado.web.RequestHandler):
         tornado.web.RequestHandler.__init__(self, application, request, logger=self.log)
 
         if tornado.options.options.debug or "debug" in self.request.arguments:
-            self.debug_mode = True
+            self.debug_mode_logging = True
             self.debug_log_handler = DebugPageHandler()
             self.log.addHandler(self.debug_log_handler)
 
-            self.log.debug('using debug mode')
+            self.log.debug('using debug mode logging')
+        else:
+            self.debug_mode_logging = False
+
+        if "debug" in self.request.arguments:
+            self.debug_mode = True
         else:
             self.debug_mode = False
 
@@ -146,7 +151,7 @@ class PageHandler(tornado.web.RequestHandler):
                                               for i in self.debug_log_handler.log_data))
 
     def get_error_html(self, status_code, **kwargs):
-        if self.debug_mode:
+        if self.debug_mode_logging:
             return self._get_debug_page(status_code, **kwargs)
         else:
             return tornado.web.RequestHandler.get_error_html(self, status_code, **kwargs)
