@@ -137,7 +137,8 @@ class PageHandler(tornado.web.RequestHandler):
         
         self.text = None
 
-        self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log.debug)
+        self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
+                                                     log=self.log.debug)
 
         self.should_dec_whc = False
 
@@ -198,21 +199,24 @@ class PageHandler(tornado.web.RequestHandler):
         working_handlers_count += 1
         self.should_dec_whc = True
 
+        self.log.debug('workers count+1 = %s', working_handlers_count)
+
         if working_handlers_count < tornado.options.options.handlers_count:
             self.log.debug('started %s %s (workers_count = %s)',
                            self.request.method, self.request.uri, working_handlers_count)
-
-            self.get_page()
-            self.finish_page()
         else:
-            self.log.warn('dropping %s %s; too many workers (%s)', self.request.method, self.request.uri, working_handlers_count)
-            raise tornado.web.HTTPError(502)
+            self.log.warn('should drop %s %s; too many workers (%s)', self.request.method, self.request.uri, working_handlers_count)
+
+        self.get_page()
+        self.finish_page()
 
     def finish(self, chunk=None):
         if self.should_dec_whc:
             global working_handlers_count
             working_handlers_count -= 1
             self.should_dec_whc = False
+
+            self.log.debug('workers count-1 = %s', working_handlers_count)
 
         tornado.web.RequestHandler.finish(self, chunk)
         self.log.debug('done in %.2fms', (time.time() - self.handler_started)*1000)

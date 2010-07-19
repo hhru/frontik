@@ -1,3 +1,9 @@
+frontik (0.21.4) unstable; urgency=low
+
+  * merge 0.20.6fix4
+
+ --
+
 frontik (0.21.3) unstable; urgency=low
 
   * fix frontik.doc.Doc for nodes interlaced with text behavior
@@ -56,6 +62,14 @@ frontik (0.20.7) unstable; urgency=low
   * xpath_find method 
 
  -- Dmitry Zubov <d.zubov@hh.ru>  Thu, 03 Jun 2010 17:43:37 +0400
+
+frontik (0.20.6fix4) unstable; urgency=low
+
+  * turn off 502 errors based on working_handlers_count
+  * fix nasty error which prevented handler.finish to be called in case
+    there were exception in XSLT processor
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 19 Jul 2010 14:29:32 +0400
 
 frontik (0.20.6fix3) unstable; urgency=low
 
