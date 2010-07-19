@@ -1,6 +1,6 @@
 frontik (0.21.4) unstable; urgency=low
 
-  * merge 0.20.6fix4
+  * merge 0.20.6fix{4,5}
 
  --
 
@@ -62,6 +62,12 @@ frontik (0.20.7) unstable; urgency=low
   * xpath_find method 
 
  -- Dmitry Zubov <d.zubov@hh.ru>  Thu, 03 Jun 2010 17:43:37 +0400
+
+frontik (0.20.6fix5) unstable; urgency=low
+
+  * turn on 502 on working_handlers_count, memory leaks otherwise
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 19 Jul 2010 18:39:36 +0400
 
 frontik (0.20.6fix4) unstable; urgency=low
 
