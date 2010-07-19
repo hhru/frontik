@@ -263,14 +263,14 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.log.debug('workers count+1 = %s', working_handlers_count)
 
-        if working_handlers_count < tornado.options.options.handlers_count:
+        if working_handlers_count <= tornado.options.options.handlers_count:
             self.log.debug('started %s %s (workers_count = %s)',
                            self.request.method, self.request.uri, working_handlers_count)
+            self.get_page()
+            self.finish_page()
         else:
-            self.log.warn('should drop %s %s; too many workers (%s)', self.request.method, self.request.uri, working_handlers_count)
-
-        self.get_page()
-        self.finish_page()
+            self.log.warn('dropping %s %s; too many workers (%s)', self.request.method, self.request.uri, working_handlers_count)
+            raise tornado.web.HTTPError(502)
 
     def finish(self, chunk=None):
         if self.should_dec_whc:
