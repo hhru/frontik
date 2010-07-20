@@ -1,3 +1,10 @@
+frontik (0.21.5) unstable; urgency=low
+
+  * + AsyncGroup.add_notification()
+  * handler is the first parameter for postprocessor
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 20 Jul 2010 18:29:22 +0400
+
 frontik (0.21.4) unstable; urgency=low
 
   * merge 0.20.6fix{4,5}

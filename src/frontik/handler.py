@@ -389,7 +389,7 @@ class PageHandler(tornado.web.RequestHandler):
             
             self.postprocessor_started = None
             if hasattr(self.config, 'postprocessor'):
-                self.async_callback(self.config.postprocessor)(res, self, self.async_callback(partial(self._wait_postprocessor, time.time())))
+                self.async_callback(self.config.postprocessor)(self, res, self.async_callback(partial(self._wait_postprocessor, time.time())))
             else:
                 self.finish(res)
 

@@ -63,6 +63,19 @@ class AsyncGroup(object):
 
         return new_cb
 
+    def add_notification(self):
+        assert(not self.finished)
+        
+        self.counter += 1
+
+        def new_cb(*args, **kwargs):
+            self.counter -= 1
+            self.log('%s requests pending', self.counter)
+
+            self.try_finish()
+
+        return new_cb
+
 
 class AsyncWorkPool(object):
     '''
