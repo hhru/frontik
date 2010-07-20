@@ -1,8 +1,9 @@
 frontik (0.21.4) unstable; urgency=low
 
   * merge 0.20.6fix{4,5}
+  * use .async_callback in postprocessor execution
 
- --
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 20 Jul 2010 18:10:58 +0400
 
 frontik (0.21.3) unstable; urgency=low
 
