@@ -126,10 +126,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         # working handlers count
         global working_handlers_count
-        working_handlers_count += 1
-        self.should_dec_whc = True
-
-        self.log.debug('workers count+1 = %s', working_handlers_count)
+        self.should_dec_whc = False # init it with false in case of emergency failure
 
         if working_handlers_count <= tornado.options.options.handlers_count:
             self.log.debug('started %s %s (workers_count = %s)',
@@ -137,11 +134,14 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             self.log.warn('dropping %s %s; too many workers (%s)', self.request.method, self.request.uri, working_handlers_count)
             raise tornado.web.HTTPError(502)
-        # / working handlers count
 
         if not tornado.options.options.debug and self.debug_mode:
             frontik.auth.require_basic_auth(self, tornado.options.options.debug_login,
                                             tornado.options.options.debug_password)
+
+        working_handlers_count += 1
+        self.should_dec_whc = True
+        self.log.debug('workers count+1 = %s', working_handlers_count)
 
         self.ph_globals = ph_globals
         self.config = ph_globals.config
@@ -154,8 +154,6 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
                                                      log=self.log.debug)
-
-        self.should_dec_whc = False
 
     def _get_debug_page(self, status_code, **kwargs):
         return '<html><title>{code}</title>' \

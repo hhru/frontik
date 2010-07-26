@@ -1,3 +1,15 @@
+frontik (0.21.6fix3) unstable; urgency=low
+
+  * blah, remove self.should_dec_whc = False in the end of PH constructor
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 26 Jul 2010 16:46:42 +0400
+
+frontik (0.21.6fix2) unstable; urgency=low
+
+  * fix working_handlers_count iteration 2
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 26 Jul 2010 16:08:26 +0400
+
 frontik (0.21.6fix1) unstable; urgency=low
 
   * fix working handlers counting, debug auth broke this logic
