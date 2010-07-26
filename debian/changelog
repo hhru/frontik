@@ -1,3 +1,9 @@
+frontik (0.21.6) unstable; urgency=low
+
+  * fix handler_xml.x_urlencode
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Wed, 21 Jul 2010 16:02:52 +0400
+
 frontik (0.21.5) unstable; urgency=low
 
   * + AsyncGroup.add_notification()
