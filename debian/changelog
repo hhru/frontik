@@ -1,3 +1,9 @@
+frontik (0.21.6fix1) unstable; urgency=low
+
+  * fix working handlers counting, debug auth broke this logic
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 26 Jul 2010 15:38:34 +0400
+
 frontik (0.21.6) unstable; urgency=low
 
   * fix handler_xml.x_urlencode
