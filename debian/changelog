@@ -1,3 +1,29 @@
+frontik (0.21.6) unstable; urgency=low
+
+  * fix handler_xml.x_urlencode
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Wed, 21 Jul 2010 16:02:52 +0400
+
+frontik (0.21.5) unstable; urgency=low
+
+  * + AsyncGroup.add_notification()
+  * handler is the first parameter for postprocessor
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 20 Jul 2010 18:29:22 +0400
+
+frontik (0.21.4) unstable; urgency=low
+
+  * merge 0.20.6fix{4,5}
+  * use .async_callback in postprocessor execution
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 20 Jul 2010 18:10:58 +0400
+
+frontik (0.21.3) unstable; urgency=low
+
+  * fix frontik.doc.Doc for nodes interlaced with text behavior
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Fri, 16 Jul 2010 18:45:22 +0400
+
 frontik (0.21.2) unstable; urgency=low
 
   * merge 'dborovikov/fuchakubutsu': asynchronous postprocess for page
@@ -50,6 +76,20 @@ frontik (0.20.7) unstable; urgency=low
   * xpath_find method 
 
  -- Dmitry Zubov <d.zubov@hh.ru>  Thu, 03 Jun 2010 17:43:37 +0400
+
+frontik (0.20.6fix5) unstable; urgency=low
+
+  * turn on 502 on working_handlers_count, memory leaks otherwise
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 19 Jul 2010 18:39:36 +0400
+
+frontik (0.20.6fix4) unstable; urgency=low
+
+  * turn off 502 errors based on working_handlers_count
+  * fix nasty error which prevented handler.finish to be called in case
+    there were exception in XSLT processor
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 19 Jul 2010 14:29:32 +0400
 
 frontik (0.20.6fix3) unstable; urgency=low
 

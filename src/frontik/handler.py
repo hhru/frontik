@@ -13,7 +13,6 @@ import traceback
 import urllib
 import xml.sax.saxutils
 
-import tornado.autoreload
 import tornado.httpclient
 import tornado.options
 import tornado.web
@@ -24,33 +23,12 @@ import frontik.auth
 import frontik.doc
 import frontik.http
 import frontik.util
-
-import xml_util
+import frontik.handler_xml
 
 import logging
 log = logging.getLogger('frontik.handler')
-log_xsl = logging.getLogger('frontik.handler.xsl')
-log_fileloader = logging.getLogger('frontik.server.fileloader')
 
 import future
-
-def http_header_out(*args, **kwargs):
-    log_xsl.debug('x:http-header-out called')
-
-def set_http_status(*args, **kwargs):
-    log_xsl.debug('x:set-http-status called')
-
-def x_urlencode(context, params):
-    log_xsl.debug('x:urlencode called')
-    if params:
-        return urllib.quote(params[0].text.encode("utf8") or "")
-
-# TODO cleanup this
-ns = etree.FunctionNamespace('http://www.yandex.ru/xscript')
-ns.prefix = 'x'
-ns['http-header-out'] = http_header_out
-ns['set-http-status'] = set_http_status
-ns['urlencode'] = x_urlencode
 
 # TODO cleanup this after release of frontik with frontik.async
 AsyncGroup = frontik.async.AsyncGroup
@@ -90,100 +68,18 @@ class PageLogger(logging.Logger):
         logging.Logger.__init__(self, 'frontik.handler.{0}'.format(request_id))
 
     def handle(self, record):
-        return log.handle(record)
+        logging.Logger.handle(self, record)
+        log.handle(record)
 
 
 _debug_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-class DebugPageLogger(logging.Logger):
-    def __init__(self, request_id):
-        logging.Logger.__init__(self, 'frontik.handler.{0}'.format(request_id))
+class DebugPageHandler(logging.Handler):
+    def __init__(self):
+        logging.Handler.__init__(self, logging.DEBUG)
         self.log_data = []
 
     def handle(self, record):
         self.log_data.append(_debug_formatter.format(record))
-        return log.handle(record)
-
-
-class FileCache(object):
-    def __init__(self, root_dir, load_fn):
-        '''
-        load_fn :: filename -> (status, result)
-        '''
-
-        self.root_dir = root_dir
-        self.load_fn = load_fn
-
-        self.cache = dict()
-
-    def load(self, filename):
-        if filename in self.cache:
-            log_fileloader.debug('got %s file from cache', filename)
-            return self.cache[filename]
-        else:
-            real_filename = os.path.normpath(os.path.join(self.root_dir, filename))
-
-            log_fileloader.debug('reading %s file from %s', filename, real_filename)
-            ok, ret = self.load_fn(real_filename)
-
-        if ok:
-            self.cache[filename] = ret
-
-        return ret
-
-
-def _source_comment(src):
-    return etree.Comment('Source: {0}'.format(frontik.util.asciify_url(src).replace('--', '%2D%2D')))
-
-def xml_from_file(filename):
-    ''' 
-    filename -> (status, et.Element)
-
-    status == True - результат хороший можно кешировать
-           == False - результат плохой, нужно вернуть, но не кешировать
-    '''
-
-    if os.path.exists(filename):
-        try:
-            res = etree.parse(file(filename)).getroot()
-            tornado.autoreload.watch_file(filename)
-
-            return True, [_source_comment(filename), res]
-        except:
-            log.exception('failed to parse %s', filename)
-            return False, etree.Element('error', dict(msg='failed to parse file: %s' % (filename,)))
-    else:
-        log.error('file not found: %s', filename)
-        return False, etree.Element('error', dict(msg='file not found: %s' % (filename,)))
-
-
-def xsl_from_file(filename):
-    '''
-    filename -> (True, et.XSLT)
-    
-    в случае ошибки выкидывает исключение
-    '''
-
-    transform, xsl_files = xml_util.read_xsl(filename)
-    
-    for xsl_file in xsl_files:
-        tornado.autoreload.watch_file(xsl_file)
-
-    return True, transform
-
-
-class InvalidOptionCache(object):
-    def __init__(self, option):
-        self.option = option
-
-    def load(self, filename):
-        raise Exception('{0} option is undefined'.format(self.option))
-
-
-def make_file_cache(option_name, option_value, fun):
-    if option_value:
-        return FileCache(option_value, fun)
-    else:
-        return InvalidOptionCache(option_name)
 
 
 class PageHandlerGlobals(object):
@@ -193,8 +89,7 @@ class PageHandlerGlobals(object):
     def __init__(self, app_package):
         self.config = app_package.config
 
-        self.xml_cache = make_file_cache('XML_root', getattr(app_package.config, 'XML_root', None), xml_from_file)
-        self.xsl_cache = make_file_cache('XSL_root', getattr(app_package.config, 'XSL_root', None), xsl_from_file)
+        self.xml = frontik.handler_xml.PageHandlerXMLGlobals(app_package.config)
 
         self.http_client = frontik.http.TimeoutingHttpFetcher(
                 tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200))
@@ -209,48 +104,55 @@ class PageHandler(tornado.web.RequestHandler):
     
     def __init__(self, ph_globals, application, request):
         self.handler_started = time.time()
-        
+
         self.request_id = request.headers.get('X-Request-Id', stats.next_request_id())
+        self.log = PageLogger(self.request_id)
 
-        self.config = ph_globals.config
-        self.xml_cache = ph_globals.xml_cache
-        self.xsl_cache = ph_globals.xsl_cache
-        self.http_client = ph_globals.http_client
-
-        self.doc = frontik.doc.Doc(root_node=etree.Element('doc', frontik='true'))
-        self.transform = None
-
-        self.text = None
-        self.should_dec_whc = False
-
-        tornado.web.RequestHandler.__init__(self, application, request)
+        tornado.web.RequestHandler.__init__(self, application, request, logger=self.log)
 
         if tornado.options.options.debug or "debug" in self.request.arguments:
-            self.log = DebugPageLogger(self.request_id)
+            self.debug_mode_logging = True
+            self.debug_log_handler = DebugPageHandler()
+            self.log.addHandler(self.debug_log_handler)
+
+            self.log.debug('using debug mode logging')
         else:
-            self.log = PageLogger(self.request_id)
-        self._logger = self.log
+            self.debug_mode_logging = False
 
-        if not tornado.options.options.debug and \
-               ("debug" in self.request.arguments or "noxsl" in self.request.arguments):
-            # Checks if query has `debug` or `noxsl` arguments and applies for HTTP basic auth.
-            try:
-                frontik.auth.require_basic_auth(self, tornado.options.options.debug_login,
-                                                tornado.options.options.debug_password)
-            except frontik.auth.AuthError:
-                return
+        if "debug" in self.request.arguments:
+            self.debug_mode = True
+        else:
+            self.debug_mode = False
 
-        self.finish_group = frontik.async.AsyncGroup(self._finish_page, log=self.log.debug)
+        if not tornado.options.options.debug and self.debug_mode:
+            frontik.auth.require_basic_auth(self, tornado.options.options.debug_login,
+                                            tornado.options.options.debug_password)
+
+        self.ph_globals = ph_globals
+        self.config = ph_globals.config
+        self.http_client = ph_globals.http_client
+
+        self.xml = frontik.handler_xml.PageHandlerXML(self)
+        self.doc = self.xml.doc # backwards compatibility for self.doc.put
+        
+        self.text = None
+
+        self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
+                                                     log=self.log.debug)
+
+        self.should_dec_whc = False
 
     def _get_debug_page(self, status_code, **kwargs):
         return '<html><title>{code}</title>' \
             '<body>' \
             '<h1>{code}</h1>' \
             '<pre>{log}</pre></body>' \
-            '</html>'.format(code=status_code, log='<br/>'.join(xml.sax.saxutils.escape(i).replace('\n', '<br/>').replace(' ', '&nbsp;') for i in self.log.log_data))
+            '</html>'.format(code=status_code,
+                             log='<br/>'.join(xml.sax.saxutils.escape(i).replace('\n', '<br/>').replace(' ', '&nbsp;')
+                                              for i in self.debug_log_handler.log_data))
 
     def get_error_html(self, status_code, **kwargs):
-        if tornado.options.options.debug:
+        if self.debug_mode_logging:
             return self._get_debug_page(status_code, **kwargs)
         else:
             return tornado.web.RequestHandler.get_error_html(self, status_code, **kwargs)
@@ -297,10 +199,11 @@ class PageHandler(tornado.web.RequestHandler):
         working_handlers_count += 1
         self.should_dec_whc = True
 
-        if working_handlers_count < tornado.options.options.handlers_count:
+        self.log.debug('workers count+1 = %s', working_handlers_count)
+
+        if working_handlers_count <= tornado.options.options.handlers_count:
             self.log.debug('started %s %s (workers_count = %s)',
                            self.request.method, self.request.uri, working_handlers_count)
-
             self.get_page()
             self.finish_page()
         else:
@@ -313,7 +216,10 @@ class PageHandler(tornado.web.RequestHandler):
             working_handlers_count -= 1
             self.should_dec_whc = False
 
+            self.log.debug('workers count-1 = %s', working_handlers_count)
+
         tornado.web.RequestHandler.finish(self, chunk)
+        self.log.debug('done in %.2fms', (time.time() - self.handler_started)*1000)
 
     def get_page(self):
         ''' Эта функция должна быть переопределена в наследнике и
@@ -448,7 +354,7 @@ class PageHandler(tornado.web.RequestHandler):
                         None)
 
             else:
-                return ([_source_comment(response.effective_url), element],
+                return ([frontik.handler_xml._source_comment(response.effective_url), element],
                         element)
 
     def _fetch_request_response(self, placeholder, callback, response):
@@ -474,60 +380,32 @@ class PageHandler(tornado.web.RequestHandler):
         if not self._finished:
             res = None
             
-            if "debug" in self.request.arguments:
+            if self.debug_mode:
                 res = self._prepare_finish_debug_mode()
             elif self.text is not None:
                 res = self._prepare_finish_plaintext()
-            elif self.transform:
-                res = self._prepare_finish_with_xsl()
             else:
-                res = self._prepare_finish_wo_xsl()
+                res = self.xml._finish_xml()
             
             self.postprocessor_started = None
             if hasattr(self.config, 'postprocessor'):
-                self.postprocessor_started = time.time()
-                self.config.postprocessor(res, self, self._end_finish_page)
+                self.async_callback(self.config.postprocessor)(self, res, self.async_callback(partial(self._wait_postprocessor, time.time())))
             else:
-                self._end_finish_page(res)
+                self.finish(res)
 
         else:
             self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
-    def _end_finish_page(self, data):
-        if self.postprocessor_started:
-            self.log.debug("applied postprocessor '%s' in %.2fms",
-                    self.config.postprocessor,
-                    (time.time() - self.postprocessor_started)*1000)
+    def _wait_postprocessor(self, start_time, data):
+        self.log.debug("applied postprocessor '%s' in %.2fms",
+                self.config.postprocessor,
+                (time.time() - start_time)*1000)
         self.finish(data)
-        self.log.debug('done in %.2fms', (time.time() - self.handler_started)*1000)
 
     def _prepare_finish_debug_mode(self):
         self.set_header('Content-Type', 'text/html')
         return self._get_debug_page(self._status_code)
 
-    def _prepare_finish_with_xsl(self):
-        self.log.debug('finishing with xsl')
-
-        if not self._headers.get("Content-Type", None):
-            self.set_header('Content-Type', 'text/html')
-
-        try:
-            t = time.time()
-            result = str(self.transform(self.doc.to_etree_element()))
-            self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
-            return result           
-        except:
-            self.log.exception('failed transformation with XSL %s' % self.transform_filename)
-            raise
-
-    def _prepare_finish_wo_xsl(self):
-        self.log.debug('finishing wo xsl')
-
-        if not self._headers.get("Content-Type", None):
-            self.set_header('Content-Type', 'application/xml')
-
-        return self.doc.to_string()
-       
     def _prepare_finish_plaintext(self):
         self.log.debug("finishing plaintext")
         return self.text
@@ -535,30 +413,7 @@ class PageHandler(tornado.web.RequestHandler):
     ###
 
     def xml_from_file(self, filename):
-        return self.xml_cache.load(filename)
-
-    def _set_xsl_log_and_raise(self, msg_template):
-        msg = msg_template.format(self.transform_filename)
-        self.log.exception(msg)
-        raise tornado.web.HTTPError(500, msg)
+        return self.xml.xml_from_file(filename)
 
     def set_xsl(self, filename):
-        if not self.config.apply_xsl:
-            self.log.debug('ignored set_xsl(%s) because config.apply_xsl=%s', filename, self.config.apply_xsl)        
-            return
-
-        if self.get_argument('noxsl', None):
-            self.log.debug('ignored set_xsl(%s) because noxsl=%s', filename, self.get_argument('noxsl'))
-            return
-                           
-        self.transform_filename = filename
-
-        try:
-            self.transform = self.xsl_cache.load(filename)
-
-        except etree.XMLSyntaxError, error:
-            self._set_xsl_log_and_raise('failed parsing XSL file {0} (XML syntax)')
-        except etree.XSLTParseError, error:
-            self._set_xsl_log_and_raise('failed parsing XSL file {0} (dumb xsl)')
-        except:
-            self._set_xsl_log_and_raise('XSL transformation error with file {0}')
+        return self.xml.set_xsl(filename)
