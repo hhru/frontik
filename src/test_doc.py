@@ -46,5 +46,17 @@ class TestDoc(unittest.TestCase):
 
         self.assertEqual(a.to_string(), '''<?xml version='1.0' encoding='utf-8'?>\n<a><b>1</b></a>''')
 
+    def test_nodes_and_text(self):
+        a = frontik.Doc('a')
+
+	a.put('1')
+	a.put(frontik.Doc('b'))
+	a.put('2')
+	a.put(frontik.Doc('c'))
+	a.put('3')
+
+        self.assertEqual(a.to_string(), '''<?xml version='1.0' encoding='utf-8'?>\n<a>1<b/>2<c/>3</a>''')
+
+
 if __name__ == '__main__':
     unittest.main()
