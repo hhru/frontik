@@ -37,13 +37,18 @@ class FrontikAppImporter(object):
             return self.modules[app_module_name]
 
         app_root = self.app_roots[app_name]
-        app_module_filename = os.path.join(app_root, '{0}.py'.format(os.path.join(*module_name.split('.'))))
+        app_module_index_filename = os.path.join(app_root, os.path.join(*module_name.split('.')), 'index.py')
+        app_module_file_filename = os.path.join(app_root, '{0}.py'.format(os.path.join(*module_name.split('.'))))
 
-        if not os.path.exists(app_module_filename):
-            raise ImportError('{module_name} module was not found in {app_name}, {app_module_filename} expected'.format(
+        for app_module_filename in [app_module_index_filename, app_module_file_filename]:
+            if os.path.exists(app_module_filename):
+                break
+        else:
+            raise ImportError('{module_name} module was not found in {app_name}, {app_module_index_filename} or {app_module_file_filename} expected'.format(
                 module_name=module_name,
                 app_name=app_name,
-                app_module_filename=app_module_filename))
+                app_module_index_filename=app_module_index_filename,
+                app_module_file_filename=app_module_file_filename))
 
         log.debug('importing %s from %s', app_module_name, app_module_filename)
         
