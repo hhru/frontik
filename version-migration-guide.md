@@ -39,14 +39,26 @@
     frontik_import('utils')
     frontik_import('banners')
 
-Семантика кода вида:
+**Перестало поддерживаться 1**:
 
     import frontik_www.banners
     ...
     frontik_www.banners.do_banners(...)
 
-перестает поддерживаться, нужно транслировать в:
+надо:
 
     frontik_import('banners')
     ...
     banners.do_banners(...)
+
+**Перестало поддерживаться 2**:
+
+    from frontik_www.handler import session
+    ...
+    @session
+
+надо:
+
+    frontik_import('handler')
+    ...
+    @handler.session
