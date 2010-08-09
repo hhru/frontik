@@ -1,14 +1,16 @@
 import sys
 import os.path
+import imp
 
 import tornado.web
 import tornado.ioloop
 import logging
 from tornado.options import options
 
-from version import version
+import frontik.magic_imp
+import frontik.version
+import frontik.doc
 from frontik import etree
-from frontik.doc import etree_to_xml
 
 log = logging.getLogger('frontik.server')        
 
@@ -22,8 +24,8 @@ class VersionHandler(tornado.web.RequestHandler):
         version_el = etree.Element("version")
         project_el.append(version_el)
 
-        version_el.text = version
-        self.write(etree_to_xml(project_el))
+        version_el.text = frontik.version.version
+        self.write(frontik.doc.etree_to_xml(project_el))
 
 
 class StatusHandler(tornado.web.RequestHandler):
@@ -73,68 +75,63 @@ class CountTypesHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-class FrontikModuleDispatcher(object):
-    def __init__(self, app_dir, app_package_name='frontik_www'):
-        self.app_dir = app_dir
-        self.app_package_name = app_package_name
-        self.app_package = self.init_app_package(app_dir, app_package_name)
-        self.ph_globals = handler.PageHandlerGlobals(self.app_package)
+class FrontikApp(object):
+    def __init__(self, name, root, module, ph_globals):
+        self.name = name
+        self.root = root
+        self.module = module
+        self.ph_globals = ph_globals
 
-    def init_app_package(self, app_dir, app_package_name):
-        if app_dir:
-            abs_app_dir = os.path.abspath(app_dir)
-            log.debug('appending "%s" document_dir to sys.path', abs_app_dir)
-            sys.path.insert(0, abs_app_dir)
+class FrontikAppDispatcher(object):
+    def __init__(self, app_roots):
+        self.importer = frontik.magic_imp.FrontikAppImporter(app_roots)
 
-        try:
-            app_package = __import__(app_package_name)
-        except:
-            log.error('%s module cannot be found', app_package_name)
-            raise
+        self.apps = {}
+        for (app_name, app_root) in app_roots.iteritems():
+            module = self.init_app_package(app_name)
+            ph_globals = frontik.handler.PageHandlerGlobals(module)
+            self.apps[app_name] = FrontikApp(app_name, app_root, module, ph_globals)
 
-        try:
-            app_package.config = __import__("{0}.config".format(app_package_name), fromlist=['config'])
-        except:
-            log.exception('%s.config module cannot be found', app_package_name)
-            raise
+    def init_app_package(self, app_name):
+        module = imp.new_module(frontik.magic_imp.gen_module_name(app_name))
+        sys.modules[module.__name__] = module
 
-        if app_dir:
-            if not app_package.__file__.startswith(abs_app_dir):
-                msg = '%s module is found at %s while %s expected' % (
-                    app_package_name, app_package.__file__, abs_app_dir)
-                log.error(msg)
-                raise Exception(msg)
+        pages_module = imp.new_module(frontik.magic_imp.gen_module_name(app_name, 'pages'))
+        sys.modules[pages_module.__name__] = pages_module
 
-        return app_package
+        module.config = self.importer.imp_app_module(app_name, 'config')
+        
+        return module
 
-    def pages_dispatcher(self, application, request):
+    def dispatch(self, application, request):
         log.info('requested url: %s', request.uri)
 
-        page_module_name_parts = request.path.strip('/').split('/')[1:]
+        page_module_name_parts = request.path.strip('/').split('/')
 
-        if page_module_name_parts:
-            page_module_name = '{0}.pages.{1}'.format(self.app_package_name, '.'.join(page_module_name_parts))
-        else:
-            page_module_name = '{0}.pages'.format(self.app_package_name)
+        app_name = page_module_name_parts[0]
+        page_module_name = '.'.join(['pages'] + page_module_name_parts[1:])
+
+        app = self.apps[app_name]
 
         try:
-            page_module = __import__(page_module_name, fromlist=['Page'])
-            log.debug('using %s from %s', page_module_name, page_module.__file__)
+            page_module = self.importer.imp_app_module(app_name, page_module_name)
+            log.debug('using %s from %s', (app_name, page_module_name), page_module.__file__)
         except ImportError:
-            log.exception('%s module not found', page_module_name)
+            log.exception('%s module not found', (app_name, page_module_name))
             return tornado.web.ErrorHandler(application, request, 404)
         except:
-            log.exception('error while importing %s module', page_module_name)
+            log.exception('error while importing %s module', (app_name, page_module_name))
             return tornado.web.ErrorHandler(application, request, 500)
 
         try:
-            return page_module.Page(self.ph_globals, application, request)
+            return page_module.Page(app.ph_globals, application, request)
         except:
             log.exception('%s.Page class not found', page_module_name)
             return tornado.web.ErrorHandler(application, request, 500)
 
-
-def get_app(pages_dispatcher):
+def get_app(app_roots):
+    dispatcher = FrontikAppDispatcher(app_roots)
+    
     return tornado.web.Application([
         (r'/version/', VersionHandler),
         (r'/status/', StatusHandler),
@@ -142,6 +139,6 @@ def get_app(pages_dispatcher):
         (r'/types_count/', CountTypesHandler),
         (r'/pdb/', PdbHandler),
         (r'/ph_count/', CountPageHandlerInstancesHandler),
-        (r'/page/.*', pages_dispatcher),
+        (r'/.*', dispatcher.dispatch),
         ])
 
