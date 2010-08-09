@@ -3,6 +3,7 @@
 import os.path
 import weakref
 import time
+import urllib
 
 import tornado.autoreload
 import tornado.options
