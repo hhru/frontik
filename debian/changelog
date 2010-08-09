@@ -1,3 +1,9 @@
+frontik (0.22.0) unstable; urgency=low
+
+  * merge `origin/multi-app2`
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon,  9 Aug 2010 11:58:07 +0400
+
 frontik (0.21.8) unstable; urgency=low
 
   * merge 0.21.6fix{1,2,3}
