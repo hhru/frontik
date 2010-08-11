@@ -37,18 +37,22 @@ class FrontikAppImporter(object):
             return self.modules[app_module_name]
 
         app_root = self.app_roots[app_name]
-        app_module_index_filename = os.path.join(app_root, os.path.join(*module_name.split('.')), 'index.py')
-        app_module_file_filename = os.path.join(app_root, '{0}.py'.format(os.path.join(*module_name.split('.'))))
 
-        for app_module_filename in [app_module_index_filename, app_module_file_filename]:
+        module_name_as_path = os.path.join(*module_name.split('.'))
+
+        app_module_probable_filenames = [
+            os.path.join(app_root, module_name_as_path, '__init__.py'),
+            os.path.join(app_root, module_name_as_path, 'index.py'),
+            os.path.join(app_root, '{0}.py'.format(module_name_as_path))]
+
+        for app_module_filename in app_module_probable_filenames:
             if os.path.exists(app_module_filename):
                 break
         else:
-            raise ImportError('{module_name} module was not found in {app_name}, {app_module_index_filename} or {app_module_file_filename} expected'.format(
+            raise ImportError('{module_name} module was not found in {app_name}, {app_module_filenames} or {app_module_file_filename} expected'.format(
                 module_name=module_name,
                 app_name=app_name,
-                app_module_index_filename=app_module_index_filename,
-                app_module_file_filename=app_module_file_filename))
+                app_module_filenames=app_module_probable_filenames))
 
         log.debug('importing %s from %s', app_module_name, app_module_filename)
         
@@ -56,7 +60,7 @@ class FrontikAppImporter(object):
         sys.modules[module.__name__] = module
 
         module.__file__ = app_module_filename
-        module.frontik_import = functools.partial(self.in_module_import_many, module, app_name)
+        module.frontik_import = functools.partial(self.in_module_import_single, module, app_name)
         
         execfile(app_module_filename, module.__dict__)
 
@@ -64,10 +68,6 @@ class FrontikAppImporter(object):
         
         return module
 
-    def in_module_import_many(self, app_module, app_name, *module_names):
-        return [self.in_module_import_single(app_module, app_name, module_name)
-                for module_name in module_names]
-            
     def in_module_import_single(self, app_module, app_name, module_name):
         if '.' in module_name:
             raise ImportError('{0}: compound modules are not supported in frontik apps'.format(module_name))
