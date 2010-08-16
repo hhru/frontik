@@ -124,6 +124,11 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             self.debug_mode = False
 
+        if self.get_argument('nopost', None) is None:
+            self.apply_postprocessor = True
+        else:
+            self.apply_postprocessor = False
+
         # working handlers count
         global working_handlers_count
         self.should_dec_whc = False # init it with false in case of emergency failure
@@ -395,9 +400,13 @@ class PageHandler(tornado.web.RequestHandler):
             else:
                 res = self.xml._finish_xml()
             
-            self.postprocessor_started = None
             if hasattr(self.config, 'postprocessor'):
-                self.async_callback(self.config.postprocessor)(self, res, self.async_callback(partial(self._wait_postprocessor, time.time())))
+                if self.apply_postprocessor:
+                    self.log.debug('applying postprocessor')
+                    self.async_callback(self.config.postprocessor)(self, res, self.async_callback(partial(self._wait_postprocessor, time.time())))
+                else:
+                    self.log.debug('skipping postprocessor')
+                    self.finish(res)
             else:
                 self.finish(res)
 
