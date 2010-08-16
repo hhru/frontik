@@ -1,3 +1,9 @@
+frontik (1.1.1) unstable; urgency=low
+
+  * bugfix in debug mode specification
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 16 Aug 2010 19:38:33 +0400
+
 frontik (1.1.0) unstable; urgency=low
 
   * ?debug=1 shows entire log of page building
