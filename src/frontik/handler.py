@@ -219,8 +219,17 @@ class PageHandler(tornado.web.RequestHandler):
 
             self.log.debug('workers count-1 = %s', working_handlers_count)
 
-        tornado.web.RequestHandler.finish(self, chunk)
         self.log.debug('done in %.2fms', (time.time() - self.handler_started)*1000)
+
+        # if debug_mode is on: ignore any output we intended to write
+        # and use debug log instead
+        if self.debug_mode:
+            self.set_header('Content-Type', 'text/html')
+            res = self._get_debug_page(self._status_code)
+        else:
+            res = chunk
+
+        tornado.web.RequestHandler.finish(self, res)
 
     def get_page(self):
         ''' Эта функция должна быть переопределена в наследнике и
@@ -381,9 +390,7 @@ class PageHandler(tornado.web.RequestHandler):
         if not self._finished:
             res = None
             
-            if self.debug_mode:
-                res = self._prepare_finish_debug_mode()
-            elif self.text is not None:
+            if self.text is not None:
                 res = self._prepare_finish_plaintext()
             else:
                 res = self.xml._finish_xml()
@@ -402,10 +409,6 @@ class PageHandler(tornado.web.RequestHandler):
                 self.config.postprocessor,
                 (time.time() - start_time)*1000)
         self.finish(data)
-
-    def _prepare_finish_debug_mode(self):
-        self.set_header('Content-Type', 'text/html')
-        return self._get_debug_page(self._status_code)
 
     def _prepare_finish_plaintext(self):
         self.log.debug("finishing plaintext")
