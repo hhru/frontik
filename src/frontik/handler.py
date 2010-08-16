@@ -24,6 +24,7 @@ import frontik.doc
 import frontik.http
 import frontik.util
 import frontik.handler_xml
+import frontik.handler_whc_limit
 
 import logging
 log = logging.getLogger('frontik.handler')
@@ -95,8 +96,6 @@ class PageHandlerGlobals(object):
                 tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200))
 
         
-working_handlers_count = 0
-
 class PageHandler(tornado.web.RequestHandler):
     '''
     Хендлер для конкретного запроса. Создается на каждый запрос.
@@ -107,6 +106,10 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.request_id = request.headers.get('X-Request-Id', stats.next_request_id())
         self.log = PageLogger(self.request_id)
+
+        self.ph_globals = ph_globals
+        self.config = ph_globals.config
+        self.http_client = ph_globals.http_client
 
         tornado.web.RequestHandler.__init__(self, application, request, logger=self.log)
 
@@ -119,38 +122,7 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             self.debug_mode_logging = False
 
-        if "debug" in self.request.arguments:
-            self.debug_mode = True
-        else:
-            self.debug_mode = False
-
-        if self.get_argument('nopost', None) is None:
-            self.apply_postprocessor = True
-        else:
-            self.apply_postprocessor = False
-
-        # working handlers count
-        global working_handlers_count
-        self.should_dec_whc = False # init it with false in case of emergency failure
-
-        if working_handlers_count <= tornado.options.options.handlers_count:
-            self.log.debug('started %s %s (workers_count = %s)',
-                           self.request.method, self.request.uri, working_handlers_count)
-        else:
-            self.log.warn('dropping %s %s; too many workers (%s)', self.request.method, self.request.uri, working_handlers_count)
-            raise tornado.web.HTTPError(502)
-
-        if not tornado.options.options.debug and self.debug_mode:
-            frontik.auth.require_basic_auth(self, tornado.options.options.debug_login,
-                                            tornado.options.options.debug_password)
-
-        working_handlers_count += 1
-        self.should_dec_whc = True
-        self.log.debug('workers count+1 = %s', working_handlers_count)
-
-        self.ph_globals = ph_globals
-        self.config = ph_globals.config
-        self.http_client = ph_globals.http_client
+        self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
 
         self.xml = frontik.handler_xml.PageHandlerXML(self)
         self.doc = self.xml.doc # backwards compatibility for self.doc.put
@@ -159,6 +131,23 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
                                                      log=self.log.debug)
+
+        if self.get_argument('debug', None) is None:
+            self.debug_mode = True
+            self.require_debug_access()
+        else:
+            self.debug_mode = False
+
+        if self.get_argument('nopost', None) is None:
+            self.apply_postprocessor = True
+            self.require_debug_access()
+        else:
+            self.apply_postprocessor = False
+
+    def require_debug_access(self):
+        if not tornado.options.options.debug:
+            frontik.auth.require_basic_auth(self, tornado.options.options.debug_login,
+                                            tornado.options.options.debug_password)
 
     def _get_debug_page(self, status_code, **kwargs):
         return '<html><title>{code}</title>' \
@@ -217,18 +206,14 @@ class PageHandler(tornado.web.RequestHandler):
         self.finish_page()
 
     def finish(self, chunk=None):
-        if self.should_dec_whc:
-            global working_handlers_count
-            working_handlers_count -= 1
-            self.should_dec_whc = False
-
-            self.log.debug('workers count-1 = %s', working_handlers_count)
+        if hasattr(self, 'whc_limit'):
+            self.whc_limit.release()
 
         self.log.debug('done in %.2fms', (time.time() - self.handler_started)*1000)
 
         # if debug_mode is on: ignore any output we intended to write
         # and use debug log instead
-        if self.debug_mode:
+        if hasattr(self, 'debug_mode') and self.debug_mode:
             self.set_header('Content-Type', 'text/html')
             res = self._get_debug_page(self._status_code)
         else:

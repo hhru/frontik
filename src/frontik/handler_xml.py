@@ -144,15 +144,10 @@ class PageHandlerXML(object):
         elif self.handler.get_argument('noxsl', None):
             self.log.debug('ignoring set_xsl() because noxsl=%s', self.handler.get_argument('noxsl'))
             self.apply_xsl = False
-
+            self.handler.require_debug_access()
         else:
             self.apply_xsl = True
-                           
-        if not self.apply_xsl and not tornado.options.options.debug:
-            frontik.auth.require_basic_auth(self.handler,
-                                            tornado.options.options.debug_login,
-                                            tornado.options.options.debug_password)
-     
+            
     def xml_from_file(self, filename):
         return self.xml_cache.load(filename)
 
