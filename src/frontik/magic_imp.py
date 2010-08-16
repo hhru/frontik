@@ -49,7 +49,7 @@ class FrontikAppImporter(object):
             if os.path.exists(app_module_filename):
                 break
         else:
-            raise ImportError('{module_name} module was not found in {app_name}, {app_module_filenames} or {app_module_file_filename} expected'.format(
+            raise ImportError('{module_name} module was not found in {app_name}, {app_module_filenames} expected'.format(
                 module_name=module_name,
                 app_name=app_name,
                 app_module_filenames=app_module_probable_filenames))
