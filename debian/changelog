@@ -1,3 +1,10 @@
+frontik (1.1.2) unstable; urgency=low
+
+  * fixed memory leak in DebugPageHandler
+  * dependency from tornado >= 1.0.1~hh1
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 17 Aug 2010 17:25:59 +0400
+
 frontik (1.1.1) unstable; urgency=low
 
   * bugfix in debug mode specification
