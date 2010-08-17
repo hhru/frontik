@@ -76,7 +76,15 @@ class PageLogger(logging.Logger):
 _debug_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 class DebugPageHandler(logging.Handler):
     def __init__(self):
-        logging.Handler.__init__(self, logging.DEBUG)
+        """
+        Initializes the instance - basically setting the formatter to None
+        and the filter list to empty.
+        """
+        logging.Filterer.__init__(self)
+        self.level = logging.DEBUG
+        self.formatter = None
+        #get the module data lock, as we're updating a shared structure.
+        self.createLock()
         self.log_data = []
 
     def handle(self, record):
