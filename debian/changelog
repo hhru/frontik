@@ -1,3 +1,9 @@
+frontik (1.1.4) unstable; urgency=low
+
+  * dependency from tornado >= 1.0.1~hh4
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Wed, 25 Aug 2010 16:56:04 +0400
+
 frontik (1.1.3) unstable; urgency=low
 
   * fix control file

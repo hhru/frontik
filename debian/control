@@ -16,7 +16,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
   python-lxml,
   python-simplejson,
   python-tornado (< 2),
-  python-tornado (>= 1.0.1~hh1),
+  python-tornado (>= 1.0.1~hh4),
   python-tornado-util (>= 0.2.10),
   python, 
 Description: frontik - the python based XScript alternative 
