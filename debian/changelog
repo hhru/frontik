@@ -1,3 +1,9 @@
+frontik (1.2.0) unstable; urgency=low
+
+  * AsyncGroup +name parameter
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 30 Aug 2010 20:37:02 +0400
+
 frontik (1.1.4) unstable; urgency=low
 
   * dependency from tornado >= 1.0.1~hh4
