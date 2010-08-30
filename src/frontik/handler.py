@@ -138,6 +138,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.text = None
 
         self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
+                                                     name='finish',
                                                      log=self.log.debug)
 
         if self.get_argument('debug', None) is not None:
