@@ -25,6 +25,7 @@ import frontik.http
 import frontik.util
 import frontik.handler_xml
 import frontik.handler_whc_limit
+import frontik.handler_debug
 
 import logging
 log = logging.getLogger('frontik.handler')
@@ -73,24 +74,6 @@ class PageLogger(logging.Logger):
         log.handle(record)
 
 
-_debug_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-class DebugPageHandler(logging.Handler):
-    def __init__(self):
-        """
-        Initializes the instance - basically setting the formatter to None
-        and the filter list to empty.
-        """
-        logging.Filterer.__init__(self)
-        self.level = logging.DEBUG
-        self.formatter = None
-        #get the module data lock, as we're updating a shared structure.
-        self.createLock()
-        self.log_data = []
-
-    def handle(self, record):
-        self.log_data.append(_debug_formatter.format(record))
-
-
 class PageHandlerGlobals(object):
     '''
     Объект с настройками для всех хендлеров
@@ -105,30 +88,19 @@ class PageHandlerGlobals(object):
 
         
 class PageHandler(tornado.web.RequestHandler):
-    '''
-    Хендлер для конкретного запроса. Создается на каждый запрос.
-    '''
-    
     def __init__(self, ph_globals, application, request):
         self.handler_started = time.time()
 
         self.request_id = request.headers.get('X-Request-Id', stats.next_request_id())
         self.log = PageLogger(self.request_id)
 
-        self.ph_globals = ph_globals
-        self.config = ph_globals.config
-        self.http_client = ph_globals.http_client
-
         tornado.web.RequestHandler.__init__(self, application, request, logger=self.log)
 
-        if tornado.options.options.debug or "debug" in self.request.arguments:
-            self.debug_mode_logging = True
-            self.debug_log_handler = DebugPageHandler()
-            self.log.addHandler(self.debug_log_handler)
+        self.ph_globals = ph_globals
+        self.config = self.ph_globals.config
+        self.http_client = self.ph_globals.http_client
 
-            self.log.debug('using debug mode logging')
-        else:
-            self.debug_mode_logging = False
+        self.debug = frontik.handler_debug.PageHandlerDebug(self)  
 
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
 
@@ -140,13 +112,6 @@ class PageHandler(tornado.web.RequestHandler):
         self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
                                                      name='finish',
                                                      log=self.log.debug)
-
-        if self.get_argument('debug', None) is not None:
-            self.log.debug('debug mode is on due to ?debug query arg')
-            self.debug_mode = True
-            self.require_debug_access()
-        else:
-            self.debug_mode = False
 
         if self.get_argument('nopost', None) is not None:
             self.log.debug('apply_postprocessor==False due to ?nopost query arg')
@@ -160,18 +125,9 @@ class PageHandler(tornado.web.RequestHandler):
             frontik.auth.require_basic_auth(self, tornado.options.options.debug_login,
                                             tornado.options.options.debug_password)
 
-    def _get_debug_page(self, status_code, **kwargs):
-        return '<html><title>{code}</title>' \
-            '<body>' \
-            '<h1>{code}</h1>' \
-            '<pre>{log}</pre></body>' \
-            '</html>'.format(code=status_code,
-                             log='<br/>'.join(xml.sax.saxutils.escape(i).replace('\n', '<br/>').replace(' ', '&nbsp;')
-                                              for i in self.debug_log_handler.log_data))
-
     def get_error_html(self, status_code, **kwargs):
-        if self.debug_mode_logging:
-            return self._get_debug_page(status_code, **kwargs)
+        if self.debug.debug_mode_logging:
+            return self.debug.get_debug_page(status_code, **kwargs)
         else:
             return tornado.web.RequestHandler.get_error_html(self, status_code, **kwargs)
 
@@ -224,9 +180,9 @@ class PageHandler(tornado.web.RequestHandler):
 
         # if debug_mode is on: ignore any output we intended to write
         # and use debug log instead
-        if hasattr(self, 'debug_mode') and self.debug_mode:
+        if hasattr(self, 'debug') and self.debug.debug_mode:
             self.set_header('Content-Type', 'text/html')
-            res = self._get_debug_page(self._status_code)
+            res = self.debug.get_debug_page(self._status_code)
         else:
             res = chunk
 
