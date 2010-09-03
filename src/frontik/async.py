@@ -52,7 +52,7 @@ class AsyncGroup(object):
     def try_finish(self):
         if self.counter == 0 and not self.finished:
             self.finish_time = time.time()
-            self.log('done in %.1fms', (self.finish_time - self.start_time)*1000.)
+            self.log('done in %.2fms', (self.finish_time - self.start_time)*1000.)
             self.finished = True
 
             try:

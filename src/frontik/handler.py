@@ -195,7 +195,6 @@ class PageHandler(tornado.web.RequestHandler):
         if hasattr(self, 'whc_limit'):
             self.whc_limit.release()
 
-        self.log.stage_tag("done")
         self.log.debug('done in %.2fms', (time.time() - self.handler_started)*1000)
         self.log.process_stages()
 
@@ -362,6 +361,7 @@ class PageHandler(tornado.web.RequestHandler):
     ###
 
     def finish_page(self):
+        self.log.stage_tag("page")
         self.finish_group.try_finish()
 
     def _finish_page(self):        
