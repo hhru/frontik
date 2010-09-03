@@ -18,7 +18,7 @@ class Page(frontik.handler.PageHandler):
                 self.log.debug('n=%s', self.acc)
                 self.doc.put(str(self.acc))
 
-            grp = frontik.async.AsyncGroup(final_cb)
+            grp = frontik.async.AsyncGroup(final_cb, name='acc')
 
             self.get_url(
                 'http://localhost:{0}/page/fib/'.format(self.get_argument('port')),

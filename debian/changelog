@@ -1,8 +1,14 @@
-frontik (1.1.5) unstable; urgency=low
+frontik (1.2.1) unstable; urgency=low
 
   * stages in logging added
 
  -- Pavel Trukhanov <p.trukhanov@hh.ru>  Fri, 03 Sep 2010 19:22:58 +0400
+
+frontik (1.2.0) unstable; urgency=low
+
+  * AsyncGroup +name parameter
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 30 Aug 2010 20:37:02 +0400
 
 frontik (1.1.4) unstable; urgency=low
 

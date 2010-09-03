@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import time
 import Queue
 
 import logging
@@ -28,15 +29,30 @@ class AsyncGroup(object):
     Frontik uses this class to find the right moment to finish page.
     '''
 
-    def __init__(self, finish_cb, log=log.debug):
+    # in the breaking compatibility version parameters should be
+    # rearranged: name, finish_cb, log
+    def __init__(self, finish_cb, log=log.debug, name=None):
         self.counter = 0
         self.finished = False
         self.finish_cb = finish_cb
-        self.log = log
+        self.log_fun = log
+        self.name = name
+
+        self.start_time = time.time()
+        self.finish_time = None
+
+        if self.name is not None:
+            self.log_name = '{0} group'.format(self.name)
+        else:
+            self.log_name = 'group'
+
+    def log(self, msg, *args, **kw):
+        self.log_fun(self.log_name + ": " + msg, *args, **kw)
 
     def try_finish(self):
         if self.counter == 0 and not self.finished:
-            self.log('finishing group with %s', self.finish_cb)
+            self.finish_time = time.time()
+            self.log('done in %.1fms', (self.finish_time - self.start_time)*1000.)
             self.finished = True
 
             try:
@@ -47,16 +63,20 @@ class AsyncGroup(object):
                 self.finish_cb = None
                 self.log = None
 
-    def add(self, intermediate_cb):
+    def _inc(self):
         assert(not self.finished)
-        
         self.counter += 1
 
-        def new_cb(*args, **kwargs):
-            self.counter -= 1
-            self.log('%s requests pending', self.counter)
+    def _dec(self):
+        self.counter -= 1
+        self.log('%s requests pending', self.counter)
 
+    def add(self, intermediate_cb):
+        self._inc()
+
+        def new_cb(*args, **kwargs):
             try:
+                self._dec()
                 intermediate_cb(*args, **kwargs)
             finally:
                 self.try_finish()
@@ -64,14 +84,10 @@ class AsyncGroup(object):
         return new_cb
 
     def add_notification(self):
-        assert(not self.finished)
-        
-        self.counter += 1
+        self._inc()
 
         def new_cb(*args, **kwargs):
-            self.counter -= 1
-            self.log('%s requests pending', self.counter)
-
+            self._dec()
             self.try_finish()
 
         return new_cb
