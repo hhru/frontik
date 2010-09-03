@@ -361,11 +361,12 @@ class PageHandler(tornado.web.RequestHandler):
     ###
 
     def finish_page(self):
-        self.log.stage_tag("page")
         self.finish_group.try_finish()
 
     def _finish_page(self):        
         if not self._finished:
+            self.log.stage_tag("page")
+
             res = None
             
             if self.text is not None:
