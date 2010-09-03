@@ -10,7 +10,7 @@ import httplib
 import os.path
 import time
 import traceback
-import urllib
+import urlparse
 import xml.sax.saxutils
 
 import tornado.httpclient
@@ -65,12 +65,30 @@ class PageLogger(logging.Logger):
     requests.
     '''
     
-    def __init__(self, request_id):
+    def __init__(self, request_id, page, zero_time):
         logging.Logger.__init__(self, 'frontik.handler.{0}'.format(request_id))
+        self.page = page
+        self._time = zero_time
+        self.stages = []
+
 
     def handle(self, record):
         logging.Logger.handle(self, record)
         log.handle(record)
+
+    def stage_tag(self, stage):
+        self._stage_tag(stage, (time.time() - self._time)*1000 )
+        self._time = time.time()
+
+    def _stage_tag(self, stage, time_delta):
+        self.stages.append( ( stage, time_delta) )
+        self.debug('Stage: {stage}'.format(stage=stage) )
+
+    def stage_tag_backdate(self, stage, time_delta):
+        self._stage_tag(stage, time_delta )
+
+    def process_stages(self):
+        self.debug("Stages for {0} : ".format(self.page) + " ".join( ["{0}:{1:.2f}ms".format(k, v) for k,v in self.stages] ))
 
 
 _debug_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -113,7 +131,8 @@ class PageHandler(tornado.web.RequestHandler):
         self.handler_started = time.time()
 
         self.request_id = request.headers.get('X-Request-Id', stats.next_request_id())
-        self.log = PageLogger(self.request_id)
+        self.path = urlparse.urlparse(request.uri).path or request.uri
+        self.log = PageLogger(self.request_id, self.path, self.handler_started)
 
         self.ph_globals = ph_globals
         self.config = ph_globals.config
@@ -219,7 +238,9 @@ class PageHandler(tornado.web.RequestHandler):
         if hasattr(self, 'whc_limit'):
             self.whc_limit.release()
 
+        self.log.stage_tag("done")
         self.log.debug('done in %.2fms', (time.time() - self.handler_started)*1000)
+        self.log.process_stages()
 
         # if debug_mode is on: ignore any output we intended to write
         # and use debug log instead
@@ -409,6 +430,7 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
     def _wait_postprocessor(self, start_time, data):
+        self.log.stage_tag("postprocess")
         self.log.debug("applied postprocessor '%s' in %.2fms",
                 self.config.postprocessor,
                 (time.time() - start_time)*1000)

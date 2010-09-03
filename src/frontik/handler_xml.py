@@ -184,6 +184,7 @@ class PageHandlerXML(object):
         try:
             t = time.time()
             result = str(self.transform(self.doc.to_etree_element()))
+            self.log.stage_tag("xsl")
             self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
             return result           
         except:
