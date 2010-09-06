@@ -353,8 +353,10 @@ class PageHandler(tornado.web.RequestHandler):
     def _fetch_request_response(self, placeholder, callback, response):
         self.log.debug('got %s %s in %.2fms', response.code, response.effective_url, response.request_time*1000)
         
-        data, xml = self._parse_response(response)
-        placeholder.set_data(data)
+        xml = None
+        if response.headers['Content-Type'].startswith(('text/xml','application/xml')):
+            data, xml = self._parse_response(response)
+            placeholder.set_data(data)
 
         if callback:
             callback(xml, response)
