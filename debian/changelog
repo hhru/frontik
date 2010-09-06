@@ -1,3 +1,11 @@
+frontik (2.0.0) unstable; urgency=low
+
+  * backcompatibility is broken:
+  * - require text/xml or application/xml content-types for parsing incoming xml
+  * - POST page request goes to get_post instead of get_page
+
+ -- Mikhail Sabourenkov <m.saburenkov@hh.ru>  Mon, 06 Sep 2010 18:47:04 +0400
+
 frontik (1.2.3) lucid; urgency=low
 
   * stage page fixed
