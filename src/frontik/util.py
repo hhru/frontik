@@ -114,16 +114,18 @@ def make_mfd(fields, files):
     return body, content_type
 
 
-def make_get_request(url, data={}, headers={}, connect_timeout=0.5, request_timeout=2):
+def make_get_request(url, data={}, headers={},
+        connect_timeout=0.5, request_timeout=2, follow_redirects=True):
     return tornado.httpclient.HTTPRequest(
                     url=make_url(url, **data),
+                    follow_redirects=follow_redirects,
                     headers=headers,
                     connect_timeout=connect_timeout,
                     request_timeout=request_timeout)
 
 
 def make_post_request(url, data={}, headers={}, files={},
-        connect_timeout=0.5, request_timeout=2):
+        connect_timeout=0.5, request_timeout=2, follow_redirects=True):
 
     if files:
         body, content_type = make_mfd(data, files)
@@ -140,6 +142,7 @@ def make_post_request(url, data={}, headers={}, files={},
     return tornado.httpclient.HTTPRequest(
                 method='POST',
                 headers=headers,
+                follow_redirects=follow_redirects,
                 url=url,
                 body=body,
                 connect_timeout=connect_timeout,

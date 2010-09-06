@@ -181,7 +181,6 @@ class PageHandler(tornado.web.RequestHandler):
                     return standard_send_error()
         return standard_send_error()
 
-    # эта заляпа сливает обработчики get и post запросов
     @tornado.web.asynchronous
     def post(self, *args, **kw):
         self.post_page()
@@ -263,11 +262,11 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             self.log.warn('attempted to make http request to %s while page is already finished; ignoring', req.url)
 
-    def get_url(self, url, data={}, headers={}, connect_timeout=0.5, request_timeout=2, callback=None):
+    def get_url(self, url, data={}, headers={}, connect_timeout=0.5, request_timeout=2, callback=None, follow_redirects=True):
         placeholder = future.Placeholder()
 
         self.fetch_request(
-            frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout),
+            frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout, follow_redirects),
             partial(self._fetch_request_response, placeholder, callback))
 
         return placeholder
@@ -303,12 +302,13 @@ class PageHandler(tornado.web.RequestHandler):
                  headers={},
                  files={},
                  connect_timeout=0.5, request_timeout=2,
+                 follow_redirects=True,
                  callback=None):
         
         placeholder = future.Placeholder()
         
         self.fetch_request(
-            frontik.util.make_post_request(url, data, headers, files, connect_timeout, request_timeout),
+            frontik.util.make_post_request(url, data, headers, files, connect_timeout, request_timeout, follow_redirects),
             partial(self._fetch_request_response, placeholder, callback))
         
         return placeholder
