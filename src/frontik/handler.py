@@ -184,7 +184,8 @@ class PageHandler(tornado.web.RequestHandler):
     # эта заляпа сливает обработчики get и post запросов
     @tornado.web.asynchronous
     def post(self, *args, **kw):
-        self.get(*args, **kw)
+        self.post_page()
+        self.finish_page()
 
     @tornado.web.asynchronous
     def get(self, *args, **kw):
@@ -209,6 +210,11 @@ class PageHandler(tornado.web.RequestHandler):
         tornado.web.RequestHandler.finish(self, res)
 
     def get_page(self):
+        ''' Эта функция должна быть переопределена в наследнике и
+        выполнять актуальную работу хендлера '''
+        pass
+
+    def post_page(self):
         ''' Эта функция должна быть переопределена в наследнике и
         выполнять актуальную работу хендлера '''
         pass
