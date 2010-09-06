@@ -128,7 +128,10 @@ def make_post_request(url, data={}, headers={}, files={},
     if files:
         body, content_type = make_mfd(data, files)
     else:
-        body = make_qs(data)
+        if isinstance(data,dict):
+           body = make_qs(data)
+        else:
+           body = data
         content_type = 'application/x-www-form-urlencoded'
 
     headers.update({'Content-Type' : content_type,
