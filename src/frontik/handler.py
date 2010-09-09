@@ -354,7 +354,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.log.debug('got %s %s in %.2fms', response.code, response.effective_url, response.request_time*1000)
         
         xml = None
-        if response.headers.get('Content-Type','').startswith(('text/xml','application/xml')):
+        if response.headers['Content-Type'].startswith(('text/xml','application/xml')):
             data, xml = self._parse_response(response)
             placeholder.set_data(data)
 
