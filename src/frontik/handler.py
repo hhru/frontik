@@ -319,48 +319,53 @@ class PageHandler(tornado.web.RequestHandler):
         None - в случае ошибки парсинга
         '''
 
-        if response.error:
-            self.log.warn('%s failed %s (%s)', response.code, response.effective_url, str(response.error))
-            data = [etree.Element('error', dict(url=response.effective_url, reason=str(response.error), code=str(response.code)))]
-
-            if response.body:
-                try:
-                    data.append(etree.Comment(response.body.replace("--", "%2D%2D")))
-                except ValueError:
-                    self.log.warn("Could not add debug info in XML comment with unparseable response.body. non-ASCII response.")
-                    
-            return (data, None)
-        else:
-            try:
-                element = etree.fromstring(response.body)
-            except:
-                if len(response.body) > 100:
-                    body_preview = '{0}...'.format(response.body[:100])
-                else:
-                    body_preview = response.body
-
-                self.log.warn('failed to parse XML response from %s data "%s"',
-                                 response.effective_url,
-                                 body_preview)
-
-                return (etree.Element('error', dict(url=response.effective_url, reason='invalid XML')),
-                        None)
-
+        try:
+            element = etree.fromstring(response.body)
+        except:
+            if len(response.body) > 100:
+                body_preview = '{0}...'.format(response.body[:100])
             else:
-                return ([frontik.handler_xml._source_comment(response.effective_url), element],
-                        element)
+                body_preview = response.body
+
+            self.log.warn('failed to parse XML response from %s data "%s"',
+                             response.effective_url,
+                             body_preview)
+
+            return (etree.Element('error', dict(url=response.effective_url, reason='invalid XML')),
+                    None)
+
+        else:
+            return ([frontik.handler_xml._source_comment(response.effective_url), element],
+                    element)
 
     def _fetch_request_response(self, placeholder, callback, response):
         self.log.debug('got %s %s in %.2fms', response.code, response.effective_url, response.request_time*1000)
         
-        xml = None
-        if response.headers['Content-Type'].startswith(('text/xml','application/xml')):
-            data, xml = self._parse_response(response)
-            placeholder.set_data(data)
+        if response.error:
+          placeholder.set_data(self.show_response_error(response))
+        else:
+          xml = None
+          if response.headers['Content-Type'].startswith(('text/xml','application/xml')):
+              data, xml = self._parse_response(response)
+              placeholder.set_data(data)
+
+
 
         if callback:
             callback(xml, response)
 
+    def show_response_error(self, response):
+        self.log.warn('%s failed %s (%s)', response.code, response.effective_url, str(response.error))
+        data = etree.Element('error', dict(url=response.effective_url, reason=str(response.error), code=str(response.code)))
+
+        if response.body:
+            try:
+                data.append(etree.Comment(response.body.replace("--", "%2D%2D")))
+            except ValueError:
+                self.log.warn("Could not add debug info in XML comment with unparseable response.body. non-ASCII response.")
+                
+        return data
+      
     ###
 
     def set_plaintext_response(self, text):

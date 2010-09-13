@@ -1,3 +1,9 @@
+frontik (2.0.1) unstable; urgency=low
+
+  * Bug fix, shor error from backend in response xml
+
+ -- Andrew Sumin <AndrewSumin@hh.ru>  Mon, 13 Sep 2010 15:47:22 +0400
+
 frontik (2.0.0) unstable; urgency=low
 
   * backcompatibility is broken:
