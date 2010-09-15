@@ -1,3 +1,10 @@
+frontik (2.2.1) unstable; urgency=low
+
+  * In noxsl mode we always send xml
+  * Set content-type application/xml
+
+ -- Andrew Sumin <AndrewSumin@hh.ru>  Wed, 15 Sep 2010 18:16:02 +0400
+
 frontik (2.2.0) unstable; urgency=low
 
   * changed dependencies: tornado_util =>0.3

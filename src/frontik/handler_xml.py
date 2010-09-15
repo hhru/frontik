@@ -193,9 +193,9 @@ class PageHandlerXML(object):
 
     def _prepare_finish_wo_xsl(self):
         self.log.debug('finishing wo xsl')
-
-        if not self.handler._headers.get("Content-Type", None):
-            self.handler.set_header('Content-Type', 'application/xml')
+        
+        # В режиме noxsl мы всегда отдаем xml.
+        self.handler.set_header('Content-Type', 'application/xml')
 
         return self.doc.to_string()
        
