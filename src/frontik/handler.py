@@ -298,17 +298,18 @@ class PageHandler(tornado.web.RequestHandler):
         
         return placeholder
 
-    def post_url(self, url, data={},
+    def post_url(self, url, data='',
                  headers={},
                  files={},
                  connect_timeout=0.5, request_timeout=2,
                  follow_redirects=True,
+                 content_type=None,
                  callback=None):
         
         placeholder = future.Placeholder()
-        
+
         self.fetch_request(
-            frontik.util.make_post_request(url, data, headers, files, connect_timeout, request_timeout, follow_redirects),
+            frontik.util.make_post_request(url, data, headers, files, connect_timeout, request_timeout, follow_redirects, content_type),
             partial(self._fetch_request_response, placeholder, callback))
         
         return placeholder

@@ -124,16 +124,17 @@ def make_get_request(url, data={}, headers={},
                     request_timeout=request_timeout)
 
 
-def make_post_request(url, data={}, headers={}, files={},
-        connect_timeout=0.5, request_timeout=2, follow_redirects=True):
+def make_post_request(url, data='', headers={}, files={},
+        connect_timeout=0.5, request_timeout=2, follow_redirects=True, content_type=None):
 
     if files:
         body, content_type = make_mfd(data, files)
+    elif isinstance(data,dict):
+        body = make_qs(data)
     else:
-        if isinstance(data,dict):
-           body = make_qs(data)
-        else:
-           body = data
+        body = data
+
+    if content_type is None:
         content_type = 'application/x-www-form-urlencoded'
 
     headers.update({'Content-Type' : content_type,
@@ -147,7 +148,6 @@ def make_post_request(url, data={}, headers={}, files={},
                 body=body,
                 connect_timeout=connect_timeout,
                 request_timeout=request_timeout)
-
 
 def make_put_request(url, data={}, headers={}, body="", connect_timeout=0.5, request_timeout=2):
     return tornado.httpclient.HTTPRequest(
