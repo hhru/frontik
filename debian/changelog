@@ -2,8 +2,9 @@ frontik (2.2.1) unstable; urgency=low
 
   * In noxsl mode we always send xml
   * Set content-type application/xml
+  * Add status noxsl
 
- -- Andrew Sumin <AndrewSumin@hh.ru>  Wed, 15 Sep 2010 18:16:02 +0400
+ -- Andrew Sumin <AndrewSumin@hh.ru>  Wed, 22 Sep 2010 14:56:27 +0400
 
 frontik (2.2.0) unstable; urgency=low
 

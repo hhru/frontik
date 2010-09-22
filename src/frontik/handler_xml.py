@@ -136,7 +136,7 @@ class PageHandlerXML(object):
 
         self.doc = frontik.doc.Doc(root_node=etree.Element('doc', frontik='true'))
         self.transform = None
-
+        self.noxsl = False
         if not self.handler.config.apply_xsl:
             self.log.debug('ignoring set_xsl() because config.apply_xsl=%s', self.config.apply_xsl)
             self.apply_xsl = False
@@ -144,6 +144,7 @@ class PageHandlerXML(object):
         elif self.handler.get_argument('noxsl', None):
             self.log.debug('ignoring set_xsl() because noxsl=%s', self.handler.get_argument('noxsl'))
             self.apply_xsl = False
+            self.noxsl = True
             self.handler.require_debug_access()
         else:
             self.apply_xsl = True
