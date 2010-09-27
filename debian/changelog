@@ -1,3 +1,10 @@
+frontik (2.2.2-oauth2) unstable; urgency=low
+
+  * Connvert if 'xml' word in Content-type
+  * Convert to object if Content-type has 'json'
+
+ -- Andrew Sumin <AndrewSumin@hh.ru>  Mon, 27 Sep 2010 13:12:42 +0400
+
 frontik (2.2.2) unstable; urgency=low
 
   * Last commit was bad idea noxsl == !apply_xsl

@@ -11,6 +11,7 @@ import os.path
 import time
 import traceback
 import urlparse
+import json
 import xml.sax.saxutils
 
 import tornado.httpclient
@@ -346,9 +347,11 @@ class PageHandler(tornado.web.RequestHandler):
         if response.error:
           placeholder.set_data(self.show_response_error(response))
         else:
-          if response.headers.get('Content-Type','').startswith(('text/xml','application/xml')):
+          if response.headers.get('Content-Type','').find('xml') > 0:
               data, xml = self._parse_response(response)
               placeholder.set_data(data)
+          if response.headers.get('Content-Type','').find('json') > 0:
+              xml = json.loads(response.body)
         if callback:
             callback(xml, response)
 
