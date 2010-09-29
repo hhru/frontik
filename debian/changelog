@@ -1,3 +1,9 @@
+frontik (2.2.3) unstable; urgency=low
+
+  * log errors on importing app.config. http://github.com/hhru/frontik/issues#issue/12
+
+ --
+
 frontik (2.2.2) unstable; urgency=low
 
   * Last commit was bad idea noxsl == !apply_xsl

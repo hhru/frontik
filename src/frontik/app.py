@@ -99,7 +99,11 @@ class FrontikAppDispatcher(object):
         pages_module = imp.new_module(frontik.magic_imp.gen_module_name(app_name, 'pages'))
         sys.modules[pages_module.__name__] = pages_module
 
-        module.config = self.importer.imp_app_module(app_name, 'config')
+        try:
+            module.config = self.importer.imp_app_module(app_name, 'config')
+        except:
+            log.error('failed to load config for app "%s"', app_name)
+            raise
         
         return module
 
