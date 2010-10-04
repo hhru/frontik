@@ -312,16 +312,16 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             self.log.warn('attempted to make http request to %s while page is already finished; ignoring', req.url)
 
-    def get_url(self, url, data={}, headers={}, connect_timeout=0.5, request_timeout=2, callback=None, follow_redirects=True):
+    def get_url(self, url, data={}, headers={}, connect_timeout=0.5, request_timeout=2, callback=None, follow_redirects=True, request_types=None):
         placeholder = future.Placeholder()
 
         self.fetch_request(
             frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout, follow_redirects),
-            partial(self._fetch_request_response, placeholder, callback))
+            partial(self._fetch_request_response, placeholder, callback, request_types=request_types))
 
         return placeholder
 
-    def get_url_retry(self, url, data={}, headers={}, retry_count=3, retry_delay=0.1, connect_timeout=0.5, request_timeout=2, callback=None):
+    def get_url_retry(self, url, data={}, headers={}, retry_count=3, retry_delay=0.1, connect_timeout=0.5, request_timeout=2, callback=None, request_types=None):
         placeholder = future.Placeholder()
 
         req = frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout)
@@ -339,7 +339,7 @@ class PageHandler(tornado.web.RequestHandler):
                 if response.error and retry_count == 0:
                     self.log.warn('failed to get %s; no more retries left; give up retrying', response.effective_url)
 
-                self._fetch_request_response(placeholder, callback, response)
+                self._fetch_request_response(placeholder, callback, response, request_types=request_types)
 
         def step2(retry_count):
             self.http_client.fetch(req, self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
