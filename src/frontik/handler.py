@@ -13,6 +13,7 @@ import traceback
 import urlparse
 import json
 import xml.sax.saxutils
+import re
 
 import tornado.httpclient
 import tornado.options
@@ -32,6 +33,53 @@ import logging
 log = logging.getLogger('frontik.handler')
 
 import future
+
+def _parse_response_xml(response, logger = log):
+    '''
+    return :: (placeholder_data, response_as_xml)
+    None - в случае ошибки парсинга
+    '''
+  
+    try:
+        element = etree.fromstring(response.body)
+    except:
+        if len(response.body) > 100:
+            body_preview = '{0}...'.format(response.body[:100])
+        else:
+            body_preview = response.body
+  
+        logger.warn('failed to parse XML response from %s data "%s"',
+                         response.effective_url,
+                         body_preview)
+  
+        return (etree.Element('error', dict(url=response.effective_url, reason='invalid XML')),
+                None)
+    return ([frontik.handler_xml._source_comment(response.effective_url), element],
+            element)
+    
+def _parse_response_json(response, logger = log):
+    try:
+        data = json.loads(response.body)
+    except:
+        if len(response.body) > 100:
+            body_preview = '{0}...'.format(response.body[:100])
+        else:
+            body_preview = response.body
+  
+        logger.warn('failed to parse JSON response from %s data "%s"',
+                         response.effective_url,
+                         body_preview)
+  
+        return (etree.Element('error', dict(url=response.effective_url, reason='invalid JSON')),
+                None)
+
+    return (frontik.handler_xml._source_comment(response.effective_url),
+            data)
+
+default_request_types = {
+          re.compile(".*xml.?"): _parse_response_xml,
+          re.compile(".*json.?"): _parse_response_json
+          }
 
 # TODO cleanup this after release of frontik with frontik.async
 AsyncGroup = frontik.async.AsyncGroup
@@ -107,6 +155,7 @@ class PageHandlerGlobals(object):
 
         
 class PageHandler(tornado.web.RequestHandler):
+    
     def __init__(self, ph_globals, application, request):
         self.handler_started = time.time()
 
@@ -305,55 +354,35 @@ class PageHandler(tornado.web.RequestHandler):
                  connect_timeout=0.5, request_timeout=2,
                  follow_redirects=True,
                  content_type=None,
-                 callback=None):
+                 callback=None,
+                 request_types = None):
         
         placeholder = future.Placeholder()
 
         self.fetch_request(
             frontik.util.make_post_request(url, data, headers, files, connect_timeout, request_timeout, follow_redirects, content_type),
-            partial(self._fetch_request_response, placeholder, callback))
+            partial(self._fetch_request_response, placeholder, callback, request_types=request_types))
         
         return placeholder
 
-    def _parse_response(self, response):
-        '''
-        return :: (placeholder_data, response_as_xml)
-        None - в случае ошибки парсинга
-        '''
-
-        try:
-            element = etree.fromstring(response.body)
-        except:
-            if len(response.body) > 100:
-                body_preview = '{0}...'.format(response.body[:100])
-            else:
-                body_preview = response.body
-
-            self.log.warn('failed to parse XML response from %s data "%s"',
-                             response.effective_url,
-                             body_preview)
-
-            return (etree.Element('error', dict(url=response.effective_url, reason='invalid XML')),
-                    None)
-
-        else:
-            return ([frontik.handler_xml._source_comment(response.effective_url), element],
-                    element)
-
-    def _fetch_request_response(self, placeholder, callback, response):
+    def _fetch_request_response(self, placeholder, callback, response, request_types = None):
         self.log.debug('got %s %s in %.2fms', response.code, response.effective_url, response.request_time*1000)
         
-        xml = None
+        if not request_types:
+          request_types = default_request_types
+        
+        result = None
         if response.error:
           placeholder.set_data(self.show_response_error(response))
         else:
-          if response.headers.get('Content-Type','').find('xml') > 0:
-              data, xml = self._parse_response(response)
-              placeholder.set_data(data)
-          if response.headers.get('Content-Type','').find('json') > 0:
-              xml = json.loads(response.body)
+          content_type = response.headers.get('Content-Type','')
+          for k, v in request_types.iteritems():
+            if k.search(content_type):
+                data, result = v(response)
+                placeholder.set_data(data)
+                break
         if callback:
-            callback(xml, response)
+            callback(result, response)
 
     def show_response_error(self, response):
         self.log.warn('%s failed %s (%s)', response.code, response.effective_url, str(response.error))
