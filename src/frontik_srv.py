@@ -30,6 +30,12 @@ if __name__ == '__main__':
         logging.getLogger(log_channel_name).setLevel(logging.WARN)
 
     import frontik.app
+
+    try:
+        app = frontik.app.get_app(options.apps)
+    except:
+        log.exception('failed to initialize frontik.app, quitting')
+        sys.exit(1)
     
-    tornado_util.server.main(frontik.app.get_app(options.apps))
+    tornado_util.server.main(app)
 
