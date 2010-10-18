@@ -18,8 +18,9 @@ frontik (2.3.0) unstable; urgency=low
 frontik (2.2.3) unstable; urgency=low
 
   * log errors on importing app.config. http://github.com/hhru/frontik/issues#issue/12
+  * fixed logging
 
- --
+ -- Dmitry Zubov <d.zubov@hh.ru>  Tue, 30 Sep 2010 15:04:37 +0400
 
 frontik (2.2.2) unstable; urgency=low
 
