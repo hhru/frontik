@@ -1,4 +1,4 @@
-import logging
+import frontik.log as logging
 import tornado
 import weakref
 import xml.sax.saxutils

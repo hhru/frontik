@@ -6,7 +6,16 @@ import os.path
 import tornado.options
 from tornado.options import options
 import tornado_util.server
-import logging
+import frontik.log as logging
+
+import logging.handlers
+
+print "************"
+print "************"
+print "************"
+print "************"
+for h in logging.handlers:
+    print h
 
 log = logging.getLogger('frontik')
 
@@ -20,6 +29,11 @@ if __name__ == '__main__':
     tornado.options.define('apps', {}, dict)
     tornado.options.define('suppressed_loggers', ['tornado.httpclient'], list)
     tornado.options.define('handlers_count', 100, int)
+
+    tornado.options.define('syslog_address', "/dev/log", str)
+    tornado.options.define('syslog', False, bool)
+    tornado.options.define('syslog_only', False, bool)
+
     tornado.options.define('debug', False, bool)
     tornado.options.define('debug_login', None, str)
     tornado.options.define('debug_password', None, str)

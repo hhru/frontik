@@ -176,3 +176,4 @@ def _asciify_url_char(c):
 
 def asciify_url(url):
     return ''.join(map(_asciify_url_char, url))
+

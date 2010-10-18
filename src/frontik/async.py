@@ -3,7 +3,7 @@
 import time
 import Queue
 
-import logging
+import frontik.log as logging
 log = logging.getLogger('frontik.async')
 
 
