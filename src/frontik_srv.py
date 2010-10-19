@@ -6,16 +6,7 @@ import os.path
 import tornado.options
 from tornado.options import options
 import tornado_util.server
-import frontik.log as logging
-
-import logging.handlers
-
-print "************"
-print "************"
-print "************"
-print "************"
-for h in logging.handlers:
-    print h
+import logging
 
 log = logging.getLogger('frontik')
 
@@ -32,7 +23,6 @@ if __name__ == '__main__':
 
     tornado.options.define('syslog_address', "/dev/log", str)
     tornado.options.define('syslog', False, bool)
-    tornado.options.define('syslog_only', False, bool)
 
     tornado.options.define('debug', False, bool)
     tornado.options.define('debug_login', None, str)
@@ -52,4 +42,3 @@ if __name__ == '__main__':
         sys.exit(1)
     
     tornado_util.server.main(app)
-
