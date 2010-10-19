@@ -136,6 +136,7 @@ class PageHandlerXML(object):
 
         self.doc = frontik.doc.Doc(root_node=etree.Element('doc', frontik='true'))
         self.transform = None
+        self.transform_result = None
         if not self.handler.config.apply_xsl:
             self.log.debug('ignoring set_xsl() because config.apply_xsl=%s', self.handler.config.apply_xsl)
             self.apply_xsl = False
@@ -168,27 +169,30 @@ class PageHandlerXML(object):
         except:
             self._set_xsl_log_and_raise('XSL transformation error with file {0}')
 
-    def _finish_xml(self):
+    def _finish_xml(self, cb):
         if self.apply_xsl and self.transform:
-            return self._prepare_finish_with_xsl()
+            return self._prepare_finish_with_xsl(cb)
         else:
             return self._prepare_finish_wo_xsl()
 
-    def _prepare_finish_with_xsl(self):
+    def _prepare_finish_with_xsl(self, cb):
         self.log.debug('finishing with xsl')
 
         if not self.handler._headers.get("Content-Type", None):
             self.handler.set_header('Content-Type', 'text/html')
 
-        try:
-            t = time.time()
-            result = str(self.transform(self.doc.to_etree_element()))
-            self.log.stage_tag("xsl")
-            self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
-            return result           
-        except:
-            self.log.exception('failed transformation with XSL %s' % self.transform_filename)
-            raise
+        def run():
+            try:
+                t = time.time()
+                result = str(self.transform(self.doc.to_etree_element()))
+                self.log.stage_tag("xsl")
+                self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
+                return result
+            except:
+                self.log.exception('failed transformation with XSL %s' % self.transform_filename)
+                raise
+
+        self.handler.executor.start_job(run, cb)
 
     def _prepare_finish_wo_xsl(self):
         self.log.debug('finishing wo xsl')
