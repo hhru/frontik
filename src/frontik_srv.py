@@ -20,6 +20,10 @@ if __name__ == '__main__':
     tornado.options.define('apps', {}, dict)
     tornado.options.define('suppressed_loggers', ['tornado.httpclient'], list)
     tornado.options.define('handlers_count', 100, int)
+
+    tornado.options.define('syslog_address', "/dev/log", str)
+    tornado.options.define('syslog', False, bool)
+
     tornado.options.define('debug', False, bool)
     tornado.options.define('debug_login', None, str)
     tornado.options.define('debug_password', None, str)
@@ -38,4 +42,3 @@ if __name__ == '__main__':
         sys.exit(1)
     
     tornado_util.server.main(app)
-
