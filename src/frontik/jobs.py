@@ -7,7 +7,7 @@ io_loop = tornado.ioloop.IOLoop.instance()
 import logging
 log = logging.getLogger('frontik.jobs')
 
-class _Job(threading.Thread):
+class Job(threading.Thread):
     def __init__(self, func, done):
         threading.Thread.__init__(self)
         self.func = func
@@ -18,13 +18,16 @@ class _Job(threading.Thread):
         self.result = self.func()
         self.done.set()
 
-class _Executor():
-    def __init__(self):
+class Executor():
+    def __init__(self, verbose = False, timeout = 0.001, log = log):
         self.events = []
+        self.verbose = verbose
+        self.timeout = timeout
+        self.log = log
 
-    def start_job(self, func, cb):
+    def introduce_job(self, func, cb):
         done = threading.Event()
-        job = _Job(func, done)
+        job = Job(func, done)
         def _cb():
             cb(job.result)
         job.start()
@@ -32,12 +35,15 @@ class _Executor():
         self.listen_events()
 
     def listen_events(self):
-#        log.debug('active threads count = ' + str(threading.active_count()))
+        if self.verbose: self.log.debug('active threads count = ' + str(threading.active_count()))
         ev_c = len(self.events)
-#        log.debug('waiting events count = ' + str(ev_c))
+        if self.verbose: self.log.debug('waiting events count = ' + str(ev_c))
         if ev_c != 0:
-#            io_loop.add_callback(self._event_listener)
-            io_loop.add_timeout(time.time()+0.001, self._event_listener)
+            if self.timeout is not None:
+                io_loop.add_timeout(time.time()+self.timeout, self._event_listener)
+            else:
+                io_loop.add_callback(self._event_listener)
+
 
     def _event_listener(self):
         undone_events = filter(lambda (e, cb): not e.is_set(), self.events)
@@ -47,4 +53,4 @@ class _Executor():
             map(lambda (e, cb): cb(), done_events)
         self.listen_events()
 
-executor = _Executor()
+executor = Executor()

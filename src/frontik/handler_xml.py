@@ -171,9 +171,9 @@ class PageHandlerXML(object):
 
     def _finish_xml(self, cb):
         if self.apply_xsl and self.transform:
-            return self._prepare_finish_with_xsl(cb)
+            self._prepare_finish_with_xsl(cb)
         else:
-            return self._prepare_finish_wo_xsl()
+            self._prepare_finish_wo_xsl(cb)
 
     def _prepare_finish_with_xsl(self, cb):
         self.log.debug('finishing with xsl')
@@ -192,13 +192,13 @@ class PageHandlerXML(object):
                 self.log.exception('failed transformation with XSL %s' % self.transform_filename)
                 raise
 
-        self.handler.executor.start_job(run, cb)
+        self.handler.executor.introduce_job(run, cb)
 
-    def _prepare_finish_wo_xsl(self):
+    def _prepare_finish_wo_xsl(self, cb):
         self.log.debug('finishing wo xsl')
         
         # В режиме noxsl мы всегда отдаем xml.
         self.handler.set_header('Content-Type', 'application/xml')
 
-        return self.doc.to_string()
+        cb(self.doc.to_string())
        
