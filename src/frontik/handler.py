@@ -29,7 +29,7 @@ import frontik.util
 import frontik.handler_xml
 import frontik.handler_whc_limit
 import frontik.handler_debug
-import frontik.jobs
+import frontik.thread_pool
 
 import logging
 log = logging.getLogger('frontik.handler')
@@ -178,7 +178,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.xml = frontik.handler_xml.PageHandlerXML(self)
         self.doc = self.xml.doc # backwards compatibility for self.doc.put
         
-        self.executor = frontik.jobs.executor
+        self.executor = frontik.thread_pool.executor
         
         self.text = None
 

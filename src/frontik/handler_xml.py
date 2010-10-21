@@ -202,9 +202,7 @@ class PageHandlerXML(object):
                 tornado.ioloop.IOLoop.instance().add_callback(
                     functools.partial(reraise_in_ioloop, e))
 
-        t = threading.Thread(target=apply_xsl)
-        t.setDaemon(False)
-        t.start()
+        self.handler.executor.queue_job(apply_xsl)
 
     def _prepare_finish_wo_xsl(self, cb):
         self.log.debug('finishing wo xsl')
