@@ -18,6 +18,7 @@ import re
 import tornado.httpclient
 import tornado.options
 import tornado.web
+import tornado.ioloop
 
 from frontik import etree
 import frontik.async
@@ -419,8 +420,7 @@ class PageHandler(tornado.web.RequestHandler):
                 res = self._prepare_finish_plaintext()
                 self._apply_postprocessor(res)
             else:
-                #self.xml._finish_xml(self._apply_postprocessor)
-                self.async_callback(self.xml._finish_xml)(self.async_callback(self._apply_postprocessor))
+                self.xml._finish_xml(self.async_callback(self._apply_postprocessor))
      
         else:
             self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')

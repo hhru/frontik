@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 
+import functools
 import os.path
-import weakref
+import threading
 import time
 import urllib
+import weakref
 
 import tornado.autoreload
 import tornado.options
+import tornado.ioloop
 
 from frontik import etree
 import frontik.util
@@ -181,18 +184,27 @@ class PageHandlerXML(object):
         if not self.handler._headers.get("Content-Type", None):
             self.handler.set_header('Content-Type', 'text/html')
 
-        def run():
+        @self.handler.async_callback
+        def reraise_in_ioloop(e):
+            raise e
+
+        def apply_xsl():
             try:
                 t = time.time()
                 result = str(self.transform(self.doc.to_etree_element()))
                 self.log.stage_tag("xsl")
                 self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
-                return result
-            except:
-                self.log.exception('failed transformation with XSL %s' % self.transform_filename)
-                raise
 
-        self.handler.executor.introduce_job(run, cb)
+                tornado.ioloop.IOLoop.instance().add_callback(
+                    functools.partial(cb, result))
+            except Exception, e:
+                self.log.exception('failed transformation with XSL %s' % self.transform_filename)
+                tornado.ioloop.IOLoop.instance().add_callback(
+                    functools.partial(reraise_in_ioloop, e))
+
+        t = threading.Thread(target=apply_xsl)
+        t.setDaemon(False)
+        t.start()
 
     def _prepare_finish_wo_xsl(self, cb):
         self.log.debug('finishing wo xsl')
