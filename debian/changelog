@@ -1,3 +1,9 @@
+frontik (2.3.2) unstable; urgency=low
+
+  * no app for url handling error fixed
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Fri, 22 Oct 2010 15:42:15 +0400
+
 frontik (2.3.1) unstable; urgency=low
 
   * Fix tornado dependency
