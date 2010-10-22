@@ -186,23 +186,17 @@ class PageHandlerXML(object):
 
         @self.handler.async_callback
         def reraise_in_ioloop(e):
+            self.log.exception('failed transformation with XSL %s' % self.transform_filename)
             raise e
 
         def apply_xsl():
-            try:
-                t = time.time()
-                result = str(self.transform(self.doc.to_etree_element()))
-                self.log.stage_tag("xsl")
-                self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
+            t = time.time()
+            result = str(self.transform(self.doc.to_etree_element()))
+            self.log.stage_tag("xsl")
+            self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
+            return result
 
-                tornado.ioloop.IOLoop.instance().add_callback(
-                    functools.partial(cb, result))
-            except Exception, e:
-                self.log.exception('failed transformation with XSL %s' % self.transform_filename)
-                tornado.ioloop.IOLoop.instance().add_callback(
-                    functools.partial(reraise_in_ioloop, e))
-
-        self.handler.executor.queue_job(apply_xsl)
+        self.handler.executor.add_job(apply_xsl, cb, reraise_in_ioloop)
 
     def _prepare_finish_wo_xsl(self, cb):
         self.log.debug('finishing wo xsl')

@@ -29,7 +29,7 @@ import frontik.util
 import frontik.handler_xml
 import frontik.handler_whc_limit
 import frontik.handler_debug
-import frontik.thread_pool
+import frontik.jobs
 
 import logging
 log = logging.getLogger('frontik.handler')
@@ -155,6 +155,11 @@ class PageHandlerGlobals(object):
         self.http_client = frontik.http.TimeoutingHttpFetcher(
                 tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200))
 
+        if tornado.options.options.executor_pool:
+            self.executor = frontik.jobs.PoolExecutor(pool_size=tornado.options.options.executor_pool_size)
+        else:
+            self.executor = frontik.jobs.SimpleSpawnExecutor()
+
         
 class PageHandler(tornado.web.RequestHandler):
     
@@ -170,16 +175,15 @@ class PageHandler(tornado.web.RequestHandler):
         self.ph_globals = ph_globals
         self.config = self.ph_globals.config
         self.http_client = self.ph_globals.http_client
+        self.executor = self.ph_globals.executor
 
         self.debug = frontik.handler_debug.PageHandlerDebug(self)  
 
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
 
         self.xml = frontik.handler_xml.PageHandlerXML(self)
-        self.doc = self.xml.doc # backwards compatibility for self.doc.put
-        
-        self.executor = frontik.thread_pool.executor
-        
+        self.doc = self.xml.doc # backwards compatibility for self.doc.put    
+       
         self.text = None
 
         self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),

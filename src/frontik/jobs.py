@@ -1,56 +1,46 @@
 import time
 import functools
 import threading
+import Queue
 import tornado.ioloop
-io_loop = tornado.ioloop.IOLoop.instance()
 
 import logging
 log = logging.getLogger('frontik.jobs')
 
-class Job(threading.Thread):
-    def __init__(self, func, done):
-        threading.Thread.__init__(self)
-        self.func = func
-        self.result = None
-        self.done = done
+def work(func, cb, error_cb):
+    try:
+        result = func()
+        tornado.ioloop.IOLoop.instance().add_callback(functools.partial(cb, result))
+    except Exception, e:
+        tornado.ioloop.IOLoop.instance().add_callback(functools.partial(error_cb, e)) 
 
-    def run(self):
-        self.result = self.func()
-        self.done.set()
+def queue_worker(queue):
+    while True:
+        (func, cb, error_cb) = queue.get()
+        work(func, cb, error_cb)
 
-class Executor():
-    def __init__(self, verbose = False, timeout = 0.001, log = log):
-        self.events = []
-        self.verbose = verbose
-        self.timeout = timeout
+
+class PoolExecutor(object):
+    def __init__(self, pool_size=5):
+        self.log = log
+        self.events = Queue.Queue()
+
+        self.log.debug('pool size: '+str(pool_size))
+        self.workers = [threading.Thread(target=functools.partial(queue_worker, self.events))
+                        for i in range(pool_size)]
+        [i.setDaemon(True) for i in self.workers]
+        [i.start() for i in self.workers]
+        self.log.debug('active threads count = ' + str(threading.active_count()))
+
+
+    def add_job(self, func, cb, error_cb):
+        self.events.put((func, cb, error_cb))
+
+class SimpleSpawnExecutor(object):
+    def __init__(self):
         self.log = log
 
-    def introduce_job(self, func, cb):
-        done = threading.Event()
-        job = Job(func, done)
-        def _cb():
-            cb(job.result)
-        job.start()
-        self.events.append((done, _cb))
-        self.listen_events()
+    def add_job(self, func, cb, error_cb):
+        threading.Thread(target=functools.partial(work, func, cb, error_cb)).start()
+        self.log.debug('active threads count (+1) = ' + str(threading.active_count()))
 
-    def listen_events(self):
-        if self.verbose: self.log.debug('active threads count = ' + str(threading.active_count()))
-        ev_c = len(self.events)
-        if self.verbose: self.log.debug('waiting events count = ' + str(ev_c))
-        if ev_c != 0:
-            if self.timeout is not None:
-                io_loop.add_timeout(time.time()+self.timeout, self._event_listener)
-            else:
-                io_loop.add_callback(self._event_listener)
-
-
-    def _event_listener(self):
-        undone_events = filter(lambda (e, cb): not e.is_set(), self.events)
-        if undone_events.count != self.events.count:
-            done_events = filter(lambda (e, cb): e.is_set(), self.events)
-            self.events = undone_events
-            map(lambda (e, cb): cb(), done_events)
-        self.listen_events()
-
-executor = Executor()
