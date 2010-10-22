@@ -115,7 +115,10 @@ class FrontikAppDispatcher(object):
         app_name = page_module_name_parts[0]
         page_module_name = '.'.join(['pages'] + page_module_name_parts[1:])
 
-        app = self.apps[app_name]
+        try:
+            app = self.apps[app_name]
+        except KeyError:
+            return tornado.web.ErrorHandler(application, request, 404)
 
         try:
             page_module = self.importer.imp_app_module(app_name, page_module_name)
