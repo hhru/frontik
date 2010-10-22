@@ -1,3 +1,15 @@
+frontik (2.3.4) karmic; urgency=low
+
+  * Syslog simplified, according to http://github.com/hhru/frontik/commit/5951e476eb36ef251d78cbf2a4ac7e37eb386ca8#commitcomment-174850
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Fri, 22 Oct 2010 16:13:26 +0400
+
+frontik (2.3.3) unstable; urgency=low
+
+  * Fixed .deb, test_sysylog error
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Thu, 21 Oct 2010 12:45:42 +0400
+
 frontik (2.3.2) unstable; urgency=low
 
   * Sending log messages to syslog

@@ -29,7 +29,7 @@ import frontik.handler_xml
 import frontik.handler_whc_limit
 import frontik.handler_debug
 
-import frontik.log as logging
+import logging
 log = logging.getLogger('frontik.handler')
 
 import future
