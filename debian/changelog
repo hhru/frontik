@@ -1,14 +1,14 @@
-frontik (2.3.4) karmic; urgency=low
+frontik (2.3.4) unstable; urgency=low
 
-  * Syslog simplified, according to http://github.com/hhru/frontik/commit/5951e476eb36ef251d78cbf2a4ac7e37eb386ca8#commitcomment-174850
+  * Syslog simplified, according to http://github.com/hhru/frontik/commit/5951e476eb36ef251d78cbf2a4ac7e37eb386ca8#commitcomment-174850 
 
- -- Dmitry Zubov <d.zubov@hh.ru>  Fri, 22 Oct 2010 16:13:26 +0400
+ -- Dmitry Zubov <d.zubov@hh.ru>  Fri, 22 Oct 2010 16:24:03 +0400
 
 frontik (2.3.3) unstable; urgency=low
 
-  * Fixed .deb, test_sysylog error
+  * fixed error in handling request with wrong app
 
- -- Dmitry Zubov <d.zubov@hh.ru>  Thu, 21 Oct 2010 12:45:42 +0400
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Fri, 22 Oct 2010 15:47:11 +0400
 
 frontik (2.3.2) unstable; urgency=low
 
