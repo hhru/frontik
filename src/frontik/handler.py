@@ -29,7 +29,7 @@ import frontik.handler_xml
 import frontik.handler_whc_limit
 import frontik.handler_debug
 
-import logging
+import frontik.log as logging
 log = logging.getLogger('frontik.handler')
 
 import future
@@ -188,6 +188,7 @@ class PageHandler(tornado.web.RequestHandler):
             self.require_debug_access()
         else:
             self.apply_postprocessor = True
+
 
     def require_debug_access(self):
         if not tornado.options.options.debug:

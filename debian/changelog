@@ -1,14 +1,18 @@
 frontik (2.3.2) unstable; urgency=low
 
-  * no app for url handling error fixed
+  * Sending log messages to syslog
 
- -- Pavel Trukhanov <p.trukhanov@hh.ru>  Fri, 22 Oct 2010 15:42:15 +0400
+ -- Dmitry Zubov <d.zubov@hh.ru>  Tue, 19 Oct 2010 16:57:58 +0400
 
 frontik (2.3.1) unstable; urgency=low
 
+  [ Andrew Sumin ]
   * Fix tornado dependency
 
- -- Andrew Sumin <AndrewSumin@hh.ru>  Tue, 12 Oct 2010 14:30:08 +0400
+  [ Pavel Trukhanov ]
+  * debianized
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Tue, 12 Oct 2010 14:40:55 +0400
 
 frontik (2.3.0) unstable; urgency=low
 
