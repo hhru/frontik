@@ -1,3 +1,9 @@
+frontik (2.4.0) unstable; urgency=low
+
+  * threaded jobs added, and threaded xslt impl
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Mon, 25 Oct 2010 23:18:37 +0400
+
 frontik (2.3.4) unstable; urgency=low
 
   * Syslog simplified, according to http://github.com/hhru/frontik/commit/5951e476eb36ef251d78cbf2a4ac7e37eb386ca8#commitcomment-174850 
