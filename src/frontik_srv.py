@@ -28,6 +28,9 @@ if __name__ == '__main__':
     tornado.options.define('debug_login', None, str)
     tornado.options.define('debug_password', None, str)
 
+    tornado.options.define('executor_pool', False, bool)
+    tornado.options.define('executor_pool_size', 7, int)
+
     tornado_util.server.bootstrap(config)
 
     for log_channel_name in options.suppressed_loggers:

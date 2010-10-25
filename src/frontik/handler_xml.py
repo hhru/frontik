@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 
+import functools
 import os.path
-import weakref
+import threading
 import time
 import urllib
+import weakref
 
 import tornado.autoreload
 import tornado.options
+import tornado.ioloop
 
 from frontik import etree
 import frontik.util
@@ -136,6 +139,7 @@ class PageHandlerXML(object):
 
         self.doc = frontik.doc.Doc(root_node=etree.Element('doc', frontik='true'))
         self.transform = None
+        self.transform_result = None
         if not self.handler.config.apply_xsl:
             self.log.debug('ignoring set_xsl() because config.apply_xsl=%s', self.handler.config.apply_xsl)
             self.apply_xsl = False
@@ -168,33 +172,37 @@ class PageHandlerXML(object):
         except:
             self._set_xsl_log_and_raise('XSL transformation error with file {0}')
 
-    def _finish_xml(self):
+    def _finish_xml(self, cb):
         if self.apply_xsl and self.transform:
-            return self._prepare_finish_with_xsl()
+            self._prepare_finish_with_xsl(cb)
         else:
-            return self._prepare_finish_wo_xsl()
+            self._prepare_finish_wo_xsl(cb)
 
-    def _prepare_finish_with_xsl(self):
+    def _prepare_finish_with_xsl(self, cb):
         self.log.debug('finishing with xsl')
 
         if not self.handler._headers.get("Content-Type", None):
             self.handler.set_header('Content-Type', 'text/html')
 
-        try:
+        @self.handler.async_callback
+        def reraise_in_ioloop(e):
+            self.log.exception('failed transformation with XSL %s' % self.transform_filename)
+            raise e
+
+        def apply_xsl():
             t = time.time()
             result = str(self.transform(self.doc.to_etree_element()))
             self.log.stage_tag("xsl")
             self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
-            return result           
-        except:
-            self.log.exception('failed transformation with XSL %s' % self.transform_filename)
-            raise
+            return result
 
-    def _prepare_finish_wo_xsl(self):
+        self.handler.executor.add_job(apply_xsl, cb, reraise_in_ioloop)
+
+    def _prepare_finish_wo_xsl(self, cb):
         self.log.debug('finishing wo xsl')
         
         # В режиме noxsl мы всегда отдаем xml.
         self.handler.set_header('Content-Type', 'application/xml')
 
-        return self.doc.to_string()
+        cb(self.doc.to_string())
        
