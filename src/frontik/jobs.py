@@ -7,17 +7,17 @@ import tornado.ioloop
 import logging
 log = logging.getLogger('frontik.jobs')
 
-def work(func, cb, error_cb):
+def work(func, cb, exception_cb):
     try:
         result = func()
         tornado.ioloop.IOLoop.instance().add_callback(functools.partial(cb, result))
     except Exception, e:
-        tornado.ioloop.IOLoop.instance().add_callback(functools.partial(error_cb, e)) 
+        tornado.ioloop.IOLoop.instance().add_callback(functools.partial(exception_cb, e)) 
 
 def queue_worker(queue):
     while True:
-        (func, cb, error_cb) = queue.get()
-        work(func, cb, error_cb)
+        (func, cb, exception_cb) = queue.get()
+        work(func, cb, exception_cb)
 
 
 class PoolExecutor(object):
@@ -33,8 +33,8 @@ class PoolExecutor(object):
         self.log.debug('active threads count = ' + str(threading.active_count()))
 
 
-    def add_job(self, func, cb, error_cb):
-        self.events.put((func, cb, error_cb))
+    def add_job(self, func, cb, exception_cb):
+        self.events.put((func, cb, exception_cb))
 
 class SimpleSpawnExecutor(object):
     def __init__(self):
