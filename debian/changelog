@@ -1,3 +1,9 @@
+frontik (2.3.4) unstable; urgency=low
+
+  * Syslog simplified, according to http://github.com/hhru/frontik/commit/5951e476eb36ef251d78cbf2a4ac7e37eb386ca8#commitcomment-174850 
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Fri, 22 Oct 2010 16:24:03 +0400
+
 frontik (2.3.3) unstable; urgency=low
 
   * fixed error in handling request with wrong app

@@ -4,7 +4,7 @@ import imp
 
 import tornado.web
 import tornado.ioloop
-import frontik.log as logging
+import logging
 from tornado.options import options
 
 import frontik.magic_imp

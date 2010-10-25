@@ -3,7 +3,7 @@ import os.path
 import imp
 import functools
 
-import frontik.log as logging
+import logging
 log = logging.getLogger('frontik.imp')
 
 def gen_module_name(app_name, module_name=None):
