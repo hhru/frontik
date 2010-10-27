@@ -215,10 +215,10 @@ class PageHandler(tornado.web.RequestHandler):
             self._401_after_prepare = True
         return self._debug_access
 
-    def finish_with_401(self, chunk = None):
+    def finish_with_401(self):
         self.set_header('WWW-Authenticate', 'Basic realm="Secure Area"')
         self.set_status(401)
-        self.finish(chunk)
+        self.finish('401: Permission denied')
 
     def get_error_html(self, status_code, **kwargs):
         if self.debug.debug_mode_logging:
