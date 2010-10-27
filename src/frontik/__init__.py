@@ -2,6 +2,7 @@
 
 # etree - модуль, который используется как реализация ElementTree
 import lxml.etree as etree
+from lxml.builder import E as etree_builder
 
 # Doc, DocResponse классы для формирования XML-ответа
 from doc import Doc

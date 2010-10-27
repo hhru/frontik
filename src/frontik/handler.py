@@ -27,7 +27,7 @@ import frontik.http
 import frontik.util
 import frontik.handler_xml
 import frontik.handler_whc_limit
-import frontik.handler_debug
+import frontik.handler_xml_debug
 
 import frontik.log as logging
 log = logging.getLogger('frontik.handler')
@@ -169,7 +169,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.config = self.ph_globals.config
         self.http_client = self.ph_globals.http_client
 
-        self.debug = frontik.handler_debug.PageHandlerDebug(self)  
+        self.debug = frontik.handler_xml_debug.PageHandlerDebug(self)  
 
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
 
@@ -367,7 +367,7 @@ class PageHandler(tornado.web.RequestHandler):
         return placeholder
 
     def _fetch_request_response(self, placeholder, callback, response, request_types = None):
-        self.log.debug('got %s %s in %.2fms', response.code, response.effective_url, response.request_time*1000)
+        self.log.debug('got %s %s in %.2fms', response.code, response.effective_url, response.request_time*1000, extra={"response": response})
         
         if not request_types:
           request_types = default_request_types
