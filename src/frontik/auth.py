@@ -1,12 +1,5 @@
 import tornado.web
 
-class AuthError(Exception):
-    pass
-
-def _require_auth(handler):
-    handler.set_header('WWW-Authenticate', 'Basic realm="Secure Area"')
-    handler.set_status(401)
-
 def passed_basic_auth(handler, login, passwd):
     auth_header = handler.request.headers.get('Authorization')
 
@@ -16,6 +9,5 @@ def passed_basic_auth(handler, login, passwd):
 
         if login == given_login or passwd == given_passwd:
             return True
-#    _require_auth(handler)
     return False
 
