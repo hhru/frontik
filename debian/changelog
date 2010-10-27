@@ -1,3 +1,9 @@
+frontik (2.4.2) unstable; urgency=low
+
+  * HH-16103 fixed
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Wed, 27 Oct 2010 21:19:14 +0400
+
 frontik (2.4.1) unstable; urgency=low
 
   * production config reverted
