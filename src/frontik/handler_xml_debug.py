@@ -4,6 +4,7 @@ import weakref
 import xml.sax.saxutils
 from frontik import etree
 from frontik import etree_builder as E
+from datetime import datetime
 
 def response_to_xml(response):
     headers = etree.Element("headers")
@@ -17,7 +18,7 @@ def response_to_xml(response):
 
     return (
         E.response(
-            E.body(unicode(response.body, "utf8")),
+            E.body(unicode(response.body or "", "utf8")),
             E.code(str(response.code)),
             E.effective_url(response.effective_url),
             E.error(str(response.error)),
@@ -43,7 +44,7 @@ class DebugPageHandler(logging.Handler):
     def handle(self, record):
         fields = ['created', 'exc_info', 'exc_text', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs', 'msg', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
         entry = etree.Element("entry", **dict([(field, record.getMessage() if field == "msg" else str(getattr(record, field))) for field in fields if getattr(record, field) is not None]))
-        #entry.set("asctime", record.created)
+        entry.set("asctime", str(datetime.fromtimestamp(record.created)))
 
         if getattr(record, "response", None):
             entry.append(response_to_xml(record.response))
