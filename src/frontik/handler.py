@@ -191,16 +191,17 @@ class PageHandler(tornado.web.RequestHandler):
                                                      log=self.log.debug)
 
         if self.get_argument('nopost', None) is not None:
-            self.log.debug('apply_postprocessor==False due to ?nopost query arg')
-            self.apply_postprocessor = False
-            self.require_debug_access()
+            self.apply_postprocessor = not self.have_debug_access()
+            if not self.apply_postprocessor:
+                self.log.debug('apply_postprocessor==False due to ?nopost query arg')
         else:
             self.apply_postprocessor = True
 
 
-    def require_debug_access(self):
-        if not tornado.options.options.debug:
-            frontik.auth.require_basic_auth(self, tornado.options.options.debug_login,
+    def have_debug_access(self):
+        if tornado.options.options.debug:
+            return True
+        return frontik.auth.passed_basic_auth(self, tornado.options.options.debug_login,
                                             tornado.options.options.debug_password)
 
     def get_error_html(self, status_code, **kwargs):
@@ -264,7 +265,7 @@ class PageHandler(tornado.web.RequestHandler):
             res = self.debug.get_debug_page(self._status_code)
         else:
             res = chunk
-
+ 
         tornado.web.RequestHandler.finish(self, res)
 
     def get_page(self):
