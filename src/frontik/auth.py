@@ -16,6 +16,6 @@ def passed_basic_auth(handler, login, passwd):
 
         if login == given_login or passwd == given_passwd:
             return True
-    _require_auth(handler)
+#    _require_auth(handler)
     return False
 
