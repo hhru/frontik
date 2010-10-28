@@ -7,6 +7,7 @@ import inspect
 from StringIO import StringIO
 from frontik import etree
 from frontik import etree_builder as E
+from datetime import datetime
 
 def response_to_xml(response):
     headers = etree.Element("headers")
@@ -15,7 +16,7 @@ def response_to_xml(response):
     try:
         body = etree.fromstring(response.body)
     except:
-        body = unicode(response.body, "utf8")
+        body = unicode(response.body or "", "utf8")
 
     for name, value in response.headers.iteritems():
         headers.append(E.header(value, name=name))
@@ -52,7 +53,7 @@ class DebugPageHandler(logging.Handler):
     def handle(self, record):
         fields = ['created', 'exc_info', 'exc_text', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs', 'msg', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
         entry = etree.Element("entry", **dict([(field, record.getMessage() if field == "msg" else str(getattr(record, field))) for field in fields if getattr(record, field) is not None]))
-        #entry.set("asctime", record.created)
+        entry.set("asctime", str(datetime.fromtimestamp(record.created)))
 
         if getattr(record, "response", None):
             entry.append(response_to_xml(record.response))
