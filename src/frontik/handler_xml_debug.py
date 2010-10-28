@@ -82,7 +82,7 @@ class PageHandlerDebug(object):
 
     def get_debug_page(self, status_code, **kwargs):
         self.handler.set_header('Content-Type', 'application/xml')
-        if self.handler.get_argument('noxsl', None):
+        if not (self.handler.get_argument('noxsl', None) is not None):
           try:
             xsl = open(os.path.dirname(inspect.currentframe().f_code.co_filename) + '/debug.xsl')
             xsl_code = xsl.read()
