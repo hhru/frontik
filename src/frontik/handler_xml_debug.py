@@ -2,12 +2,20 @@ import logging
 import tornado
 import weakref
 import xml.sax.saxutils
+import os.path
+import inspect
+from StringIO import StringIO
 from frontik import etree
 from frontik import etree_builder as E
 
 def response_to_xml(response):
     headers = etree.Element("headers")
     time_info = etree.Element("time_info")
+    
+    try:
+        body = etree.fromstring(response.body)
+    except:
+        body = unicode(response.body, "utf8")
 
     for name, value in response.headers.iteritems():
         headers.append(E.header(value, name=name))
@@ -17,7 +25,7 @@ def response_to_xml(response):
 
     return (
         E.response(
-            E.body(unicode(response.body, "utf8")),
+            E.body(body),
             E.code(str(response.code)),
             E.effective_url(response.effective_url),
             E.error(str(response.error)),
@@ -38,7 +46,8 @@ class DebugPageHandler(logging.Handler):
         self.formatter = None
         #get the module data lock, as we're updating a shared structure.
         self.createLock()
-        self.log_data = etree.Element("log")
+        
+        self.log_data = etree.Element("log") 
 
     def handle(self, record):
         fields = ['created', 'exc_info', 'exc_text', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs', 'msg', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
@@ -72,5 +81,25 @@ class PageHandlerDebug(object):
 
     def get_debug_page(self, status_code, **kwargs):
         self.handler.set_header('Content-Type', 'application/xml')
+        if self.handler.get_argument('noxsl', None):
+          try:
+            xsl = open(os.path.dirname(inspect.currentframe().f_code.co_filename) + '/debug.xsl')
+            xsl_code = xsl.read()
+            xsl.close()
+          except:
+            xsl_code = '';
+            
+          log_document = etree.parse(StringIO('''<?xml version='1.0' encoding='UTF-8'?><!DOCTYPE debug [<!ELEMENT xsl:stylesheet ANY><!ATTLIST xsl:stylesheet id ID #REQUIRED>]>
+              <?xml-stylesheet type="text/xsl" href="#style"?>
+              <debug mode="''' + self.handler.get_argument('debug', 'text') + '''">
+                 ''' + xsl_code + '''
+              </debug>
+              '''))
+          log_document = log_document.getroot()
+          log_document.append(self.debug_log_handler.log_data)
+        else:
+          log_document = self.debug_log_handler.log_data
+          
         self.debug_log_handler.log_data.set("code", str(status_code))
-        return etree.tostring(self.debug_log_handler.log_data)
+        self.debug_log_handler.log_data.set("request-id", str(self.handler.request_id))
+        return etree.tostring(etree.ElementTree(log_document), encoding='UTF-8', xml_declaration=True)
