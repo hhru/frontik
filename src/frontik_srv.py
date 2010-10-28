@@ -27,6 +27,7 @@ if __name__ == '__main__':
     tornado.options.define('debug', False, bool)
     tornado.options.define('debug_login', None, str)
     tornado.options.define('debug_password', None, str)
+    tornado.options.define('debug_xsl', None, str)
 
     tornado_util.server.bootstrap(config)
 

@@ -19,5 +19,5 @@ use_standart_doc = False
 debug = True
 debug_login = "hh"
 debug_password = "12345"
-
+debug_xsl = "/etc/frontik/debug.xsl"
 

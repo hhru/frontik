@@ -1,5 +1,5 @@
 import logging
-import tornado
+import tornado.options
 import weakref
 import xml.sax.saxutils
 import os.path
@@ -82,9 +82,10 @@ class PageHandlerDebug(object):
 
     def get_debug_page(self, status_code, **kwargs):
         self.handler.set_header('Content-Type', 'application/xml')
-        if not (self.handler.get_argument('noxsl', None) is not None):
+        self.handler.log.debug(tornado.options.options.debug_xsl)
+        if self.handler.get_argument('noxsl', None) is None:
           try:
-            xsl = open(os.path.dirname(inspect.currentframe().f_code.co_filename) + '/debug.xsl')
+            xsl = open(tornado.options.options.debug_xsl)
             xsl_code = xsl.read()
             xsl.close()
           except:

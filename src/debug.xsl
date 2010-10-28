@@ -18,8 +18,8 @@
     <xsl:apply-templates select="entry"/>
   </xsl:template>
   
-  <xsl:template match="entry[contains(@msg, 'finish group') and /debug/@mode != 'fulltext']"/>
-
+  <xsl:template match="entry[contains(@msg, 'finish group') and /debug/@mode != 'full']"/>
+  
   <xsl:template match="entry">
     <div class="textentry">
       <div class="textentry__head">
@@ -49,18 +49,18 @@
       </div>
     </div>
   </xsl:template>
-
+  
   <xsl:template match="body">
     <xsl:value-of select="."/>
   </xsl:template>
-
+  
   <xsl:template match="body" mode="xml">
     <div class="coloredxml">
       <xsl:apply-templates select="node()" mode="color-xml"/>
     </div>
   </xsl:template>
-    
-
+  
+  
   <xsl:template match="header">
     <div><xsl:value-of select="@name"/>: &#160;<xsl:value-of select="."/></div>
   </xsl:template>
