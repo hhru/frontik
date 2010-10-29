@@ -36,6 +36,27 @@ def response_to_xml(response):
         )
     )
 
+
+def request_to_xml(request):
+    headers = etree.Element("headers")
+
+    for name, value in request.headers.iteritems():
+        headers.append(E.header(str(value), name=name))
+
+    return (
+        E.request(
+            E.body(unicode(request.body or "", "utf8")),
+            E.connect_timeout(str(request.connect_timeout)),
+            E.follow_redirects(str(request.follow_redirects)),
+            E.max_redirects(str(request.max_redirects)),
+            E.method(request.method),
+            E.request_timeout(str(request.request_timeout)),
+            E.url(request.url),
+            headers
+        )
+    )
+
+
 class DebugPageHandler(logging.Handler):
     def __init__(self):
         """
@@ -57,6 +78,9 @@ class DebugPageHandler(logging.Handler):
 
         if getattr(record, "response", None):
             entry.append(response_to_xml(record.response))
+
+        if getattr(record, "request", None):
+            entry.append(request_to_xml(record.request))
         self.log_data.append(entry)
 
 

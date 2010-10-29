@@ -315,10 +315,8 @@ class PageHandler(tornado.web.RequestHandler):
 
     def get_url(self, url, data={}, headers={}, connect_timeout=0.5, request_timeout=2, callback=None, follow_redirects=True, request_types=None):
         placeholder = future.Placeholder()
-
-        self.fetch_request(
-            frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout, follow_redirects),
-            partial(self._fetch_request_response, placeholder, callback, request_types=request_types))
+        request = frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout, follow_redirects)
+        self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request, request_types=request_types))
 
         return placeholder
 
@@ -340,7 +338,7 @@ class PageHandler(tornado.web.RequestHandler):
                 if response.error and retry_count == 0:
                     self.log.warn('failed to get %s; no more retries left; give up retrying', response.effective_url)
 
-                self._fetch_request_response(placeholder, callback, response, request_types=request_types)
+                self._fetch_request_response(placeholder, callback, req, response, request_types=request_types)
 
         def step2(retry_count):
             self.http_client.fetch(req, self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
@@ -359,15 +357,13 @@ class PageHandler(tornado.web.RequestHandler):
                  request_types = None):
         
         placeholder = future.Placeholder()
-
-        self.fetch_request(
-            frontik.util.make_post_request(url, data, headers, files, connect_timeout, request_timeout, follow_redirects, content_type),
-            partial(self._fetch_request_response, placeholder, callback, request_types=request_types))
+        request = frontik.util.make_post_request(url, data, headers, files, connect_timeout, request_timeout, follow_redirects, content_type)
+        self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request, request_types=request_types))
         
         return placeholder
 
-    def _fetch_request_response(self, placeholder, callback, response, request_types = None):
-        self.log.debug('got %s %s in %.2fms', response.code, response.effective_url, response.request_time*1000, extra={"response": response})
+    def _fetch_request_response(self, placeholder, callback, request, response, request_types = None):
+        self.log.debug('got %s %s in %.2fms', response.code, response.effective_url, response.request_time*1000, extra={"response": response, "request": request})
         
         if not request_types:
           request_types = default_request_types
