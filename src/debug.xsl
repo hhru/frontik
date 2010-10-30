@@ -29,31 +29,64 @@
   </xsl:template>
   
   <xsl:template match="entry[response]">
+    <xsl:variable name="status">
+      <xsl:if test="response/code != 200">error</xsl:if>
+    </xsl:variable>
     <div class="textentry" onclick="toggle(this)">
-      <div class="textentry__head textentry__switcher">
+      <div class="textentry__head textentry__switcher {$status}">
         <span  title="{@msg}">
-          <xsl:value-of select="@msg"/>
+          <span class="time">
+            <xsl:value-of select="response/request_time"/>
+            <xsl:text>ms </xsl:text>
+          </span>
+          <xsl:value-of select="response/code"/>
+          <xsl:text> </xsl:text>
+          <xsl:value-of select="request/method"/>
+          <xsl:text> </xsl:text>
+          <xsl:value-of select="request/url"/>
         </span>
       </div>
-      <div class="response">
-        <div>
-          <a class="servicelink" href="{response/effective_url}" target="_blank">
-            <xsl:value-of select="response/effective_url"/>
-          </a>
-        </div>
-        <div class="headers">
-          <xsl:apply-templates select="response/headers/header"/>
-        </div>
-        <xsl:apply-templates select="response/body[node()]" mode="xml"/>
-        <xsl:apply-templates select="response/body[not(node())]"/>
+      <div class="details">
+        <xsl:apply-templates select="request"/>
+        <div>---------------------------</div>
+        <xsl:apply-templates select="response"/>
       </div>
     </div>
   </xsl:template>
+
+  <xsl:template match="request">
+    <div>
+      <a class="servicelink" href="{url}" target="_blank">
+        <xsl:value-of select="url"/>
+      </a>
+    </div>
+    <div class="headers">
+      <xsl:apply-templates select="headers/header"/>
+    </div>
+    <xsl:apply-templates select="body"/>
+  </xsl:template>
   
+  <xsl:template match="response">
+    <xsl:apply-templates select="error"/>
+    <div class="headers">
+      <xsl:apply-templates select="headers/header"/>
+    </div>
+    <xsl:apply-templates select="body[node()]" mode="xml"/>
+    <xsl:apply-templates select="body[not(node())]"/>
+  </xsl:template>
+
   <xsl:template match="body">
     <xsl:value-of select="."/>
   </xsl:template>
-  
+
+  <xsl:template match="error[text() = 'None']"/>
+
+  <xsl:template match="error">
+    <div class="error">
+      <xsl:value-of select="."/>
+    </div>
+  </xsl:template>
+
   <xsl:template match="body" mode="xml">
     <div class="coloredxml">
       <xsl:apply-templates select="node()" mode="color-xml"/>
@@ -100,11 +133,11 @@
         margin:10px 0;
         font-size:.8em;
       }
-      .response{
+      .details{
         display:none;
         margin-bottom:15px;
       }
-        .m-response_visible{
+        .m-details_visible{
           display:block;
         }
      .servicelink{
@@ -128,6 +161,13 @@
          padding: 0px 0px 0px 30px;
          padding-top: 20px;
        }
+       .time{
+         display:inline-block;
+         width:4em;
+       }
+       .error{
+         color:red;
+       }
     </style>
   </xsl:template>
   
@@ -136,8 +176,8 @@
       function toggle(entry){
         entry.querySelector('.textentry__head')
           .classList.toggle('m-textentry__switcher_expand');
-        entry.querySelector('.response')
-          .classList.toggle('m-response_visible');
+        entry.querySelector('.details')
+          .classList.toggle('m-details_visible');
       }
     </script>
   </xsl:template>

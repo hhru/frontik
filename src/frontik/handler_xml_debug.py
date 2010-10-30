@@ -30,7 +30,7 @@ def response_to_xml(response):
             E.code(str(response.code)),
             E.effective_url(response.effective_url),
             E.error(str(response.error)),
-            E.request_time(str(response.request_time)),
+            E.request_time(str(int(response.request_time * 1000))),
             headers,
             time_info,
         )
