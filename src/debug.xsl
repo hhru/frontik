@@ -105,14 +105,14 @@
       }
       .textentry{
         margin-left:20px;
-        margin-bottom:2px;
+        margin-bottom:4px;
       }
         .m-textentry_title{
           font-size:1.3em;
           margin-bottom:.5em;
         }
         .textentry__head{
-          height:1.4em;
+          height:1.3em;
           overflow:hidden;
         }
         .textentry__switcher{
