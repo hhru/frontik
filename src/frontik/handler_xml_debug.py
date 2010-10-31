@@ -123,7 +123,6 @@ class PageHandlerDebug(object):
 
     def get_debug_page(self, status_code, **kwargs):
         self.handler.set_header('Content-Type', 'application/xml')
-        self.handler.log.debug(tornado.options.options.debug_xsl)
         if self.handler.get_argument('noxsl', None) is None:
           try:
             xsl = open(tornado.options.options.debug_xsl)
