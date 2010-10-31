@@ -32,9 +32,9 @@
     <xsl:variable name="status">
       <xsl:if test="response/code != 200">error</xsl:if>
     </xsl:variable>
-    <div class="textentry" onclick="toggle(this)">
-      <div class="textentry__head textentry__switcher {$status}">
-        <span  title="{@msg}">
+    <div class="textentry">
+      <div  onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher {$status}">
+        <span title="{@msg}">
           <span class="time">
             <xsl:value-of select="response/request_time"/>
             <xsl:text>ms </xsl:text>
@@ -62,7 +62,8 @@
     </div>
     <xsl:apply-templates select="headers"/>
     <xsl:apply-templates select="params"/>
-    <xsl:apply-templates select="body"/>
+    <xsl:apply-templates select="body[param]" mode="params"/>
+    <xsl:apply-templates select="body[not(param)]"/>
   </xsl:template>
   
   <xsl:template match="response">
@@ -72,26 +73,38 @@
     <xsl:apply-templates select="body[not(node())]"/>
   </xsl:template>
 
-  <xsl:template match="body">
-    <xsl:value-of select="."/>
-  </xsl:template>
-
   <xsl:template match="error[text() = 'None']"/>
-
+  
   <xsl:template match="error">
     <div class="error">
       <xsl:value-of select="."/>
     </div>
   </xsl:template>
+  
+  <xsl:template match="body"/>
+  
+  <xsl:template match="body[text()]">
+    <div class="delimeter">body</div>
+    <div><xsl:value-of select="."/></div>
+  </xsl:template>
 
   <xsl:template match="body" mode="xml">
+    <div class="delimeter">body</div>
     <div class="coloredxml">
       <xsl:apply-templates select="node()" mode="color-xml"/>
     </div>
   </xsl:template>
-  
+
+  <xsl:template match="body" mode="params">
+    <div class="params">
+      <div class="delimeter">body</div>
+      <xsl:apply-templates select="param"/>
+    </div>
+  </xsl:template>
+
   <xsl:template match="headers">
     <div class="headers">
+      <div class="delimeter">headers</div>
       <xsl:apply-templates select="header"/>
     </div>
   </xsl:template>
@@ -102,6 +115,7 @@
 
   <xsl:template match="params">
     <div class="params">
+      <div class="delimeter">params</div>
       <xsl:apply-templates select="param"/>
     </div>
   </xsl:template>
@@ -143,8 +157,6 @@
               content: "-"
             }
       .headers{
-        margin:10px 0;
-        font-size:.8em;
       }
       .details{
         display:none;
@@ -180,6 +192,11 @@
        }
        .error{
          color:red;
+       }
+       .delimeter{
+         margin-top:10px;
+         font-size:.8em;
+         color:#999;
        }
     </style>
   </xsl:template>
