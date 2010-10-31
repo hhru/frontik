@@ -4,6 +4,7 @@ import weakref
 import xml.sax.saxutils
 import os.path
 import inspect
+import urlparse
 from StringIO import StringIO
 from frontik import etree
 from frontik import etree_builder as E
@@ -43,14 +44,30 @@ def request_to_xml(request):
     for name, value in request.headers.iteritems():
         headers.append(E.header(str(value), name=name))
 
+    params = etree.Element("params")
+    query = urlparse.parse_qs(urlparse.urlparse(request.url).query, True)
+    for name, values in query.iteritems():
+        for value in values:
+          params.append(E.param(str(value), name=name))
+
+    body = etree.Element("body")
+    try:
+        body_query = urlparse.parse_qs(request.body, True)
+        for name, values in body_query.iteritems():
+            for value in values:
+              body.append(E.param(str(value), name=name))
+    except:
+        body.text = unicode(request.body or "", "utf8")
+
     return (
         E.request(
-            E.body(unicode(request.body or "", "utf8")),
+            body,
             E.connect_timeout(str(request.connect_timeout)),
             E.follow_redirects(str(request.follow_redirects)),
             E.max_redirects(str(request.max_redirects)),
             E.method(request.method),
             E.request_timeout(str(request.request_timeout)),
+            params,
             E.url(request.url),
             headers
         )

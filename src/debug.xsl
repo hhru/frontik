@@ -60,17 +60,14 @@
         <xsl:value-of select="url"/>
       </a>
     </div>
-    <div class="headers">
-      <xsl:apply-templates select="headers/header"/>
-    </div>
+    <xsl:apply-templates select="headers"/>
+    <xsl:apply-templates select="params"/>
     <xsl:apply-templates select="body"/>
   </xsl:template>
   
   <xsl:template match="response">
     <xsl:apply-templates select="error"/>
-    <div class="headers">
-      <xsl:apply-templates select="headers/header"/>
-    </div>
+    <xsl:apply-templates select="headers"/>
     <xsl:apply-templates select="body[node()]" mode="xml"/>
     <xsl:apply-templates select="body[not(node())]"/>
   </xsl:template>
@@ -93,11 +90,27 @@
     </div>
   </xsl:template>
   
+  <xsl:template match="headers">
+    <div class="headers">
+      <xsl:apply-templates select="header"/>
+    </div>
+  </xsl:template>
   
   <xsl:template match="header">
     <div><xsl:value-of select="@name"/>: &#160;<xsl:value-of select="."/></div>
   </xsl:template>
+
+  <xsl:template match="params">
+    <div class="params">
+      <xsl:apply-templates select="param"/>
+    </div>
+  </xsl:template>
   
+  <xsl:template match="param">
+    <div><xsl:value-of select="@name"/>=<xsl:value-of select="."/></div>
+  </xsl:template>
+  
+
   <xsl:template match="debug" mode="css">
     <style>
       body{
