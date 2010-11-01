@@ -60,15 +60,16 @@
         <xsl:value-of select="url"/>
       </a>
     </div>
-    <xsl:apply-templates select="headers"/>
-    <xsl:apply-templates select="params"/>
+    <xsl:apply-templates select="headers[header]"/>
+    <xsl:apply-templates select="cookies[cookie]"/>
+    <xsl:apply-templates select="params[param]"/>
     <xsl:apply-templates select="body[param]" mode="params"/>
     <xsl:apply-templates select="body[not(param)]"/>
   </xsl:template>
   
   <xsl:template match="response">
     <xsl:apply-templates select="error"/>
-    <xsl:apply-templates select="headers"/>
+    <xsl:apply-templates select="headers[header]"/>
     <xsl:apply-templates select="body[node()]" mode="xml"/>
     <xsl:apply-templates select="body[not(node())]"/>
   </xsl:template>
@@ -112,6 +113,17 @@
   <xsl:template match="header">
     <div><xsl:value-of select="@name"/>: &#160;<xsl:value-of select="."/></div>
   </xsl:template>
+  
+  <xsl:template match="cookies">
+    <div class="cookies">
+      <div class="delimeter">cookies</div>
+      <xsl:apply-templates select="cookie"/>
+    </div>
+  </xsl:template>
+  
+  <xsl:template match="cookie">
+    <div><xsl:value-of select="@name"/>&#160;=&#160;<xsl:value-of select="."/></div>
+  </xsl:template>
 
   <xsl:template match="params">
     <div class="params">
@@ -121,7 +133,7 @@
   </xsl:template>
   
   <xsl:template match="param">
-    <div><xsl:value-of select="@name"/>=<xsl:value-of select="."/></div>
+    <div><xsl:value-of select="@name"/>&#160;=&#160;<xsl:value-of select="."/></div>
   </xsl:template>
   
 

@@ -5,6 +5,7 @@ import xml.sax.saxutils
 import os.path
 import inspect
 import urlparse
+import Cookie
 from StringIO import StringIO
 from frontik import etree
 from frontik import etree_builder as E
@@ -42,7 +43,15 @@ def request_to_xml(request):
     headers = etree.Element("headers")
 
     for name, value in request.headers.iteritems():
-        headers.append(E.header(str(value), name=name))
+        if name != "Cookie":
+            headers.append(E.header(str(value), name=name))
+        
+    
+    cookies = etree.Element("cookies")
+    if "Cookie" in request.headers:
+        _cookies = Cookie.SimpleCookie(request.headers["Cookie"])
+        for cookie in _cookies:
+            cookies.append(E.cookie(_cookies[cookie].value, name=cookie))
 
     params = etree.Element("params")
     query = urlparse.parse_qs(urlparse.urlparse(request.url).query, True)
@@ -69,7 +78,8 @@ def request_to_xml(request):
             E.request_timeout(str(request.request_timeout)),
             params,
             E.url(request.url),
-            headers
+            headers,
+            cookies
         )
     )
 
