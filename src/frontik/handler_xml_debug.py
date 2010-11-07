@@ -137,26 +137,32 @@ class PageHandlerDebug(object):
         # if Firefox don't recieve status 200 XSL transform fail
         # so status to 200 if we want to see debug page
         if self.handler.get_argument('debug', None) is not None:
-          self.handler.set_status(200)
+            self.handler.set_status(200)
           
         if self.handler.get_argument('noxsl', None) is None:
-          try:
-            xsl = open(tornado.options.options.debug_xsl)
-            xsl_code = xsl.read()
-            xsl.close()
-          except:
-            xsl_code = '';
+            if tornado.options.options.debug_xsl is None:
+                self.handler.log.warn('no debug mode xsl specified')
+                xsl_code = ''
+            else:
+                try:
+                    xsl = open(tornado.options.options.debug_xsl)
+                    xsl_code = xsl.read()
+                    xsl.close()
+                except Exception, e:
+                    self.handler.log.warn('failed to read debug mode xsl: %s', e)
+                    xsl_code = ''
             
-          log_document = etree.parse(StringIO('''<?xml version='1.0' encoding='UTF-8'?><!DOCTYPE debug [<!ELEMENT xsl:stylesheet ANY><!ATTLIST xsl:stylesheet id ID #REQUIRED>]>
-              <?xml-stylesheet type="text/xsl" href="#style"?>
-              <debug mode="''' + self.handler.get_argument('debug', 'text') + '''">
-                 ''' + xsl_code + '''
-              </debug>
-              '''))
-          log_document = log_document.getroot()
-          log_document.append(self.debug_log_handler.log_data)
+            log_document = etree.parse(StringIO('''<?xml version='1.0' encoding='UTF-8'?><!DOCTYPE debug [<!ELEMENT xsl:stylesheet ANY><!ATTLIST xsl:stylesheet id ID #REQUIRED>]>
+            <?xml-stylesheet type="text/xsl" href="#style"?>
+            <debug mode="''' + self.handler.get_argument('debug', 'text') + '''">
+            ''' + xsl_code + '''
+            </debug>
+            '''))
+            
+            log_document = log_document.getroot()
+            log_document.append(self.debug_log_handler.log_data)
         else:
-          log_document = self.debug_log_handler.log_data
+            log_document = self.debug_log_handler.log_data
           
         self.debug_log_handler.log_data.set("code", str(status_code))
         self.debug_log_handler.log_data.set("request-id", str(self.handler.request_id))

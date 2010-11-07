@@ -182,10 +182,6 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.text = None
 
-        self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
-                                                     name='finish',
-                                                     log=self.log.debug)
-
     def prepare(self):
         self.debug = frontik.handler_xml_debug.PageHandlerDebug(self)  
 
@@ -200,6 +196,10 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.debug('apply_postprocessor==False due to ?nopost query arg')
         else:
             self.apply_postprocessor = True
+
+        self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
+                                                     name='finish',
+                                                     log=self.log.debug)
 
     def require_debug_access(self, login=None, passwd=None):
         if self.debug_access is None:
