@@ -134,12 +134,11 @@ class PageHandlerDebug(object):
     def get_debug_page(self, status_code, **kwargs):
         self.handler.set_header('Content-Type', 'text/xml')
         
-        # if Firefox don't recieve status 200 XSL transform fail
-        # so status to 200 if we want to see debug page
-        if self.handler.get_argument('debug', None) is not None:
-            self.handler.set_status(200)
+        # if Firefox don't recieve status 200 XSL transform will fail
+        # set status to 200 if we want to see debug page
+        self.handler.set_status(200)
           
-        if self.handler.get_argument('noxsl', None) is None:
+        if self.handler.xml.apply_xsl:
             if tornado.options.options.debug_xsl is None:
                 self.handler.log.warn('no debug mode xsl specified')
                 xsl_code = ''
