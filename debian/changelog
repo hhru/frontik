@@ -1,3 +1,33 @@
+frontik (2.4.2) unstable; urgency=low
+
+  * HH-16103 fixed
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Wed, 27 Oct 2010 21:19:14 +0400
+
+frontik (2.4.1) unstable; urgency=low
+
+  * production config reverted
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Wed, 27 Oct 2010 13:30:10 +0400
+
+frontik (2.4.0) unstable; urgency=low
+
+  * threaded jobs added, and threaded xslt impl
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Mon, 25 Oct 2010 23:18:37 +0400
+
+frontik (2.3.4) unstable; urgency=low
+
+  * Syslog simplified, according to http://github.com/hhru/frontik/commit/5951e476eb36ef251d78cbf2a4ac7e37eb386ca8#commitcomment-174850 
+
+ -- Dmitry Zubov <d.zubov@hh.ru>  Fri, 22 Oct 2010 16:24:03 +0400
+
+frontik (2.3.3) unstable; urgency=low
+
+  * fixed error in handling request with wrong app
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Fri, 22 Oct 2010 15:47:11 +0400
+
 frontik (2.3.2) unstable; urgency=low
 
   * Sending log messages to syslog

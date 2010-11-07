@@ -134,6 +134,15 @@ def test_content_type_with_xsl():
         assert(get_page(srv_port, 'page/simple', xsl=True).headers['content-type'].startswith('text/html'))
 
 
+def test_xsl_fail():
+    with FrontikTestInstance() as srv_port:
+        try:
+            get_page(srv_port, 'page/xsl_fail', xsl=True)
+            raise Exception('XSL should have failed')
+        except urllib2.HTTPError, e:
+            pass
+
+
 def test_content_type_wo_xsl():
     with FrontikTestInstance() as srv_port:
         assert(get_page(srv_port, 'page/simple', xsl=False).headers['content-type'].startswith('application/xml'))

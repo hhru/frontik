@@ -18,6 +18,7 @@ import re
 import tornado.httpclient
 import tornado.options
 import tornado.web
+import tornado.ioloop
 
 from frontik import etree
 import frontik.async
@@ -28,8 +29,10 @@ import frontik.util
 import frontik.handler_xml
 import frontik.handler_whc_limit
 import frontik.handler_xml_debug
+import frontik.handler_debug
+import frontik.jobs
 
-import frontik.log as logging
+import logging
 log = logging.getLogger('frontik.handler')
 
 import future
@@ -153,6 +156,11 @@ class PageHandlerGlobals(object):
         self.http_client = frontik.http.TimeoutingHttpFetcher(
                 tornado.httpclient.AsyncHTTPClient(max_clients=200, max_simultaneous_connections=200))
 
+        if tornado.options.options.executor_pool:
+            self.executor = frontik.jobs.PoolExecutor(pool_size=tornado.options.options.executor_pool_size)
+        else:
+            self.executor = frontik.jobs.SimpleSpawnExecutor()
+
         
 class PageHandler(tornado.web.RequestHandler):
     
@@ -168,6 +176,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.ph_globals = ph_globals
         self.config = self.ph_globals.config
         self.http_client = self.ph_globals.http_client
+        self.executor = self.ph_globals.executor
 
         self.debug = frontik.handler_xml_debug.PageHandlerDebug(self)  
 
@@ -175,25 +184,49 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.xml = frontik.handler_xml.PageHandlerXML(self)
         self.doc = self.xml.doc # backwards compatibility for self.doc.put
-        
+
+        self._debug_access = None
+        self._401_after_prepare = False
+
         self.text = None
 
         self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
                                                      name='finish',
                                                      log=self.log.debug)
 
-        if self.get_argument('nopost', None) is not None:
-            self.log.debug('apply_postprocessor==False due to ?nopost query arg')
+    def prepare(self):
+        self.debug = frontik.handler_debug.PageHandlerDebug(self)  
+
+        self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
+
+        self.xml = frontik.handler_xml.PageHandlerXML(self)
+        self.doc = self.xml.doc # backwards compatibility for self.doc.put    
+
+        if self.get_argument('nopost', None) is not None and self.require_debug_access():
             self.apply_postprocessor = False
-            self.require_debug_access()
+            self.log.debug('apply_postprocessor==False due to ?nopost query arg')
         else:
             self.apply_postprocessor = True
 
+        if self._401_after_prepare:
+            self.finish_with_401()
+
 
     def require_debug_access(self):
-        if not tornado.options.options.debug:
-            frontik.auth.require_basic_auth(self, tornado.options.options.debug_login,
+        if self._debug_access is None:
+            if tornado.options.options.debug:
+                self._debug_access = True
+            else:
+                self._debug_access = frontik.auth.passed_basic_auth(self, tornado.options.options.debug_login,
                                             tornado.options.options.debug_password)
+        if not self._debug_access:
+            self._401_after_prepare = True
+        return self._debug_access
+
+    def finish_with_401(self):
+        self.set_header('WWW-Authenticate', 'Basic realm="Secure Area"')
+        self.set_status(401)
+        self.finish('401: Permission denied')
 
     def get_error_html(self, status_code, **kwargs):
         if self.debug.debug_mode_logging:
@@ -411,21 +444,24 @@ class PageHandler(tornado.web.RequestHandler):
             
             if self.text is not None:
                 res = self._prepare_finish_plaintext()
+                self._apply_postprocessor(res)
             else:
-                res = self.xml._finish_xml()
-            
-            if hasattr(self.config, 'postprocessor'):
-                if self.apply_postprocessor:
-                    self.log.debug('applying postprocessor')
-                    self.async_callback(self.config.postprocessor)(self, res, self.async_callback(partial(self._wait_postprocessor, time.time())))
-                else:
-                    self.log.debug('skipping postprocessor')
-                    self.finish(res)
-            else:
-                self.finish(res)
-
+                self.xml._finish_xml(self.async_callback(self._apply_postprocessor))
+     
         else:
             self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
+
+    def _apply_postprocessor(self, res):
+        if hasattr(self.config, 'postprocessor'):
+            if self.apply_postprocessor:
+                self.log.debug('applying postprocessor')
+                self.async_callback(self.config.postprocessor)(self, res, self.async_callback(partial(self._wait_postprocessor, time.time())))
+            else:
+                self.log.debug('skipping postprocessor')
+                self.finish(res)
+        else:
+            self.finish(res)
+
 
     def _wait_postprocessor(self, start_time, data):
         self.log.stage_tag("postprocess")

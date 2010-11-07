@@ -1,4 +1,4 @@
-import frontik.log as logging
+import logging
 import os.path
 
 from frontik import etree

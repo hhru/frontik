@@ -216,10 +216,18 @@
   <xsl:template match="debug" mode="js">
     <script>
       function toggle(entry){
-        entry.querySelector('.textentry__head')
-          .classList.toggle('m-textentry__switcher_expand');
-        entry.querySelector('.details')
-          .classList.toggle('m-details_visible');
+        var head = entry.querySelector('.textentry__head');
+        if (head.className.indexOf('m-textentry__switcher_expand') != -1)
+          head.className = head.className.replace(/m-textentry__switcher_expand/, '');
+        else{
+          head.className = head.className + ' m-textentry__switcher_expand';
+        }
+        var details = entry.querySelector('.details')
+        if (details.className.indexOf('m-details_visible') != -1)
+          details.className = details.className.replace(/m-details_visible/, '');
+        else{
+          details.className = details.className + ' m-details_visible';
+        }
       }
     </script>
   </xsl:template>

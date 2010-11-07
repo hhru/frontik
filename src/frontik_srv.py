@@ -24,12 +24,21 @@ if __name__ == '__main__':
     tornado.options.define('syslog_address', "/dev/log", str)
     tornado.options.define('syslog', False, bool)
 
+    tornado.options.define('xml_debug', False, bool)
     tornado.options.define('debug', False, bool)
     tornado.options.define('debug_login', None, str)
     tornado.options.define('debug_password', None, str)
     tornado.options.define('debug_xsl', None, str)
 
+    tornado.options.define('executor_pool', False, bool)
+    tornado.options.define('executor_pool_size', 7, int)
+
     tornado_util.server.bootstrap(config)
+
+    if tornado.options.options.syslog:
+        syslog_handler = logging.handlers.SysLogHandler(facility=logging.handlers.SysLogHandler.LOG_DEBUG, address=tornado.options.options.syslog_address)
+        syslog_handler.setFormatter(logging.Formatter('[%(asctime)s %(name)s] %(levelname)s %(message)s'))
+        log.addHandler(syslog_handler)
 
     for log_channel_name in options.suppressed_loggers:
         logging.getLogger(log_channel_name).setLevel(logging.WARN)
