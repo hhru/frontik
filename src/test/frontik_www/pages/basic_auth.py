@@ -3,5 +3,5 @@ import frontik.auth
 
 class Page(frontik.handler.PageHandler):
     def get_page(self):
-        frontik.auth.require_basic_auth(self, 'user', 'god')
+        self.require_debug_access('user', 'god')
         self.doc.put('authenticated!')
