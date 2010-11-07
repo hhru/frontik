@@ -115,9 +115,8 @@ class PageHandlerDebug(object):
     def __init__(self, handler):
         self.handler = weakref.proxy(handler)
     
-        if self.handler.get_argument('debug', None) is not None:
+        if self.handler.get_argument('debug', None) is not None: # and self.handler.require_debug_access():
             self.handler.log.debug('debug mode is on due to ?debug query arg')
-            self.handler.require_debug_access()
             self.debug_mode = True
         else:
             self.debug_mode = False

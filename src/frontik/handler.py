@@ -29,7 +29,7 @@ import frontik.util
 import frontik.handler_xml
 import frontik.handler_whc_limit
 import frontik.handler_xml_debug
-import frontik.handler_debug
+#import frontik.handler_debug
 import frontik.jobs
 
 import logging
@@ -195,7 +195,7 @@ class PageHandler(tornado.web.RequestHandler):
                                                      log=self.log.debug)
 
     def prepare(self):
-        self.debug = frontik.handler_debug.PageHandlerDebug(self)  
+        #self.debug = frontik.handler_debug.PageHandlerDebug(self)  
 
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
 
