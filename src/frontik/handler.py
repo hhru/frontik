@@ -194,7 +194,8 @@ class PageHandler(tornado.web.RequestHandler):
         self.xml = frontik.handler_xml.PageHandlerXML(self)
         self.doc = self.xml.doc # backwards compatibility for self.doc.put    
 
-        if self.get_argument('nopost', None) is not None and self.require_debug_access():
+        if self.get_argument('nopost', None) is not None:
+            self.require_debug_access()
             self.apply_postprocessor = False
             self.log.debug('apply_postprocessor==False due to ?nopost query arg')
         else:
