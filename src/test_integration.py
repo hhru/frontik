@@ -112,6 +112,14 @@ def simple_test():
         assert(not html.find('ok') is None)
 
 
+def test_inexistent_page():
+    with FrontikTestInstance() as srv_port:
+        try:
+            get_page(srv_port, 'inexistent_page')
+        except urllib2.HTTPError, e:
+            assert(e.code == 404)
+
+
 def compose_doc_test():
     with frontik_get_page_xml('page/compose_doc') as xml:
         assert(not xml.find('a') is None)
