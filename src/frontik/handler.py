@@ -178,13 +178,6 @@ class PageHandler(tornado.web.RequestHandler):
         self.http_client = self.ph_globals.http_client
         self.executor = self.ph_globals.executor
 
-        self.debug = frontik.handler_xml_debug.PageHandlerDebug(self)  
-
-        self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
-
-        self.xml = frontik.handler_xml.PageHandlerXML(self)
-        self.doc = self.xml.doc # backwards compatibility for self.doc.put
-
         self._debug_access = None
         self._401_after_prepare = False
 
@@ -195,7 +188,7 @@ class PageHandler(tornado.web.RequestHandler):
                                                      log=self.log.debug)
 
     def prepare(self):
-        #self.debug = frontik.handler_debug.PageHandlerDebug(self)  
+        self.debug = frontik.handler_xml_debug.PageHandlerDebug(self)  
 
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
 
