@@ -1,24 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="1.0" id="style" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
-  <xsl:template match="/debug">
+
+  <xsl:output omit-xml-declaration="yes" method="html" indent="yes" encoding="UTF-8"
+      media-type="text/html" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"
+          doctype-public="-//W3C//DTD XHTML 1.0 Transitional//EN" version="1.1"/>
+
+  <xsl:template match="/log">
     <html>
-      <title>Status <xsl:value-of select="log/@code"/></title>
-      <xsl:apply-templates select="." mode="css"/>
-      <xsl:apply-templates select="." mode="js"/>
+      <head>
+        <title>Status <xsl:value-of select="@code"/></title>
+        <xsl:apply-templates select="." mode="css"/>
+        <xsl:apply-templates select="." mode="js"/>
+      </head>
+      <body>
+        <div class="textentry m-textentry_title">
+          requestid: <xsl:value-of select="@request-id"/>,
+          status: <xsl:value-of select="@code"/>
+        </div>
+        <xsl:apply-templates select="entry"/>
+      </body>
     </html>
-    <body>
-      <xsl:apply-templates select="log"/>
-    </body>
   </xsl:template>
   
-  <xsl:template match="log">
-    <div class="textentry m-textentry_title">
-      requestid: <xsl:value-of select="@request-id"/>,
-      status: <xsl:value-of select="@code"/>
-    </div>
-    <xsl:apply-templates select="entry"/>
-  </xsl:template>
-  
-  <xsl:template match="entry[contains(@msg, 'finish group') and /debug/@mode != 'full']"/>
+  <xsl:template match="entry[contains(@msg, 'finish group') and /log/@mode != 'full']"/>
   
   <xsl:template match="entry">
     <div class="textentry">
@@ -137,7 +141,7 @@
   </xsl:template>
   
 
-  <xsl:template match="debug" mode="css">
+  <xsl:template match="log" mode="css">
     <style>
       body{
         font-family:Arial;
@@ -213,7 +217,7 @@
     </style>
   </xsl:template>
   
-  <xsl:template match="debug" mode="js">
+  <xsl:template match="log" mode="js">
     <script>
       function toggle(entry){
         var head = entry.querySelector('.textentry__head');

@@ -115,7 +115,7 @@ class PageHandlerDebug(object):
     def __init__(self, handler):
         self.handler = weakref.proxy(handler)
     
-        if self.handler.get_argument('debug', None) is not None: # and self.handler.require_debug_access():
+        if self.handler.get_argument('debug', None) is not None and self.handler.require_debug_access():
             self.handler.log.debug('debug mode is on due to ?debug query arg')
             self.debug_mode = True
         else:
@@ -131,32 +131,22 @@ class PageHandlerDebug(object):
             self.debug_mode_logging = False
 
     def get_debug_page(self, status_code, **kwargs):
-        self.handler.set_header('Content-Type', 'text/xml')
-        
-        # if Firefox don't recieve status 200 XSL transform fail
-        # so status to 200 if we want to see debug page
-        if self.handler.get_argument('debug', None) is not None:
-          self.handler.set_status(200)
-          
-        if self.handler.get_argument('noxsl', None) is None:
-          try:
-            xsl = open(tornado.options.options.debug_xsl)
-            xsl_code = xsl.read()
-            xsl.close()
-          except:
-            xsl_code = '';
-            
-          log_document = etree.parse(StringIO('''<?xml version='1.0' encoding='UTF-8'?><!DOCTYPE debug [<!ELEMENT xsl:stylesheet ANY><!ATTLIST xsl:stylesheet id ID #REQUIRED>]>
-              <?xml-stylesheet type="text/xsl" href="#style"?>
-              <debug mode="''' + self.handler.get_argument('debug', 'text') + '''">
-                 ''' + xsl_code + '''
-              </debug>
-              '''))
-          log_document = log_document.getroot()
-          log_document.append(self.debug_log_handler.log_data)
-        else:
-          log_document = self.debug_log_handler.log_data
-          
         self.debug_log_handler.log_data.set("code", str(status_code))
         self.debug_log_handler.log_data.set("request-id", str(self.handler.request_id))
-        return etree.tostring(etree.ElementTree(log_document), encoding='UTF-8', xml_declaration=True)
+        
+        if self.handler.get_argument('noxsl', None) is None:
+          try:
+            xsl_file = open(tornado.options.options.debug_xsl)
+            tranform = etree.XSLT(etree.XML(xsl_file.read()))
+            xsl_file.close()
+            log_document = str(tranform(self.debug_log_handler.log_data))
+            self.handler.set_header('Content-Type', 'text/html; charset=UTF-8')
+          except Exeption, e:
+            self.handler.log.exeption('Error XSL Transformation debug file')
+            self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
+            log_document = etree.tostring(self.debug_log_handler.log_data, encoding='UTF-8', xml_declaration=True)
+        else:
+          self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
+          log_document = etree.tostring(self.debug_log_handler.log_data, encoding='UTF-8', xml_declaration=True)
+
+        return log_document
