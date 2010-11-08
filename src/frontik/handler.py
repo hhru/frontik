@@ -224,6 +224,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.finish('401: Permission denied')
 
     def get_error_html(self, status_code, **kwargs):
+        #self.prepare()
         if self.debug.debug_mode_logging:
             return self.debug.get_debug_page(status_code, **kwargs)
         else:

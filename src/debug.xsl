@@ -29,7 +29,14 @@
       <div class="textentry__head">
         <span  title="{@msg}"><xsl:value-of select="@msg"/></span>
       </div>
+      <xsl:apply-templates select="@exc_text"/>
     </div>
+  </xsl:template>
+  
+  <xsl:template match="@exc_text">
+    <pre class="ecxeption">
+      <xsl:value-of select="."/>
+    </pre>
   </xsl:template>
   
   <xsl:template match="entry[response]">
@@ -213,6 +220,10 @@
          margin-top:10px;
          font-size:.8em;
          color:#999;
+       }
+       .ecxeption{
+         margin-bottom:20px;
+         color:#c00;
        }
     </style>
   </xsl:template>

@@ -4,10 +4,14 @@ import logging
 import os.path
 import time
 import tornado.options
+import traceback
 import urlparse
 import weakref
 import xml.sax.saxutils
-from StringIO import StringIO
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
 from frontik import etree
 from frontik import etree_builder as E
 from datetime import datetime
@@ -99,13 +103,30 @@ class DebugPageHandler(logging.Handler):
         
         self.log_data = etree.Element("log") 
 
-    FIELDS = ['created', 'exc_info', 'exc_text', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
+    def formatException(self, ei):
+        """
+        Format and return the specified exception information as a string.
+
+        This default implementation just uses 
+        traceback.print_exception()
+        """
+        sio = StringIO()
+        traceback.print_exception(ei[0], ei[1], ei[2], None, sio)
+        s = sio.getvalue()
+        sio.close()
+        if s[-1:] == "\n":
+            s = s[:-1]
+        return s
+
+    FIELDS = ['created', 'exc_info', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
     def handle(self, record):
         entry_attrs = {}
         for field in self.FIELDS:
             val = getattr(record, field)
             if val is not None:
                 entry_attrs[field] = str(val)
+                if field == 'exc_info':
+                    entry_attrs['exc_text'] = self.formatException(val)
 
         entry_attrs['msg'] = record.getMessage()
 
