@@ -150,7 +150,7 @@ class PageHandlerDebug(object):
         self.debug_log_handler.log_data.set("code", str(status_code))
         self.debug_log_handler.log_data.set("request-id", str(self.handler.request_id))
         
-        if self.handler.get_argument('noxsl', None) is None:
+        if self.handler.xml.apply_xsl:
           try:
             xsl_file = open(tornado.options.options.debug_xsl)
             tranform = etree.XSLT(etree.XML(xsl_file.read()))
