@@ -8,10 +8,6 @@ import traceback
 import urlparse
 import weakref
 import xml.sax.saxutils
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
 from frontik import etree
 from frontik import etree_builder as E
 from datetime import datetime
