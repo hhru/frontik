@@ -1,11 +1,12 @@
+import Cookie
+import inspect
 import logging
+import os.path
+import time
 import tornado.options
+import urlparse
 import weakref
 import xml.sax.saxutils
-import os.path
-import inspect
-import urlparse
-import Cookie
 from StringIO import StringIO
 from frontik import etree
 from frontik import etree_builder as E
@@ -98,9 +99,22 @@ class DebugPageHandler(logging.Handler):
         
         self.log_data = etree.Element("log") 
 
+    FIELDS = ['created', 'exc_info', 'exc_text', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
     def handle(self, record):
-        fields = ['created', 'exc_info', 'exc_text', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs', 'msg', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
-        entry = etree.Element("entry", **dict([(field, record.getMessage() if field == "msg" else str(getattr(record, field))) for field in fields if getattr(record, field) is not None]))
+        entry_attrs = {}
+        for field in self.FIELDS:
+            val = getattr(record, field)
+            if val is not None:
+                entry_attrs[field] = str(val)
+
+        entry_attrs['msg'] = record.getMessage()
+
+        ct = time.localtime(record.created)
+        t = time.strftime("%Y-%m-%d %H:%M:%S", ct)
+        s = "%s,%03d" % (t, record.msecs)
+        entry_attrs['asctime'] = s
+
+        entry = etree.Element("entry", **entry_attrs)
         entry.set("asctime", str(datetime.fromtimestamp(record.created)))
 
         if getattr(record, "response", None):
@@ -108,6 +122,7 @@ class DebugPageHandler(logging.Handler):
 
         if getattr(record, "request", None):
             entry.append(request_to_xml(record.request))
+        
         self.log_data.append(entry)
 
 
@@ -115,7 +130,8 @@ class PageHandlerDebug(object):
     def __init__(self, handler):
         self.handler = weakref.proxy(handler)
     
-        if self.handler.get_argument('debug', None) is not None and self.handler.require_debug_access():
+        if self.handler.get_argument('debug', None) is not None:
+            self.handler.require_debug_access()
             self.handler.log.debug('debug mode is on due to ?debug query arg')
             self.debug_mode = True
         else:
@@ -150,3 +166,4 @@ class PageHandlerDebug(object):
           log_document = etree.tostring(self.debug_log_handler.log_data, encoding='UTF-8', xml_declaration=True)
 
         return log_document
+

@@ -178,51 +178,45 @@ class PageHandler(tornado.web.RequestHandler):
         self.http_client = self.ph_globals.http_client
         self.executor = self.ph_globals.executor
 
-        self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
-
-        self.xml = frontik.handler_xml.PageHandlerXML(self)
-        self.doc = self.xml.doc # backwards compatibility for self.doc.put
-
-        self._debug_access = None
-        self._401_after_prepare = False
-
-        self.debug = frontik.handler_xml_debug.PageHandlerDebug(self)
+        self.debug_access = None
 
         self.text = None
 
-        self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
-                                                     name='finish',
-                                                     log=self.log.debug)
-
     def prepare(self):
-         
-        #self.debug = frontik.handler_debug.PageHandlerDebug(self)  
+        self.debug = frontik.handler_xml_debug.PageHandlerDebug(self)  
 
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
 
         self.xml = frontik.handler_xml.PageHandlerXML(self)
         self.doc = self.xml.doc # backwards compatibility for self.doc.put    
 
-        if self.get_argument('nopost', None) is not None and self.require_debug_access():
+        if self.get_argument('nopost', None) is not None:
+            self.require_debug_access()
             self.apply_postprocessor = False
             self.log.debug('apply_postprocessor==False due to ?nopost query arg')
         else:
             self.apply_postprocessor = True
 
-        if self._401_after_prepare:
-            self.finish_with_401()
+        self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
+                                                     name='finish',
+                                                     log=self.log.debug)
 
-
-    def require_debug_access(self):
-        if self._debug_access is None:
+    def require_debug_access(self, login=None, passwd=None):
+        if self.debug_access is None:
             if tornado.options.options.debug:
-                self._debug_access = True
+                self.debug_access = True
             else:
-                self._debug_access = frontik.auth.passed_basic_auth(self, tornado.options.options.debug_login,
-                                            tornado.options.options.debug_password)
-        if not self._debug_access:
-            self._401_after_prepare = True
-        return self._debug_access
+                check_login = login if login is not None \
+                              else tornado.options.options.debug_login
+                check_passwd = passwd if passwd is not None \
+                               else tornado.options.options.debug_password
+                    
+                self.debug_access = frontik.auth.passed_basic_auth(
+                    self, check_login, check_passwd)
+
+            if not self.debug_access:
+                # TODO ideally we should raise exception here to prevent any futher execution
+                self.finish_with_401()
 
     def finish_with_401(self):
         self.set_header('WWW-Authenticate', 'Basic realm="Secure Area"')
@@ -268,13 +262,15 @@ class PageHandler(tornado.web.RequestHandler):
 
     @tornado.web.asynchronous
     def post(self, *args, **kw):
-        self.post_page()
-        self.finish_page()
+        if not self._finished:
+            self.post_page()
+            self.finish_page()
 
     @tornado.web.asynchronous
     def get(self, *args, **kw):
-        self.get_page()
-        self.finish_page()
+        if not self._finished:
+            self.get_page()
+            self.finish_page()
 
     def finish(self, chunk=None):
         if hasattr(self, 'whc_limit'):
