@@ -222,6 +222,7 @@
          color:#999;
        }
        .ecxeption{
+         font-family:Arial;
          margin-bottom:20px;
          color:#c00;
        }

@@ -103,30 +103,17 @@ class DebugPageHandler(logging.Handler):
         
         self.log_data = etree.Element("log") 
 
-    def formatException(self, ei):
-        """
-        Format and return the specified exception information as a string.
-
-        This default implementation just uses 
-        traceback.print_exception()
-        """
-        sio = StringIO()
-        traceback.print_exception(ei[0], ei[1], ei[2], None, sio)
-        s = sio.getvalue()
-        sio.close()
-        if s[-1:] == "\n":
-            s = s[:-1]
-        return s
-
-    FIELDS = ['created', 'exc_info', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
+    FIELDS = ['created', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
     def handle(self, record):
         entry_attrs = {}
         for field in self.FIELDS:
             val = getattr(record, field)
             if val is not None:
                 entry_attrs[field] = str(val)
-                if field == 'exc_info':
-                    entry_attrs['exc_text'] = self.formatException(val)
+
+        if record.exc_info is not None:
+            exc = record.exc_info
+            entry_attrs['exc_text'] = ''.join(traceback.format_exception(exc[0], exc[1], exc[2]))
 
         entry_attrs['msg'] = record.getMessage()
 

@@ -1,3 +1,9 @@
+frontik (2.5.1) unstable; urgency=low
+
+  * minor refactoring
+
+ -- Andrew Sumin <AndrewSumin@gmail.com>  Mon, 08 Nov 2010 19:16:57 +0300
+
 frontik (2.5.0) unstable; urgency=low
 
   * Now frontik has awesome debug
