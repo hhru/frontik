@@ -102,7 +102,7 @@ class DebugPageHandler(logging.Handler):
     FIELDS = ['created', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
     def handle(self, record):
         entry_attrs = {}
-        for field in FIELDS:
+        for field in self.FIELDS:
             val = getattr(record, field)
             if val is not None:
                 entry_attrs[field] = str(val)
