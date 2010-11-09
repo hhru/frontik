@@ -1,3 +1,9 @@
+frontik (2.5.0) unstable; urgency=low
+
+  * HH-16589 implemented HEAD = GET w/o body
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Tue, 09 Nov 2010 19:19:37 +0300
+
 frontik (2.4.2) unstable; urgency=low
 
   * HH-16103 fixed
