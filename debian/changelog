@@ -1,8 +1,14 @@
 frontik (2.6.0) unstable; urgency=low
 
-  * Now frontik has awesome debug
+  * Now frontik has awesome debug HH-15291
 
  -- Andrew Sumin <AndrewSumin@gmail.com>  Sun, 07 Nov 2010 20:23:22 +0300
+
+frontik (2.5.0) unstable; urgency=low
+
+  * HH-16589 implemented HEAD = GET w/o body
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Tue, 09 Nov 2010 19:19:37 +0300
 
 frontik (2.4.2) unstable; urgency=low
 
