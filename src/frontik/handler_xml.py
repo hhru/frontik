@@ -87,10 +87,10 @@ def xml_from_file(filename):
             return True, [_source_comment(filename), res]
         except:
             log_fileloader.exception('failed to parse %s', filename)
-            return False, etree.Element('error', dict(msg='failed to parse file: %s' % (filename,)))
+            return False, etree.Element('error', dict(msg = 'failed to parse file: %s' % (filename,)))
     else:
         log_fileloader.error('file not found: %s', filename)
-        return False, etree.Element('error', dict(msg='file not found: %s' % (filename,)))
+        return False, etree.Element('error', dict(msg = 'file not found: %s' % (filename,)))
 
 
 def xsl_from_file(filename):
@@ -101,7 +101,7 @@ def xsl_from_file(filename):
     '''
 
     transform, xsl_files = frontik.xml_util.read_xsl(filename)
-    
+
     for xsl_file in xsl_files:
         tornado.autoreload.watch_file(xsl_file)
 
@@ -133,23 +133,23 @@ class PageHandlerXML(object):
     def __init__(self, handler):
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
-        
+
         self.xml_cache = self.handler.ph_globals.xml.xml_cache
         self.xsl_cache = self.handler.ph_globals.xml.xsl_cache
 
-        self.doc = frontik.doc.Doc(root_node=etree.Element('doc', frontik='true'))
+        self.doc = frontik.doc.Doc(root_node = etree.Element('doc', frontik = 'true'))
         self.transform = None
         if not self.handler.config.apply_xsl:
             self.log.debug('ignoring set_xsl() because config.apply_xsl=%s', self.handler.config.apply_xsl)
             self.apply_xsl = False
-            
-        elif self.handler.get_argument('noxsl', None):
+
+        elif self.handler.get_argument('noxsl', None) is not None:
             self.handler.require_debug_access()
             self.apply_xsl = False
             self.log.debug('apply_xsl==False due to ?noxsl query arg')
         else:
             self.apply_xsl = True
-            
+
     def xml_from_file(self, filename):
         return self.xml_cache.load(filename)
 
@@ -192,16 +192,16 @@ class PageHandlerXML(object):
             t = time.time()
             result = str(self.transform(self.doc.to_etree_element()))
             self.log.stage_tag("xsl")
-            self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
+            self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t) * 1000)
             return result
 
         self.handler.executor.add_job(apply_xsl, cb, reraise_in_ioloop)
 
     def _prepare_finish_wo_xsl(self, cb):
         self.log.debug('finishing wo xsl')
-        
+
         # В режиме noxsl мы всегда отдаем xml.
         self.handler.set_header('Content-Type', 'application/xml')
 
         cb(self.doc.to_string())
-       
+

@@ -28,7 +28,7 @@ if __name__ == '__main__':
     tornado.options.define('debug', False, bool)
     tornado.options.define('debug_login', None, str)
     tornado.options.define('debug_password', None, str)
-    tornado.options.define('debug_xsl', None, str)
+    tornado.options.define('debug_xsl', '/usr/lib/frontik/debug.xsl', str)
 
     tornado.options.define('executor_pool', False, bool)
     tornado.options.define('executor_pool_size', 7, int)
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     tornado_util.server.bootstrap(config)
 
     if tornado.options.options.syslog:
-        syslog_handler = logging.handlers.SysLogHandler(facility=logging.handlers.SysLogHandler.LOG_DEBUG, address=tornado.options.options.syslog_address)
+        syslog_handler = logging.handlers.SysLogHandler(facility = logging.handlers.SysLogHandler.LOG_DEBUG, address = tornado.options.options.syslog_address)
         syslog_handler.setFormatter(logging.Formatter('[%(asctime)s %(name)s] %(levelname)s %(message)s'))
         log.addHandler(syslog_handler)
 
@@ -50,5 +50,5 @@ if __name__ == '__main__':
     except:
         log.exception('failed to initialize frontik.app, quitting')
         sys.exit(1)
-    
+
     tornado_util.server.main(app)

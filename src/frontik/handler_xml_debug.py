@@ -102,7 +102,7 @@ class DebugPageHandler(logging.Handler):
     FIELDS = ['created', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
     def handle(self, record):
         entry_attrs = {}
-        for field in self.FIELDS:
+        for field in FIELDS:
             val = getattr(record, field)
             if val is not None:
                 entry_attrs[field] = str(val)
@@ -112,11 +112,6 @@ class DebugPageHandler(logging.Handler):
             entry_attrs['exc_text'] = ''.join(traceback.format_exception(exc[0], exc[1], exc[2]))
 
         entry_attrs['msg'] = record.getMessage()
-
-        ct = time.localtime(record.created)
-        t = time.strftime("%Y-%m-%d %H:%M:%S", ct)
-        s = "%s,%03d" % (t, record.msecs)
-        entry_attrs['asctime'] = s
 
         entry = etree.Element("entry", **entry_attrs)
         entry.set("asctime", str(datetime.fromtimestamp(record.created)))
@@ -162,7 +157,7 @@ class PageHandlerDebug(object):
             log_document = str(tranform(self.debug_log_handler.log_data))
             self.handler.set_header('Content-Type', 'text/html; charset=UTF-8')
           except Exception, e:
-            self.handler.log.exception('Error XSL Transformation debug file')
+            self.handler.log.exception('XSLT debug file error')
             self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
             log_document = etree.tostring(self.debug_log_handler.log_data, encoding = 'UTF-8', xml_declaration = True)
         else:
