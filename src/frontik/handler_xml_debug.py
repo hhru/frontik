@@ -15,17 +15,17 @@ from datetime import datetime
 def response_to_xml(response):
     headers = etree.Element("headers")
     time_info = etree.Element("time_info")
-    
+
     try:
         body = etree.fromstring(response.body)
     except:
         body = unicode(response.body or "", "utf8")
 
     for name, value in response.headers.iteritems():
-        headers.append(E.header(value, name=name))
+        headers.append(E.header(value, name = name))
 
     for name, value in response.time_info.iteritems():
-        time_info.append(E.time(str(value), name=name))
+        time_info.append(E.time(str(value), name = name))
 
     return (
         E.response(
@@ -45,27 +45,27 @@ def request_to_xml(request):
 
     for name, value in request.headers.iteritems():
         if name != "Cookie":
-            headers.append(E.header(str(value), name=name))
-        
-    
+            headers.append(E.header(str(value), name = name))
+
+
     cookies = etree.Element("cookies")
     if "Cookie" in request.headers:
         _cookies = Cookie.SimpleCookie(request.headers["Cookie"])
         for cookie in _cookies:
-            cookies.append(E.cookie(_cookies[cookie].value, name=cookie))
+            cookies.append(E.cookie(_cookies[cookie].value, name = cookie))
 
     params = etree.Element("params")
     query = urlparse.parse_qs(urlparse.urlparse(request.url).query, True)
     for name, values in query.iteritems():
         for value in values:
-          params.append(E.param(str(value), name=name))
+          params.append(E.param(str(value), name = name))
 
     body = etree.Element("body")
     try:
         body_query = urlparse.parse_qs(request.body, True)
         for name, values in body_query.iteritems():
             for value in values:
-              body.append(E.param(str(value), name=name))
+              body.append(E.param(str(value), name = name))
     except:
         body.text = unicode(request.body or "", "utf8")
 
@@ -96,8 +96,8 @@ class DebugPageHandler(logging.Handler):
         self.formatter = None
         #get the module data lock, as we're updating a shared structure.
         self.createLock()
-        
-        self.log_data = etree.Element("log") 
+
+        self.log_data = etree.Element("log")
 
     FIELDS = ['created', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
     def handle(self, record):
@@ -126,14 +126,14 @@ class DebugPageHandler(logging.Handler):
 
         if getattr(record, "request", None):
             entry.append(request_to_xml(record.request))
-        
+
         self.log_data.append(entry)
 
 
 class PageHandlerDebug(object):
     def __init__(self, handler):
         self.handler = weakref.proxy(handler)
-    
+
         if self.handler.get_argument('debug', None) is not None:
             self.handler.require_debug_access()
             self.handler.log.debug('debug mode is on due to ?debug query arg')
@@ -153,7 +153,7 @@ class PageHandlerDebug(object):
     def get_debug_page(self, status_code, **kwargs):
         self.debug_log_handler.log_data.set("code", str(status_code))
         self.debug_log_handler.log_data.set("request-id", str(self.handler.request_id))
-        
+
         if self.handler.xml.apply_xsl:
           try:
             xsl_file = open(tornado.options.options.debug_xsl)
@@ -161,13 +161,13 @@ class PageHandlerDebug(object):
             xsl_file.close()
             log_document = str(tranform(self.debug_log_handler.log_data))
             self.handler.set_header('Content-Type', 'text/html; charset=UTF-8')
-          except Exeption, e:
-            self.handler.log.exeption('Error XSL Transformation debug file')
+          except Exception, e:
+            self.handler.log.exception('Error XSL Transformation debug file')
             self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
-            log_document = etree.tostring(self.debug_log_handler.log_data, encoding='UTF-8', xml_declaration=True)
+            log_document = etree.tostring(self.debug_log_handler.log_data, encoding = 'UTF-8', xml_declaration = True)
         else:
           self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
-          log_document = etree.tostring(self.debug_log_handler.log_data, encoding='UTF-8', xml_declaration=True)
+          log_document = etree.tostring(self.debug_log_handler.log_data, encoding = 'UTF-8', xml_declaration = True)
 
         return log_document
 
