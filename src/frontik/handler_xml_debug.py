@@ -147,6 +147,7 @@ class PageHandlerDebug(object):
 
     def get_debug_page(self, status_code, **kwargs):
         self.debug_log_handler.log_data.set("code", str(status_code))
+        self.debug_log_handler.log_data.set("mode", self.handler.get_argument('debug', 'text'))
         self.debug_log_handler.log_data.set("request-id", str(self.handler.request_id))
 
         if self.handler.xml.apply_xsl:
