@@ -97,7 +97,7 @@
   
   <xsl:template match="body[text()]">
     <div class="delimeter">body</div>
-    <div><xsl:value-of select="."/></div>
+    <div class="body"><xsl:value-of select="."/></div>
   </xsl:template>
 
   <xsl:template match="body" mode="xml">
@@ -191,9 +191,6 @@
      .servicelink{
        color:#666;
        font-size:.8em;
-     }
-     .coloredxml{
-       margin-left:-20px;
      }
        .coloredxml__line{
          padding: 0px 0px 0px 20px;

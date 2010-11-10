@@ -19,7 +19,10 @@ def response_to_xml(response):
     try:
         body = etree.fromstring(response.body)
     except:
-        body = unicode(response.body or "", "utf8")
+        try:
+            body = unicode(response.body or "", "utf8")
+        except:
+            body = "error encode body"
 
     for name, value in response.headers.iteritems():
         headers.append(E.header(value, name = name))
@@ -67,7 +70,10 @@ def request_to_xml(request):
             for value in values:
               body.append(E.param(str(value), name = name))
     except:
-        body.text = unicode(request.body or "", "utf8")
+        try:
+            body.text = unicode(request.body or "", "utf8")
+        except:
+            body = "error encode body"
 
     return (
         E.request(
