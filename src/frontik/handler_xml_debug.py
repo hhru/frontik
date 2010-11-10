@@ -12,6 +12,8 @@ from frontik import etree
 from frontik import etree_builder as E
 from datetime import datetime
 
+log = logging.getLogger('XML_debug')
+
 def response_to_xml(response):
     headers = etree.Element("headers")
     time_info = etree.Element("time_info")
@@ -19,10 +21,7 @@ def response_to_xml(response):
     try:
         body = etree.fromstring(response.body)
     except:
-        try:
-            body = unicode(response.body or "", "utf8")
-        except:
-            body = "error encode body"
+        body = 'Cant show response body'
 
     for name, value in response.headers.iteritems():
         headers.append(E.header(value, name = name))
@@ -70,10 +69,7 @@ def request_to_xml(request):
             for value in values:
               body.append(E.param(str(value), name = name))
     except:
-        try:
-            body.text = unicode(request.body or "", "utf8")
-        except:
-            body = "error encode body"
+        body = "Cant show request body"
 
     return (
         E.request(
