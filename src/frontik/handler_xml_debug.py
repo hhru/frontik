@@ -138,7 +138,7 @@ class PageHandlerDebug(object):
         else:
             self.debug_mode = False
 
-        if self.debug_mode:
+        if tornado.options.options.debug or self.debug_mode:
             self.debug_mode_logging = True
             self.debug_log_handler = DebugPageHandler()
             self.handler.log.addHandler(self.debug_log_handler)

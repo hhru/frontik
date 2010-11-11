@@ -25,10 +25,13 @@
   <xsl:template match="entry[contains(@msg, 'finish group') and /log/@mode != 'full']"/>
   
   <xsl:template match="entry">
+    <xsl:variable name="highlight">
+      <xsl:if test="/log[@mode != ''] and contains(@msg, /log/@mode)">m-textentry__head_highlight</xsl:if>
+    </xsl:variable>
     <div class="textentry">
-      <div class="textentry__head">
+      <pre class="textentry__head {$highlight}">
         <span  title="{@msg}"><xsl:value-of select="@msg"/></span>
-      </div>
+      </pre>
       <xsl:apply-templates select="@exc_text"/>
     </div>
   </xsl:template>
@@ -43,9 +46,12 @@
     <xsl:variable name="status">
       <xsl:if test="response/code != 200">error</xsl:if>
     </xsl:variable>
-    <div class="textentry">
-      <div  onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher {$status}">
-        <span title="{@msg}">
+    <xsl:variable name="highlight">
+      <xsl:if test="/log[@mode != ''] and contains(@msg, /log/@mode)">m-textentry__head_highlight</xsl:if>
+    </xsl:variable>
+    <div class="textentry m-textentry__expandable">
+      <div  onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher {$status} {$highlight}">
+        <span title="{@msg}" class="textentry__head__expandtext">
           <span class="time">
             <xsl:value-of select="response/request_time"/>
             <xsl:text>ms </xsl:text>
@@ -150,35 +156,35 @@
 
   <xsl:template match="log" mode="css">
     <style>
-      body{
+      body, pre{
         font-family:Arial;
       }
       .textentry{
-        margin-left:20px;
+        padding-left:20px;
         margin-bottom:4px;
       }
+        .m-textentry__expandable{
+          padding-top:3px;
+          padding-bottom:3px;
+          background:#fffccf;
+        }
         .m-textentry_title{
           font-size:1.3em;
           margin-bottom:.5em;
         }
         .textentry__head{
+        }
+          .m-textentry__head_highlight{
+            font-weight:bold;
+          }
+          .textentry__head__expandtext{
+            border-bottom:1px dotted #666;
+          }
+        .textentry__switcher{
           height:1.3em;
           overflow:hidden;
-        }
-        .textentry__switcher{
           cursor:pointer;
         }
-          .textentry__switcher:before{
-            position:absolute;
-            margin-top:2px;
-            margin-left:-16px;
-            content: "+"
-          }
-            .m-textentry__switcher_expand:before{
-              margin-top:0px;
-              margin-left:-15px;
-              content: "-"
-            }
       .headers{
       }
       .details{
@@ -219,7 +225,6 @@
          color:#999;
        }
        .ecxeption{
-         font-family:Arial;
          margin-bottom:20px;
          color:#c00;
        }

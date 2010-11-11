@@ -1,3 +1,10 @@
+frontik (2.6.2) unstable; urgency=low
+
+  * put back tornado.options.options.debug
+  * some UI improvement
+
+ -- Andrew Sumin <AndrewSumin@gmail.com>  Thu, 11 Nov 2010 17:03:02 +0300
+
 frontik (2.6.1) unstable; urgency=low
 
   * unicode query params
