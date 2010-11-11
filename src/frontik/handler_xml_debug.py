@@ -60,7 +60,7 @@ def request_to_xml(request):
     query = urlparse.parse_qs(urlparse.urlparse(request.url).query, True)
     for name, values in query.iteritems():
         for value in values:
-          params.append(E.param(str(value), name = name))
+          params.append(E.param(unicode(str(value), "utf-8"), name = name))
 
     body = etree.Element("body")
     try:
@@ -138,7 +138,7 @@ class PageHandlerDebug(object):
         else:
             self.debug_mode = False
 
-        if tornado.options.options.debug or self.debug_mode:
+        if self.debug_mode:
             self.debug_mode_logging = True
             self.debug_log_handler = DebugPageHandler()
             self.handler.log.addHandler(self.debug_log_handler)
