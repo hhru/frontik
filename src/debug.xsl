@@ -4,6 +4,12 @@
   <xsl:output omit-xml-declaration="yes" method="html" indent="yes" encoding="UTF-8"
       media-type="text/html" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"
           doctype-public="-//W3C//DTD XHTML 1.0 Transitional//EN" version="1.1"/>
+  
+  <xsl:variable name="highlight-text">
+    <xsl:if test="contains(/log/@mode, '@')">
+      <xsl:value-of select="substring(/log/@mode, 2)"/>
+    </xsl:if>
+  </xsl:variable>
 
   <xsl:template match="/log">
     <html>
@@ -25,9 +31,11 @@
   <xsl:template match="entry[contains(@msg, 'finish group') and /log/@mode != 'full']"/>
   
   <xsl:template match="entry">
+
     <xsl:variable name="highlight">
-      <xsl:if test="/log[@mode != ''] and contains(@msg, /log/@mode)">m-textentry__head_highlight</xsl:if>
+      <xsl:if test="$highlight-text != '' and contains(@msg, $highlight-text)">m-textentry__head_highlight</xsl:if>
     </xsl:variable>
+    
     <div class="textentry">
       <pre class="textentry__head {$highlight}">
         <span  title="{@msg}"><xsl:value-of select="@msg"/></span>
@@ -46,9 +54,13 @@
     <xsl:variable name="status">
       <xsl:if test="response/code != 200">error</xsl:if>
     </xsl:variable>
-    <xsl:variable name="highlight">
-      <xsl:if test="/log[@mode != ''] and contains(@msg, /log/@mode)">m-textentry__head_highlight</xsl:if>
+    <xsl:variable name="text">
+      <xsl:value-of select="."/>
     </xsl:variable>
+    <xsl:variable name="highlight">
+      <xsl:if test="$highlight-text != '' and contains($text, $highlight-text)">m-textentry__head_highlight</xsl:if>
+    </xsl:variable>
+    
     <div class="textentry m-textentry__expandable">
       <div  onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher {$status} {$highlight}">
         <span title="{@msg}" class="textentry__head__expandtext">
