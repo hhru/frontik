@@ -14,4 +14,4 @@ debian/python-module-stampdir/
 .pydevproject
 .settings/
 src/frontik_dev.cfg
-
+.idea/
