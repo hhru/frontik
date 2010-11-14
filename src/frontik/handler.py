@@ -376,9 +376,9 @@ class PageHandler(tornado.web.RequestHandler):
                 self._fetch_request_response(placeholder, callback, request, response, request_types = request_types)
 
         def step2(retry_count):
-            self.http_client.fetch(req, self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
+            self.http_client.fetch(request, self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
 
-        self.http_client.fetch(req, self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
+        self.http_client.fetch(request, self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
 
         return placeholder
 

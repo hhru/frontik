@@ -1,3 +1,9 @@
+frontik (2.6.4) unstable; urgency=low
+
+  * Bugfix fot get_url_retry
+
+ -- Andrew Sumin <AndrewSumin@hh.ru>  Sun, 14 Nov 2010 12:40:01 +0300
+
 frontik (2.6.3) unstable; urgency=low
 
   * UI fix, now support debug=@__text__ for highlight
