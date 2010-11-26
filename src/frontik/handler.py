@@ -6,20 +6,20 @@ from functools import partial
 import datetime
 import functools
 import httplib
+import json
 import os.path
+import re
 import time
 import traceback
 import urlparse
-import json
 import xml.sax.saxutils
-import re
 
 import tornado.httpclient
 import tornado.options
 import tornado.web
 import tornado.ioloop
 
-from frontik import etree
+import frontik.etree as etree
 import frontik.async
 import frontik.auth
 import frontik.doc
@@ -30,11 +30,11 @@ import frontik.handler_whc_limit
 import frontik.handler_xml_debug
 #import frontik.handler_debug
 import frontik.jobs
+import frontik.future as future
 
 import logging
 log = logging.getLogger('frontik.handler')
 
-import future
 
 def _parse_response_xml(response, logger = log):
     '''

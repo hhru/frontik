@@ -1,7 +1,7 @@
-import sys
-import os.path
 import imp
 import logging
+import os.path
+import sys
 
 import tornado.autoreload
 import tornado.web
@@ -11,11 +11,11 @@ from tornado.options import options
 import frontik.magic_imp
 import frontik.version
 import frontik.doc
-from frontik import etree
+import frontik.etree as etree
 
 log = logging.getLogger('frontik.server')        
 
-import handler
+import frontik.handler as handler
 
 class VersionHandler(tornado.web.RequestHandler):
     def get(self):

@@ -4,10 +4,10 @@
 import lxml.etree as etree
 from lxml.builder import E as etree_builder
 
-# Doc, DocResponse классы для формирования XML-ответа
-from doc import Doc
-from util import make_url
-from util import list_unique
-from util import make_qs
+# Doc класс для формирования XML-ответа
+from frontik.doc import Doc
+from frontik.util import list_unique
+from frontik.util import make_qs
+from frontik.util import make_url
 
-#from handler import PageHandler
+#from frontik.handler import PageHandler
