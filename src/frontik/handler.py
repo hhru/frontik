@@ -427,18 +427,18 @@ class PageHandler(tornado.web.RequestHandler):
         self.log.debug('got %s %s in %.2fms', response.code, response.effective_url, response.request_time * 1000, extra = {"response": response, "request": request})
 
         if not request_types:
-          request_types = default_request_types
+            request_types = default_request_types
 
         result = None
         if response.error:
-          placeholder.set_data(self.show_response_error(response))
+            placeholder.set_data(self.show_response_error(response))
         else:
-          content_type = response.headers.get('Content-Type', '')
-          for k, v in request_types.iteritems():
-            if k.search(content_type):
-                data, result = v(response)
-                placeholder.set_data(data)
-                break
+            content_type = response.headers.get('Content-Type', '')
+            for k, v in request_types.iteritems():
+                if k.search(content_type):
+                    data, result = v(response)
+                    placeholder.set_data(data)
+                    break
         if callback:
             callback(result, response)
 

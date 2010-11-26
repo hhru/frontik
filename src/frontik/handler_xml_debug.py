@@ -62,7 +62,7 @@ def request_to_xml(request):
     query = urlparse.parse_qs(urlparse.urlparse(request.url).query, True)
     for name, values in query.iteritems():
         for value in values:
-          params.append(E.param(unicode(value, "utf-8"), name = name))
+            params.append(E.param(unicode(value, "utf-8"), name = name))
 
     body = etree.Element("body")
     if request.body:
@@ -70,7 +70,7 @@ def request_to_xml(request):
             body_query = urlparse.parse_qs(str(request.body), True)
             for name, values in body_query.iteritems():
                 for value in values:
-                  body.append(E.param(value.decode("utf-8"), name = name))
+                    body.append(E.param(value.decode("utf-8"), name = name))
         except Exception as e:
             body.text = "Cant show request body, " + str(e)
 
@@ -171,8 +171,7 @@ class PageHandlerDebug(object):
                 log_document = etree.tostring(self.debug_log_handler.log_data, encoding = 'UTF-8',
                                               xml_declaration = True)
         else:
-          self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
-          log_document = etree.tostring(self.debug_log_handler.log_data, encoding = 'UTF-8', xml_declaration = True)
+            self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
+            log_document = etree.tostring(self.debug_log_handler.log_data, encoding = 'UTF-8', xml_declaration = True)
 
         return log_document
-
