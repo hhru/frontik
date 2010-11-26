@@ -5,14 +5,16 @@ import inspect
 import logging
 import os.path
 import time
-import tornado.options
 import traceback
 import urlparse
 import weakref
 import xml.sax.saxutils
-from frontik import etree
-from frontik import etree_builder as E
 from datetime import datetime
+
+import lxml.etree as etree
+import tornado.options
+from lxml.builder import E
+
 
 log = logging.getLogger('XML_debug')
 

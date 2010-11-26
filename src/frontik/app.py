@@ -3,6 +3,7 @@ import logging
 import os.path
 import sys
 
+import lxml.etree as etree
 import tornado.autoreload
 import tornado.web
 import tornado.ioloop
@@ -11,7 +12,6 @@ from tornado.options import options
 import frontik.magic_imp
 import frontik.version
 import frontik.doc
-import frontik.etree as etree
 
 log = logging.getLogger('frontik.server')        
 

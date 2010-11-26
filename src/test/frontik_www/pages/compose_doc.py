@@ -1,5 +1,5 @@
 import frontik.handler
-from frontik import etree, Doc
+from frontik import Doc
 
 class Page(frontik.handler.PageHandler):
     def get_page(self):

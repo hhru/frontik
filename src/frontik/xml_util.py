@@ -1,7 +1,7 @@
 import logging
 import os.path
 
-from frontik import etree
+import lxml.etree as etree
 
 log = logging.getLogger('frontik.xml_util')
 

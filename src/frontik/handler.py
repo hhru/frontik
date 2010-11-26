@@ -14,12 +14,12 @@ import traceback
 import urlparse
 import xml.sax.saxutils
 
+import lxml.etree as etree
 import tornado.httpclient
 import tornado.options
 import tornado.web
 import tornado.ioloop
 
-import frontik.etree as etree
 import frontik.async
 import frontik.auth
 import frontik.doc

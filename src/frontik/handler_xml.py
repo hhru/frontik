@@ -7,11 +7,11 @@ import time
 import urllib
 import weakref
 
+import lxml.etree as etree
 import tornado.autoreload
 import tornado.options
 import tornado.ioloop
 
-from frontik import etree
 import frontik.util
 import frontik.auth
 import frontik.xml_util

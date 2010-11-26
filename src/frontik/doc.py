@@ -3,7 +3,7 @@
 import cStringIO
 
 import frontik.future
-from frontik import etree as et
+import lxml.etree as etree
 
 class Doc(object):
     def __init__(self, root_node_name='doc', root_node=None):
@@ -22,9 +22,8 @@ class Doc(object):
 
     def _finalize_data(self):
         def chunk_to_string(chunk):
-            # XXX изменится, при смене библиотеки!
-            if isinstance(chunk, et._Element):
-                yield et.tostring(chunk)
+            if isinstance(chunk, etree._Element):
+                yield etree.tostring(chunk)
             elif isinstance(chunk, Doc):
                 for i in chunk._finalize_data():
                     yield i
@@ -48,7 +47,7 @@ class Doc(object):
         if self.root_node is not None:
             res = self.root_node
         else:
-            res = et.Element(self.root_node_name)
+            res = etree.Element(self.root_node_name)
 
         def chunk_to_element(chunk):
             # XXX изменится, при смене библиотеки!
@@ -61,7 +60,7 @@ class Doc(object):
                 for i in chunk_to_element(chunk.get()):
                     yield i
 
-            elif isinstance(chunk, et._Element):
+            elif isinstance(chunk, etree._Element):
                 yield chunk
 
             elif isinstance(chunk, Doc):
@@ -99,6 +98,6 @@ class Doc(object):
 
 def etree_to_xml(string):
     sio = cStringIO.StringIO()
-    et.ElementTree(string).write(sio, encoding='utf-8', xml_declaration=True)
+    etree.ElementTree(string).write(sio, encoding='utf-8', xml_declaration=True)
     return sio.getvalue()
 
