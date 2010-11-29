@@ -143,7 +143,7 @@ class PageHandlerXML(object):
             self.log.debug('ignoring set_xsl() because config.apply_xsl=%s', self.handler.config.apply_xsl)
             self.apply_xsl = False
 
-        elif self.handler.get_argument('noxsl', None) is not None:
+        elif self.handler.get_argument('noxsl', None) is not None or self.handler.get_cookie("noxsl") is not None:
             self.handler.require_debug_access()
             self.apply_xsl = False
             self.log.debug('apply_xsl==False due to ?noxsl query arg')

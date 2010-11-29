@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<xsl:stylesheet version="1.0" id="style" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:stylesheet version="1.0" id="style" xmlns:str="http://exslt.org/strings" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
-  <xsl:output omit-xml-declaration="yes" method="html" indent="yes" encoding="UTF-8"
+  <xsl:output omit-xml-declaration="yes" method="html" indent="no" encoding="UTF-8"
       media-type="text/html" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"
           doctype-public="-//W3C//DTD XHTML 1.0 Transitional//EN" version="1.1"/>
   
@@ -62,7 +62,7 @@
     </xsl:variable>
     
     <div class="textentry m-textentry__expandable">
-      <div  onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher {$status} {$highlight}">
+      <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher {$status} {$highlight}">
         <span title="{@msg}" class="textentry__head__expandtext">
           <span class="time">
             <xsl:value-of select="response/request_time"/>
@@ -162,7 +162,16 @@
   </xsl:template>
   
   <xsl:template match="param">
-    <div><xsl:value-of select="@name"/>&#160;=&#160;<xsl:value-of select="."/></div>
+    <table>
+        <tr>
+            <td class="param__name">
+                <xsl:value-of select="@name"/><xsl:text>&#160;=&#160;</xsl:text>
+            </td>
+            <td class="param__value">
+                <xsl:apply-templates select="str:tokenize(string(.), '&#0013;&#0010;')" mode="line"/>
+            </td>
+        </tr>
+    </table>
   </xsl:template>
   
 
@@ -206,6 +215,13 @@
         .m-details_visible{
           display:block;
         }
+
+     .param__name{
+        vertical-align:top;
+     }
+     .param__value{
+        vertical-align:top;
+     }
      .servicelink{
        color:#666;
        font-size:.8em;
@@ -294,7 +310,14 @@
   </xsl:template>
   
   <xsl:template match="text()" mode="color-xml">
-    <span class="coloredxml__value"><xsl:value-of select="."/></span>
+    <span class="coloredxml__value">
+        <xsl:apply-templates select="str:tokenize(string(.), '&#0013;&#0010;')" mode="line"/>
+    </span>
+  </xsl:template>
+
+  <xsl:template match="token[text() != '']" mode="line">
+    <xsl:if test="position() != 1"><br/></xsl:if>
+    <xsl:value-of select="."/>
   </xsl:template>
   
   <xsl:template match="comment()" mode="color-xml">

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import Cookie
 import inspect
 import logging
@@ -60,16 +62,17 @@ def request_to_xml(request):
     query = urlparse.parse_qs(urlparse.urlparse(request.url).query, True)
     for name, values in query.iteritems():
         for value in values:
-          params.append(E.param(unicode(str(value), "utf-8"), name = name))
+          params.append(E.param(unicode(value, "utf-8"), name = name))
 
     body = etree.Element("body")
-    try:
-        body_query = urlparse.parse_qs(request.body, True)
-        for name, values in body_query.iteritems():
-            for value in values:
-              body.append(E.param(str(value), name = name))
-    except:
-        body = "Cant show request body"
+    if request.body:
+        try:
+            body_query = urlparse.parse_qs(str(request.body), True)
+            for name, values in body_query.iteritems():
+                for value in values:
+                  body.append(E.param(value.decode("utf-8"), name = name))
+        except Exception as e:
+            body.text = "Cant show request body, " + str(e)
 
     return (
         E.request(
@@ -131,7 +134,7 @@ class PageHandlerDebug(object):
     def __init__(self, handler):
         self.handler = weakref.proxy(handler)
 
-        if self.handler.get_argument('debug', None) is not None:
+        if self.handler.get_argument('debug', None) is not None or self.handler.get_cookie("debug") is not None:
             self.handler.require_debug_access()
             self.handler.log.debug('debug mode is on due to ?debug query arg')
             self.debug_mode = True

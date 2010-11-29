@@ -11,6 +11,7 @@ build
 debian/pycompat
 debian/python-module-stampdir/
 .project
+.idea
 .pydevproject
 .settings/
 src/frontik_dev.cfg
