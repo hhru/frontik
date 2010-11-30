@@ -22,8 +22,8 @@ def response_to_xml(response):
 
     try:
         body = etree.fromstring(response.body)
-    except:
-        body = 'Cant show response body'
+    except Exception as e:
+        body = 'Cant show response body, ' + str(e)
 
     for name, value in response.headers.iteritems():
         headers.append(E.header(value, name = name))
