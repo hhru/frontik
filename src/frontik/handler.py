@@ -404,9 +404,9 @@ class PageHandler(tornado.web.RequestHandler):
 
         placeholder = future.Placeholder()
 
-        self.fetch_request(
-            frontik.util.make_put_request(url, data, headers, connect_timeout, request_timeout),
-            partial(self._fetch_request_response, placeholder, callback, request_types=request_types))
+
+        request = frontik.util.make_put_request(url, data, headers, connect_timeout, request_timeout)
+        self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request, request_types=request_types))
 
         return placeholder
 
@@ -418,9 +418,8 @@ class PageHandler(tornado.web.RequestHandler):
 
         placeholder = future.Placeholder()
 
-        self.fetch_request(
-            frontik.util.make_delete_request(url, data, headers, connect_timeout, request_timeout),
-            partial(self._fetch_request_response, placeholder, callback, request_types=request_types))
+        request = frontik.util.make_delete_request(url, data, headers, connect_timeout, request_timeout)
+        self.fetch_request(request,partial(self._fetch_request_response, placeholder, callback, request, request_types=request_types))
 
         return placeholder
 

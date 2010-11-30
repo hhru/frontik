@@ -150,7 +150,7 @@ def make_post_request(url, data='', headers={}, files={},
                 connect_timeout=connect_timeout,
                 request_timeout=request_timeout)
 
-def make_put_request(url, data='', headers={}, connect_timeout=0.5, request_timeout=2)):
+def make_put_request(url, data='', headers={}, connect_timeout=0.5, request_timeout=2):
     return tornado.httpclient.HTTPRequest(
                     url=url,
                     body=make_body(data),
