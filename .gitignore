@@ -3,6 +3,7 @@
 .idea/
 .project
 .pydevproject
+.ropeproject/
 .settings/
 build
 debian/*.debhelper
@@ -13,6 +14,7 @@ debian/frontik
 debian/pycompat
 debian/python-module-stampdir/
 frontik.egg-info/
+dist/
 frontik.iml
 src/frontik_dev.cfg
 src/frontik_test.log
