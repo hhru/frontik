@@ -32,8 +32,11 @@ def make_qs(query_args):
 
     return qs
 
+def make_body(data):
+    return make_qs(data) if isinstance(data,dict) else data
+
 def make_url(base, **query_args):
-    ''' 
+    '''
     построить URL из базового урла и набора CGI-параметров
     параметры с пустым значением пропускаются, удобно для последовательности:
     make_url(base, hhtoken=request.cookies.get('hhtoken'))
@@ -43,7 +46,7 @@ def make_url(base, **query_args):
     if qs:
         return base + '?' + qs
     else:
-        return base 
+        return base
 
 def get_all_files(root, extension=None):
     out = list()
@@ -70,7 +73,7 @@ def get_content_type(filename):
 
 
 def make_mfd(fields, files):
-    ''' 
+    '''
     Constructs request body in multipart/form-data format
 
     fields :: { field_name : field_value }
@@ -129,10 +132,8 @@ def make_post_request(url, data='', headers={}, files={},
 
     if files:
         body, content_type = make_mfd(data, files)
-    elif isinstance(data,dict):
-        body = make_qs(data)
     else:
-        body = data
+        body = make_body(data)
 
     if content_type is None:
         content_type = 'application/x-www-form-urlencoded'
@@ -149,19 +150,20 @@ def make_post_request(url, data='', headers={}, files={},
                 connect_timeout=connect_timeout,
                 request_timeout=request_timeout)
 
-def make_put_request(url, data={}, headers={}, body="", connect_timeout=0.5, request_timeout=2):
+def make_put_request(url, data='', headers={}, connect_timeout=0.5, request_timeout=2)):
     return tornado.httpclient.HTTPRequest(
-                    url=make_url(url, **data),
+                    url=url,
+                    body=make_body(data),
                     method='PUT',
                     headers=headers,
-                    body=body,
                     connect_timeout=connect_timeout,
                     request_timeout=request_timeout)
 
 
-def make_delete_request(url, data={}, headers={}, connect_timeout=0.5, request_timeout=2):
+def make_delete_request(url, data='', headers={}, connect_timeout=0.5, request_timeout=2):
     return tornado.httpclient.HTTPRequest(
-                    url=make_url(url, **data),
+                    url=url,
+                    body=make_body(data),
                     method='DELETE',
                     headers=headers,
                     connect_timeout=connect_timeout,
@@ -176,4 +178,3 @@ def _asciify_url_char(c):
 
 def asciify_url(url):
     return ''.join(map(_asciify_url_char, url))
-

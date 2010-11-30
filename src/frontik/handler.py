@@ -5,7 +5,6 @@ from __future__ import with_statement
 from functools import partial
 import datetime
 import functools
-import functools
 import httplib
 import os.path
 import time
@@ -188,7 +187,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
 
         self.xml = frontik.handler_xml.PageHandlerXML(self)
-        self.doc = self.xml.doc # backwards compatibility for self.doc.put    
+        self.doc = self.xml.doc # backwards compatibility for self.doc.put
 
         if self.get_argument('nopost', None) is not None:
             self.require_debug_access()
@@ -394,6 +393,34 @@ class PageHandler(tornado.web.RequestHandler):
         placeholder = future.Placeholder()
         request = frontik.util.make_post_request(url, data, headers, files, connect_timeout, request_timeout, follow_redirects, content_type)
         self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request, request_types = request_types))
+
+        return placeholder
+
+    def put_url(self, url, data='',
+                 headers={},
+                 connect_timeout=0.5, request_timeout=2,
+                 callback=None,
+                 request_types = None):
+
+        placeholder = future.Placeholder()
+
+        self.fetch_request(
+            frontik.util.make_put_request(url, data, headers, connect_timeout, request_timeout),
+            partial(self._fetch_request_response, placeholder, callback, request_types=request_types))
+
+        return placeholder
+
+    def delete_url(self, url, data='',
+                 headers={},
+                 connect_timeout=0.5, request_timeout=2,
+                 callback=None,
+                 request_types = None):
+
+        placeholder = future.Placeholder()
+
+        self.fetch_request(
+            frontik.util.make_delete_request(url, data, headers, connect_timeout, request_timeout),
+            partial(self._fetch_request_response, placeholder, callback, request_types=request_types))
 
         return placeholder
 
