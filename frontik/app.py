@@ -10,8 +10,8 @@ import tornado.ioloop
 from tornado.options import options
 
 import frontik.magic_imp
-import frontik.version
 import frontik.doc
+from frontik import __version__
 
 log = logging.getLogger('frontik.server')        
 
@@ -25,7 +25,7 @@ class VersionHandler(tornado.web.RequestHandler):
         version_el = etree.Element("version")
         project_el.append(version_el)
 
-        version_el.text = frontik.version.version
+        version_el.text = __version__
         self.write(frontik.doc.etree_to_xml(project_el))
 
 
