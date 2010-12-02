@@ -3,33 +3,33 @@ import os.path
 
 import lxml.etree as etree
 
-log = logging.getLogger('frontik.xml_util')
+
+log = logging.getLogger("frontik.xml_util")
 
 def _abs_filename(base_filename, filename):
-    if filename.startswith('/'):
+    if filename.startswith("/"):
         return filename
     else:
         base_dir = os.path.dirname(base_filename)
         return os.path.normpath(os.path.join(base_dir, filename))
-    
 
 def _read_xsl_one(filename, log=log):
-    ''' return (etree.ElementTree, xsl includes from  given file '''
+    """return (etree.ElementTree, xsl_includes)"""
 
     with open(filename, "rb") as fp:
-        log.debug('read file %s', filename)
+        log.debug("read file %s", filename)
         tree = etree.parse(fp)
 
-        xsl_includes = [_abs_filename(filename, i.get('href'))
-                        for i in tree.findall('{http://www.w3.org/1999/XSL/Transform}import')]
+        xsl_includes = [_abs_filename(filename, i.get("href"))
+                        for i in tree.findall("{http://www.w3.org/1999/XSL/Transform}import")]
         return tree, xsl_includes
 
 
 def read_xsl(filename, log=log):
-    ''' return (etree.XSL, xsl_files_watchlist) '''
+    """return (etree.XSL, xsl_files_watchlist)"""
 
     xsl_includes = set([filename])
-    
+
     result, new_xsl_files = _read_xsl_one(filename, log)
 
     diff = set(new_xsl_files).difference(xsl_includes)
@@ -42,8 +42,5 @@ def read_xsl(filename, log=log):
             new_xsl_files.update(i_files)
 
         diff = new_xsl_files.difference(xsl_includes)
-    
-    return (etree.XSLT(result), xsl_includes)
 
-        
-    
+    return (etree.XSLT(result), xsl_includes)
