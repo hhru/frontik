@@ -155,17 +155,21 @@ class PageHandlerDebug(object):
         self.debug_log_handler.log_data.set("mode", self.handler.get_argument('debug', 'text'))
         self.debug_log_handler.log_data.set("request-id", str(self.handler.request_id))
 
-        if self.handler.xml.apply_xsl:
-          try:
-            xsl_file = open(tornado.options.options.debug_xsl)
-            tranform = etree.XSLT(etree.XML(xsl_file.read()))
-            xsl_file.close()
-            log_document = str(tranform(self.debug_log_handler.log_data))
-            self.handler.set_header('Content-Type', 'text/html; charset=UTF-8')
-          except Exception, e:
-            self.handler.log.exception('XSLT debug file error')
-            self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
-            log_document = etree.tostring(self.debug_log_handler.log_data, encoding = 'UTF-8', xml_declaration = True)
+        # if we have 500 but have "noxsl" in args without "debug" in args
+        # apply xsl for debug info anyway
+        if self.handler.xml.apply_xsl or not self.debug_mode:
+            # show 'awesome' debug page
+            try:
+                xsl_file = open(tornado.options.options.debug_xsl)
+                tranform = etree.XSLT(etree.XML(xsl_file.read()))
+                xsl_file.close()
+                log_document = str(tranform(self.debug_log_handler.log_data))
+                self.handler.set_header('Content-Type', 'text/html; charset=UTF-8')
+            except Exception, e:
+                self.handler.log.exception('XSLT debug file error')
+                self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
+                log_document = etree.tostring(self.debug_log_handler.log_data, encoding = 'UTF-8',
+                                              xml_declaration = True)
         else:
           self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
           log_document = etree.tostring(self.debug_log_handler.log_data, encoding = 'UTF-8', xml_declaration = True)
