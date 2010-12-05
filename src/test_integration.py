@@ -143,9 +143,12 @@ def test_content_type_with_xsl():
 
 
 def test_xsl_fail():
-    # this test became bizarre because of Firefox browser, see handler_xml_debug.py
-    with frontik_get_page_text('page/xsl_fail') as html:
-        assert('failed transformation with XSL fail.xsl' in html)
+    with FrontikTestInstance() as srv_port:
+        try:
+            get_page(srv_port, 'page/xsl_fail', xsl=True)
+            raise Exception('get_page should`ve failed with HTTPError 500')
+        except urllib2.HTTPError, e:
+            assert(e.code == 500)
 
 
 def test_content_type_wo_xsl():
