@@ -21,6 +21,18 @@ class FrontikAppImporter(object):
         self.app_roots = dict(apps)
         self.modules = dict()
 
+    def get_probable_module_filenames(self, app_name, module_name):
+        app_root = self.app_roots[app_name]
+
+        module_name_as_path = os.path.join(*module_name.split('.'))
+
+        app_module_probable_filenames = [
+            os.path.join(app_root, module_name_as_path, '__init__.py'),
+            os.path.join(app_root, module_name_as_path, 'index.py'),
+            os.path.join(app_root, '{0}.py'.format(module_name_as_path))]
+
+        return app_module_probable_filenames
+
     def imp_app_module(self, app_name, module_name):
         '''
         app_name :: 'chameleon'
@@ -36,14 +48,7 @@ class FrontikAppImporter(object):
             log.debug('get %s from module cache', app_module_name)
             return self.modules[app_module_name]
 
-        app_root = self.app_roots[app_name]
-
-        module_name_as_path = os.path.join(*module_name.split('.'))
-
-        app_module_probable_filenames = [
-            os.path.join(app_root, module_name_as_path, '__init__.py'),
-            os.path.join(app_root, module_name_as_path, 'index.py'),
-            os.path.join(app_root, '{0}.py'.format(module_name_as_path))]
+        app_module_probable_filenames = self.get_probable_module_filenames(app_name, module_name)
 
         for app_module_filename in app_module_probable_filenames:
             if os.path.exists(app_module_filename):

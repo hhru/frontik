@@ -1,10 +1,11 @@
 import sys
 import os.path
 import imp
+import logging
 
+import tornado.autoreload
 import tornado.web
 import tornado.ioloop
-import logging
 from tornado.options import options
 
 import frontik.magic_imp
@@ -88,9 +89,21 @@ class FrontikAppDispatcher(object):
 
         self.apps = {}
         for (app_name, app_root) in app_roots.iteritems():
-            module = self.init_app_package(app_name)
-            ph_globals = frontik.handler.PageHandlerGlobals(module)
-            self.apps[app_name] = FrontikApp(app_name, app_root, module, ph_globals)
+            try:
+                # Track all possible filenames for each app's config
+                # module to reload in case of change
+                for filename in self.importer.get_probable_module_filenames(app_name, 'config'):
+                    tornado.autoreload.watch_file(filename)
+
+                module = self.init_app_package(app_name)
+                ph_globals = frontik.handler.PageHandlerGlobals(module)
+                self.apps[app_name] = FrontikApp(app_name, app_root, module, ph_globals)
+            except:
+                # we do not want to break frontik on app
+                # initialization error, so we report error and skip
+                # the app.
+                log.exception('failed to initialize %s, skipping from configuration', app_name)
+                
 
     def init_app_package(self, app_name):
         module = imp.new_module(frontik.magic_imp.gen_module_name(app_name))
