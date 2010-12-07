@@ -17,5 +17,5 @@ frontik.egg-info/
 dist/
 frontik.egg-info/
 frontik.iml
-src/frontik_dev.cfg
+frontik_dev.cfg
 src/frontik_test.log
