@@ -17,7 +17,7 @@ import frontik.auth
 import frontik.xml_util
 
 import logging
-lgo = logging.getLogger('frontik.server')
+log = logging.getLogger('frontik.server')
 log_xsl = logging.getLogger('frontik.handler.xsl')
 log_fileloader = logging.getLogger('frontik.server.fileloader')
 
