@@ -1,10 +1,25 @@
 import logging
 import os.path
+import urlparse
 
 import lxml.etree as etree
 
 
 log = logging.getLogger("frontik.xml_util")
+parser = etree.XMLParser()
+
+class PrefixResolver(etree.Resolver):
+    def __init__(self, scheme, path):
+        self.scheme = scheme
+        self.path = os.path.abspath(path)
+
+    def resolve(self, system_url, public_id, context):
+        parsed_url = urlparse.urlsplit(system_url)
+        if parsed_url.scheme == self.scheme:
+            path = os.path.abspath(os.path.join(self.path, parsed_url.path))
+            if not os.path.commonprefix([self.path, path]).startswith(self.path):
+                raise etree.XSLTParseError('Open files out of XSL root is not allowed: {0}'.format(path))
+            return self.resolve_filename(path, context)
 
 def _abs_filename(base_filename, filename):
     if filename.startswith("/"):
@@ -13,24 +28,22 @@ def _abs_filename(base_filename, filename):
         base_dir = os.path.dirname(base_filename)
         return os.path.normpath(os.path.join(base_dir, filename))
 
-def _read_xsl_one(filename, log=log):
+def _read_xsl_one(filename, log=log, parser=parser):
     """return (etree.ElementTree, xsl_includes)"""
 
-    with open(filename, "rb") as fp:
-        log.debug("read file %s", filename)
-        tree = etree.parse(fp)
+    log.debug("read file %s", filename)
+    tree = etree.parse(filename, parser)
+    xsl_includes = [_abs_filename(filename, i.get("href"))
+                    for i in tree.findall("{http://www.w3.org/1999/XSL/Transform}import")
+                    if i.get("href").find(":") == -1]
+    return tree, xsl_includes
 
-        xsl_includes = [_abs_filename(filename, i.get("href"))
-                        for i in tree.findall("{http://www.w3.org/1999/XSL/Transform}import")]
-        return tree, xsl_includes
-
-
-def read_xsl(filename, log=log):
+def read_xsl(filename, log=log, parser=parser):
     """return (etree.XSL, xsl_files_watchlist)"""
 
     xsl_includes = set([filename])
 
-    result, new_xsl_files = _read_xsl_one(filename, log)
+    result, new_xsl_files = _read_xsl_one(filename, log, parser)
 
     diff = set(new_xsl_files).difference(xsl_includes)
     while diff:

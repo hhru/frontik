@@ -125,6 +125,9 @@ def make_file_cache(option_name, option_value, fun):
 
 class PageHandlerXMLGlobals(object):
     def __init__(self, config):
+        for schema, path in getattr(config, 'XSL_SCHEMAS', {}).items():
+            frontik.xml_util.parser.resolvers.add(
+                frontik.xml_util.PrefixResolver(schema, path))
         self.xml_cache = make_file_cache('XML_root', getattr(config, 'XML_root', None), xml_from_file)
         self.xsl_cache = make_file_cache('XSL_root', getattr(config, 'XSL_root', None), xsl_from_file)
 
