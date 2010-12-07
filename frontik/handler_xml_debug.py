@@ -22,10 +22,16 @@ def response_to_xml(response):
     headers = etree.Element("headers")
     time_info = etree.Element("time_info")
 
-    try:
-        body = etree.fromstring(response.body)
-    except Exception as e:
-        body = 'Cant show response body, ' + str(e)
+    if 'text/html' in response.headers.get('Content-Type',''):
+        try:
+            body = response.body.decode("utf-8").replace("\n", "\\n").replace("'", "\\'");
+        except Exception as e:
+            body = 'Cant show response body, ' + str(e)
+    else:
+        try:
+            body = etree.fromstring(response.body)
+        except Exception as e:
+            body = 'Cant show response body, ' + str(e)
 
     for name, value in response.headers.iteritems():
         headers.append(E.header(value, name = name))
@@ -35,7 +41,7 @@ def response_to_xml(response):
 
     return (
         E.response(
-            E.body(body),
+            E.body(body, content_type=response.headers.get('Content-Type','')),
             E.code(str(response.code)),
             E.effective_url(response.effective_url),
             E.error(str(response.error)),
