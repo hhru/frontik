@@ -25,7 +25,7 @@ def response_to_xml(response):
 
     if 'text/html' in response.headers.get('Content-Type',''):
         try:
-            body = response.body.decode("utf-8").replace("\n", "\\n").replace("'", "\\'");
+            body = response.body.decode("utf-8").replace("\n", "\\n").replace("'", "\\'")
         except Exception as e:
             body = 'Cant show response body, ' + str(e)
     else:
