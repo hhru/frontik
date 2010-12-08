@@ -1,4 +1,4 @@
-frontik_import('lib')
+frontik_import("lib")
 
 assert(lib.a == 10)
 

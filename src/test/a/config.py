@@ -1,1 +1,0 @@
-apply_xsl = True
