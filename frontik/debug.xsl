@@ -142,6 +142,11 @@
         </script>
     </xsl:template>
 
+    <xsl:template match="body[contains(@content_type, 'json')]">
+        <div class="delimeter">body</div>
+        <pre><xsl:value-of select="."/></pre>
+    </xsl:template>
+
     <xsl:template match="body" mode="params">
         <div class="params">
             <div class="delimeter">body</div>
@@ -198,6 +203,9 @@
         <style>
             body, pre{
                 font-family:Arial;
+            }
+            pre{
+                margin:0;
             }
             .textentry{
                 padding-left:20px;

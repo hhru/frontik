@@ -9,6 +9,7 @@ import traceback
 import urlparse
 import weakref
 import xml.sax.saxutils
+import json
 from datetime import datetime
 
 import lxml.etree as etree
@@ -72,15 +73,21 @@ def request_to_xml(request):
         for value in values:
             params.append(E.param(unicode(value, "utf-8"), name = name))
 
-    body = etree.Element("body")
+    body = etree.Element("body", content_type = request.headers.get('Content-Type',''))
     if request.body:
-        try:
-            body_query = urlparse.parse_qs(str(request.body), True)
-            for name, values in body_query.iteritems():
-                for value in values:
-                    body.append(E.param(value.decode("utf-8"), name = name))
-        except Exception as e:
-            body.text = "Cant show request body, " + str(e)
+        if 'json' in request.headers.get('Content-Type',''):
+            try:
+                body.text = json.dumps(json.loads(request.body), sort_keys=True, indent=4)
+            except Exception as e:
+                body.text = "Cant show request body, " + str(e)
+        else:
+            try:
+                body_query = urlparse.parse_qs(str(request.body), True)
+                for name, values in body_query.iteritems():
+                    for value in values:
+                        body.append(E.param(value.decode("utf-8"), name = name))
+            except Exception as e:
+                body.text = "Cant show request body, " + str(e)
 
     return (
         E.request(
