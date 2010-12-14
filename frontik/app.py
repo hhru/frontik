@@ -137,6 +137,15 @@ class App(object):
         if not self.initialized_wo_error:
             log.exception('%s application not loaded, because of fail during initialization', self.name)
             return tornado.web.ErrorHandler(application, request, 404)
+#        for name, pattern, app in self.apps:
+#            if pattern.match(request.uri):
+#                app_name = name
+#                new_uri = app.url_rewriter(request.uri)
+#                log.debug('new uri: %s', new_uri)
+#                request = HTTPRequestWrapper(request, new_uri)
+#                page_module_name = 'pages.'+ '.'.join( filter( lambda x: x != '' , new_uri.rstrip('/').split('?')[0].split('/')))
+#                log.debug('page module: %s', page_module_name)
+#                break
 
         page_module_name = 'pages.'+ '.'.join(request.path.strip('/').split('/'))
         self.log.debug('page module: %s', page_module_name)
