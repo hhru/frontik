@@ -2,6 +2,7 @@ import imp
 import logging
 import os.path
 import sys
+import re
 
 import lxml.etree as etree
 import tornado.autoreload
@@ -12,6 +13,8 @@ from tornado.options import options
 import frontik.magic_imp
 import frontik.doc
 from frontik import __version__
+from frontik import etree
+from tornado.httpserver import HTTPRequest
 
 log = logging.getLogger('frontik.server')        
 
@@ -82,14 +85,28 @@ class FrontikApp(object):
         self.root = root
         self.module = module
         self.ph_globals = ph_globals
+        try:
+            self.url_rewriter = module.urls.rewriter
+        except:
+            log.error('failed to load urls.processer for app "%s"', app_name)
+            raise
+
+
+class HTTPRequestWrapper(HTTPRequest):
+    def __init__(self, request, uri):
+        HTTPRequest.__init__(self, request.method, uri, request.version, request.headers,
+                 request.body, request.remote_ip, request.protocol, request.host,
+                 request.files, request.connection)
 
 class FrontikAppDispatcher(object):
     def __init__(self, app_roots):
-        self.importer = frontik.magic_imp.FrontikAppImporter(app_roots)
+        app_dict = dict(map(lambda (x, y, z): (x, z), app_roots))
+        log.debug(app_dict)
+        self.importer = frontik.magic_imp.FrontikAppImporter(app_dict)
 
-        self.apps = {}
+        self.apps = []
         self.failed_apps = []
-        for (app_name, app_root) in app_roots.iteritems():
+        for (app_name, app_url_pattern, app_root) in app_roots:
             try:
                 # Track all possible filenames for each app's config
                 # module to reload in case of change
@@ -98,14 +115,13 @@ class FrontikAppDispatcher(object):
 
                 module = self.init_app_package(app_name)
                 ph_globals = frontik.handler.PageHandlerGlobals(module)
-                self.apps[app_name] = FrontikApp(app_name, app_root, module, ph_globals)
+                self.apps.append((app_name, re.compile(app_url_pattern), FrontikApp(app_name, app_root, module, ph_globals)))
             except:
                 # we do not want to break frontik on app
                 # initialization error, so we report error and skip
                 # the app.
                 self.failed_apps.append(app_name)
                 log.exception('failed to initialize %s, skipping from configuration', app_name)
-                
 
     def init_app_package(self, app_name):
         module = imp.new_module(frontik.magic_imp.gen_module_name(app_name))
@@ -119,13 +135,19 @@ class FrontikAppDispatcher(object):
         except:
             log.error('failed to load config for app "%s"', app_name)
             raise
-        
+
+        try:
+            module.urls = self.importer.imp_app_module(app_name, 'urls')
+        except:
+            log.error('failed to load urls.py for app "%s"', app_name)
+            raise
+
         return module
 
     def dispatch(self, application, request):
         log.info('requested url: %s', request.uri)
 
-        page_module_name_parts = request.path.strip('/').split('/')
+        app_name, page_module_name = '',''
 
         app_name = page_module_name_parts[0]
         page_module_name = '.'.join(['pages'] + page_module_name_parts[1:])
@@ -138,6 +160,15 @@ class FrontikAppDispatcher(object):
             else:
                 log.exception('%s application not found', app_name)
             return tornado.web.ErrorHandler(application, request, 404)
+#        for name, pattern, app in self.apps:
+#            if pattern.match(request.uri):
+#                app_name = name
+#                new_uri = app.url_rewriter(request.uri)
+#                log.debug('new uri: %s', new_uri)
+#                request = HTTPRequestWrapper(request, new_uri)
+#                page_module_name = 'pages.'+ '.'.join( filter( lambda x: x != '' , new_uri.rstrip('/').split('?')[0].split('/')))
+#                log.debug('page module: %s', page_module_name)
+#                break
 
         try:
             page_module = self.importer.imp_app_module(app_name, page_module_name)
@@ -160,6 +191,8 @@ class FrontikAppDispatcher(object):
         except Exception, e:
             log.exception('%s. Internal server error, %s', page_module_name, e)
             return tornado.web.ErrorHandler(application, request, 500)
+
+        return tornado.web.ErrorHandler(application, request, 404)
 
 def get_app(app_roots):
     dispatcher = FrontikAppDispatcher(app_roots)
