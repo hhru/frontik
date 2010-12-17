@@ -6,7 +6,10 @@ frontik (2.8.0~dev) UNRELEASED; urgency=low
   [ Andrew Sumin ]
   * If we have 500 but have "noxsl" in args without "debug" in args apply xsl for debug info anyway. Fixed
 
- -- Andrew Sumin <AndrewSumin@gmail.com>  Fri, 03 Dec 2010 15:54:58 +0300
+  [ Pavel Trukhanov ]
+  * HH-16259 verbose 404 logging in case 'application not found'
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Fri, 17 Dec 2010 18:01:55 +0300
 
 frontik (2.7.1) unstable; urgency=low
 

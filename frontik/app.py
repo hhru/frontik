@@ -88,6 +88,7 @@ class FrontikAppDispatcher(object):
         self.importer = frontik.magic_imp.FrontikAppImporter(app_roots)
 
         self.apps = {}
+        self.failed_apps = []
         for (app_name, app_root) in app_roots.iteritems():
             try:
                 # Track all possible filenames for each app's config
@@ -102,6 +103,7 @@ class FrontikAppDispatcher(object):
                 # we do not want to break frontik on app
                 # initialization error, so we report error and skip
                 # the app.
+                self.failed_apps.append(app_name)
                 log.exception('failed to initialize %s, skipping from configuration', app_name)
                 
 
@@ -131,6 +133,10 @@ class FrontikAppDispatcher(object):
         try:
             app = self.apps[app_name]
         except KeyError:
+            if app_name in self.failed_apps:
+                log.exception('%s application not found, because of fail during initialization', app_name)
+            else:
+                log.exception('%s application not found', app_name)
             return tornado.web.ErrorHandler(application, request, 404)
 
         try:
