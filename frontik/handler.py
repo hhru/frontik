@@ -165,6 +165,7 @@ class PageHandler(tornado.web.RequestHandler):
 
     def __init__(self, ph_globals, application, request):
         self.handler_started = time.time()
+        self._prepared = False
 
         self.request_id = request.headers.get('X-Request-Id', stats.next_request_id())
         self.path = urlparse.urlparse(request.uri).path or request.uri
@@ -182,9 +183,9 @@ class PageHandler(tornado.web.RequestHandler):
         self.text = None
 
     def prepare(self):
-        self.debug = frontik.handler_xml_debug.PageHandlerDebug(self)
-
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
+
+        self.debug = frontik.handler_xml_debug.PageHandlerDebug(self)
 
         self.xml = frontik.handler_xml.PageHandlerXML(self)
         self.doc = self.xml.doc # backwards compatibility for self.doc.put
@@ -199,6 +200,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
                                                      name = 'finish',
                                                      log = self.log.debug)
+        self._prepared = True
 
     def require_debug_access(self, login = None, passwd = None):
         if self.debug_access is None:
@@ -223,10 +225,15 @@ class PageHandler(tornado.web.RequestHandler):
         self.finish('401: Permission denied')
 
     def get_error_html(self, status_code, **kwargs):
+        if not self._prepared:
+            # *explicitly* use default tornado error page for unprepared
+            # handlers (working handlers count limit for example)
+            return super(PageHandler, self).get_error_html(status_code, **kwargs)
+
         if self.debug.debug_mode_logging:
             return self.debug.get_debug_page(status_code, **kwargs)
         else:
-            return tornado.web.RequestHandler.get_error_html(self, status_code, **kwargs)
+            return super(PageHandler, self).get_error_html(status_code, **kwargs)
 
     def send_error(self, status_code = 500, **kwargs):
         def standard_send_error():
