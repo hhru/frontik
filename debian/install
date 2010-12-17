@@ -1,2 +1,2 @@
 production/frontik.cfg /etc/frontik
-src/frontik/debug.xsl /usr/lib/frontik/
+frontik/debug.xsl /usr/lib/frontik/
