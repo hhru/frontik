@@ -21,7 +21,7 @@ class PageHandlerWHCLimit(object):
                                   self.handler.request.method,
                                   self.handler.request.uri,
                                   working_handlers_count)
-            raise tornado.web.HTTPError(502)
+            raise tornado.web.HTTPError(503)
 
         self.acquire()
 
