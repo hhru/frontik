@@ -49,4 +49,4 @@ class SimpleExecutor(object):
         self.log = log
 
     def add_job(self, func, cb, error_cb):
-            work(func, cb, error_cb)
+        work(func, cb, error_cb)
