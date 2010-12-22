@@ -44,3 +44,9 @@ class SimpleSpawnExecutor(object):
         threading.Thread(target=functools.partial(work, func, cb, error_cb)).start()
         self.log.debug('active threads count (+1) = ' + str(threading.active_count()))
 
+class SimpleExecutor(object):
+    def __init__(self):
+        self.log = log
+
+    def add_job(self, func, cb, error_cb):
+            work(func, cb, error_cb)

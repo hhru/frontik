@@ -158,7 +158,7 @@ class PageHandlerGlobals(object):
         if tornado.options.options.executor_pool:
             self.executor = frontik.jobs.PoolExecutor(pool_size = tornado.options.options.executor_pool_size)
         else:
-            self.executor = frontik.jobs.SimpleSpawnExecutor()
+            self.executor = frontik.jobs.SimpleExecutor()
 
 
 class PageHandler(tornado.web.RequestHandler):

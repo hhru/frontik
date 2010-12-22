@@ -2,6 +2,7 @@ frontik (2.8.0~dev) UNRELEASED; urgency=low
 
   [ Ivan Fedorov ]
   * New development version
+  * Restore single-thread mode by default
 
   [ Andrew Sumin ]
   * If we have 500 but have "noxsl" in args without "debug" in args apply xsl for debug info anyway. Fixed
@@ -9,7 +10,7 @@ frontik (2.8.0~dev) UNRELEASED; urgency=low
   [ Pavel Trukhanov ]
   * HH-16259 verbose 404 logging in case 'application not found'
 
- -- Pavel Trukhanov <p.trukhanov@hh.ru>  Fri, 17 Dec 2010 18:01:55 +0300
+ -- Ivan Fedorov <oxyum@oxyum.ru>  Wed, 22 Dec 2010 16:48:18 +0300
 
 frontik (2.7.1) unstable; urgency=low
 
