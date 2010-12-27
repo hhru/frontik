@@ -1,0 +1,17 @@
+import tornado.options
+
+tornado.options.define('apps', {}, dict)
+tornado.options.define('suppressed_loggers', ['tornado.httpclient'], list)
+tornado.options.define('handlers_count', 100, int)
+
+tornado.options.define('syslog_address', "/dev/log", str)
+tornado.options.define('syslog', False, bool)
+
+tornado.options.define('xml_debug', False, bool)
+tornado.options.define('debug', False, bool)
+tornado.options.define('debug_login', None, str)
+tornado.options.define('debug_password', None, str)
+tornado.options.define('debug_xsl', '/usr/lib/frontik/debug.xsl', str)
+
+tornado.options.define('executor_pool', False, bool)
+tornado.options.define('executor_pool_size', 7, int)

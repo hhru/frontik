@@ -7,7 +7,7 @@ setup(
     long_description = open("README.md").read(),
     url = "https://github.com/hhru/frontik",
     packages = ["frontik"],
-    scripts = ["scripts/frontik_srv.py"],
+    scripts = ["scripts/frontik"],
     package_data = {
         "frontik": ["*.xsl"],
     },
