@@ -22,7 +22,7 @@ class FrontikAppImporter(object):
         self.modules = dict()
 
     def get_probable_module_filenames(self, app_name, module_name):
-        app_root = self.app_roots[app_name]
+        app_root = self.app_roots[app_name][0]
 
         module_name_as_path = os.path.join(*module_name.split('.'))
 
