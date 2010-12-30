@@ -51,7 +51,7 @@
     </xsl:template>
 
     <xsl:template match="@exc_text">
-        <pre class="ecxeption">
+        <pre class="exception">
             <xsl:value-of select="."/>
         </pre>
     </xsl:template>
@@ -280,7 +280,7 @@
                 font-size:.8em;
                 color:#999;
             }
-            .ecxeption{
+            .exception{
                 margin-bottom:20px;
                 color:#c00;
             }
