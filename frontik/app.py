@@ -95,13 +95,13 @@ class App(object):
     def __init__(self, name, root):
         self.name = name
         self.root = root
-        #TODO: make importer global
-        self.importer = frontik.magic_imp.FrontikAppImporter({self.name:root})
-        self.log = logging.getLogger('frontik.application.{0}'.format(self.name))
-        self.initialized_wo_error = True
-
-        try:
-            self.init_app_package()
+        self.module = module
+        self.ph_globals = ph_globals
+        if getattr(module.config, 'rewriter', None) and callable(module.config.rewriter):
+            self.rewriter = module.config.rewriter
+        else:
+            log.error('no rewriter specified for app "%s" or rewriter is not callable', name)
+            self.rewriter = None
 
             #Track all possible filenames for each app's config
             #module to reload in case of change
@@ -137,15 +137,6 @@ class App(object):
         if not self.initialized_wo_error:
             log.exception('%s application not loaded, because of fail during initialization', self.name)
             return tornado.web.ErrorHandler(application, request, 404)
-#        for name, pattern, app in self.apps:
-#            if pattern.match(request.uri):
-#                app_name = name
-#                new_uri = app.url_rewriter(request.uri)
-#                log.debug('new uri: %s', new_uri)
-#                request = HTTPRequestWrapper(request, new_uri)
-#                page_module_name = 'pages.'+ '.'.join( filter( lambda x: x != '' , new_uri.rstrip('/').split('?')[0].split('/')))
-#                log.debug('page module: %s', page_module_name)
-#                break
 
         page_module_name = 'pages.'+ '.'.join(request.path.strip('/').split('/'))
         self.log.debug('page module: %s', page_module_name)
