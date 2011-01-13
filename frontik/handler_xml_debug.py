@@ -10,6 +10,7 @@ import urlparse
 import weakref
 import xml.sax.saxutils
 import json
+import copy
 from datetime import datetime
 
 import lxml.etree as etree
@@ -141,6 +142,14 @@ class DebugPageHandler(logging.Handler):
 
         if getattr(record, "request", None):
             entry.append(request_to_xml(record.request))
+
+        if getattr(record, "xml", None):
+            xml = etree.Element("xml")
+            entry.append(xml)
+            # make deepcopy
+            # if anybody send a node to debug but late append this node in other place
+            # etree remove node from this place to new one
+            xml.append(copy.deepcopy(record.xml))
 
         self.log_data.append(entry)
 

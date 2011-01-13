@@ -90,6 +90,19 @@
         </div>
     </xsl:template>
 
+    <xsl:template match="entry[xml]">
+        <div class="textentry m-textentry__expandable">
+            <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
+                <span title="{@msg}" class="textentry__head__expandtext">
+                    <xsl:value-of select="@msg"/>
+                </span>
+            </div>
+            <div class="details">
+                <xsl:apply-templates select="xml/node()" mode="color-xml"/>
+            </div>
+        </div>
+    </xsl:template>
+
     <xsl:template match="request">
         <div>
             <a class="servicelink" href="{url}" target="_blank">
