@@ -9,7 +9,11 @@ logfile = None # log to stderr
 
 pidfile = None
 
-app_package = { 'page' : 'path/to/frontik_www' }
+app_package = {
+#    'app_name':  ('path/to/www', 'regexp', lambda regexp_match_obj, uri: return new uri ),
+
+    'x':  ('path/to/x_www', '(/x)(/.*)', lambda match_obj, uri: match_obj.groups()[1] ),
+    }
 
 use_standart_doc = False
 
