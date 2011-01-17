@@ -134,8 +134,44 @@ class App(object):
         return self.dispatch(application, request)
 
     def dispatch(self, application, request):
-        if not self.initialized_wo_error:
-            log.exception('%s application not loaded, because of fail during initialization', self.name)
+        log.info('requested url: %s', request.uri)
+
+        page_module_name = None
+        app_name = None
+
+        for name, app_tuple in self.apps.iteritems():
+            app, pattern, rewriter = app_tuple
+            match = pattern.match(request.uri)
+            if match:
+                if not app:
+                    log.exception('%s application not loaded, because of fail during initialization', app_name)
+                    return tornado.web.ErrorHandler(application, request, 404)
+
+                uri = request.uri
+
+                #config level rewrite
+                if callable(rewriter):
+                    uri = rewriter(match, request.uri)
+                    log.debug('prerewrited url: %s', uri)
+                    request = RequestWrapper(request, uri)
+                else:
+                    log.debug('%s specified application prerewriter is not callable, skiping prerewrite', app_name)
+
+                #app level rewrite
+                if callable(app.rewriter):
+                    uri = app.rewriter(request.uri)
+                    log.debug('rewrited url: %s', uri)
+                    request = RequestWrapper(request, uri)
+                else:
+                    log.debug('%s specified application rewriter is not callable, skiping rewrite', app_name)
+
+                app_name = name
+                page_module_name = 'pages.'+ '.'.join(request.path.strip('/').split('/'))
+                log.debug('page module: %s', page_module_name)
+                break #app found
+
+        if not page_module_name:
+            log.exception('application for request url "%s" not found', request.uri)
             return tornado.web.ErrorHandler(application, request, 404)
 
         page_module_name = 'pages.'+ '.'.join(request.path.strip('/').split('/'))
