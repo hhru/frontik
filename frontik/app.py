@@ -100,7 +100,6 @@ class HTTPRequestWrapper(HTTPRequest):
 
 class FrontikAppDispatcher(object):
     def __init__(self, app_roots):
-        log.debug(app_roots)
         self.importer = frontik.magic_imp.FrontikAppImporter(app_roots)
 
         self.apps = {}
