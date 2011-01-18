@@ -2,7 +2,6 @@
 
 PROG="${0##*/}"
 DIR="`dirname $0`"
-PYTHONPATH="$DIR"
 
 show_help()
 {
@@ -51,4 +50,5 @@ while :; do
     shift
 done
 
+export PYTHONPATH="$DIR"
 python ./scripts/frontik --config="$CONFIG" "$@"
