@@ -96,8 +96,8 @@ class App(object):
         self.name = name
         self.root = root
         #TODO: make importer global
-        self.importer = frontik.magic_imp.FrontikAppImporter({name:root})
-        self.log = logging.getLogger('frontik.application.{0}'.format(name))
+        self.importer = frontik.magic_imp.FrontikAppImporter({self.name:root})
+        self.log = logging.getLogger('frontik.application.{0}'.format(self.name))
         self.initialized_wo_error = True
 
         try:
@@ -105,7 +105,7 @@ class App(object):
 
             #Track all possible filenames for each app's config
             #module to reload in case of change
-            for filename in self.importer.get_probable_module_filenames(name, 'config'):
+            for filename in self.importer.get_probable_module_filenames(self.name, 'config'):
                 tornado.autoreload.watch_file(filename)
 
             self.ph_globals = frontik.handler.PageHandlerGlobals(self.module)
