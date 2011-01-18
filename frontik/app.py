@@ -95,17 +95,17 @@ class App(object):
     def __init__(self, name, root):
         self.name = name
         self.root = root
-        self.module = module
-        self.ph_globals = ph_globals
-        if getattr(module.config, 'rewriter', None) and callable(module.config.rewriter):
-            self.rewriter = module.config.rewriter
-        else:
-            log.error('no rewriter specified for app "%s" or rewriter is not callable', name)
-            self.rewriter = None
+        #TODO: make importer global
+        self.importer = frontik.magic_imp.FrontikAppImporter({name:root})
+        self.log = logging.getLogger('frontik.application.{0}'.format(name))
+        self.initialized_wo_error = True
+
+        try:
+            self.init_app_package()
 
             #Track all possible filenames for each app's config
             #module to reload in case of change
-            for filename in self.importer.get_probable_module_filenames(self.name, 'config'):
+            for filename in self.importer.get_probable_module_filenames(name, 'config'):
                 tornado.autoreload.watch_file(filename)
 
             self.ph_globals = frontik.handler.PageHandlerGlobals(self.module)
@@ -134,44 +134,8 @@ class App(object):
         return self.dispatch(application, request)
 
     def dispatch(self, application, request):
-        log.info('requested url: %s', request.uri)
-
-        page_module_name = None
-        app_name = None
-
-        for name, app_tuple in self.apps.iteritems():
-            app, pattern, rewriter = app_tuple
-            match = pattern.match(request.uri)
-            if match:
-                if not app:
-                    log.exception('%s application not loaded, because of fail during initialization', app_name)
-                    return tornado.web.ErrorHandler(application, request, 404)
-
-                uri = request.uri
-
-                #config level rewrite
-                if callable(rewriter):
-                    uri = rewriter(match, request.uri)
-                    log.debug('prerewrited url: %s', uri)
-                    request = RequestWrapper(request, uri)
-                else:
-                    log.debug('%s specified application prerewriter is not callable, skiping prerewrite', app_name)
-
-                #app level rewrite
-                if callable(app.rewriter):
-                    uri = app.rewriter(request.uri)
-                    log.debug('rewrited url: %s', uri)
-                    request = RequestWrapper(request, uri)
-                else:
-                    log.debug('%s specified application rewriter is not callable, skiping rewrite', app_name)
-
-                app_name = name
-                page_module_name = 'pages.'+ '.'.join(request.path.strip('/').split('/'))
-                log.debug('page module: %s', page_module_name)
-                break #app found
-
-        if not page_module_name:
-            log.exception('application for request url "%s" not found', request.uri)
+        if not self.initialized_wo_error:
+            log.exception('%s application not loaded, because of fail during initialization', self.name)
             return tornado.web.ErrorHandler(application, request, 404)
 
         page_module_name = 'pages.'+ '.'.join(request.path.strip('/').split('/'))
