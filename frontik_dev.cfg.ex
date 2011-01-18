@@ -14,8 +14,9 @@ pidfile = None
 apps = [
 #   (regexp, dispatcher),
     (r".*", App("app_name", "/path/to/app/www_root") ),
+    (r"/echo/(?P<id>(\d+))?", EchoHandler),
 ]
-# where dispatcher is an App or any other dispatcher, like frontik.app.RegexDispatcher for examle
+# where dispatcher is an App or any other dispatcher, like frontik.app.RegexDispatcher for example
 
 use_standart_doc = False
 

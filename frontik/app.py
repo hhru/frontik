@@ -96,8 +96,8 @@ class App(object):
         self.name = name
         self.root = root
         #TODO: make importer global
-        self.importer = frontik.magic_imp.FrontikAppImporter({name:root})
-        self.log = logging.getLogger('frontik.application.{0}'.format(name))
+        self.importer = frontik.magic_imp.FrontikAppImporter({self.name:root})
+        self.log = logging.getLogger('frontik.application.{0}'.format(self.name))
         self.initialized_wo_error = True
 
         try:
@@ -105,7 +105,7 @@ class App(object):
 
             #Track all possible filenames for each app's config
             #module to reload in case of change
-            for filename in self.importer.get_probable_module_filenames(name, 'config'):
+            for filename in self.importer.get_probable_module_filenames(self.name, 'config'):
                 tornado.autoreload.watch_file(filename)
 
             self.ph_globals = frontik.handler.PageHandlerGlobals(self.module)
@@ -129,6 +129,9 @@ class App(object):
         except:
             self.log.error('failed to load config')
             raise
+
+    def __call__(self, application, request):
+        return self.dispatch(application, request)
 
     def dispatch(self, application, request):
         if not self.initialized_wo_error:
@@ -164,21 +167,22 @@ class RegexpDispatcher(object):
     def __init__(self, app_roots, name = 'RegexpDispatcher'):
         self.name = name
         self.log = logging.getLogger('frontik.dispatcher.{0}'.format(name))
-        self.apps = [ (app.name, app, re.compile(app_pattern)) for app_pattern, app in app_roots]
+        self.apps = [ (app, re.compile(app_pattern)) for app_pattern, app in app_roots]
 
+    def __call__(self, application, request):
+        return self.dispatch(application, request)
 
     def dispatch(self, application, request):
         log.info('requested url: %s', request.uri)
-
+        log.info(self.apps)
         for app_tuple in self.apps:
-            name, app, pattern = app_tuple
+            app, pattern = app_tuple
             match = pattern.match(request.uri)
 
             #app found
             if match:
                 request = RequestWrapper(request, match)
-                app.dispatch(application, request)
-                break
+                return app(application, request)
 
         log.exception('application for request url "%s" not found', request.uri)
         return tornado.web.ErrorHandler(application, request, 404)
