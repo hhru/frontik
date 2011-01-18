@@ -1,3 +1,5 @@
+from frontik.app import App
+
 host = '0.0.0.0'
 port = 9300
 workers_count = 1
@@ -9,11 +11,11 @@ logfile = None # log to stderr
 
 pidfile = None
 
-app_package = {
-#    'app_name':  ('path/to/www', 'regexp', lambda regexp_match_obj, uri: return new uri ),
-
-    'x':  ('path/to/x_www', '(/x)(/.*)', lambda match_obj, uri: match_obj.groups()[1] ),
-    }
+apps = [
+#   (regexp, dispatcher),
+    (r".*", App("app_name", "/path/to/app/www_root") ),
+]
+# where dispatcher is an App or any other dispatcher, like frontik.app.RegexDispatcher for examle
 
 use_standart_doc = False
 

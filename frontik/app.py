@@ -79,112 +79,73 @@ class CountTypesHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-class FrontikApp(object):
-    def __init__(self, name, root, module, ph_globals):
-        self.name = name
-        self.root = root
-        self.module = module
-        self.ph_globals = ph_globals
-        if getattr(module.config, 'rewriter', None) and callable(module.config.rewriter):
-            self.rewriter = module.config.rewriter
-        else:
-            log.error('no rewriter specified for app "%s" or rewriter is not callable', name)
-            self.rewriter = None
-
-
 class RequestWrapper(HTTPRequest):
-    def __init__(self, request, uri):
-        super(RequestWrapper, self).__init__(request.method, uri, request.version, request.headers,
+    def __init__(self, request, match):
+        super(RequestWrapper, self).__init__(request.method, request.uri, request.version, request.headers,
                  request.body, request.remote_ip, request.protocol, request.host,
                  request.files, request.connection)
+        arguments = match.groupdict()
+        for name, value in arguments.iteritems():
+            if value: self.arguments.setdefault(name, []).append(value)
 
-class FrontikAppDispatcher(object):
-    def __init__(self, app_roots):
-        self.importer = frontik.magic_imp.FrontikAppImporter(app_roots)
-
-        self.apps = {}
-        for app_name, app_conf_tuple in app_roots.iteritems():
-            (app_root, app_url_pattern, url_pre_rewriter) = app_conf_tuple
-            try:
-                # Track all possible filenames for each app's config
-                # module to reload in case of change
-                for filename in self.importer.get_probable_module_filenames(app_name, 'config'):
-                    tornado.autoreload.watch_file(filename)
-
-                module = self.init_app_package(app_name)
-                ph_globals = frontik.handler.PageHandlerGlobals(module)
-                self.apps[app_name] = FrontikApp(app_name, app_root, module, ph_globals), re.compile(app_url_pattern), url_pre_rewriter
-            except:
-                # we do not want to break frontik on app
-                # initialization error, so we report error and skip
-                # the app.
-                self.apps.append[app_name] = None, re.compile(app_url_pattern), None
-                log.exception('failed to initialize %s, skipping from configuration', app_name)
-
-    def init_app_package(self, app_name):
-        module = imp.new_module(frontik.magic_imp.gen_module_name(app_name))
-        sys.modules[module.__name__] = module
-
-        pages_module = imp.new_module(frontik.magic_imp.gen_module_name(app_name, 'pages'))
-        sys.modules[pages_module.__name__] = pages_module
+#TODO: MAYBE split this into:
+#TODO:      1. load "path/to/python/module" and call "dispatch" from whitin
+#TODO:      2. load "path/to/python/pages/module" and map url to file system
+class App(object):
+    def __init__(self, name, root):
+        self.name = name
+        self.root = root
+        #TODO: make importer global
+        self.importer = frontik.magic_imp.FrontikAppImporter({name:root})
+        self.log = logging.getLogger('frontik.application.{0}'.format(name))
+        self.initialized_wo_error = True
 
         try:
-            module.config = self.importer.imp_app_module(app_name, 'config')
+            self.init_app_package()
+
+            #Track all possible filenames for each app's config
+            #module to reload in case of change
+            for filename in self.importer.get_probable_module_filenames(name, 'config'):
+                tornado.autoreload.watch_file(filename)
+
+            self.ph_globals = frontik.handler.PageHandlerGlobals(self.module)
         except:
-            log.error('failed to load config for app "%s"', app_name)
+            #we do not want to break frontik on app
+            #initialization error, so we report error and skip
+            #the app.
+            self.log.exception('failed to initialize, skipping from configuration')
+            self.initialized_wo_error = False
+
+    #TODO: move this to (magic)_imp or somewhere else
+    def init_app_package(self):
+        self.module = imp.new_module(frontik.magic_imp.gen_module_name(self.name))
+        sys.modules[self.module.__name__] = self.module
+
+        self.pages_module = imp.new_module(frontik.magic_imp.gen_module_name(self.name, 'pages'))
+        sys.modules[self.pages_module.__name__] = self.pages_module
+
+        try:
+            self.module.config = self.importer.imp_app_module(self.name, 'config')
+        except:
+            self.log.error('failed to load config')
             raise
 
-        return module
-
     def dispatch(self, application, request):
-        log.info('requested url: %s', request.uri)
-
-        page_module_name = None
-        app_name = None
-
-        for name, app_tuple in self.apps.iteritems():
-            app, pattern, rewriter = app_tuple
-            match = pattern.match(request.uri)
-            if match:
-                if not app:
-                    log.exception('%s application not loaded, because of fail during initialization', app_name)
-                    return tornado.web.ErrorHandler(application, request, 404)
-
-                uri = request.uri
-
-                #config level rewrite
-                if callable(rewriter):
-                    uri = rewriter(match, request.uri)
-                    log.debug('prerewrited url: %s', uri)
-                    request = RequestWrapper(request, uri)
-                else:
-                    log.debug('%s specified application prerewriter is not callable, skiping prerewrite', app_name)
-
-                #app level rewrite
-                if callable(app.rewriter):
-                    uri = app.rewriter(request.uri)
-                    log.debug('rewrited url: %s', uri)
-                    request = RequestWrapper(request, uri)
-                else:
-                    log.debug('%s specified application rewriter is not callable, skiping rewrite', app_name)
-
-                app_name = name
-                page_module_name = 'pages.'+ '.'.join(request.path.strip('/').split('/'))
-                log.debug('page module: %s', page_module_name)
-                break #app found
-
-        if not page_module_name:
-            log.exception('application for request url "%s" not found', request.uri)
+        if not self.initialized_wo_error:
+            log.exception('%s application not loaded, because of fail during initialization', self.name)
             return tornado.web.ErrorHandler(application, request, 404)
+
+        page_module_name = 'pages.'+ '.'.join(request.path.strip('/').split('/'))
+        self.log.debug('page module: %s', page_module_name)
 
         try:
-            page_module = self.importer.imp_app_module(app_name, page_module_name)
-            log.debug('using %s from %s', (app_name, page_module_name), page_module.__file__)
+            page_module = self.importer.imp_app_module(self.name, page_module_name)
+            self.log.debug('using %s from %s', (self.name, page_module_name), page_module.__file__)
         except ImportError:
-            log.exception('%s module not found', (app_name, page_module_name))
+            self.log.exception('%s module not found', (self.name, page_module_name))
             return tornado.web.ErrorHandler(application, request, 404)
         except:
-            log.exception('error while importing %s module', (app_name, page_module_name))
+            self.log.exception('error while importing %s module', (self.name, page_module_name))
             return tornado.web.ErrorHandler(application, request, 500)
 
         if not hasattr(page_module, 'Page'):
@@ -199,10 +160,31 @@ class FrontikAppDispatcher(object):
             log.exception('%s. Internal server error, %s', page_module_name, e)
             return tornado.web.ErrorHandler(application, request, 500)
 
+class RegexpDispatcher(object):
+    def __init__(self, app_roots, name = 'RegexpDispatcher'):
+        self.name = name
+        self.log = logging.getLogger('frontik.dispatcher.{0}'.format(name))
+        self.apps = [ (app.name, app, re.compile(app_pattern)) for app_pattern, app in app_roots]
+
+
+    def dispatch(self, application, request):
+        log.info('requested url: %s', request.uri)
+
+        for app_tuple in self.apps:
+            name, app, pattern = app_tuple
+            match = pattern.match(request.uri)
+
+            #app found
+            if match:
+                request = RequestWrapper(request, match)
+                app.dispatch(application, request)
+                break
+
+        log.exception('application for request url "%s" not found', request.uri)
         return tornado.web.ErrorHandler(application, request, 404)
 
 def get_app(app_roots):
-    dispatcher = FrontikAppDispatcher(app_roots)
+    dispatcher = RegexpDispatcher(app_roots, 'root')
     
     return tornado.web.Application([
         (r'/version/', VersionHandler),
