@@ -50,5 +50,5 @@ while :; do
     shift
 done
 
-export PYTHONPATH="$DIR"
-python ./scripts/frontik --config="$CONFIG" "$@"
+export PYTHONPATH="$DIR:$PYTHONPATH"
+python $DIR/scripts/frontik --config="$CONFIG" "$@"
