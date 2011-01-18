@@ -1,7 +1,7 @@
 #!/bin/sh
 
 PROG="${0##*/}"
-DIR="`dirname $0`"
+DIR="$(dirname $(readlink -f $0))"
 
 show_help()
 {
