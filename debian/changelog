@@ -5,6 +5,7 @@ frontik (2.8.0~dev) UNRELEASED; urgency=low
   * Restore single-thread mode by default
 
   [ Andrew Sumin ]
+  * Now you can debug any xml node
   * If we have 500 but have "noxsl" in args without "debug" in args apply xsl for debug info anyway. Fixed
 
   [ Pavel Trukhanov ]
