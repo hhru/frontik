@@ -147,8 +147,8 @@ class DebugPageHandler(logging.Handler):
             xml = etree.Element("xml")
             entry.append(xml)
             # make deepcopy
-            # if anybody send a node to debug but late append this node in other place
-            # etree remove node from this place to new one
+            # if node was sent to debug, but later was appended in some other place
+            # etree will move node from this place to new one
             xml.append(copy.deepcopy(record.xml))
 
         self.log_data.append(entry)
