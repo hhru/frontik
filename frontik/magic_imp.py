@@ -17,38 +17,32 @@ class FrontikAppImporter(object):
     '''
     apps :: {app_name: app_root}
     '''
-    def __init__(self, apps):
-        self.app_roots = dict(apps)
+    def __init__(self, name, root):
+        self.root = root
+        self.name = name
         self.modules = dict()
 
-    def get_probable_module_filenames(self, app_name, module_name):
-        app_root = self.app_roots[app_name][0]
-
+    def get_probable_module_filenames(self, module_name):
         module_name_as_path = os.path.join(*module_name.split('.'))
 
         app_module_probable_filenames = [
-            os.path.join(app_root, module_name_as_path, '__init__.py'),
-            os.path.join(app_root, module_name_as_path, 'index.py'),
-            os.path.join(app_root, '{0}.py'.format(module_name_as_path))]
+            os.path.join(self.root, module_name_as_path, '__init__.py'),
+            os.path.join(self.root, module_name_as_path, 'index.py'),
+            os.path.join(self.root, '{0}.py'.format(module_name_as_path))]
 
         return app_module_probable_filenames
 
-    def imp_app_module(self, app_name, module_name):
+    def imp_app_module(self, module_name):
         '''
-        app_name :: 'chameleon'
-        page_path :: 'pages.index'
+        module_path :: 'pages.index'
         '''
-
-        if not app_name in self.app_roots:
-            raise ImportError('{0} frontik app not found'.format(app_name))
-
-        app_module_name = gen_module_name(app_name, module_name)
+        app_module_name = gen_module_name(self.name, module_name)
 
         if app_module_name in self.modules:
             log.debug('get %s from module cache', app_module_name)
             return self.modules[app_module_name]
 
-        app_module_probable_filenames = self.get_probable_module_filenames(app_name, module_name)
+        app_module_probable_filenames = self.get_probable_module_filenames(module_name)
 
         for app_module_filename in app_module_probable_filenames:
             if os.path.exists(app_module_filename):
@@ -56,7 +50,7 @@ class FrontikAppImporter(object):
         else:
             raise ImportError('{module_name} module was not found in {app_name}, {app_module_filenames} expected'.format(
                 module_name=module_name,
-                app_name=app_name,
+                app_name=self.name,
                 app_module_filenames=app_module_probable_filenames))
 
         log.debug('importing %s from %s', app_module_name, app_module_filename)
@@ -65,7 +59,7 @@ class FrontikAppImporter(object):
         sys.modules[module.__name__] = module
 
         module.__file__ = app_module_filename
-        module.frontik_import = functools.partial(self.in_module_import_single, module, app_name)
+        module.frontik_import = functools.partial(self.in_module_import_single, module)
         
         execfile(app_module_filename, module.__dict__)
 
@@ -73,10 +67,10 @@ class FrontikAppImporter(object):
         
         return module
 
-    def in_module_import_single(self, app_module, app_name, module_name):
+    def in_module_import_single(self, app_module, module_name):
         if '.' in module_name:
             raise ImportError('{0}: compound modules are not supported in frontik apps'.format(module_name))
 
-        module = self.imp_app_module(app_name, module_name)
+        module = self.imp_app_module(module_name)
         setattr(app_module, module_name, module)
         return module
