@@ -59,18 +59,23 @@ class FrontikAppImporter(object):
         sys.modules[module.__name__] = module
 
         module.__file__ = app_module_filename
-        module.frontik_import = functools.partial(self.in_module_import_single, module)
-        
-        execfile(app_module_filename, module.__dict__)
+        module.frontik_import = functools.partial(self.in_module_import, module)
 
+        execfile(app_module_filename, module.__dict__)
         self.modules[app_module_name] = module
         
         return module
 
-    def in_module_import_single(self, app_module, module_name):
-        if '.' in module_name:
-            raise ImportError('{0}: compound modules are not supported in frontik apps'.format(module_name))
+    def in_module_import(self, app_module, module_name):
+        prev_mod = app_module
 
-        module = self.imp_app_module(module_name)
-        setattr(app_module, module_name, module)
-        return module
+        for i in range(module_name.count('.')+1):
+
+            full_sub_name = '.'.join(module_name.split('.')[:1+i])
+            sub_name = module_name.split('.')[i]
+
+            sub_module = self.imp_app_module(full_sub_name)
+            setattr(prev_mod, sub_name, sub_module)
+
+            prev_mod = sub_module
+        return sub_module

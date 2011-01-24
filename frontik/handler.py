@@ -163,7 +163,8 @@ class PageHandlerGlobals(object):
 
 class PageHandler(tornado.web.RequestHandler):
 
-    def __init__(self, ph_globals, application, request):
+    # to restore tornado.web.RequestHandler compatibility
+    def __init__(self, application, request, ph_globals=None, **kwargs):
         self.handler_started = time.time()
         self._prepared = False
 
@@ -172,6 +173,9 @@ class PageHandler(tornado.web.RequestHandler):
         self.log = PageLogger(self.request_id, self.path, self.handler_started)
 
         tornado.web.RequestHandler.__init__(self, application, request, logger = self.log)
+
+        if ph_globals is None:
+            raise Exception("%s need to have ph_globals" % PageHandler)
 
         self.ph_globals = ph_globals
         self.config = self.ph_globals.config

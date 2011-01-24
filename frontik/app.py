@@ -89,10 +89,6 @@ class RequestWrapper(HTTPRequest):
         for name, value in arguments.iteritems():
             if value: self.arguments.setdefault(name, []).append(value)
 
-#TODO: MAYBE split this into:
-#TODO:      1. load "path/to/python/module" and call "dispatch" from whitin
-#TODO:      2. load "path/to/python/pages/module" and map url to file system
-
 def dispatcher(cls):
     'makes lazy initializing class with __call__ method'
     old_init = cls.__init__
@@ -111,6 +107,41 @@ def dispatcher(cls):
     Lazy = type(cls.__name__, (cls,), dict(__init__=__init__, __call__=__call__))
     return Lazy
 
+
+@dispatcher
+class Map2ModuleName(object):
+    def __init__(self, module):
+        self.module = module
+        self.name = module.__name__
+        self.log = logging.getLogger('frontik.simplemap.{0}'.format(self.name))
+        self.log.info('initializing...')
+
+    def dispatch(self, application, request, **kwargs):
+        self.log.info('requested url: %s', request.uri)
+
+        page_module_name = 'pages.' + '.'.join(request.path.strip('/').split('/'))
+        self.log.debug('page module: %s', page_module_name)
+
+        try:
+            page_module = self.module.frontik_import(page_module_name)
+            self.log.debug('using %s from %s', (self.name, page_module_name), page_module.__file__)
+        except ImportError:
+            self.log.exception('%s module not found', (self.name, page_module_name))
+            return tornado.web.ErrorHandler(application, request, 404)
+        except AttributeError:
+            self.log.exception('%s is not frontik application module, but needs to be and have "frontik_import" method', self.name)
+            return tornado.web.ErrorHandler(application, request, 500)
+        except:
+            self.log.exception('error while importing %s module', (self.name, page_module_name))
+            return tornado.web.ErrorHandler(application, request, 500)
+
+        if not hasattr(page_module, 'Page'):
+            log.exception('%s. Page class not found', page_module_name)
+            return tornado.web.ErrorHandler(application, request, 404)
+
+        return page_module.Page(application, request, **kwargs)
+
+
 @dispatcher
 class App(object):
     def __init__(self, name, root):
@@ -122,11 +153,13 @@ class App(object):
 
         self.log.info('initializing...')
         try:
-            self._init_app_package()
+            self.init_app_package()
 
-            #Track all possible filenames for each app's config
+            #Track all possible filenames for each app's config and dispatcher
             #module to reload in case of change
             for filename in self.importer.get_probable_module_filenames('config'):
+                tornado.autoreload.watch_file(filename)
+            for filename in self.importer.get_probable_module_filenames('dispatcher'):
                 tornado.autoreload.watch_file(filename)
 
             self.ph_globals = frontik.handler.PageHandlerGlobals(self.module)
@@ -137,49 +170,32 @@ class App(object):
             self.log.exception('failed to initialize, skipping from configuration')
             self.initialized_wo_error = False
 
-    #TODO: move this to (magic)_imp or somewhere else
-    def _init_app_package(self):
+    def init_app_package(self):
         self.module = imp.new_module(frontik.magic_imp.gen_module_name(self.name))
         sys.modules[self.module.__name__] = self.module
 
-        self.pages_module = imp.new_module(frontik.magic_imp.gen_module_name(self.name, 'pages'))
+        self.pages_module = self.importer.imp_app_module('pages')
         sys.modules[self.pages_module.__name__] = self.pages_module
 
         try:
             self.module.config = self.importer.imp_app_module('config')
-        except:
-            self.log.error('failed to load config')
+        except Exception, e:
+            self.log.error('failed to load config: %s', e)
             raise
 
-    def dispatch(self, application, request):
+        try:
+            self.module.dispatcher = self.importer.imp_app_module('dispatcher')
+        except Exception, e:
+            #TODO: do default map2fs dispatch
+            self.log.error('failed to load dispatcher: %s', e)
+            raise
+
+    def dispatch(self, application, request, **kwargs):
+        self.log.info('requested url: %s', request.uri)
         if not self.initialized_wo_error:
             self.log.exception('%s application not loaded, because of fail during initialization', self.name)
             return tornado.web.ErrorHandler(application, request, 404)
-
-        page_module_name = 'pages.' + '.'.join(request.path.strip('/').split('/'))
-        self.log.debug('page module: %s', page_module_name)
-
-        try:
-            page_module = self.importer.imp_app_module(page_module_name)
-            self.log.debug('using %s from %s', (self.name, page_module_name), page_module.__file__)
-        except ImportError:
-            self.log.exception('%s module not found', (self.name, page_module_name))
-            return tornado.web.ErrorHandler(application, request, 404)
-        except:
-            self.log.exception('error while importing %s module', (self.name, page_module_name))
-            return tornado.web.ErrorHandler(application, request, 500)
-
-        if not hasattr(page_module, 'Page'):
-            log.exception('%s. Page class not found', page_module_name)
-            return tornado.web.ErrorHandler(application, request, 404)
-        try:
-            return page_module.Page(app.ph_globals, application, request)
-        except tornado.web.HTTPError, e:
-            log.exception('%s. Tornado error, %s', page_module_name, e)
-            return tornado.web.ErrorHandler(application, request, e.status_code)
-        except Exception, e:
-            log.exception('%s. Internal server error, %s', page_module_name, e)
-            return tornado.web.ErrorHandler(application, request, 500)
+        return self.module.dispatcher.dispatcher(application, request, ph_globals = self.ph_globals, **kwargs)
 
 @dispatcher
 class RegexpDispatcher(object):
@@ -189,8 +205,8 @@ class RegexpDispatcher(object):
         self.log.info('initializing...')
         self.apps = [(app, re.compile(app_pattern)) for app_pattern, app in app_roots]
 
-    def dispatch(self, application, request):
-        log.info('requested url: %s', request.uri)
+    def dispatch(self, application, request, **kwargs):
+        self.log.info('requested url: %s', request.uri)
         for app_tuple in self.apps:
             app, pattern = app_tuple
             match = pattern.match(request.uri)
@@ -198,9 +214,16 @@ class RegexpDispatcher(object):
             #app found
             if match:
                 request = RequestWrapper(request, match)
-                return app(application, request)
+                try:
+                    return app(application, request, **kwargs)
+                except tornado.web.HTTPError, e:
+                    log.exception('%s. Tornado error, %s', page_module_name, e)
+                    return tornado.web.ErrorHandler(application, request, e.status_code)
+                except Exception, e:
+                    log.exception('%s. Internal server error, %s', page_module_name, e)
+                    return tornado.web.ErrorHandler(application, request, 500)
 
-        log.exception('application for request url "%s" not found', request.uri)
+        self.log.exception('match for request url "%s" not found', request.uri)
         return tornado.web.ErrorHandler(application, request, 404)
 
 def get_app(app_roots):
