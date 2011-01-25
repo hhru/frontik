@@ -80,14 +80,14 @@ class CountTypesHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-class RequestWrapper(HTTPRequest):
-    def __init__(self, request, match):
-        super(RequestWrapper, self).__init__(request.method, request.uri, request.version, request.headers,
-                                             request.body, request.remote_ip, request.protocol, request.host,
-                                             request.files, request.connection)
-        arguments = match.groupdict()
-        for name, value in arguments.iteritems():
-            if value: self.arguments.setdefault(name, []).append(value)
+def augment_request(request, match):
+    arguments = match.groupdict()
+
+    for name, value in arguments.iteritems():
+        if value:
+            request.arguments.setdefault(name, []).append(value)
+
+    return request
 
 def dispatcher(cls):
     'makes lazy initializing class with __call__ method'
@@ -145,15 +145,13 @@ class Map2ModuleName(object):
 @dispatcher
 class App(object):
     def __init__(self, name, root):
-        self.name = name
-        self.root = root
-        self.importer = frontik.magic_imp.FrontikAppImporter(self.name, self.root)
+        self.importer = frontik.magic_imp.FrontikAppImporter(name, root)
         self.log = logging.getLogger('frontik.application.{0}'.format(self.name))
         self.initialized_wo_error = True
 
         self.log.info('initializing...')
         try:
-            self.init_app_package()
+            self.init_app_package(name)
 
             #Track all possible filenames for each app's config and dispatcher
             #module to reload in case of change
@@ -170,8 +168,8 @@ class App(object):
             self.log.exception('failed to initialize, skipping from configuration')
             self.initialized_wo_error = False
 
-    def init_app_package(self):
-        self.module = imp.new_module(frontik.magic_imp.gen_module_name(self.name))
+    def init_app_package(self, name):
+        self.module = imp.new_module(frontik.magic_imp.gen_module_name(name))
         sys.modules[self.module.__name__] = self.module
 
         self.pages_module = self.importer.imp_app_module('pages')
@@ -207,13 +205,12 @@ class RegexpDispatcher(object):
 
     def dispatch(self, application, request, **kwargs):
         self.log.info('requested url: %s', request.uri)
-        for app_tuple in self.apps:
-            app, pattern = app_tuple
+        for (app, pattern) in self.apps:
             match = pattern.match(request.uri)
 
             #app found
             if match:
-                request = RequestWrapper(request, match)
+                augment_request(request, match)
                 try:
                     return app(application, request, **kwargs)
                 except tornado.web.HTTPError, e:
@@ -221,14 +218,14 @@ class RegexpDispatcher(object):
                     return tornado.web.ErrorHandler(application, request, e.status_code)
                 except Exception, e:
                     log.exception('%s. Internal server error, %s', page_module_name, e)
-                    return tornado.web.ErrorHandler(application, request, 500)
+                return tornado.web.ErrorHandler(application, request, 500)
 
         self.log.exception('match for request url "%s" not found', request.uri)
         return tornado.web.ErrorHandler(application, request, 404)
 
 def get_app(app_roots):
     dispatcher = RegexpDispatcher(app_roots, 'root')
-    
+
     return tornado.web.Application([
         (r'/version/', VersionHandler),
         (r'/status/', StatusHandler),
@@ -238,4 +235,3 @@ def get_app(app_roots):
         (r'/ph_count/', CountPageHandlerInstancesHandler),
         (r'/.*', dispatcher),
         ])
-
