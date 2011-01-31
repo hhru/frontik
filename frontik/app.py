@@ -80,32 +80,32 @@ class CountTypesHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-def augment_request(request, match):
-    arguments = match.groupdict()
+def augment_request(request, match, parse):
+    new_uri = request.uri[:match.start()] + request.uri[match.end():]
+    HTTPRequest.__init__(request, request.method, new_uri, request.version, request.headers,
+                 request.body, request.remote_ip, request.protocol, request.host,
+                 request.files, request.connection)
 
+    arguments = match.groupdict()
     for name, value in arguments.iteritems():
         if value:
-            request.arguments.setdefault(name, []).append(value)
-
-    return request
+            request.arguments.setdefault(name, []).extend(parse(value))
 
 def dispatcher(cls):
-    'makes lazy initializing class with __call__ method'
+    'makes on demand initializing class'
     old_init = cls.__init__
     def __init__(self, *args, **kwargs):
         self._init_partial = functools.partial(old_init, self, *args, **kwargs)
         self._inited = False
-        return None
 
-    dispatch = cls.dispatch
-    def __call__(self, *args, **kwargs):
+    def _initialize(self):
         if not self._inited:
-            self._inited = True
             self._init_partial()
-        return dispatch(self, *args, **kwargs)
+            self._inited = True
+        return self._inited
 
-    Lazy = type(cls.__name__, (cls,), dict(__init__=__init__, __call__=__call__))
-    return Lazy
+    on_demand = type(cls.__name__, (cls,), dict(__init__=__init__, _initialize=_initialize))
+    return on_demand
 
 
 @dispatcher
@@ -113,10 +113,10 @@ class Map2ModuleName(object):
     def __init__(self, module):
         self.module = module
         self.name = module.__name__
-        self.log = logging.getLogger('frontik.simplemap.{0}'.format(self.name))
+        self.log = logging.getLogger('frontik.map2pages.{0}'.format(self.name))
         self.log.info('initializing...')
 
-    def dispatch(self, application, request, **kwargs):
+    def __call__(self, application, request, **kwargs):
         self.log.info('requested url: %s', request.uri)
 
         page_module_name = 'pages.' + '.'.join(request.path.strip('/').split('/'))
@@ -145,19 +145,18 @@ class Map2ModuleName(object):
 @dispatcher
 class App(object):
     def __init__(self, name, root):
-        self.importer = frontik.magic_imp.FrontikAppImporter(name, root)
-        self.log = logging.getLogger('frontik.application.{0}'.format(self.name))
+        self.log = logging.getLogger('frontik.application.{0}'.format(name))
         self.initialized_wo_error = True
 
         self.log.info('initializing...')
         try:
+            self.importer = frontik.magic_imp.FrontikAppImporter(name, root)
+
             self.init_app_package(name)
 
-            #Track all possible filenames for each app's config and dispatcher
+            #Track all possible filenames for each app's config
             #module to reload in case of change
             for filename in self.importer.get_probable_module_filenames('config'):
-                tornado.autoreload.watch_file(filename)
-            for filename in self.importer.get_probable_module_filenames('dispatcher'):
                 tornado.autoreload.watch_file(filename)
 
             self.ph_globals = frontik.handler.PageHandlerGlobals(self.module)
@@ -181,14 +180,12 @@ class App(object):
             self.log.error('failed to load config: %s', e)
             raise
 
-        try:
-            self.module.dispatcher = self.importer.imp_app_module('dispatcher')
-        except Exception, e:
-            #TODO: do default map2fs dispatch
-            self.log.error('failed to load dispatcher: %s', e)
-            raise
+        if not hasattr(self.module.config, 'urls'):
+            self.module.config.urls = [("", Map2ModuleName(self.pages_module)),]
+        self.module.dispatcher = RegexpDispatcher(self.module.config.urls, self.module.__name__)
+        self.module.dispatcher._initialize()
 
-    def dispatch(self, application, request, **kwargs):
+    def __call__(self, application, request, **kwargs):
         self.log.info('requested url: %s', request.uri)
         if not self.initialized_wo_error:
             self.log.exception('%s application not loaded, because of fail during initialization', self.name)
@@ -197,20 +194,29 @@ class App(object):
 
 @dispatcher
 class RegexpDispatcher(object):
-    def __init__(self, app_roots, name='RegexpDispatcher'):
+    def __init__(self, app_list, name='RegexpDispatcher'):
         self.name = name
         self.log = logging.getLogger('frontik.dispatcher.{0}'.format(name))
         self.log.info('initializing...')
-        self.apps = [(app, re.compile(app_pattern)) for app_pattern, app in app_roots]
 
-    def dispatch(self, application, request, **kwargs):
+        def parse_conf(pattern, app, parse=lambda x: [x,]):
+            try:
+                app._initialize()
+            except AttributeError:
+                #its mean that app is end Handler class -> nothing to _initialize
+                pass
+            return re.compile(pattern), app, parse
+
+        self.apps = map(lambda app_conf: parse_conf(*app_conf), app_list)
+
+    def __call__(self, application, request, **kwargs):
         self.log.info('requested url: %s', request.uri)
-        for (app, pattern) in self.apps:
-            match = pattern.match(request.uri)
+        for pattern, app, parse in self.apps:
 
+            match = pattern.match(request.uri)
             #app found
             if match:
-                augment_request(request, match)
+                augment_request(request, match, parse)
                 try:
                     return app(application, request, **kwargs)
                 except tornado.web.HTTPError, e:
@@ -225,6 +231,7 @@ class RegexpDispatcher(object):
 
 def get_app(app_roots):
     dispatcher = RegexpDispatcher(app_roots, 'root')
+    dispatcher._initialize()
 
     return tornado.web.Application([
         (r'/version/', VersionHandler),

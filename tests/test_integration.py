@@ -58,7 +58,8 @@ class FrontikTestInstance(object):
         else:
             raise AssertionError("no empty port in 9000-10000 for frontik test instance")
 
-        subprocess.Popen(["./run_frontik.sh",
+        subprocess.Popen(["python2.6",
+                          "./dev_run.py",
                           "--config=./tests/projects/frontik.cfg",
                           "--",
                           "--port=%s" % (self.port,)])

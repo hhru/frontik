@@ -36,7 +36,7 @@ class FrontikAppImporter(object):
 
         if app_module_name in sys.modules:
             log.debug('get %s from module cache', app_module_name)
-            return self.modules[app_module_name]
+            return sys.modules[app_module_name]
 
         app_module_probable_filenames = self.get_probable_module_filenames(module_name)
 

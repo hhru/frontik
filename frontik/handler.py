@@ -117,8 +117,8 @@ class PageLogger(logging.Logger):
     requests.
     '''
 
-    def __init__(self, request_id, page, zero_time):
-        logging.Logger.__init__(self, 'frontik.handler.{0}'.format(request_id))
+    def __init__(self, name, page, zero_time):
+        logging.Logger.__init__(self, 'frontik.handler.{0}'.format(name))
         self.page = page
         self._time = zero_time
         self.stages = []
@@ -168,9 +168,14 @@ class PageHandler(tornado.web.RequestHandler):
         self.handler_started = time.time()
         self._prepared = False
 
+        self.name = self.__class__.__name__
         self.request_id = request.headers.get('X-Request-Id', stats.next_request_id())
         self.path = urlparse.urlparse(request.uri).path or request.uri
-        self.log = PageLogger(self.request_id, self.path, self.handler_started)
+        if hasattr(ph_globals.config, 'app_name') and ph_globals.config.app_name:
+            handler_name = '{0}.{1}'.format(ph_globals.config.app_name, self.request_id)
+        else:
+            handler_name = self.request_id
+        self.log = PageLogger(handler_name, self.path, self.handler_started,)
 
         tornado.web.RequestHandler.__init__(self, application, request, logger = self.log)
 

@@ -12,8 +12,8 @@ import frontik.options
 
 log = logging.getLogger("frontik.server")
 
-def main():
-    tornado_util.server.bootstrap(config_file="/etc/frontik/frontik.cfg")
+def main(config_file="/etc/frontik/frontik.cfg"):
+    tornado_util.server.bootstrap(config_file=config_file)
 
     if tornado.options.options.syslog:
         syslog_handler = logging.handlers.SysLogHandler(
