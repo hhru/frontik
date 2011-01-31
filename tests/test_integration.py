@@ -113,6 +113,16 @@ def simple_test():
         assert(not html.find("ok") is None)
 
 
+def not_simple_test():
+    with frontik_get_page_text("re_app/not_simple") as html:
+        assert(not html.find("ok") is None)
+
+
+def id_rewrite_test():
+    value = "some"
+    with frontik_get_page_text("re_app/id/%s" % value) as html:
+        assert(not html.find(value) is None)
+
 def test_inexistent_page():
     with FrontikTestInstance() as srv_port:
         try:

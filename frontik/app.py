@@ -203,7 +203,7 @@ class RegexpDispatcher(object):
             try:
                 app._initialize()
             except AttributeError:
-                #its mean that app is end Handler class -> nothing to _initialize
+                #its mean that app is not dispatcher -> nothing to _initialize
                 pass
             return re.compile(pattern), app, parse
 
