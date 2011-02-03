@@ -11,10 +11,10 @@ logfile = None # log to stderr
 
 pidfile = None
 
-apps = [
-#   (regexp, dispatcher),
-    (r".*", App("app_name", "/path/to/app/www_root") ),
-    (r"/echo/(?P<id>(\d+))?", EchoHandler),
+urls = [
+#format:    (regexp,                    dispatcher),
+            (r".*",                     App("app_name", "/path/to/app/www_root") ),
+            (r"/echo/(?P<id>(\d+))?",   SomeHandler),
 ]
 # where dispatcher is an App or any other dispatcher, like frontik.app.RegexDispatcher for example
 

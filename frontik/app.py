@@ -15,6 +15,7 @@ import frontik.doc
 from frontik import __version__
 from frontik import etree
 from tornado.httpserver import HTTPRequest
+import urlparse
 
 log = logging.getLogger('frontik.server')
 
@@ -82,10 +83,8 @@ class CountTypesHandler(tornado.web.RequestHandler):
 
 def augment_request(request, match, parse):
     new_uri = request.uri[:match.start()] + request.uri[match.end():]
-    #HTTPRequest.__init__(request, request.method, new_uri, request.version, request.headers,
-    #             request.body, request.remote_ip, request.protocol, request.host,
-    #             request.files, request.connection)
-    request.uri = new_uri
+    (scheme, netloc, request.path, request.query, fragment), request.uri = \
+    urlparse.urlsplit(new_uri), new_uri
 
     arguments = match.groupdict()
     for name, value in arguments.iteritems():

@@ -12,7 +12,12 @@ syslog_address = "/dev/log"
 
 pidfile = None
 
-apps = { 'page' : '/path/' }
+from frontik.app import App
+urls = [
+#format:    (regexp,                    dispatcher),
+            (r".*",                     App("app_name", "/path/to/app/www_root") ),
+            (r"/echo/(?P<id>(\d+))?",   SomeHandler),
+]
 
 use_standart_doc = False
 
