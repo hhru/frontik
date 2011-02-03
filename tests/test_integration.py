@@ -61,7 +61,6 @@ class FrontikTestInstance(object):
         subprocess.Popen(["python2.6",
                           "./dev_run.py",
                           "--config=./tests/projects/frontik.cfg",
-                          "--",
                           "--port=%s" % (self.port,)])
         wait_for(lambda: is_running(self.port))
 

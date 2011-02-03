@@ -27,7 +27,7 @@ def main(config_file="/etc/frontik/frontik.cfg"):
         logging.getLogger(log_channel_name).setLevel(logging.WARN)
 
     try:
-        app = frontik.app.get_app(options.apps)
+        app = frontik.app.get_app(options.urls)
     except:
         log.exception("failed to initialize frontik.app, quitting")
         sys.exit(1)
