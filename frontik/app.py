@@ -229,7 +229,10 @@ class RegexpDispatcher(object):
         self.log.exception('match for request url "%s" not found', request.uri)
         return tornado.web.ErrorHandler(application, request, 404)
 
-def get_app(app_roots):
+def get_app(app_urls, app_dict={}):
+    app_roots = []
+    app_roots.extend([('/'+prefix.lstrip('/'), App(prefix.strip('/'), path)) for prefix, path in app_dict.iteritems()])
+    app_roots.extend(app_urls)
     dispatcher = RegexpDispatcher(app_roots, 'root')
     dispatcher._initialize()
 
