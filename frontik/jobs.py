@@ -19,8 +19,18 @@ def queue_worker(queue):
         (func, cb, exception_cb) = queue.get()
         work(func, cb, exception_cb)
 
+class _singleton(type):
+    def __init__(cls, name, bases, dict):
+        super(_singleton, cls).__init__(name, bases, dict)
+        cls.instance = None
+    def __call__(cls,*args,**kw):
+        if cls.instance is None:
+            cls.instance = super(_singleton, cls).__call__(*args, **kw)
+        return cls.instance
 
 class PoolExecutor(object):
+    __metaclass__ = _singleton
+
     def __init__(self, pool_size=5):
         self.log = log
         self.events = Queue.Queue()
