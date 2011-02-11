@@ -1,5 +1,8 @@
 frontik (2.8.0~dev) UNRELEASED; urgency=low
 
+  [ Alexander Shaposhnikov ]
+  * HH-18153 tornado error codes are correctly forwarded.
+
   [ Ivan Fedorov ]
   * New development version
   * Restore single-thread mode by default
