@@ -150,9 +150,17 @@ class FrontikAppDispatcher(object):
             return tornado.web.ErrorHandler(application, request, 500)
 
         try:
-            return page_module.Page(app.ph_globals, application, request)
-        except:
-            log.exception('%s.Page class not found', page_module_name)
+            try:
+                clazz = page_module.Page
+            except:
+                log.exception('%s. Page class not found', page_module_name)
+                return tornado.web.ErrorHandler(application, request, 404)
+            return clazz(app.ph_globals, application, request)
+        except tornado.web.HTTPError, e:
+            log.exception('%s. Tornado error, %s', page_module_name, e)
+            return tornado.web.ErrorHandler(application, request, e.status_code)
+        except Exception, e:
+            log.exception('%s. Internal server error, %s', page_module_name, e)
             return tornado.web.ErrorHandler(application, request, 500)
 
 def get_app(app_roots):
