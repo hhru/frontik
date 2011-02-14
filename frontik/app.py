@@ -149,13 +149,11 @@ class FrontikAppDispatcher(object):
             log.exception('error while importing %s module', (app_name, page_module_name))
             return tornado.web.ErrorHandler(application, request, 500)
 
+        if not hasattr(page_module, 'Page'):
+            log.exception('%s. Page class not found', page_module_name)
+            return tornado.web.ErrorHandler(application, request, 404)
         try:
-            try:
-                clazz = page_module.Page
-            except:
-                log.exception('%s. Page class not found', page_module_name)
-                return tornado.web.ErrorHandler(application, request, 404)
-            return clazz(app.ph_globals, application, request)
+            return page_module.Page(app.ph_globals, application, request)
         except tornado.web.HTTPError, e:
             log.exception('%s. Tornado error, %s', page_module_name, e)
             return tornado.web.ErrorHandler(application, request, e.status_code)
