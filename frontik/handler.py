@@ -219,10 +219,11 @@ class PageHandler(tornado.web.RequestHandler):
                 # TODO ideally we should raise exception here to prevent any futher execution
                 self.finish_with_401()
 
-    def finish_with_401(self):
-        self.set_header('WWW-Authenticate', 'Basic realm="Secure Area"')
+    def finish_with_401(self, auth_header='Basic realm="Secure Area"'):
+        self.set_header('WWW-Authenticate',auth_header)
         self.set_status(401)
-        self.finish('401: Permission denied')
+        self.set_plaintext_response('401: Permission denied')
+        self.finish_page()
 
     def get_error_html(self, status_code, **kwargs):
         if not self._prepared:
