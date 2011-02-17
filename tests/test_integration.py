@@ -143,11 +143,13 @@ def test_content_type_with_xsl():
 
 
 def test_xsl_fail():
-    with FrontikTestInstance() as srv_port:
+    # this test became bizarre because of Firefox browser, see handler_xml_debug.py
+    with frontik_server() as srv_port:
         try:
-            get_page(srv_port, "test_app/xsl_fail", xsl=True)
+            res = urllib2.urlopen('http://localhost:{0}/test_app/xsl_fail'.format(srv_port)).info()
             raise Exception("get_page should`ve failed with HTTPError 500")
         except urllib2.HTTPError, e:
+            assert(any(map(lambda x: 'XSLTApplyError' in x, e.readlines())))
             assert(e.code == 500)
 
 
@@ -199,31 +201,6 @@ def test_timeout():
 
         time.sleep(2)
 
-
-def test_basic_auth_fail():
-    with frontik_server() as srv_port:
-        try:
-            urllib2.urlopen("http://localhost:{0}/test_app/basic_auth/".format(srv_port)).info()
-        except urllib2.HTTPError, e:
-            assert(e.code == 401)
-
-
-def test_basic_auth_pass():
-    with frontik_server() as srv_port:
-        page_url = "http://localhost:{0}/test_app/basic_auth/".format(srv_port)
-        
-        import urllib2
-        # Create an OpenerDirector with support for Basic HTTP Authentication...
-        auth_handler = urllib2.HTTPBasicAuthHandler()
-        auth_handler.add_password(realm="Secure Area",
-                                  uri=page_url,
-                                  user="user",
-                                  passwd="god")
-        opener = urllib2.build_opener(auth_handler)
-        res = opener.open(page_url)
-
-        assert(res.getcode() == 200)
-    
 
 def test_multi_app_simple():
     with frontik_get_page_xml("test_app/use_lib") as xml:
