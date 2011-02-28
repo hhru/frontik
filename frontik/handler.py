@@ -183,6 +183,10 @@ class PageHandler(tornado.web.RequestHandler):
         self.text = None
 
     def prepare(self):
+        self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
+                                                     name = 'finish',
+                                                     log = self.log.debug)
+
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
 
         self.xml = frontik.handler_xml.PageHandlerXML(self)
@@ -197,9 +201,6 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             self.apply_postprocessor = True
 
-        self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
-                                                     name = 'finish',
-                                                     log = self.log.debug)
         self._prepared = True
 
     def require_debug_access(self, login = None, passwd = None):
