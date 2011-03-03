@@ -182,6 +182,8 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.text = None
 
+        self.apply_postprocessor = None
+
     def prepare(self):
         self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
                                                      name = 'finish',
