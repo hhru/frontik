@@ -3,16 +3,11 @@
 from __future__ import with_statement
 
 from functools import partial
-import datetime
-import functools
-import httplib
 import json
-import os.path
 import re
 import time
 import traceback
 import urlparse
-import xml.sax.saxutils
 
 import lxml.etree as etree
 import tornado.httpclient
@@ -22,13 +17,11 @@ import tornado.ioloop
 
 import frontik.async
 import frontik.auth
-import frontik.doc
 import frontik.http
 import frontik.util
 import frontik.handler_xml
 import frontik.handler_whc_limit
 import frontik.handler_xml_debug
-#import frontik.handler_debug
 import frontik.jobs
 import frontik.future as future
 
