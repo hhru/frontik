@@ -175,13 +175,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.text = None
 
-        self.apply_postprocessor = None
-
     def prepare(self):
-        self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
-                                                     name = 'finish',
-                                                     log = self.log.debug)
-
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
 
         self.xml = frontik.handler_xml.PageHandlerXML(self)
@@ -195,7 +189,11 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.debug('apply_postprocessor==False due to ?nopost query arg')
         else:
             self.apply_postprocessor = True
-
+        
+        self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
+                                                     name = 'finish',
+                                                     log = self.log.debug)
+        
         self._prepared = True
 
     def require_debug_access(self, login = None, passwd = None):
@@ -212,14 +210,7 @@ class PageHandler(tornado.web.RequestHandler):
                     self, check_login, check_passwd)
 
             if not self.debug_access:
-                # TODO ideally we should raise exception here to prevent any futher execution
-                self.finish_with_401()
-
-    def finish_with_401(self, auth_header='Basic realm="Secure Area"'):
-        self.set_header('WWW-Authenticate',auth_header)
-        self.set_status(401)
-        self.set_plaintext_response('401: Permission denied')
-        self.finish_page()
+                raise tornado.web.HTTPErrorEx(401, headers={'WWW-Authenticate': 'Basic realm="Secure Area"'})
 
     def get_error_html(self, status_code, **kwargs):
         if not self._prepared:

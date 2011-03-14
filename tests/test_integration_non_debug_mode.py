@@ -36,7 +36,7 @@ def test_basic_auth_fail_on_wrong_pass():
         opener = urllib2.build_opener(auth_handler)
         try: 
             res = opener.open(page_url)
-            assert(res.getcode() != 200)
+            assert(res.getcode() == 401)
         except urllib2.HTTPError, e:
             assert(e.code == 401)
 

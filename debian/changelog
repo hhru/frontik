@@ -1,3 +1,10 @@
+frontik (2.8.1~dev) UNRELEASED; urgency=low
+
+  * Dependency from new tornado
+  * Prematurely end Handler.prepare on auth error with exception
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Mon, 14 Mar 2011 14:37:42 -0400
+
 frontik (2.8.0~dev) UNRELEASED; urgency=low
 
   [ Alexander Shaposhnikov ]
