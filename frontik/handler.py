@@ -10,6 +10,7 @@ import traceback
 import urlparse
 
 import lxml.etree as etree
+import tornado.curl_httpclient
 import tornado.httpclient
 import tornado.options
 import tornado.web
@@ -17,7 +18,6 @@ import tornado.ioloop
 
 import frontik.async
 import frontik.auth
-import frontik.http
 import frontik.util
 import frontik.handler_xml
 import frontik.handler_whc_limit
@@ -145,8 +145,7 @@ class PageHandlerGlobals(object):
 
         self.xml = frontik.handler_xml.PageHandlerXMLGlobals(app_package.config)
 
-        self.http_client = frontik.http.TimeoutingHttpFetcher(
-                tornado.httpclient.AsyncHTTPClient(max_clients = 200, max_simultaneous_connections = 200))
+        self.http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(max_clients = 200, max_simultaneous_connections = 200)
 
         if tornado.options.options.executor_pool:
             self.executor = frontik.jobs.PoolExecutor(pool_size = tornado.options.options.executor_pool_size)

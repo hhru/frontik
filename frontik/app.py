@@ -130,14 +130,14 @@ class FrontikAppDispatcher(object):
         app_name = page_module_name_parts[0]
         page_module_name = '.'.join(['pages'] + page_module_name_parts[1:])
 
-        try:
+        if app_name in self.apps:
             app = self.apps[app_name]
-        except KeyError:
+        else:
             if app_name in self.failed_apps:
-                log.exception('%s application not found, because of fail during initialization', app_name)
+                log.warn('%s application not found, because of fail during initialization', app_name)
             else:
-                log.exception('%s application not found', app_name)
-            return tornado.web.ErrorHandler(application, request, 404)
+                log.warn('%s application not found', app_name)
+            return tornado.web.ErrorHandler(application, request, status_code=404)
 
         try:
             page_module = self.importer.imp_app_module(app_name, page_module_name)
