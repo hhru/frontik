@@ -144,22 +144,22 @@ class FrontikAppDispatcher(object):
             log.debug('using %s from %s', (app_name, page_module_name), page_module.__file__)
         except ImportError:
             log.exception('%s module not found', (app_name, page_module_name))
-            return tornado.web.ErrorHandler(application, request, 404)
+            return tornado.web.ErrorHandler(application, request, status_code=404)
         except:
             log.exception('error while importing %s module', (app_name, page_module_name))
-            return tornado.web.ErrorHandler(application, request, 500)
+            return tornado.web.ErrorHandler(application, request, status_code=500)
 
         if not hasattr(page_module, 'Page'):
             log.exception('%s. Page class not found', page_module_name)
-            return tornado.web.ErrorHandler(application, request, 404)
+            return tornado.web.ErrorHandler(application, request, status_code=404)
         try:
             return page_module.Page(app.ph_globals, application, request)
         except tornado.web.HTTPError, e:
             log.exception('%s. Tornado error, %s', page_module_name, e)
-            return tornado.web.ErrorHandler(application, request, e.status_code)
+            return tornado.web.ErrorHandler(application, request, status_code=e.status_code)
         except Exception, e:
             log.exception('%s. Internal server error, %s', page_module_name, e)
-            return tornado.web.ErrorHandler(application, request, 500)
+            return tornado.web.ErrorHandler(application, request, status_code=500)
 
 def get_app(app_roots):
     dispatcher = FrontikAppDispatcher(app_roots)

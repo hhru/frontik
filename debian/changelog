@@ -1,3 +1,10 @@
+frontik (2.8.2~dev) UNRELEASED; urgency=low
+
+  * Dependency from new tornado >= 1.2.1~hh1
+  * Adapt to the new tornado
+
+ -- Andrey Tatarinov <a.tatarinov@hh.ru>  Tue, 15 Mar 2011 17:08:42 -0400
+
 frontik (2.8.1~dev) UNRELEASED; urgency=low
 
   * Dependency from new tornado
