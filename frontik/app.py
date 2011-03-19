@@ -190,7 +190,7 @@ class App(object):
         if not self.initialized_wo_error:
             self.log.exception('%s application not loaded, because of fail during initialization', self.name)
             return tornado.web.ErrorHandler(application, request, 404)
-        return self.module.dispatcher.dispatcher(application, request, ph_globals = self.ph_globals, **kwargs)
+        return self.module.dispatcher(application, request, ph_globals = self.ph_globals, **kwargs)
 
 @dispatcher
 class RegexpDispatcher(object):
@@ -220,10 +220,10 @@ class RegexpDispatcher(object):
                 try:
                     return app(application, request, **kwargs)
                 except tornado.web.HTTPError, e:
-                    log.exception('%s. Tornado error, %s', page_module_name, e)
+                    log.exception('%s. Tornado error, %s', app, e)
                     return tornado.web.ErrorHandler(application, request, e.status_code)
                 except Exception, e:
-                    log.exception('%s. Internal server error, %s', page_module_name, e)
+                    log.exception('%s. Internal server error, %s', app, e)
                 return tornado.web.ErrorHandler(application, request, 500)
 
         self.log.exception('match for request url "%s" not found', request.uri)
