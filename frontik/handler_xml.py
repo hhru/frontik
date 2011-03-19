@@ -174,37 +174,32 @@ class PageHandlerXML(object):
         except:
             self._set_xsl_log_and_raise('XSL transformation error with file {0}')
 
-    def _finish_xml(self, cb):
+    def _finish_xml(self):
         if self.apply_xsl and self.transform:
-            self._prepare_finish_with_xsl(cb)
+            return self._prepare_finish_with_xsl()
         else:
-            self._prepare_finish_wo_xsl(cb)
+            return self._prepare_finish_wo_xsl()
 
-    def _prepare_finish_with_xsl(self, cb):
+    def _prepare_finish_with_xsl(self):
         self.log.debug('finishing with xsl')
 
         if not self.handler._headers.get("Content-Type", None):
             self.handler.set_header('Content-Type', 'text/html')
 
-        @self.handler.async_callback
-        def reraise_in_ioloop(e):
-            self.log.exception('failed transformation with XSL %s' % self.transform_filename)
-            raise e
-
-        def apply_xsl():
+        try:
             t = time.time()
             result = str(self.transform(self.doc.to_etree_element()))
             self.log.stage_tag("xsl")
-            self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t) * 1000)
+            self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
             return result
+        except:
+            self.log.exception('failed transformation with XSL %s' % self.transform_filename)
+            raise
 
-        self.handler.executor.add_job(apply_xsl, cb, reraise_in_ioloop)
-
-    def _prepare_finish_wo_xsl(self, cb):
+    def _prepare_finish_wo_xsl(self):
         self.log.debug('finishing wo xsl')
 
         # В режиме noxsl мы всегда отдаем xml.
         self.handler.set_header('Content-Type', 'application/xml')
 
-        cb(self.doc.to_string())
-
+        return self.doc.to_string()

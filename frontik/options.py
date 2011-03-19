@@ -13,6 +13,3 @@ tornado.options.define('debug', False, bool)
 tornado.options.define('debug_login', None, str)
 tornado.options.define('debug_password', None, str)
 tornado.options.define('debug_xsl', '/usr/lib/frontik/debug.xsl', str)
-
-tornado.options.define('executor_pool', False, bool)
-tornado.options.define('executor_pool_size', 7, int)

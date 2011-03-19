@@ -29,7 +29,6 @@ import frontik.handler_xml
 import frontik.handler_whc_limit
 import frontik.handler_xml_debug
 #import frontik.handler_debug
-import frontik.jobs
 import frontik.future as future
 
 import logging
@@ -155,10 +154,6 @@ class PageHandlerGlobals(object):
         self.http_client = frontik.http.TimeoutingHttpFetcher(
                 tornado.httpclient.AsyncHTTPClient(max_clients = 200, max_simultaneous_connections = 200))
 
-        if tornado.options.options.executor_pool:
-            self.executor = frontik.jobs.PoolExecutor(pool_size = tornado.options.options.executor_pool_size)
-        else:
-            self.executor = frontik.jobs.SimpleExecutor()
 
 
 class PageHandler(tornado.web.RequestHandler):
@@ -185,7 +180,6 @@ class PageHandler(tornado.web.RequestHandler):
         self.ph_globals = ph_globals
         self.config = self.ph_globals.config
         self.http_client = self.ph_globals.http_client
-        self.executor = self.ph_globals.executor
 
         self.debug_access = None
 
@@ -494,24 +488,21 @@ class PageHandler(tornado.web.RequestHandler):
 
             if self.text is not None:
                 res = self._prepare_finish_plaintext()
-                self._apply_postprocessor(res)
             else:
-                self.xml._finish_xml(self.async_callback(self._apply_postprocessor))
+                res = self.xml._finish_xml()
+
+            if hasattr(self.config, 'postprocessor'):
+                if self.apply_postprocessor:
+                    self.log.debug('applying postprocessor')
+                    self.async_callback(self.config.postprocessor)(self, res, self.async_callback(partial(self._wait_postprocessor, time.time())))
+                else:
+                    self.log.debug('skipping postprocessor')
+                    self.finish(res)
+            else:
+                self.finish(res)
 
         else:
             self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
-
-    def _apply_postprocessor(self, res):
-        if hasattr(self.config, 'postprocessor'):
-            if self.apply_postprocessor:
-                self.log.debug('applying postprocessor')
-                self.async_callback(self.config.postprocessor)(self, res, self.async_callback(partial(self._wait_postprocessor, time.time())))
-            else:
-                self.log.debug('skipping postprocessor')
-                self.finish(res)
-        else:
-            self.finish(res)
-
 
     def _wait_postprocessor(self, start_time, data):
         self.log.stage_tag("postprocess")
