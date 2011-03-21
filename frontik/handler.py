@@ -209,7 +209,11 @@ class PageHandler(tornado.web.RequestHandler):
                     self, check_login, check_passwd)
 
             if not self.debug_access:
-                raise tornado.web.HTTPErrorEx(401, headers={'WWW-Authenticate': 'Basic realm="Secure Area"'})
+                self.finish_with_401()
+
+    def finish_with_401(self, auth_header='Basic realm="Secure Area"'):
+        raise tornado.web.HTTPErrorEx(401, headers={'WWW-Authenticate': auth_header})
+
 
     def get_error_html(self, status_code, **kwargs):
         if not self._prepared:
