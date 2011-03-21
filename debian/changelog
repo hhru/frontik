@@ -1,3 +1,9 @@
+frontik (2.8.0) unstable; urgency=low
+
+  * frontik 2.8.0 with new tornado and url rewrites
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Mon, 21 Mar 2011 18:29:17 +0300
+
 frontik (2.8.0~dev) UNRELEASED; urgency=low
 
   [ Andrey Tatarinov ]
