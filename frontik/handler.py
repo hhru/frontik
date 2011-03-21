@@ -3,18 +3,14 @@
 from __future__ import with_statement
 
 from functools import partial
-import datetime
-import functools
-import httplib
 import json
-import os.path
 import re
 import time
 import traceback
 import urlparse
-import xml.sax.saxutils
 
 import lxml.etree as etree
+import tornado.curl_httpclient
 import tornado.httpclient
 import tornado.options
 import tornado.web
@@ -22,13 +18,10 @@ import tornado.ioloop
 
 import frontik.async
 import frontik.auth
-import frontik.doc
-import frontik.http
 import frontik.util
 import frontik.handler_xml
 import frontik.handler_whc_limit
 import frontik.handler_xml_debug
-#import frontik.handler_debug
 import frontik.future as future
 
 import logging
@@ -151,8 +144,7 @@ class PageHandlerGlobals(object):
 
         self.xml = frontik.handler_xml.PageHandlerXMLGlobals(app_package.config)
 
-        self.http_client = frontik.http.TimeoutingHttpFetcher(
-                tornado.httpclient.AsyncHTTPClient(max_clients = 200, max_simultaneous_connections = 200))
+        self.http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(max_clients = 200, max_simultaneous_connections = 200)
 
 
 
@@ -185,13 +177,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.text = None
 
-        self.apply_postprocessor = None
-
     def prepare(self):
-        self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
-                                                     name = 'finish',
-                                                     log = self.log.debug)
-
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
 
         self.debug = frontik.handler_xml_debug.PageHandlerDebug(self)
@@ -207,7 +193,11 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.debug('apply_postprocessor==False due to ?nopost query arg')
         else:
             self.apply_postprocessor = True
-
+        
+        self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page),
+                                                     name = 'finish',
+                                                     log = self.log.debug)
+        
         self._prepared = True
 
     def require_debug_access(self, login = None, passwd = None):
@@ -224,14 +214,11 @@ class PageHandler(tornado.web.RequestHandler):
                     self, check_login, check_passwd)
 
             if not self.debug_access:
-                # TODO ideally we should raise exception here to prevent any futher execution
                 self.finish_with_401()
 
     def finish_with_401(self, auth_header='Basic realm="Secure Area"'):
-        self.set_header('WWW-Authenticate',auth_header)
-        self.set_status(401)
-        self.set_plaintext_response('401: Permission denied')
-        self.finish_page()
+        raise tornado.web.HTTPErrorEx(401, headers={'WWW-Authenticate': auth_header})
+
 
     def get_error_html(self, status_code, **kwargs):
         if not self._prepared:

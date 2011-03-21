@@ -1,5 +1,14 @@
 frontik (2.8.0~dev) UNRELEASED; urgency=low
 
+  [ Andrey Tatarinov ]
+  * Dependency from new tornado >= 1.2.1~hh1
+  * Adapt to the new tornado
+  * Dependency from new tornado
+  * Prematurely end Handler.prepare on auth error with exception
+
+  [ Pavel Trukhanov ]
+  * HH-13736 url-rewrite
+
   [ Alexander Shaposhnikov ]
   * HH-18153 tornado error codes are correctly forwarded.
 
@@ -14,7 +23,7 @@ frontik (2.8.0~dev) UNRELEASED; urgency=low
   [ Pavel Trukhanov ]
   * HH-16259 verbose 404 logging in case 'application not found'
 
- -- Ivan Fedorov <oxyum@oxyum.ru>  Wed, 22 Dec 2010 16:48:18 +0300
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Mon, 21 Mar 2011 18:26:10 +0300
 
 frontik (2.7.1) unstable; urgency=low
 
