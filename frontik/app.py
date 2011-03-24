@@ -81,10 +81,23 @@ class CountTypesHandler(tornado.web.RequestHandler):
         self.finish()
 
 
+def get_to_dispatch(request, field = 'path'):
+    if hasattr(request, 're_'+field):
+        return getattr(request, 're_'+field)
+    return getattr(request, field)
+
+def set_to_dispatch(request, value, field = 'path'):
+    setattr(request, 're_'+field, value)
+
 def augment_request(request, match, parse):
-    new_uri = request.uri[:match.start()] + request.uri[match.end():]
-    (scheme, netloc, request.path, request.query, fragment), request.uri = \
-    urlparse.urlsplit(new_uri), new_uri
+    uri = get_to_dispatch(request, 'uri')
+
+    new_uri = (uri[:match.start()] + uri[match.end():])
+    split = urlparse.urlsplit(new_uri[:1] +  new_uri[1:].strip('/'))
+
+    set_to_dispatch(request, new_uri, 'uri')
+    set_to_dispatch(request, split.path, 'path')
+    set_to_dispatch(request, split.query, 'query')
 
     arguments = match.groupdict()
     for name, value in arguments.iteritems():
@@ -98,13 +111,16 @@ def dispatcher(cls):
         self._init_partial = functools.partial(old_init, self, *args, **kwargs)
         self._inited = False
 
+    def __repr__(self):
+        return '{0}.{1}: {2}'.format(cls.__module__, cls.__name__, self.name)
+
     def _initialize(self):
         if not self._inited:
             self._init_partial()
             self._inited = True
         return self._inited
 
-    on_demand = type(cls.__name__, (cls,), dict(__init__=__init__, _initialize=_initialize))
+    on_demand = type(cls.__name__, (cls,), dict(__init__=__init__, _initialize=_initialize, __repr__=__repr__))
     return on_demand
 
 
@@ -117,9 +133,9 @@ class Map2ModuleName(object):
         self.log.info('initializing...')
 
     def __call__(self, application, request, **kwargs):
-        self.log.info('requested url: %s', request.uri)
+        self.log.info('requested url: %s (%s)', get_to_dispatch(request, 'uri'), request.uri)
 
-        page_module_name = 'pages.' + '.'.join(request.path.strip('/').split('/'))
+        page_module_name = 'pages.' + '.'.join(get_to_dispatch(request,'path').strip('/').split('/'))
         self.log.debug('page module: %s', page_module_name)
 
         try:
@@ -127,17 +143,17 @@ class Map2ModuleName(object):
             self.log.debug('using %s from %s', (self.name, page_module_name), page_module.__file__)
         except ImportError:
             self.log.exception('%s module not found', (self.name, page_module_name))
-            return tornado.web.ErrorHandler(application, request, 404)
+            return tornado.web.ErrorHandler(application, request, status_code=404)
         except AttributeError:
             self.log.exception('%s is not frontik application module, but needs to be and have "frontik_import" method', self.name)
-            return tornado.web.ErrorHandler(application, request, 500)
+            return tornado.web.ErrorHandler(application, request, status_code=500)
         except:
             self.log.exception('error while importing %s module', (self.name, page_module_name))
-            return tornado.web.ErrorHandler(application, request, 500)
+            return tornado.web.ErrorHandler(application, request, status_code=500)
 
         if not hasattr(page_module, 'Page'):
             log.exception('%s. Page class not found', page_module_name)
-            return tornado.web.ErrorHandler(application, request, 404)
+            return tornado.web.ErrorHandler(application, request, status_code=404)
 
         return page_module.Page(application, request, **kwargs)
 
@@ -146,6 +162,7 @@ class Map2ModuleName(object):
 class App(object):
     def __init__(self, name, root):
         self.log = logging.getLogger('frontik.application.{0}'.format(name))
+        self.name = name
         self.initialized_wo_error = True
 
         self.log.info('initializing...')
@@ -186,10 +203,10 @@ class App(object):
         self.module.dispatcher._initialize()
 
     def __call__(self, application, request, **kwargs):
-        self.log.info('requested url: %s', request.uri)
+        self.log.info('requested url: %s (%s)', get_to_dispatch(request, 'uri'), request.uri)
         if not self.initialized_wo_error:
-            self.log.exception('%s application not loaded, because of fail during initialization', self.name)
-            return tornado.web.ErrorHandler(application, request, 404)
+            self.log.exception('application not loaded, because of fail during initialization')
+            return tornado.web.ErrorHandler(application, request, status_code=404)
         return self.module.dispatcher(application, request, ph_globals = self.ph_globals, **kwargs)
 
 @dispatcher
@@ -210,12 +227,13 @@ class RegexpDispatcher(object):
         self.apps = map(lambda app_conf: parse_conf(*app_conf), app_list)
 
     def __call__(self, application, request, **kwargs):
-        self.log.info('requested url: %s', request.uri)
+        self.log.info('requested url: %s (%s)', get_to_dispatch(request, 'uri'), request.uri)
         for pattern, app, parse in self.apps:
 
-            match = pattern.match(request.uri)
+            match = pattern.match(get_to_dispatch(request, 'uri'))
             #app found
             if match:
+                self.log.debug('using %s' % app)
                 augment_request(request, match, parse)
                 try:
                     return app(application, request, **kwargs)
@@ -224,10 +242,10 @@ class RegexpDispatcher(object):
                     return tornado.web.ErrorHandler(application, request, e.status_code)
                 except Exception, e:
                     log.exception('%s. Internal server error, %s', app, e)
-                return tornado.web.ErrorHandler(application, request, 500)
+                return tornado.web.ErrorHandler(application, request, status_code=500)
 
         self.log.exception('match for request url "%s" not found', request.uri)
-        return tornado.web.ErrorHandler(application, request, 404)
+        return tornado.web.ErrorHandler(application, request, status_code=404)
 
 def get_app(app_urls, app_dict={}):
     app_roots = []

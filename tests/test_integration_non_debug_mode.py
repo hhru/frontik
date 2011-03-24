@@ -18,7 +18,7 @@ def test_basic_auth_fail():
     with frontik_prod.instance() as srv_port:
         try:
             res = urllib2.urlopen('http://localhost:{0}/test_app/basic_auth/'.format(srv_port)).info()
-            assert(res.getcode() != 200)
+            assert(res.getcode() == 401)
         except urllib2.HTTPError, e:
             assert(e.code == 401)
 

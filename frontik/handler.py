@@ -7,7 +7,6 @@ import json
 import re
 import time
 import traceback
-import urlparse
 
 import lxml.etree as etree
 import tornado.curl_httpclient
@@ -157,12 +156,11 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.name = self.__class__.__name__
         self.request_id = request.headers.get('X-Request-Id', stats.next_request_id())
-        self.path = urlparse.urlparse(request.uri).path or request.uri
         if hasattr(ph_globals.config, 'app_name') and ph_globals.config.app_name:
             handler_name = '{0}.{1}'.format(ph_globals.config.app_name, self.request_id)
         else:
             handler_name = self.request_id
-        self.log = PageLogger(handler_name, self.path, self.handler_started,)
+        self.log = PageLogger(handler_name, request.path or request.uri, self.handler_started,)
 
         tornado.web.RequestHandler.__init__(self, application, request, logger = self.log)
 
@@ -184,8 +182,6 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.xml = frontik.handler_xml.PageHandlerXML(self)
         self.doc = self.xml.doc # backwards compatibility for self.doc.put
-
-        self.debug = frontik.handler_xml_debug.PageHandlerDebug(self)
 
         if self.get_argument('nopost', None) is not None:
             self.require_debug_access()

@@ -20,16 +20,34 @@ def not_simple_test():
     with frontik_debug.get_page_text("re_app/not_simple") as html:
         assert(not html.find("ok") is None)
 
+def simple_map2fs_test():
+    with frontik_debug.get_page_text("re_app/simple") as html:
+        assert(not html.find("ok") is None)
+
+def url_types_test_1():
+    with frontik_debug.instance() as srv_port:
+        assert(not urllib2.urlopen("http://localhost:%s//re_app/not_simple" % srv_port).read().find("ok") is None)
+        assert(not urllib2.urlopen("http://localhost:%s//re_app/simple" % srv_port).read().find("ok") is None)
+def url_types_test_2():
+    with frontik_debug.instance() as srv_port:
+        assert(not urllib2.urlopen("http://localhost:%s/re_app//not_simple" % srv_port).read().find("ok") is None)
+        assert(not urllib2.urlopen("http://localhost:%s/re_app//simple" % srv_port).read().find("ok") is None)
 
 def id_rewrite_test():
     value = "some"
     with frontik_debug.get_page_text("re_app/id/%s" % value) as html:
         assert(not html.find(value) is None)
 
+def ids_rewrite_test():
+    values = ["some", "another"]
+    with frontik_debug.get_page_text("re_app/id/%s" % ",".join(values)) as html:
+        assert(all(map(html.find, values)))
+
 def test_inexistent_page():
     with frontik_debug.instance() as srv_port:
         try:
-            get_page(srv_port, "inexistent_page")
+            with get_page(srv_port, "inexistent_page") as html:
+                assert False
         except urllib2.HTTPError, e:
             assert(e.code == 404)
 
