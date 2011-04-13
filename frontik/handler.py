@@ -352,6 +352,8 @@ class PageHandler(tornado.web.RequestHandler):
             stats.http_reqs_count += 1
 
             req.headers['X-Request-Id'] = self.request_id
+            req.connect_timeout *= tornado.options.options.timeout_multiplier
+            req.request_timeout *= tornado.options.options.timeout_multiplier
 
             return self.http_client.fetch(
                     req,
