@@ -162,7 +162,7 @@ class PageHandler(tornado.web.RequestHandler):
             handler_name = self.request_id
         self.log = PageLogger(handler_name, request.path or request.uri, self.handler_started,)
 
-        tornado.web.RequestHandler.__init__(self, application, request, logger = self.log)
+        tornado.web.RequestHandler.__init__(self, application, request, logger = self.log, **kwargs)
 
         if ph_globals is None:
             raise Exception("%s need to have ph_globals" % PageHandler)
@@ -346,14 +346,14 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             self.log.warn('attempted to make http request to %s while page is already finished; ignoring', req.url)
 
-    def get_url(self, url, data = {}, headers = {}, connect_timeout = 0.5, request_timeout = 2, callback = None, follow_redirects = True, request_types = None):
+    def get_url(self, url, data = dict(), headers = dict(), connect_timeout = 0.5, request_timeout = 2, callback = None, follow_redirects = True, request_types = None):
         placeholder = future.Placeholder()
         request = frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout, follow_redirects)
         self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request, request_types = request_types))
 
         return placeholder
 
-    def get_url_retry(self, url, data = {}, headers = {}, retry_count = 3, retry_delay = 0.1, connect_timeout = 0.5, request_timeout = 2, callback = None, request_types = None):
+    def get_url_retry(self, url, data = dict(), headers = dict(), retry_count = 3, retry_delay = 0.1, connect_timeout = 0.5, request_timeout = 2, callback = None, request_types = None):
         placeholder = future.Placeholder()
 
         request = frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout)
@@ -381,8 +381,8 @@ class PageHandler(tornado.web.RequestHandler):
         return placeholder
 
     def post_url(self, url, data = '',
-                 headers = {},
-                 files = {},
+                 headers = dict(),
+                 files = dict(),
                  connect_timeout = 0.5, request_timeout = 2,
                  follow_redirects = True,
                  content_type = None,
@@ -396,7 +396,7 @@ class PageHandler(tornado.web.RequestHandler):
         return placeholder
 
     def put_url(self, url, data='',
-                 headers={},
+                 headers=dict(),
                  connect_timeout=0.5, request_timeout=2,
                  callback=None,
                  request_types = None):
@@ -410,7 +410,7 @@ class PageHandler(tornado.web.RequestHandler):
         return placeholder
 
     def delete_url(self, url, data='',
-                 headers={},
+                 headers=dict(),
                  connect_timeout=0.5, request_timeout=2,
                  callback=None,
                  request_types = None):

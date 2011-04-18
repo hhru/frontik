@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import httplib
 import mimetools
 import mimetypes
 
@@ -117,7 +116,7 @@ def make_mfd(fields, files):
     return body, content_type
 
 
-def make_get_request(url, data={}, headers={},
+def make_get_request(url, data=dict(), headers=dict(),
         connect_timeout=0.5, request_timeout=2, follow_redirects=True):
     return tornado.httpclient.HTTPRequest(
                     url=make_url(url, **data),
@@ -127,7 +126,7 @@ def make_get_request(url, data={}, headers={},
                     request_timeout=request_timeout)
 
 
-def make_post_request(url, data='', headers={}, files={},
+def make_post_request(url, data='', headers=dict(), files=dict(),
         connect_timeout=0.5, request_timeout=2, follow_redirects=True, content_type=None):
 
     if files:
@@ -150,7 +149,7 @@ def make_post_request(url, data='', headers={}, files={},
                 connect_timeout=connect_timeout,
                 request_timeout=request_timeout)
 
-def make_put_request(url, data='', headers={}, connect_timeout=0.5, request_timeout=2):
+def make_put_request(url, data='', headers=dict(), connect_timeout=0.5, request_timeout=2):
     return tornado.httpclient.HTTPRequest(
                     url=url,
                     body=make_body(data),
@@ -160,7 +159,7 @@ def make_put_request(url, data='', headers={}, connect_timeout=0.5, request_time
                     request_timeout=request_timeout)
 
 
-def make_delete_request(url, data='', headers={}, connect_timeout=0.5, request_timeout=2):
+def make_delete_request(url, data='', headers=dict(), connect_timeout=0.5, request_timeout=2):
     return tornado.httpclient.HTTPRequest(
                     url=url,
                     body=make_body(data),
