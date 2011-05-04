@@ -346,9 +346,14 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             self.log.warn('attempted to make http request to %s while page is already finished; ignoring', req.url)
 
-    def get_url(self, url, data = dict(), headers = dict(), connect_timeout = 0.5, request_timeout = 2, callback = None, follow_redirects = True, request_types = None):
+    def get_url(self, url, data = None, headers = None, connect_timeout = 0.5, request_timeout = 2, callback = None, follow_redirects = True, request_types = None):
         placeholder = future.Placeholder()
-        request = frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout, follow_redirects)
+        request = frontik.util.make_get_request(url,
+                                                {} if data is None else data,
+                                                {} if headers is None else headers,
+                                                connect_timeout,
+                                                request_timeout,
+                                                follow_redirects)
         self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request, request_types = request_types))
 
         return placeholder
@@ -356,7 +361,11 @@ class PageHandler(tornado.web.RequestHandler):
     def get_url_retry(self, url, data = dict(), headers = dict(), retry_count = 3, retry_delay = 0.1, connect_timeout = 0.5, request_timeout = 2, callback = None, request_types = None):
         placeholder = future.Placeholder()
 
-        request = frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout)
+        request = frontik.util.make_get_request(url,
+                                                {} if data is None else data,
+                                                {} if headers is None else headers,
+                                                connect_timeout,
+                                                request_timeout)
 
         def step1(retry_count, response):
             if response.error and retry_count > 0:
@@ -381,8 +390,8 @@ class PageHandler(tornado.web.RequestHandler):
         return placeholder
 
     def post_url(self, url, data = '',
-                 headers = dict(),
-                 files = dict(),
+                 headers = None,
+                 files = None,
                  connect_timeout = 0.5, request_timeout = 2,
                  follow_redirects = True,
                  content_type = None,
@@ -390,34 +399,47 @@ class PageHandler(tornado.web.RequestHandler):
                  request_types = None):
 
         placeholder = future.Placeholder()
-        request = frontik.util.make_post_request(url, data, headers, files, connect_timeout, request_timeout, follow_redirects, content_type)
+        request = frontik.util.make_post_request(url,
+                                                 data,
+                                                 {} if headers is None else headers,
+                                                 {} if files is None else files,
+                                                 connect_timeout,
+                                                 request_timeout,
+                                                 follow_redirects,
+                                                 content_type)
         self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request, request_types = request_types))
 
         return placeholder
 
     def put_url(self, url, data='',
-                 headers=dict(),
+                 headers=None,
                  connect_timeout=0.5, request_timeout=2,
                  callback=None,
                  request_types = None):
 
         placeholder = future.Placeholder()
-
-
-        request = frontik.util.make_put_request(url, data, headers, connect_timeout, request_timeout)
+        request = frontik.util.make_put_request(url,
+                                                data,
+                                                {} if headers is None else headers, 
+                                                connect_timeout,
+                                                request_timeout)
         self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request, request_types=request_types))
 
         return placeholder
 
     def delete_url(self, url, data='',
-                 headers=dict(),
+                 headers=None,
                  connect_timeout=0.5, request_timeout=2,
                  callback=None,
                  request_types = None):
 
         placeholder = future.Placeholder()
 
-        request = frontik.util.make_delete_request(url, data, headers, connect_timeout, request_timeout)
+        request = frontik.util.make_delete_request(url,
+                                                   data,
+                                                   {} if headers is None else headers,
+                                                   connect_timeout,
+                                                   request_timeout)
         self.fetch_request(request,partial(self._fetch_request_response, placeholder, callback, request, request_types=request_types))
 
         return placeholder

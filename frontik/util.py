@@ -116,17 +116,18 @@ def make_mfd(fields, files):
     return body, content_type
 
 
-def make_get_request(url, data=dict(), headers=dict(),
+def make_get_request(url, data=None, headers=None,
         connect_timeout=0.5, request_timeout=2, follow_redirects=True):
+    data = {} if data is None else data
     return tornado.httpclient.HTTPRequest(
                     url=make_url(url, **data),
                     follow_redirects=follow_redirects,
-                    headers=headers,
+                    headers={} if headers is None else headers,
                     connect_timeout=connect_timeout,
                     request_timeout=request_timeout)
 
 
-def make_post_request(url, data='', headers=dict(), files=dict(),
+def make_post_request(url, data='', headers=None, files=None,
         connect_timeout=0.5, request_timeout=2, follow_redirects=True, content_type=None):
 
     if files:
@@ -137,6 +138,7 @@ def make_post_request(url, data='', headers=dict(), files=dict(),
     if content_type is None:
         content_type = 'application/x-www-form-urlencoded'
 
+    headers = {} if headers is None else headers
     headers.update({'Content-Type' : content_type,
                'Content-Length': str(len(body))})
 
@@ -149,22 +151,22 @@ def make_post_request(url, data='', headers=dict(), files=dict(),
                 connect_timeout=connect_timeout,
                 request_timeout=request_timeout)
 
-def make_put_request(url, data='', headers=dict(), connect_timeout=0.5, request_timeout=2):
+def make_put_request(url, data='', headers=None, connect_timeout=0.5, request_timeout=2):
     return tornado.httpclient.HTTPRequest(
                     url=url,
                     body=make_body(data),
                     method='PUT',
-                    headers=headers,
+                    headers={} if headers is None else headers,
                     connect_timeout=connect_timeout,
                     request_timeout=request_timeout)
 
 
-def make_delete_request(url, data='', headers=dict(), connect_timeout=0.5, request_timeout=2):
+def make_delete_request(url, data='', headers=None, connect_timeout=0.5, request_timeout=2):
     return tornado.httpclient.HTTPRequest(
                     url=url,
                     body=make_body(data),
                     method='DELETE',
-                    headers=headers,
+                    headers={} if headers is None else headers,
                     connect_timeout=connect_timeout,
                     request_timeout=request_timeout)
 
