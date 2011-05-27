@@ -85,6 +85,9 @@ class HTTPError(tornado.web.HTTPError):
             del kwargs[kwarg]
         tornado.web.HTTPError.__init__(self, status_code, *args, **kwargs)
 
+class FinishException(tornado.web.HTTPError):
+    def __init__(self, status_code=200, log_message=None, *args):
+        super(FinishException, self).__init__(status_code, log_message, args)
 
 class Stats(object):
     def __init__(self):
@@ -261,18 +264,27 @@ class PageHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     def post(self, *args, **kw):
         if not self._finished:
-            self.post_page()
+            try:
+                self.post_page()
+            except FinishException:
+                pass
             self.finish_page()
 
     @tornado.web.asynchronous
     def get(self, *args, **kw):
         if not self._finished:
-            self.get_page()
+            try:
+                self.get_page()
+            except FinishException:
+                pass
             self.finish_page()
 
     @tornado.web.asynchronous
     def head(self, *args, **kwargs):
-        self.get_page()
+        try:
+            self.get_page()
+        except FinishException:
+            pass
         self.finish_page()
 
     def finish(self, chunk = None):

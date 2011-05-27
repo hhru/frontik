@@ -133,6 +133,10 @@ def test_timeout():
 
         time.sleep(2)
 
+def test_finishexception():
+    with frontik_debug.instance() as srv_port:
+        data = urllib2.urlopen("http://localhost:{0}/test_app/finish_page/".format(srv_port)).read()
+        assert(data == "success")
 
 def test_multi_app_simple():
     with frontik_debug.get_page_xml("test_app/use_lib") as xml:
