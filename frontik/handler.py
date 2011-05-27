@@ -287,6 +287,7 @@ class PageHandler(tornado.web.RequestHandler):
         if hasattr(self, 'debug') and self.debug.debug_mode:
             self.set_header('Content-Type', 'text/html')
             res = self.debug.get_debug_page(self._status_code)
+            self._status_code = 200
         else:
             res = chunk
 
