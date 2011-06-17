@@ -90,9 +90,13 @@ After *all* the asynchronous calls will complete `responses` will be a list of
 responses corresponding to given urls.
 '''
 from functools import partial
+from types import GeneratorType
 
 class CallbackDispatcher(object):
     def __init__(self, generator):
+        if not isinstance(generator, GeneratorType):
+            return
+
         self.g = generator
         try:
             self.call(self.g.next())
