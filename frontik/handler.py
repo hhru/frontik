@@ -310,12 +310,12 @@ class PageHandler(tornado.web.RequestHandler):
     def get_page(self):
         ''' Эта функция должна быть переопределена в наследнике и
         выполнять актуальную работу хендлера '''
-        pass
+        raise HTTPError(405)
 
     def post_page(self):
         ''' Эта функция должна быть переопределена в наследнике и
         выполнять актуальную работу хендлера '''
-        pass
+        raise HTTPError(405)
 
     ###
 
