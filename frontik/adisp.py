@@ -118,9 +118,12 @@ class CallbackDispatcher(object):
             for count, caller in enumerate(callers):
                 caller(callback=partial(self.callback, results, count, single))
 
-    def callback(self, results, index, single, arg):
+    def callback(self, results, index, single, *args):
         self.call_count -= 1
-        results[index] = arg
+        if len(args) == 1:
+            results[index] = args[0]
+        else:
+            results[index] = args
         if self.call_count > 0:
             return
         self._send_result(results, single)
