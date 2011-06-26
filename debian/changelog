@@ -1,8 +1,12 @@
 frontik (2.9.0~dev) UNRELEASED; urgency=low
 
+  [ Pavel Trukhanov ]
   * New development version
 
- -- Pavel Trukhanov <p.trukhanov@hh.ru>  Mon, 21 Mar 2011 18:30:21 +0300
+  [ Andrey Tatarinov ]
+  * drop python-tornado (< 2) dependency
+
+ --
 
 frontik (2.8.0) unstable; urgency=low
 
