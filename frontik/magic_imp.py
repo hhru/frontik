@@ -4,6 +4,7 @@ import imp
 import functools
 
 import logging
+
 log = logging.getLogger('frontik.imp')
 
 def gen_module_name(app_name, module_name=None):
@@ -22,9 +23,9 @@ class FrontikAppImporter(object):
         module_name_as_path = os.path.join(*module_name.split('.'))
 
         app_module_probable_filenames = [
-            os.path.join(self.root, module_name_as_path, '__init__.py'),
-            os.path.join(self.root, module_name_as_path, 'index.py'),
-            os.path.join(self.root, '{0}.py'.format(module_name_as_path))]
+                os.path.join(self.root, module_name_as_path, '__init__.py'),
+                os.path.join(self.root, module_name_as_path, 'index.py'),
+                os.path.join(self.root, '{0}.py'.format(module_name_as_path))]
 
         return app_module_probable_filenames
 
@@ -44,10 +45,11 @@ class FrontikAppImporter(object):
             if os.path.exists(app_module_filename):
                 break
         else:
-            raise ImportError('{module_name} module was not found in {app_name}, {app_module_filenames} expected'.format(
-                module_name=module_name,
-                app_name=self.name,
-                app_module_filenames=app_module_probable_filenames))
+            raise ImportError(
+                    '{module_name} module was not found in {app_name}, {app_module_filenames} expected'.format(
+                            module_name=module_name,
+                            app_name=self.name,
+                            app_module_filenames=app_module_probable_filenames))
 
         log.debug('importing %s from %s', app_module_name, app_module_filename)
 
@@ -57,7 +59,11 @@ class FrontikAppImporter(object):
         module.__file__ = app_module_filename
         module.frontik_import = functools.partial(self.in_module_import, module)
 
-        execfile(app_module_filename, module.__dict__)
+        try:
+            execfile(app_module_filename, module.__dict__)
+        except:
+            del sys.modules[module.__name__]
+            raise
 
         return module
 
