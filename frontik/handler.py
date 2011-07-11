@@ -15,7 +15,6 @@ import tornado.options
 import tornado.web
 import tornado.ioloop
 
-import frontik.adisp
 import frontik.async
 import frontik.auth
 import frontik.util
@@ -266,7 +265,7 @@ class PageHandler(tornado.web.RequestHandler):
     def post(self, *args, **kw):
         if not self._finished:
             try:
-                frontik.adisp.process(self.post_page)()
+                self.post_page()
             except FinishException:
                 pass
             self.finish_page()
@@ -275,7 +274,7 @@ class PageHandler(tornado.web.RequestHandler):
     def get(self, *args, **kw):
         if not self._finished:
             try:
-                frontik.adisp.process(self.get_page)()
+                self.get_page()
             except FinishException:
                 pass
             self.finish_page()
@@ -284,7 +283,7 @@ class PageHandler(tornado.web.RequestHandler):
     def head(self, *args, **kwargs):
         if not self._finished:
             try:
-                frontik.adisp.process(self.get_page)()
+                self.get_page()
             except FinishException:
                 pass
             self.finish_page()
