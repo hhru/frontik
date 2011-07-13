@@ -64,7 +64,7 @@ def dict_concat(dict1, dict2):
     return dict3
 
 
-ENCODE_TEMPLATE= '--%(boundary)s\r\nContent-Disposition: form-data; name="%(name)s\r\n\r\n%(data)s\r\n'
+ENCODE_TEMPLATE= '--%(boundary)s\r\nContent-Disposition: form-data; name="%(name)s"\r\n\r\n%(data)s\r\n'
 ENCODE_TEMPLATE_FILE = '--%(boundary)s\r\nContent-Disposition: form-data; name="%(name)s"; filename="%(filename)s"\r\nContent-Type: %(contenttype)s\r\n\r\n%(data)s\r\n'
 
 def get_content_type(filename):
