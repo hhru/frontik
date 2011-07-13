@@ -20,7 +20,7 @@ def _encode(s):
 def make_qs(query_args):
     kv_pairs = []
     for (key, val) in query_args.iteritems():
-        if val:
+        if val is not None:
             if isinstance(val, list):
                 for v in val:
                     kv_pairs.append((key, _encode(v)))
