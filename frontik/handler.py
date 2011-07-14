@@ -45,10 +45,9 @@ def _parse_response_xml(response, logger = log):
                          response.effective_url,
                          body_preview)
 
-        return (etree.Element('error', dict(url = response.effective_url, reason = 'invalid XML')),
-                None)
-    return ([frontik.handler_xml._source_comment(response.effective_url), element],
-            element)
+        return etree.Element('error', dict(url = response.effective_url, reason = 'invalid XML'))
+    
+    return element
 
 def _parse_response_json(response, logger = log):
     try:
@@ -63,11 +62,9 @@ def _parse_response_json(response, logger = log):
                          response.effective_url,
                          body_preview)
 
-        return (etree.Element('error', dict(url = response.effective_url, reason = 'invalid JSON')),
-                None)
+        return etree.Element('error', dict(url = response.effective_url, reason = 'invalid JSON'))
 
-    return (frontik.handler_xml._source_comment(response.effective_url),
-            data)
+    return data
 
 default_request_types = {
           re.compile(".*xml.?"): _parse_response_xml,
@@ -465,7 +462,6 @@ class PageHandler(tornado.web.RequestHandler):
 
         if not request_types:
             request_types = default_request_types
-
         result = None
         if response.error:
             placeholder.set_data(self.show_response_error(response))
@@ -473,7 +469,11 @@ class PageHandler(tornado.web.RequestHandler):
             content_type = response.headers.get('Content-Type', '')
             for k, v in request_types.iteritems():
                 if k.search(content_type):
-                    data, result = v(response)
+                    data = v(response)
+                    if isinstance(data, etree._Element) and data.tag == "error":
+                        result = None
+                    else:
+                        result = data
                     placeholder.set_data(data)
                     break
         if callback:
