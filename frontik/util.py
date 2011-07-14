@@ -120,7 +120,7 @@ def make_get_request(url, data=None, headers=None,
         connect_timeout=0.5, request_timeout=2, follow_redirects=True):
     data = {} if data is None else data
     return tornado.httpclient.HTTPRequest(
-                    url=make_url(url, **data),
+                    url=_encode(make_url(url, **data)),
                     follow_redirects=follow_redirects,
                     headers={} if headers is None else headers,
                     connect_timeout=connect_timeout,
@@ -146,14 +146,14 @@ def make_post_request(url, data='', headers=None, files=None,
                 method='POST',
                 headers=headers,
                 follow_redirects=follow_redirects,
-                url=url,
+                url=_encode(url),
                 body=body,
                 connect_timeout=connect_timeout,
                 request_timeout=request_timeout)
 
 def make_put_request(url, data='', headers=None, connect_timeout=0.5, request_timeout=2):
     return tornado.httpclient.HTTPRequest(
-                    url=url,
+                    url=_encode(url),
                     body=make_body(data),
                     method='PUT',
                     headers={} if headers is None else headers,
@@ -163,7 +163,7 @@ def make_put_request(url, data='', headers=None, connect_timeout=0.5, request_ti
 
 def make_delete_request(url, data='', headers=None, connect_timeout=0.5, request_timeout=2):
     return tornado.httpclient.HTTPRequest(
-                    url=url,
+                    url=_encode(url),
                     body=make_body(data),
                     method='DELETE',
                     headers={} if headers is None else headers,
