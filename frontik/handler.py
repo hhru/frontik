@@ -481,7 +481,11 @@ class PageHandler(tornado.web.RequestHandler):
 
     def show_response_error(self, response):
         self.log.warn('%s failed %s (%s)', response.code, response.effective_url, str(response.error))
-        data = etree.Element('error', dict(url = response.effective_url, reason = str(response.error), code = str(response.code)))
+        try:
+            data = etree.Element('error',
+                                 dict(url=response.effective_url, reason=str(response.error), code=str(response.code)))
+        except ValueError:
+            self.log.warn("Could not add information about response head in debug, can't be serialized in xml.")
 
         if response.body:
             try:
