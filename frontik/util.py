@@ -84,11 +84,13 @@ def make_mfd(fields, files):
 
     for name, data in fields.iteritems():
 
-        if not data:
+        if data is None:
             continue
 
         if isinstance(data, list):
             for value in data:
+                if data is None:
+                    continue
                 body += ENCODE_TEMPLATE % {
                             'boundary': BOUNDARY,
                             'name': str(name),

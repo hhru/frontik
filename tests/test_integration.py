@@ -3,13 +3,13 @@ from __future__ import with_statement
 
 import time
 import urllib2
-
 import lxml.etree as etree
 import nose
 
 from integration_util import get_page, FrontikTestInstance
 
 frontik_debug = FrontikTestInstance("./tests/projects/frontik.cfg")
+
 
 def simple_test():
     with frontik_debug.get_page_text("test_app/simple") as html:
@@ -141,6 +141,34 @@ def test_finishexception():
 def test_multi_app_simple():
     with frontik_debug.get_page_xml("test_app/use_lib") as xml:
         assert xml.text == "10"
+
+
+def test_post_url_simple():
+    '''
+    simple post_page and post_url test
+    '''
+    with frontik_debug.instance() as srv_port:
+        xml = etree.fromstring(urllib2.urlopen("http://localhost:{0}/test_app/post_simple/?port={0}".format(srv_port)).read())
+        assert (xml.text == "42")
+
+
+def test_post_url_mfd():
+    '''
+    creating mfd request and url_post it
+    '''
+    with frontik_debug.instance() as srv_port:
+        xml = etree.fromstring(urllib2.urlopen("http://localhost:{0}/test_app/post_url/?port={0}".format(srv_port)).read())
+        print xml.text
+        assert("BAD" not in xml.text)
+
+def test_error_in_cb():
+    '''
+    if parsing error with wrong json or xml we must send None into callback
+    '''
+    with frontik_debug.instance() as srv_port:
+        xml = etree.fromstring(urllib2.urlopen("http://localhost:{0}/test_app/bad_page/?port={0}".format(srv_port)).read())
+        assert (xml.text == "4242")
+
 
 if __name__ == "__main__":
     nose.main()
