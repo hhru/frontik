@@ -45,9 +45,9 @@ def _parse_response_xml(response, logger = log):
                          response.effective_url,
                          body_preview)
 
-        return etree.Element('error', dict(url = response.effective_url, reason = 'invalid XML'))
+        return (False, etree.Element('error', dict(url = response.effective_url, reason = 'invalid XML')))
     
-    return element
+    return (True, element)
 
 def _parse_response_json(response, logger = log):
     try:
@@ -62,9 +62,9 @@ def _parse_response_json(response, logger = log):
                          response.effective_url,
                          body_preview)
 
-        return etree.Element('error', dict(url = response.effective_url, reason = 'invalid JSON'))
+        return (False, etree.Element('error', dict(url = response.effective_url, reason = 'invalid JSON')))
 
-    return data
+    return (True, data)
 
 default_request_types = {
           re.compile(".*xml.?"): _parse_response_xml,
@@ -469,11 +469,11 @@ class PageHandler(tornado.web.RequestHandler):
             content_type = response.headers.get('Content-Type', '')
             for k, v in request_types.iteritems():
                 if k.search(content_type):
-                    data = v(response)
-                    if isinstance(data, etree._Element) and data.tag == "error":
-                        result = None
-                    else:
+                    good_result, data = v(response)
+                    if good_result:
                         result = data
+                    else:
+                        result = None
                     placeholder.set_data(data)
                     break
         if callback:
