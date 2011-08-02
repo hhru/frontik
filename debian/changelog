@@ -1,3 +1,9 @@
+frontik (2.10.0~dev) UNRELEASED; urgency=low
+
+  * New development version
+
+ -- Vasily Katraev (hh.ru) <v.katraev@hh.ru>  Tue, 02 Aug 2011 13:06:52 +0400
+
 frontik (2.9.0) unstable; urgency=low
 
   [ Pavel Trukhanov ]
