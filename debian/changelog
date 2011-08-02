@@ -1,12 +1,34 @@
-frontik (2.9.0~dev) UNRELEASED; urgency=low
+frontik (2.9.0) unstable; urgency=low
 
   [ Pavel Trukhanov ]
-  * New development version
+  * HH-19174 common timeouts multiplier impl 
+  * HH-13736 fix url dispatchin and some new tests 
+  * HH-18871 default suppressed httpclient logger actualized
+  * HH-19227 mutable default values cleaned 
+  * HH-18673 "200 ok" status for debug page always
+
+  [ Ivan Fedorov ]
+  * HH-20190 Import original adisp 
+  * HH-20148 return HTTP-code 405 for not implemented methods in pages
+  * HH-19491 remove old release script
+  * HH-20190 adisp support  
 
   [ Andrey Tatarinov ]
   * drop python-tornado (< 2) dependency
 
- --
+  [ Vasily Katraev ]
+  * HH-20427 Syntax error in magic import + unit test for it 
+  * HH-20629 ENCODE_TEMPLATE fix + test cover and additional tests
+  * HH-20306 enables to add zeroes and False parametres 
+  * HH-20233 xslt error_log pretty logging now 
+  * HH-20594 added messages from xslt processing into log 
+  * HH-20553 removing comments with source from frontik xml
+  * HH-20647 no hardcoded encoding in tornado2.0 - it's in frontik now 
+  * HH-20623 fixed show_response_error
+  * HH-16448 actualizing frontik.cfg - need only to choose application
+  * HH-19723 Fnish exception and error with data processing methods, with tests 
+
+ -- Vasily Katraev (hh.ru) <v.katraev@hh.ru>  Tue, 02 Aug 2011 12:40:43 +0400
 
 frontik (2.8.0) unstable; urgency=low
 
