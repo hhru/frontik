@@ -49,8 +49,8 @@ class AsyncGroup(object):
     def log(self, msg, *args, **kw):
         self.log_fun(self.log_name + ": " + msg, *args, **kw)
 
-    def try_finish(self):
-        if self.counter == 0 and not self.finished:
+    def finish(self):
+        if not self.finished:
             self.finish_time = time.time()
             self.log('done in %.2fms', (self.finish_time - self.start_time)*1000.)
             self.finished = True
@@ -62,6 +62,10 @@ class AsyncGroup(object):
                 # prevent possible cycle references
                 self.finish_cb = None
                 self.log = None
+
+    def try_finish(self):
+        if self.counter == 0:
+            self.finish()
 
     def _inc(self):
         assert(not self.finished)
@@ -75,11 +79,14 @@ class AsyncGroup(object):
         self._inc()
 
         def new_cb(*args, **kwargs):
-            try:
-                self._dec()
-                intermediate_cb(*args, **kwargs)
-            finally:
-                self.try_finish()
+            if not self.finished:
+                try:
+                    self._dec()
+                    intermediate_cb(*args, **kwargs)
+                finally:
+                    self.try_finish()
+            else:
+                self.log("Ignoring response because of already finished group")
 
         return new_cb
 
