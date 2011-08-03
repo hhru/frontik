@@ -26,6 +26,7 @@ import frontik.future as future
 import logging
 log = logging.getLogger('frontik.handler')
 
+xml_parser = etree.XMLParser(strip_cdata=False)
 
 def _parse_response_xml(response, logger = log):
     '''
@@ -34,7 +35,7 @@ def _parse_response_xml(response, logger = log):
     '''
 
     try:
-        element = etree.fromstring(response.body)
+        element = etree.fromstring(response.body, parser=_xml_parser)
     except:
         if len(response.body) > 100:
             body_preview = '{0}...'.format(response.body[:100])

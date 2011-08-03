@@ -25,6 +25,13 @@ def simple_map2fs_test():
     with frontik_debug.get_page_text("re_app/simple") as html:
         assert(not html.find("ok") is None)
 
+def cdata_test():
+    with frontik_debug.instance() as srv_port:
+        with frontik_debug.get_page_text("test_app/cdata/?port=%s" % srv_port) as html:
+            print html
+            assert(not html.find("test") is None)
+            assert(not html.find("CDATA") is None)
+
 def url_types_test_1():
     with frontik_debug.instance() as srv_port:
         assert(not urllib2.urlopen("http://localhost:%s//re_app/not_simple" % srv_port).read().find("ok") is None)
