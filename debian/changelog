@@ -2,6 +2,8 @@ frontik (2.10.0~dev) UNRELEASED; urgency=low
 
   [ Pavel Trukhanov ]
   * cdata stripping disabled
+  * mistypping fixed
+  * response parse error handling refactored
 
   [ Vasily Katraev ]
   * New development version
@@ -213,7 +215,7 @@ frontik (2.0.3) unstable; urgency=low
 
   * Fixing consequences of triple-reverting.
 
- -- Mike Sub <mikesub@mikesub-vaio>  Mon, 13 Sep 2010 18:48:11 +0400
+ -- Mike Sub <mikesub@mikesub.vaio>  Mon, 13 Sep 2010 18:48:11 +0400
 
 frontik (2.0.2) unstable; urgency=low
 

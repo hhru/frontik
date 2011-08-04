@@ -26,47 +26,30 @@ import frontik.future as future
 import logging
 log = logging.getLogger('frontik.handler')
 
-xml_parser = etree.XMLParser(strip_cdata=False)
-
-def _parse_response_xml(response, logger = log):
-    '''
-    return :: (placeholder_data, response_as_xml)
-    None - в случае ошибки парсинга
-    '''
-
+def _parse_response_smth(response, logger = log, parser=None, type=None):
+    _preview_len = 100
     try:
-        element = etree.fromstring(response.body, parser=_xml_parser)
+        data = parser(response.body)
     except:
-        if len(response.body) > 100:
-            body_preview = '{0}...'.format(response.body[:100])
+        if len(response.body) > _preview_len:
+                body_preview = '{0}...'.format(response.body[:_preview_len])
         else:
             body_preview = response.body
 
-        logger.warn('failed to parse XML response from %s data "%s"',
-                         response.effective_url,
-                         body_preview)
-
-        return (False, etree.Element('error', dict(url = response.effective_url, reason = 'invalid XML')))
-    
-    return (True, element)
-
-
-def _parse_response_json(response, logger = log):
-    try:
-        data = json.loads(response.body)
-    except:
-        if len(response.body) > 100:
-            body_preview = '{0}...'.format(response.body[:100])
-        else:
-            body_preview = response.body
-
-        logger.warn('failed to parse JSON response from %s data "%s"',
-                         response.effective_url,
-                         body_preview)
-
-        return (False, etree.Element('error', dict(url = response.effective_url, reason = 'invalid JSON')))
+        logger.exception('failed to parse {2} response from {0} Bad data:"{1}"'.format(
+            response.effective_url, body_preview, type))
+        return (False, etree.Element('error', dict(url = response.effective_url, reason = 'invalid {0}'.format(type))))
 
     return (True, data)
+
+_xml_parser = etree.XMLParser(strip_cdata=False)
+_parse_response_xml =  partial(_parse_response_smth,
+                               parser = lambda x: etree.fromstring(x, parser=_xml_parser),
+                               type = 'XML')
+
+_parse_response_json =  partial(_parse_response_smth,
+                               parser = json.loads,
+                               type = 'JSON')
 
 default_request_types = {
           re.compile(".*xml.?"): _parse_response_xml,
