@@ -17,11 +17,11 @@ def main(config_file="/etc/frontik/frontik.cfg"):
 
     if tornado.options.options.syslog:
         syslog_handler = logging.handlers.SysLogHandler(
-            facility=logging.handlers.SysLogHandler.LOG_DEBUG,
+            facility=logging.handlers.SysLogHandler.facility_names[tornado.options.options.syslog_facility],
             address=tornado.options.options.syslog_address)
         syslog_handler.setFormatter(
             logging.Formatter("[%(asctime)s %(name)s] %(levelname)s %(message)s"))
-        log.addHandler(syslog_handler)
+        logging.getLogger().addHandler(syslog_handler)
 
     for log_channel_name in options.suppressed_loggers:
         logging.getLogger(log_channel_name).setLevel(logging.WARN)

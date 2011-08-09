@@ -4,11 +4,12 @@ frontik (2.10.0~dev) UNRELEASED; urgency=low
   * cdata stripping disabled
   * mistypping fixed
   * response parse error handling refactored
+  * syslog facility option added
 
   [ Vasily Katraev ]
   * New development version
 
- -- Vasily Katraev (hh.ru) <v.katraev@hh.ru>  Tue, 02 Aug 2011 13:06:52 +0400
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Tue, 09 Aug 2011 12:00:52 +0400
 
 frontik (2.9.0) unstable; urgency=low
 
