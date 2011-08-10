@@ -61,7 +61,7 @@ AsyncGroup = frontik.async.AsyncGroup
 
 class HTTPError(tornado.web.HTTPError):
     """An exception that will turn into an HTTP error response."""
-    def __init__(self, status_code, headers = None, log_message=None, *args, **kwargs):
+    def __init__(self, status_code, log_message=None, headers = None, *args, **kwargs):
         if headers is None:
             headers = {}
         for data in ["text", "xml", "xsl"]:
