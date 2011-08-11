@@ -8,26 +8,7 @@ import socket
 import subprocess
 import lxml.etree as etree
 
-
-# XXX взять эти функции из frontik.supervisor, когда он появится
-def is_running(port):
-    try:
-        urllib2.urlopen("http://localhost:%s/status/" % (port,))
-        return True
-    except urllib2.URLError:
-        return False
-    except urllib2.HTTPError:
-        return False
-
-
-def stop_worker(port):
-    try:
-        urllib2.urlopen("http://localhost:%s/stop/" % (port,))
-    except urllib2.URLError:
-        pass
-    except httplib.BadStatusLine:
-        pass
-
+import tornado_util.supervisor as supervisor
 
 def get_page(port, page, xsl=False):
     data = urllib2.urlopen("http://localhost:%s/%s/%s" % (port, page, "?noxsl=true" if not xsl else "" ))
@@ -65,19 +46,19 @@ class FrontikTestInstance(object):
                           "./frontik_srv.py",
                           "--config=%s" % (self.cfg,),
                           "--port=%s" % (port,)])
-        wait_for(lambda: is_running(port))
+        wait_for(lambda: supervisor.is_running(port))
+        try:
+            yield port
+        finally:
+            data = urllib2.urlopen("http://localhost:{0}/ph_count/".format(port)).read().split("\n")
+            ph_count = int(data[0])
+            refs = data[1:]
+            print "ph_count={0}".format(ph_count)
+            print "refs={0}".format(refs)
 
-        yield port
-
-        data = urllib2.urlopen("http://localhost:{0}/ph_count/".format(port)).read().split("\n")
-        ph_count = int(data[0])
-        refs = data[1:]
-        print "ph_count={0}".format(ph_count)
-        print "refs={0}".format(refs)
-
-        stop_worker(port)
-        wait_for(lambda: not(is_running(port)))
-        
+            supervisor.stop_worker(port)
+            wait_for(lambda: not(supervisor.is_running(port)))
+            
 
     @contextlib.contextmanager
     def get_page_xml(self, page_name, xsl=True):
