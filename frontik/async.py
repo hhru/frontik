@@ -61,7 +61,6 @@ class AsyncGroup(object):
 
                 # prevent possible cycle references
                 self.finish_cb = None
-                self.log = None
 
     def try_finish(self):
         if self.counter == 0:
