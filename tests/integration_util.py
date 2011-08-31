@@ -16,11 +16,11 @@ def get_page(port, page, xsl=False):
     return data
 
 
-def wait_for(fun, n=10):
+def wait_for(fun, n=50):
     for i in range(n):
         if fun():
             return
-        time.sleep(0.5)
+        time.sleep(0.1)
 
     assert(fun())
 
