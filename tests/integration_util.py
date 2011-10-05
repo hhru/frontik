@@ -5,9 +5,9 @@ import urllib2
 import contextlib
 import httplib
 import socket
-import subprocess
 import lxml.etree as etree
 
+from tornado.options import parse_config_file
 import tornado_util.supervisor as supervisor
 
 def get_page(port, page, xsl=False):
@@ -28,7 +28,8 @@ def wait_for(fun, n=50):
 class FrontikTestInstance(object):
     def __init__(self, cfg="./tests/projects/frontik.cfg"):
         self.cfg = cfg
-    
+        parse_config_file(self.cfg)
+
     @contextlib.contextmanager
     def instance(self):
         for port in xrange(9000, 10000):
@@ -42,10 +43,7 @@ class FrontikTestInstance(object):
         else:
             raise AssertionError("no empty port in 9000-10000 for frontik test instance")
 
-        subprocess.Popen(["python",
-                          "./frontik_srv.py",
-                          "--config=%s" % (self.cfg,),
-                          "--port=%s" % (port,)])
+        supervisor.start_worker("./dev_run.py", self.cfg, port)
         wait_for(lambda: supervisor.is_running(port))
         try:
             yield port
@@ -58,7 +56,7 @@ class FrontikTestInstance(object):
 
             supervisor.stop_worker(port)
             wait_for(lambda: not(supervisor.is_running(port)))
-            
+            supervisor.rm_pidfile(port)
 
     @contextlib.contextmanager
     def get_page_xml(self, page_name, xsl=True):
