@@ -21,26 +21,6 @@ log = logging.getLogger('frontik.server')
 log_xsl = logging.getLogger('frontik.handler.xsl')
 log_fileloader = logging.getLogger('frontik.server.fileloader')
 
-# xsl global functions
-def http_header_out(*args, **kwargs):
-    log_xsl.debug('x:http-header-out called')
-
-def set_http_status(*args, **kwargs):
-    log_xsl.debug('x:set-http-status called')
-
-def x_urlencode(context, params):
-    log_xsl.debug('x:urlencode called')
-    if params:
-        return urllib.quote(params[0].text.encode("utf8") or "")
-
-# TODO cleanup this
-ns = etree.FunctionNamespace('http://www.yandex.ru/xscript')
-ns.prefix = 'x'
-ns['http-header-out'] = http_header_out
-ns['set-http-status'] = set_http_status
-ns['urlencode'] = x_urlencode
-
-
 class FileCache(object):
     def __init__(self, root_dir, load_fn):
         '''
