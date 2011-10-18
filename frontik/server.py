@@ -10,7 +10,7 @@ from tornado.options import options
 import frontik.app
 import frontik.options
 
-from frontik.sysloghandler import  SysLogHandler
+from frontik.util import SysLogHandler
 
 log = logging.getLogger("frontik.server")
 
