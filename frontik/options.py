@@ -8,6 +8,7 @@ tornado.options.define('handlers_count', 100, int)
 tornado.options.define('syslog_address', "/dev/log", str)
 tornado.options.define('syslog', False, bool)
 tornado.options.define('syslog_facility', 'user', str)
+tornado.options.define('syslog_msg_max_length', 2048, int)
 
 tornado.options.define('xml_debug', False, bool)
 tornado.options.define('debug', False, bool)

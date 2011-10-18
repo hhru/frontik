@@ -10,15 +10,18 @@ from tornado.options import options
 import frontik.app
 import frontik.options
 
+from frontik.sysloghandler import  SysLogHandler
+
 log = logging.getLogger("frontik.server")
 
 def main(config_file="/etc/frontik/frontik.cfg"):
     tornado_util.server.bootstrap(config_file=config_file)
 
     if tornado.options.options.syslog:
-        syslog_handler = logging.handlers.SysLogHandler(
-            facility=logging.handlers.SysLogHandler.facility_names[tornado.options.options.syslog_facility],
-            address=tornado.options.options.syslog_address)
+        syslog_handler =SysLogHandler(
+            facility=SysLogHandler.facility_names[tornado.options.options.syslog_facility],
+            address=tornado.options.options.syslog_address,
+            msg_max_length=tornado.options.options.syslog_msg_max_length)
         syslog_handler.setFormatter(
             logging.Formatter("[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s"))
         logging.getLogger().addHandler(syslog_handler)
