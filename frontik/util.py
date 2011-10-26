@@ -188,7 +188,7 @@ def asciify_url(url):
 MIN_MSG_LENGTH_LIMIT = 100
 STD_MSG_LENGTH_LIMIT = 2048
 
-class SysLogHandler(logging.handlers.SysLogHandler):
+class MaxLenSysLogHandler(logging.handlers.SysLogHandler):
     """
     Extension of standard SysLogHandler with possibility to limit log message sizes
     """
@@ -198,9 +198,13 @@ class SysLogHandler(logging.handlers.SysLogHandler):
             self.max_length = msg_max_length
         else:
             self.max_length = STD_MSG_LENGTH_LIMIT
-        super(SysLogHandler, self).__init__(*args, **kwargs)
+        super(MaxLenSysLogHandler, self).__init__(*args, **kwargs)
 
     def format(self, record):
-        prio_len = len('%d' % self.encodePriority(self.facility, self.mapPriority(record.levelname))) + 2
-        return super(SysLogHandler, self).format(record)[:(self.max_length - prio_len)]
+        """
+        prio_length is length of '<prio>' header which is attached to message before sending to syslog
+        so we need to subtract it from max_length to guarantee that length of resulting message won't be greater than max_length
+        """
+        prio_length = len('%d' % self.encodePriority(self.facility, self.mapPriority(record.levelname))) + 2 # 2 is length of angle brackets
+        return super(MaxLenSysLogHandler, self).format(record)[:(self.max_length - prio_length)]
 
