@@ -200,33 +200,7 @@ class SysLogHandler(logging.handlers.SysLogHandler):
             self.max_length = STD_MSG_LENGTH_LIMIT
         super(SysLogHandler, self).__init__(*args, **kwargs)
 
-    def emit(self, record):
-        """
-        Like original SysLogHandler.emit(), but truncates message before sending it to the syslog
-        """
-        msg = self.format(record) + '\000'
-        prio = '<%d>' % self.encodePriority(self.facility,
-                                            self.mapPriority(record.levelname))
-        if type(msg) is unicode:
-            msg = msg.encode('utf-8')
-            if codecs:
-                msg = codecs.BOM_UTF8 + msg
-        msg = prio + msg
+    def format(self, record):
+        prio_len = len('%d' % self.encodePriority(self.facility, self.mapPriority(record.levelname))) + 2
+        return super(SysLogHandler, self).format(record)[:(self.max_length - prio_len)]
 
-        msg = msg[:self.max_length]
-
-        try:
-            if self.unixsocket:
-                try:
-                    self.socket.send(msg)
-                except socket.error:
-                    self._connect_unixsocket(self.address)
-                    self.socket.send(msg)
-            elif self.socktype == socket.SOCK_DGRAM:
-                self.socket.sendto(msg, self.address)
-            else:
-                self.socket.sendall(msg)
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except:
-            self.handleError(record)
