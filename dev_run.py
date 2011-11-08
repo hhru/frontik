@@ -1,7 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-import tornado.options
 
 from frontik.server import main
 
