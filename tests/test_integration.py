@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import with_statement
-
+import urllib
 import time
 import urllib2
 import lxml.etree as etree
@@ -195,7 +195,10 @@ def test_exception_text():
     throwing exception with plaintext
     '''
     with frontik_debug.instance() as srv_port:
-        answer = urllib2.urlopen("http://localhost:{0}/test_app/test_exception_text/?port={0}".format(srv_port)).read()
+        answer = urllib.urlopen("http://localhost:{0}/test_app/test_exception_text/?port={0}".format(srv_port))
+        code = answer.code
+        answer = answer.read()
+        assert(code == 403)
         assert(answer == "This is just a plain text")
 
 def test_exception_xml_xsl():
@@ -203,8 +206,11 @@ def test_exception_xml_xsl():
     throwing exception with xml and xsl
     '''
     with frontik_debug.instance() as srv_port:
-        html = urllib2.urlopen("http://localhost:{0}/test_app/test_exception_xml_xsl".format(srv_port)).read()
-        assert (html == "<html><body><h1>ok</h1></body></html>\n")
+        answer = urllib.urlopen("http://localhost:{0}/test_app/test_exception_xml_xsl".format(srv_port))
+        code = answer.code
+        answer = answer.read()
+        assert(code == 302)
+        assert (answer == "<html><body><h1>ok</h1></body></html>\n")
 
 
 if __name__ == "__main__":
