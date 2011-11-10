@@ -17,6 +17,7 @@ from frontik import etree
 from tornado.httpserver import HTTPRequest
 import urlparse
 
+
 log = logging.getLogger('frontik.server')
 
 import frontik.handler as handler
@@ -25,13 +26,26 @@ import functools
 class VersionHandler(tornado.web.RequestHandler):
     def get(self):
         self.set_header('Content-Type', 'text/xml')
+        versions = etree.Element("versions")
 
-        project_el = etree.Element("project", name="frontik")
-        version_el = etree.Element("version")
-        project_el.append(version_el)
+        from version import version
+        etree.SubElement(versions, "frontik").text = version
 
-        version_el.text = __version__
-        self.write(frontik.doc.etree_to_xml(project_el))
+        import frontik.options
+        application_versions = etree.Element("applications")
+
+        for path, app in options.urls:
+            app_info = etree.Element("application", name=repr(app), path = path)
+            try:
+                application = app.ph_globals.config.version
+                app_info.extend(list(application))
+            except:
+                etree.SubElement(app_info, "version").text = "app doesn't support version"
+            etree.SubElement(app_info, "initialized_wo_error").text = str(app.initialized_wo_error)
+            application_versions.append(app_info)
+            
+        versions.append(application_versions)
+        self.write(frontik.doc.etree_to_xml(versions))
 
 
 class StatusHandler(tornado.web.RequestHandler):
