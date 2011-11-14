@@ -146,7 +146,6 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             handler_name = self.request_id
         self.log = PageLogger(handler_name, request.path or request.uri, self.handler_started,)
-
         tornado.web.RequestHandler.__init__(self, application, request, logger = self.log, **kwargs)
 
         if ph_globals is None:
@@ -162,7 +161,7 @@ class PageHandler(tornado.web.RequestHandler):
 
     def prepare(self):
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
-
+        self.log.info('page module: %s', self.__module__)
         self.debug = frontik.handler_xml_debug.PageHandlerDebug(self)
 
         self.xml = frontik.handler_xml.PageHandlerXML(self)
@@ -270,12 +269,12 @@ class PageHandler(tornado.web.RequestHandler):
     def get_page(self):
         ''' Эта функция должна быть переопределена в наследнике и
         выполнять актуальную работу хендлера '''
-        raise HTTPError(405)
+        raise HTTPError(405, header={"Allow": "POST"})
 
     def post_page(self):
         ''' Эта функция должна быть переопределена в наследнике и
         выполнять актуальную работу хендлера '''
-        raise HTTPError(405)
+        raise HTTPError(405, headers={"Allow": "GET"})
 
     ###
 
