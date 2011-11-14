@@ -248,6 +248,16 @@ class PageHandler(tornado.web.RequestHandler):
             self.get_page()
             self.finish_page()
 
+    def delete(self, *args, **kwargs):
+        raise HTTPError(405, headers={"Allow": "GET, POST"})
+
+    def put(self, *args, **kwargs):
+        raise HTTPError(405, headers={"Allow": "GET, POST"})
+
+    def options(self, *args, **kwargs):
+        raise HTTPError(405, headers={"Allow": "GET, POST"})
+
+
     def finish(self, chunk = None):
         if hasattr(self, 'whc_limit'):
             self.whc_limit.release()
