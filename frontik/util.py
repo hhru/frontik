@@ -4,7 +4,7 @@ import codecs
 import os
 import mimetools
 import mimetypes
-import logging
+import logging.handlers
 import socket
 
 from urllib import urlencode
