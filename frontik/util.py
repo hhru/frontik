@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+import codecs
 
 import os
 import mimetools
 import mimetypes
+import logging
+import socket
 
 from urllib import urlencode
 
@@ -181,3 +184,27 @@ def _asciify_url_char(c):
 
 def asciify_url(url):
     return ''.join(map(_asciify_url_char, url))
+
+MIN_MSG_LENGTH_LIMIT = 100
+STD_MSG_LENGTH_LIMIT = 2048
+
+class MaxLenSysLogHandler(logging.handlers.SysLogHandler):
+    """
+    Extension of standard SysLogHandler with possibility to limit log message sizes
+    """
+
+    def __init__(self, msg_max_length = STD_MSG_LENGTH_LIMIT, *args, **kwargs):
+        if msg_max_length >= MIN_MSG_LENGTH_LIMIT:
+            self.max_length = msg_max_length
+        else:
+            self.max_length = STD_MSG_LENGTH_LIMIT
+        super(MaxLenSysLogHandler, self).__init__(*args, **kwargs)
+
+    def format(self, record):
+        """
+        prio_length is length of '<prio>' header which is attached to message before sending to syslog
+        so we need to subtract it from max_length to guarantee that length of resulting message won't be greater than max_length
+        """
+        prio_length = len('%d' % self.encodePriority(self.facility, self.mapPriority(record.levelname))) + 2 # 2 is length of angle brackets
+        return super(MaxLenSysLogHandler, self).format(record)[:(self.max_length - prio_length)]
+
