@@ -10,7 +10,6 @@ import lxml.etree as etree
 
 import tornado_util.supervisor as supervisor
 import tornado.options
-import frontik.options
 
 def get_page(port, page, xsl=False):
     url = "http://localhost:{0}/{1}{2}".format(port, page,

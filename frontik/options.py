@@ -17,6 +17,4 @@ tornado.options.define('debug_password', None, str)
 tornado.options.define('debug_xsl', '/usr/lib/frontik/debug.xsl', str)
 
 tornado.options.define('timeout_multiplier', 1.0, float)
-tornado.options.define('logfile_template', "", str)
-tornado.options.define('pidfile_template', "", str)
 
