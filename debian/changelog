@@ -1,15 +1,23 @@
-frontik (2.10.0~dev) UNRELEASED; urgency=low
+frontik (2.10.0) unstable; urgency=low
 
   [ Pavel Trukhanov ]
   * cdata stripping disabled
   * mistypping fixed
   * response parse error handling refactored
   * syslog facility option added
+  * fast_tests
 
   [ Vasily Katraev ]
-  * New development version
+  * HH-22355 headers for allowed methods added and some logging
+  * HH-22355 405 with allow headers for put, options, delete added
+  * HH-19902 version handler and  version bump added
+  * HH-22780 tests for exceptions with any codes
+  * HH-21436 cleanup xscript functions
 
- -- Pavel Trukhanov <p.trukhanov@hh.ru>  Tue, 09 Aug 2011 12:00:52 +0400
+  [ Georgiy Danschin ]
+  * HH-16162 Syslog message length maximum limit
+
+ -- Vasily Katraev (hh.ru) <v.katraev@hh.ru>  Tue, 15 Nov 2011 14:13:59 +0300
 
 frontik (2.9.0) unstable; urgency=low
 
@@ -48,33 +56,6 @@ frontik (2.8.0) unstable; urgency=low
   * frontik 2.8.0 with new tornado and url rewrites
 
  -- Pavel Trukhanov <p.trukhanov@hh.ru>  Mon, 21 Mar 2011 18:29:17 +0300
-
-frontik (2.8.0~dev) UNRELEASED; urgency=low
-
-  [ Andrey Tatarinov ]
-  * Dependency from new tornado >= 1.2.1~hh1
-  * Adapt to the new tornado
-  * Dependency from new tornado
-  * Prematurely end Handler.prepare on auth error with exception
-
-  [ Pavel Trukhanov ]
-  * HH-13736 url-rewrite
-
-  [ Alexander Shaposhnikov ]
-  * HH-18153 tornado error codes are correctly forwarded.
-
-  [ Ivan Fedorov ]
-  * New development version
-  * Restore single-thread mode by default
-
-  [ Andrew Sumin ]
-  * Now you can debug any xml node
-  * If we have 500 but have "noxsl" in args without "debug" in args apply xsl for debug info anyway. Fixed
-
-  [ Pavel Trukhanov ]
-  * HH-16259 verbose 404 logging in case 'application not found'
-
- -- Pavel Trukhanov <p.trukhanov@hh.ru>  Mon, 21 Mar 2011 18:26:10 +0300
 
 frontik (2.7.1) unstable; urgency=low
 
