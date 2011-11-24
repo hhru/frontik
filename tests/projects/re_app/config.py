@@ -10,6 +10,8 @@ def post(self, data, cb):
     
 postprocessor = post
 
+XSL_cache_limit = 1
+
 from frontik.app import Map2ModuleName
 frontik_import("pages")
 frontik_import("pages.simple")
