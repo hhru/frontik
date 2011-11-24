@@ -1,8 +1,9 @@
-frontik (2.10.0~dev) karmic; urgency=low
+frontik (2.11.0~dev) unstable; urgency=low
 
+  [ Vasily Katraev ]
   * 
 
- -- Vasily Katraev <v.katraev@hh.ru>  Tue, 15 Nov 2011 14:29:59 +0300
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Thu, 24 Nov 2011 19:15:21 +0300
 
 frontik (2.10.0) unstable; urgency=low
 
