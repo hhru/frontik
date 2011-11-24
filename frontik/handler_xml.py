@@ -22,15 +22,43 @@ log_xsl = logging.getLogger('frontik.handler.xsl')
 log_fileloader = logging.getLogger('frontik.server.fileloader')
 
 class FileCache(object):
-    def __init__(self, root_dir, load_fn):
+    class LimitedDict(dict):
+        def __init__(self, max_len=None, step=None):
+            dict.__init__(self)
+            self._order = []
+            self.max_len = max_len
+            self.step = step
+
+        def __getitem__(self, key):
+            val = dict.__getitem__(self, key)
+            if self.max_len:
+                if self.step:
+                    ind = self._order.index(key)
+                    self._order.remove(key)
+                    self._order.insert(ind+self.step, key)
+                else:
+                    self._order.remove(key)
+                    self._order.append(key)
+            return val
+
+        def __setitem__(self, key, value):
+            dict.__setitem__(self, key, value)
+            if self.max_len:
+                if self.step:
+                    self._order.insert(self.step, key)
+                else:
+                    self._order.append(key)
+            if self.max_len and len(self._order) > self.max_len:
+                self.pop(self._order.pop(0))
+            
+    def __init__(self, root_dir, load_fn, max_len=None, step=None):
         '''
         load_fn :: filename -> (status, result)
         '''
 
         self.root_dir = root_dir
         self.load_fn = load_fn
-
-        self.cache = dict()
+        self.cache = FileCache.LimitedDict(max_len, step)
 
     def load(self, filename):
         if filename in self.cache:
@@ -96,9 +124,9 @@ class InvalidOptionCache(object):
         raise Exception('{0} option is undefined'.format(self.option))
 
 
-def make_file_cache(option_name, option_value, fun):
+def make_file_cache(option_name, option_value, fun, max_len=None, step=None):
     if option_value:
-        return FileCache(option_value, fun)
+        return FileCache(option_value, fun, max_len, step)
     else:
         return InvalidOptionCache(option_name)
 
@@ -108,8 +136,18 @@ class PageHandlerXMLGlobals(object):
         for schema, path in getattr(config, 'XSL_SCHEMAS', {}).items():
             frontik.xml_util.parser.resolvers.add(
                 frontik.xml_util.PrefixResolver(schema, path))
-        self.xml_cache = make_file_cache('XML_root', getattr(config, 'XML_root', None), xml_from_file)
-        self.xsl_cache = make_file_cache('XSL_root', getattr(config, 'XSL_root', None), xsl_from_file)
+
+        self.xml_cache = make_file_cache('XML_root',
+                                         getattr(config, 'XML_root', None),
+                                         xml_from_file,
+                                         getattr(config, 'XML_cache_limit', None),
+                                         getattr(config, 'XML_cache_step', None))
+
+        self.xsl_cache = make_file_cache('XSL_root',
+                                         getattr(config, 'XSL_root', None),
+                                         xsl_from_file,
+                                         getattr(config, 'XSL_cache_limit', None),
+                                         getattr(config, 'XSL_cache_step', None))
 
 
 class PageHandlerXML(object):
@@ -171,7 +209,8 @@ class PageHandlerXML(object):
             result = str(self.transform(self.doc.to_etree_element()))
             self.log.stage_tag("xsl")
             self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
-            self.log.debug('xsl messages: %s' % " ".join(map("message: {0.message}".format, self.transform.error_log)))
+            if len(self.transform.error_log):
+                self.log.debug('xsl messages: %s' % " ".join(map("message: {0.message}".format, self.transform.error_log)))
             return result
         except:
             self.log.exception('failed transformation with XSL %s' % self.transform_filename)
