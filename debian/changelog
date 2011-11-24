@@ -6,6 +6,9 @@ frontik (2.11.0~dev) unstable; urgency=low
   [ Georgiy Danschin ]
   * HH-23510 syslog fix 
 
+  [ Pavel Trukhanov ]
+  * cache limit per app impl
+
  -- Pavel Trukhanov <p.trukhanov@hh.ru>  Thu, 24 Nov 2011 19:15:21 +0300
 
 frontik (2.10.0) unstable; urgency=low
