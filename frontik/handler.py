@@ -161,8 +161,8 @@ class PageHandler(tornado.web.RequestHandler):
 
     def prepare(self):
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
-        self.log.info('page module: %s', self.__module__)
         self.debug = frontik.handler_xml_debug.PageHandlerDebug(self)
+        self.log.info('page module: %s', self.__module__)
 
         self.xml = frontik.handler_xml.PageHandlerXML(self)
         self.doc = self.xml.doc # backwards compatibility for self.doc.put
