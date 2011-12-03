@@ -18,6 +18,7 @@ import tornado.ioloop
 import frontik.async
 import frontik.auth
 import frontik.util
+import frontik.jobs
 import frontik.handler_xml
 import frontik.handler_whc_limit
 import frontik.handler_xml_debug
@@ -130,7 +131,7 @@ class PageHandlerGlobals(object):
 
         self.http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(max_clients = 200, max_simultaneous_connections = 200)
 
-
+        self.executor = frontik.jobs.executor()
 
 class PageHandler(tornado.web.RequestHandler):
 
@@ -138,6 +139,9 @@ class PageHandler(tornado.web.RequestHandler):
     def __init__(self, application, request, ph_globals=None, **kwargs):
         self.handler_started = time.time()
         self._prepared = False
+
+        if ph_globals is None:
+            raise Exception("%s need to have ph_globals" % PageHandler)
 
         self.name = self.__class__.__name__
         self.request_id = request.headers.get('X-Request-Id', stats.next_request_id())
@@ -147,9 +151,6 @@ class PageHandler(tornado.web.RequestHandler):
             handler_name = self.request_id
         self.log = PageLogger(handler_name, request.path or request.uri, self.handler_started,)
         tornado.web.RequestHandler.__init__(self, application, request, logger = self.log, **kwargs)
-
-        if ph_globals is None:
-            raise Exception("%s need to have ph_globals" % PageHandler)
 
         self.ph_globals = ph_globals
         self.config = self.ph_globals.config
@@ -488,10 +489,13 @@ class PageHandler(tornado.web.RequestHandler):
             res = None
 
             if self.text is not None:
-                res = self._prepare_finish_plaintext()
+                self._finish_with_postprocessor(self._prepare_finish_plaintext())
             else:
-                res = self.xml._finish_xml()
+                self.xml.finish_xml(self.async_callback(self._finish_with_postprocessor))
+        else:
+            self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
+    def _finish_with_postprocessor(self, res):
             if hasattr(self.config, 'postprocessor'):
                 if self.apply_postprocessor:
                     self.log.debug('applying postprocessor')
@@ -501,9 +505,6 @@ class PageHandler(tornado.web.RequestHandler):
                     self.finish(res)
             else:
                 self.finish(res)
-
-        else:
-            self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
     def _wait_postprocessor(self, start_time, data):
         self.log.stage_tag("postprocess")

@@ -1,4 +1,4 @@
-frontik (2.11.0~dev) unstable; urgency=low
+frontik (2.11.0~dev.threaded.xslt) unstable; urgency=low
 
   [ Vasily Katraev ]
   * 
@@ -8,6 +8,7 @@ frontik (2.11.0~dev) unstable; urgency=low
 
   [ Pavel Trukhanov ]
   * cache limit per app impl
+  * applying xslt in thread pool
 
  -- Pavel Trukhanov <p.trukhanov@hh.ru>  Thu, 24 Nov 2011 19:15:21 +0300
 
