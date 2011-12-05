@@ -192,37 +192,43 @@ class PageHandlerXML(object):
         except:
             self._set_xsl_log_and_raise('XSL transformation error with file {0}')
 
-    def _finish_xml(self):
+    def finish_xml(self, cb):
         if self.apply_xsl and self.transform:
-            return self._prepare_finish_with_xsl()
+            return self._prepare_finish_with_xsl(cb)
         else:
-            return self._prepare_finish_wo_xsl()
+            return self._prepare_finish_wo_xsl(cb)
 
-    def _prepare_finish_with_xsl(self):
+    def _prepare_finish_with_xsl(self, cb):
         self.log.debug('finishing with xsl')
 
         if not self.handler._headers.get("Content-Type", None):
             self.handler.set_header('Content-Type', 'text/html')
 
-        try:
+        def job():
             t = time.time()
-            result = str(self.transform(self.doc.to_etree_element()))
+            return t, str(self.transform(self.doc.to_etree_element()))
+
+        def success_cb(resp):
+            t, result = resp
             self.log.stage_tag("xsl")
             self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
             if len(self.transform.error_log):
                 self.log.debug('xsl messages: %s' % " ".join(map("message: {0.message}".format, self.transform.error_log)))
-            return result
-        except:
+            cb(result)
+
+        def exception_cb(e):
             self.log.exception('failed transformation with XSL %s' % self.transform_filename)
             self.log.exception('error_log entries: %s' % "\n".join(map("message from line: {0.line}, column: {0.column}, \
             domain: {0.domain_name}, type: {0.type_name}\
             level: {0.level_name}, file : {0.filename}, message: {0.message}".format, self.transform.error_log)))
-            raise
+            raise e
 
-    def _prepare_finish_wo_xsl(self):
+        self.handler.ph_globals.executor.add_job(job, self.handler.async_callback(success_cb), self.handler.async_callback(exception_cb))
+
+    def _prepare_finish_wo_xsl(self, cb):
         self.log.debug('finishing wo xsl')
 
         # В режиме noxsl мы всегда отдаем xml.
         self.handler.set_header('Content-Type', 'application/xml')
 
-        return self.doc.to_string()
+        cb(self.doc.to_string())
