@@ -1,7 +1,7 @@
-frontik (2.11.0~dev.threaded.xslt) unstable; urgency=low
+frontik (2.11.0) unstable; urgency=low
 
   [ Vasily Katraev ]
-  * 
+  * python 2.7 support
 
   [ Georgiy Danschin ]
   * HH-23510 syslog fix 
@@ -10,7 +10,7 @@ frontik (2.11.0~dev.threaded.xslt) unstable; urgency=low
   * cache limit per app impl
   * applying xslt in thread pool
 
- -- Pavel Trukhanov <p.trukhanov@hh.ru>  Thu, 24 Nov 2011 19:15:21 +0300
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Thu, 22 Dec 2011 17:14:07 +0300
 
 frontik (2.10.0) unstable; urgency=low
 
