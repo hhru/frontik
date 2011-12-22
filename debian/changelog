@@ -1,9 +1,10 @@
-frontik (2.11.1) unstable; urgency=low
+frontik (2.12.0~dev) unstable; urgency=low
 
+  * new itearation
   * copy.deepcopy on xml before xslt
   * queue.get with tiemout in jobs.py
 
- -- Pavel Trukhanov <p.trukhanov@hh.ru>  Sun, 11 Mar 2012 12:25:29 +0400
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Thu, 22 Dec 2011 17:24:43 +0300
 
 frontik (2.11.0) unstable; urgency=low
 
