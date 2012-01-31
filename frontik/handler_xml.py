@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import functools
+import copy
 import os.path
 import threading
 import time
@@ -206,7 +207,7 @@ class PageHandlerXML(object):
 
         def job():
             t = time.time()
-            return t, str(self.transform(self.doc.to_etree_element()))
+            return t, str(self.transform(copy.deepcopy(self.doc.to_etree_element())))
 
         def success_cb(resp):
             t, result = resp

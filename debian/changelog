@@ -1,3 +1,9 @@
+frontik (2.11.1~dev.copy.deep) unstable; urgency=low
+
+  * try copy.deepcopy on xml before xslt
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Tue, 31 Jan 2012 18:19:48 +0400
+
 frontik (2.11.0) unstable; urgency=low
 
   [ Vasily Katraev ]
