@@ -40,10 +40,14 @@
             <xsl:if test="$highlight-text != '' and contains(@msg, $highlight-text)">m-textentry__head_highlight</xsl:if>
         </xsl:variable>
 
+        <xsl:variable name="loglevel">
+            <xsl:value-of select="@levelname"/>
+        </xsl:variable>
+
         <div class="textentry">
-            <pre class="textentry__head {$highlight}">
+            <pre class="textentry__head {$highlight} {$loglevel}">
                 <span title="{@msg}">
-                    <xsl:value-of select="@msg"/>
+                    <xsl:value-of select="concat($loglevel,' ',@msg)"/>
                 </span>
             </pre>
             <xsl:apply-templates select="@exc_text"/>
@@ -287,6 +291,18 @@
             }
             .error{
                 color:red;
+            }
+            .ERROR{
+                color:#c00;
+            }
+            .WARNING{
+                color:#E80;
+            }
+            .INFO{
+                color:#060;
+            }
+            .DEBUG{
+                color:#00B;
             }
             .delimeter{
                 margin-top:10px;
