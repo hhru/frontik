@@ -216,12 +216,12 @@ class PageHandlerXML(object):
             if len(self.transform.error_log):
                 map(self.log.info, (map("xsl message: {0.message}".format, self.transform.error_log)))
             cb(result)
-            
+
         def exception_cb(e):
-            self.log.exception('failed transformation with XSL %s' % self.transform_filename)
-            self.log.exception('error_log entries: %s' % "\n".join(map("message from line: {0.line}, column: {0.column}, \
-            domain: {0.domain_name}, type: {0.type_name}\
-            level: {0.level_name}, file : {0.filename}, message: {0.message}".format, self.transform.error_log)))
+            self.log.error('failed transformation with XSL %s', self.transform_filename)
+            self.log.error('XSL error log entries:\n%s' % "\n".join(map(
+                'File "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
+                .format, self.transform.error_log)))
             raise e
 
         self.handler.ph_globals.executor.add_job(job, self.handler.async_callback(success_cb), self.handler.async_callback(exception_cb))

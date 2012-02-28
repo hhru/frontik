@@ -7,21 +7,33 @@ import tornado.options
 import logging
 log = logging.getLogger('frontik.jobs')
 
-def work(func, cb, exception_cb):
-    try:
-        result = func()
-        tornado.ioloop.IOLoop.instance().add_callback(functools.partial(cb, result))
-    except Exception, e:
-        tornado.ioloop.IOLoop.instance().add_callback(functools.partial(exception_cb, e))
+def _schedule_cb_result(cb, result):
+    tornado.ioloop.IOLoop.instance().add_callback(functools.partial(cb, result))
+
+return_result = _schedule_cb_result
+reraise = _schedule_cb_result
 
 def queue_worker(queue):
     while True:
-        (prio, (func, cb, exception_cb)) = queue.get()
-        work(func, cb, exception_cb)
+        try:
+            (prio, (func, cb, exception_cb)) = queue.get(timeout=10)
+        except Queue.Empty:
+            log.warn('No job in 10 secs')
+            continue
+        except Exception, e:
+            log.exception('Cannot get new job')
+            continue
+
+        try:
+            return_result(cb, func())
+        except Exception, e:
+            log.exception('Cannot perform job')
+            reraise(exception_cb, e)
 
 class ThreadPoolExecutor(object):
     count = 0
-    def __init__(self, pool_size=5):
+    def __init__(self, pool_size):
+        assert pool_size > 0
         self.log = log
         self.events = Queue.PriorityQueue()
 
@@ -33,8 +45,12 @@ class ThreadPoolExecutor(object):
         self.log.debug('active threads count = ' + str(threading.active_count()))
 
     def add_job(self, func, cb, exception_cb, prio=10):
-        ThreadPoolExecutor.count += 1
-        self.events.put(((prio, ThreadPoolExecutor.count), (func, cb, exception_cb)))
+        try:
+            ThreadPoolExecutor.count += 1
+            self.events.put(((prio, ThreadPoolExecutor.count), (func, cb, exception_cb)))
+        except Exception, e:
+            log.exception('Cannot put job to queue')
+            reraise(exception_cb, e)
 
 _executor =  None
 def executor():
