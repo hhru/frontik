@@ -92,6 +92,17 @@ def test_xsl_fail():
             assert(any(map(lambda x: 'XSLTApplyError' in x, e.readlines())))
             assert(e.code == 500)
 
+def test_xsl_parse_fail():
+    # this test became bizarre because of Firefox browser, see handler_xml_debug.py
+    with frontik_debug.instance() as srv_port:
+        try:
+            _ = urllib2.urlopen('http://localhost:{0}/test_app/xsl_parse_fail'.format(srv_port)).info()
+            raise Exception("get_page should`ve failed with HTTPError 500")
+        except urllib2.HTTPError, e:
+            assert(any(map(lambda x: 'XSLTParseError' in x, e.readlines())))
+            assert(e.code == 500)
+
+
 
 def test_content_type_wo_xsl():
     with frontik_debug.instance() as srv_port:
