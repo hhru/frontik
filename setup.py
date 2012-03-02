@@ -6,7 +6,7 @@ setup(
     description = "Frontik is a simple xml aggregator for Yandex-like page generation workflow",
     long_description = open("README.md").read(),
     url = "https://github.com/hhru/frontik",
-    packages = ["frontik"],
+    packages = ["frontik", "frontik/testing", "frontik/testing/pages"],
     scripts = ["scripts/frontik"],
     package_data = {
         "frontik": ["*.xsl"],

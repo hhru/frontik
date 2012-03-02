@@ -3,9 +3,7 @@
 import time
 import urllib2
 import contextlib
-import httplib
 import socket
-import subprocess
 import lxml.etree as etree
 
 import tornado_util.supervisor as supervisor
@@ -15,7 +13,6 @@ def get_page(port, page, xsl=False):
     url = "http://localhost:{0}/{1}{2}".format(port, page,
                                                ("/?" if "?" not in page else "&") + ("noxsl=true" if not xsl else ""))
     data = urllib2.urlopen(url)
-    print url
     return data
 
 
@@ -74,13 +71,13 @@ class FrontikTestInstance(object):
     def get_page_xml(self, page_name, xsl=True):
         with self.instance() as srv_port:
             data = get_page(srv_port, page_name, xsl).read()
-    
+
             try:
                 res = etree.fromstring(data)
             except:
                 print "failed to parse xml: \"%s\"" % (data,)
                 raise
-    
+
             yield res
 
     @contextlib.contextmanager
