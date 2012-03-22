@@ -2,6 +2,7 @@
 
 import Cookie
 import inspect
+from itertools import imap
 import logging
 import os.path
 import time
@@ -47,6 +48,7 @@ def response_to_xml(response):
             E.code(str(response.code)),
             E.effective_url(response.effective_url),
             E.error(str(response.error)),
+            E.size(str(len(response.body)) if response.body is not None else '0'),
             E.request_time(str(int(response.request_time * 1000))),
             headers,
             time_info,
@@ -173,11 +175,16 @@ class PageHandlerDebug(object):
             self.handler.log.debug('using debug mode logging')
         else:
             self.debug_mode_logging = False
-
     def get_debug_page(self, status_code, **kwargs):
         self.debug_log_handler.log_data.set("code", str(status_code))
         self.debug_log_handler.log_data.set("mode", self.handler.get_argument('debug', 'text'))
         self.debug_log_handler.log_data.set("request-id", str(self.handler.request_id))
+
+        response_size = sum(imap(len, self.handler._write_buffer))
+        if hasattr(self.handler, '_finish_chunk_size'):
+            response_size += self.handler._finish_chunk_size
+        self.debug_log_handler.log_data.set("response-size", str(response_size))
+
 
         # if we have 500 but have "noxsl" in args without "debug" in args
         # apply xsl for debug info anyway

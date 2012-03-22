@@ -24,8 +24,10 @@
             <body>
                 <div class="textentry m-textentry_title">
                     requestid: <xsl:value-of select="@request-id"/>,
-                    status:
-                    <xsl:value-of select="@code"/>
+                    status: <xsl:value-of select="@code"/>,
+                    requests: <xsl:value-of select="count(entry/response)"/>,
+                    bytes received: <xsl:value-of select="sum(entry/response/size)"/>,
+                    bytes produced: <xsl:value-of select="@response-size"/>
                 </div>
                 <xsl:apply-templates select="entry"/>
             </body>
@@ -83,6 +85,8 @@
                     <xsl:text> </xsl:text>
                     <xsl:value-of select="request/method"/>
                     <xsl:text> </xsl:text>
+                    <xsl:value-of select="format-number(response/size div 1024, '0.#')"/>
+                    <xsl:text>Kb </xsl:text>
                     <xsl:value-of select="request/url"/>
                 </span>
             </div>

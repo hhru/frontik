@@ -1,11 +1,16 @@
 frontik (2.12.0~dev) unstable; urgency=low
 
+  [ Pavel Trukhanov ]
+  * new itearation
   * new itearation
   * copy.deepcopy on xml before xslt
   * queue.get with tiemout in jobs.py
   * test_integration_non_debug_mode.test_basic_auth_fail_on_wrong_pass fixed
 
- -- Pavel Trukhanov <p.trukhanov@hh.ru>  Thu, 22 Mar 2012 15:53:16 +0400
+  [ Mikhail Sabourenkov ]
+  * log size of received data
+
+ -- Mikhail Sabourenkov <m.saburenkov@hh.ru>  Thu, 22 Mar 2012 16:20:23 +0400
 
 frontik (2.11.0) unstable; urgency=low
 

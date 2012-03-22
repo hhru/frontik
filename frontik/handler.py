@@ -76,6 +76,7 @@ class Stats(object):
     def __init__(self):
         self.page_count = 0
         self.http_reqs_count = 0
+        self.http_reqs_size_sum = 0
 
     def next_request_id(self):
         self.page_count += 1
@@ -270,6 +271,7 @@ class PageHandler(tornado.web.RequestHandler):
         # and use debug log instead
         if hasattr(self, 'debug') and self.debug.debug_mode:
             self.set_header('Content-Type', 'text/html')
+            self._finish_chunk_size = len(chunk) if chunk is not None else 0
             res = self.debug.get_debug_page(self._status_code)
             self._status_code = 200
         else:
@@ -322,6 +324,13 @@ class PageHandler(tornado.web.RequestHandler):
     def fetch_request(self, req, callback):
         if not self._finished:
             stats.http_reqs_count += 1
+            def _callback(response):
+                try:
+                    stats.http_reqs_size_sum += len(response.body)
+                except TypeError:
+                    if response.body is not None:
+                        self.log.warn('got strange response.body of type %s', type(response.body))
+                callback(response)
 
             req.headers['X-Request-Id'] = self.request_id
             req.connect_timeout *= tornado.options.options.timeout_multiplier
@@ -329,7 +338,7 @@ class PageHandler(tornado.web.RequestHandler):
 
             return self.http_client.fetch(
                     req,
-                    self.finish_group.add(self.async_callback(callback)))
+                    self.finish_group.add(self.async_callback(_callback)))
         else:
             self.log.warn('attempted to make http request to %s while page is already finished; ignoring', req.url)
 
@@ -432,7 +441,15 @@ class PageHandler(tornado.web.RequestHandler):
         return placeholder
 
     def _fetch_request_response(self, placeholder, callback, request, response, request_types = None):
-        self.log.debug('got %s %s in %.2fms', response.code, response.effective_url, response.request_time * 1000, extra = {"response": response, "request": request})
+        self.log.debug(
+            'got {code}{size} {url} in {time:.2f}ms'.format(
+                code=response.code,
+                url=response.effective_url,
+                size=' {0:e} bytes'.format(len(response.body)) if response.body is not None else '',
+                time=response.request_time * 1000
+            ),
+            extra = {"response": response, "request": request}
+        )
 
         if not request_types:
             request_types = default_request_types

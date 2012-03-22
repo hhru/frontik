@@ -50,8 +50,10 @@ class VersionHandler(tornado.web.RequestHandler):
 
 class StatusHandler(tornado.web.RequestHandler):
     def get(self):
+        self.set_header('Content-Type', 'text/plain; charset=UTF-8')
         self.write('pages served: %s\n' % (handler.stats.page_count,))
         self.write('http reqs made: %s\n' % (handler.stats.http_reqs_count,))
+        self.write('http reqs got: %s bytes\n' % (handler.stats.http_reqs_size_sum,))
 
 
 class StopHandler(tornado.web.RequestHandler):
