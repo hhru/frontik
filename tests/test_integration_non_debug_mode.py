@@ -23,19 +23,16 @@ def test_basic_auth_fail():
             assert(e.code == 401)
 
 
+import base64
 def test_basic_auth_fail_on_wrong_pass():
     with frontik_prod.instance() as srv_port:
         page_url = 'http://localhost:{0}/test_app/basic_auth/'.format(srv_port)
-        
-        # Create an OpenerDirector with support for Basic HTTP Authentication...
-        auth_handler = urllib2.HTTPBasicAuthHandler()
-        auth_handler.add_password(realm='Secure Area',
-                                  uri=page_url,
-                                  user='user',
-                                  passwd='bad')
-        opener = urllib2.build_opener(auth_handler)
+
+        req = urllib2.Request(page_url)
+        req.add_header('Authorization', 'Basic {0}'.format(base64.encodestring('user:bad')))
         try: 
-            res = opener.open(page_url)
+            res = urllib2.urlopen(req)
+            #res = opener.open(page_url)
             assert(res.getcode() == 401)
         except urllib2.HTTPError, e:
             assert(e.code == 401)
