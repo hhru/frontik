@@ -1,4 +1,5 @@
 import tornado.options
+from graypy import LAN_CHUNK
 
 tornado.options.define('apps', {}, dict)
 tornado.options.define('urls', [], list)
@@ -9,6 +10,11 @@ tornado.options.define('syslog_address', "/dev/log", str)
 tornado.options.define('syslog', False, bool)
 tornado.options.define('syslog_facility', 'user', str)
 tornado.options.define('syslog_msg_max_length', 2048, int)
+
+tornado.options.define('graylog_host', "localhost", str)
+tornado.options.define('graylog_port', 12201, int)
+tornado.options.define('graylog_chunk_size', LAN_CHUNK, int)
+tornado.options.define('graylog', False, bool)
 
 tornado.options.define('xml_debug', False, bool)
 tornado.options.define('debug', False, bool)

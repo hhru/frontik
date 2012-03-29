@@ -18,4 +18,5 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
   python-tornado (>= 1.2.1~hh1),
   python-tornado-util (>= 0.5.1),
   python, 
+Suggests: python-graypy,
 Description: frontik - the python based XScript alternative 
