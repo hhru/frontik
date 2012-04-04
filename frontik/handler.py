@@ -91,8 +91,8 @@ class ContextFilter(logging.Filter):
 log.addFilter(ContextFilter())
 
 class PageLogger(logging.LoggerAdapter):
-    def __init__(self, request_id, page, hadler_name, zero_time):
-        super(PageLogger, self).__init__(log, dict(request_id = request_id, page = page, handler = hadler_name))
+    def __init__(self, logger_name, page, handler_name, zero_time):
+        logging.LoggerAdapter.__init__(self, log, dict(request_id = logger_name, page = page, handler = handler_name))
         self._time = zero_time
         self.stages = []
         self.page = page
