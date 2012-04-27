@@ -29,13 +29,13 @@ def bootstrap_all_logging():
 
     if tornado.options.options.graylog:
         try:
-            from graypy import GELFHandler
+            from graypy import GELFHandler, WAN_CHUNK
             graylog_handler = GELFHandler(tornado.options.options.graylog_host,
-                tornado.options.options.graylog_port, tornado.options.options.graylog_chunk_size, False)
+                tornado.options.options.graylog_port, WAN_CHUNK, False)
 
             logging.getLogger().addHandler(graylog_handler)
         except ImportError:
-            log.error('Cannot import graypy and start graylog logging!')
+            log.error('Graylog option is on, but can not import graypy and start graylog logging!')
 
     for log_channel_name in options.suppressed_loggers:
         logging.getLogger(log_channel_name).setLevel(logging.WARN)
