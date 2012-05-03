@@ -84,27 +84,21 @@ class Stats(object):
 
 stats = Stats()
 
-class PageLogger(logging.Logger):
-    '''
-    This class is supposed to fix huge memory 'leak' in logging
-    module. I.e. every call to logging.getLogger(some_unique_name)
-    wastes memory as resulting logger is memoized by
-    module. PageHandler used to create unique logger on each request
-    by call logging.getLogger('frontik.handler.%s' %
-    (self.request_id,)). This lead to wasting about 10Mb per 10K
-    requests.
-    '''
+class ContextFilter(logging.Filter):
+    def filter(self, record):
+        record.name = '.'.join(filter(None, [record.name, getattr(record, 'request_id', None)]))
+        return True
+log.addFilter(ContextFilter())
 
-    def __init__(self, name, page, zero_time):
-        logging.Logger.__init__(self, 'frontik.handler.{0}'.format(name))
-        self.page = page
+class PageLogger(logging.LoggerAdapter):
+    def __init__(self, logger_name, page, handler_name, zero_time):
+        logging.LoggerAdapter.__init__(self, log, dict(request_id = logger_name, page = page, handler = handler_name))
         self._time = zero_time
         self.stages = []
-
-
-    def handle(self, record):
-        logging.Logger.handle(self, record)
-        log.handle(record)
+        self.page = page
+        #backcompatibility with logger
+        self.warn = self.warning
+        self.addHandler = self.logger.addHandler
 
     def stage_tag(self, stage):
         self._stage_tag(stage, (time.time() - self._time) * 1000)
@@ -145,12 +139,10 @@ class PageHandler(tornado.web.RequestHandler):
             raise Exception("%s need to have ph_globals" % PageHandler)
 
         self.name = self.__class__.__name__
-        self.request_id = request.headers.get('X-Request-Id', stats.next_request_id())
-        if hasattr(ph_globals.config, 'app_name') and ph_globals.config.app_name:
-            handler_name = '{0}.{1}'.format(ph_globals.config.app_name, self.request_id)
-        else:
-            handler_name = self.request_id
-        self.log = PageLogger(handler_name, request.path or request.uri, self.handler_started,)
+        self.request_id = request.headers.get('X-Request-Id', str(stats.next_request_id()))
+        logger_name = '.'.join(filter(None, [self.request_id, getattr(ph_globals.config, 'app_name', None)]))
+        self.log = PageLogger(logger_name, request.path or request.uri, self.__module__, self.handler_started)
+
         tornado.web.RequestHandler.__init__(self, application, request, logger = self.log, **kwargs)
 
         self.ph_globals = ph_globals

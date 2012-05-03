@@ -10,7 +10,10 @@ frontik (2.12.0~dev) unstable; urgency=low
   [ Mikhail Sabourenkov ]
   * log size of received data
 
- -- Mikhail Sabourenkov <m.saburenkov@hh.ru>  Thu, 22 Mar 2012 16:20:23 +0400
+  [ Pavel Trukhanov ]
+  * graypy log impl
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Thu, 29 Mar 2012 13:56:28 +0400
 
 frontik (2.11.0) unstable; urgency=low
 

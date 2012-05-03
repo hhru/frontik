@@ -19,3 +19,7 @@ tornado.options.define('debug_xsl', '/usr/lib/frontik/debug.xsl', str)
 tornado.options.define('timeout_multiplier', 1.0, float)
 
 tornado.options.define('executor_pool_size', 1, int)
+
+tornado.options.define('graylog', False, bool)
+tornado.options.define('graylog_host', "localhost", str)
+tornado.options.define('graylog_port', 12201, int)

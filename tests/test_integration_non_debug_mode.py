@@ -32,7 +32,6 @@ def test_basic_auth_fail_on_wrong_pass():
         req.add_header('Authorization', 'Basic {0}'.format(base64.encodestring('user:bad')))
         try: 
             res = urllib2.urlopen(req)
-            #res = opener.open(page_url)
             assert(res.getcode() == 401)
         except urllib2.HTTPError, e:
             assert(e.code == 401)
