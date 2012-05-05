@@ -114,6 +114,13 @@ class PageLogger(logging.LoggerAdapter):
     def process_stages(self):
         self.debug("Stages for {0} : ".format(self.page) + " ".join(["{0}:{1:.2f}ms".format(k, v) for k, v in self.stages]))
 
+    def process(self, msg, kwargs):
+        if "extra" in kwargs:
+            kwargs["extra"].update(self.extra)
+        else :
+            kwargs["extra"] = self.extra
+        return msg, kwargs
+
 
 class PageHandlerGlobals(object):
     '''
