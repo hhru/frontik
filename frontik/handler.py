@@ -208,13 +208,12 @@ class PageHandler(tornado.web.RequestHandler):
             #debug mode use default tornado error page
             return super(PageHandler, self).get_error_html(status_code, **kwargs)
 
-
     def send_error(self, status_code = 500, headers = None, **kwargs):
         if headers is None:
             headers = {}
         exception = kwargs.get("exception", None)
-        need_finish = ((exception is not None) and ((199 < status_code < 400) or
-                        (getattr(exception, "xml", None) or getattr(exception, "text", None))))
+        need_finish = exception is not None and (199 < status_code < 400 or
+                        not(getattr(exception, "xml", None) is None and getattr(exception, "text", None) is None))
 
         if need_finish:
             self.set_status(status_code)
