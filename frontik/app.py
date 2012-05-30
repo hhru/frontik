@@ -3,6 +3,7 @@ import logging
 import os.path
 import sys
 import re
+import time
 
 import lxml.etree as etree
 import tornado.autoreload
@@ -54,6 +55,15 @@ class StatusHandler(tornado.web.RequestHandler):
         self.write('pages served: %s\n' % (handler.stats.page_count,))
         self.write('http reqs made: %s\n' % (handler.stats.http_reqs_count,))
         self.write('http reqs got: %s bytes\n' % (handler.stats.http_reqs_size_sum,))
+        cur_uptime = time.time() - handler.stats.start_time
+        if cur_uptime < 60:
+            res = 'uptime for : %d seconds\n' % ((cur_uptime),)
+        elif cur_uptime < 3600:
+            res = 'uptime for : %d minutes\n' % ((cur_uptime/60),)
+        else:
+            res = 'uptime for : %d hours and %d minutes \n' % ((cur_uptime/3600), (cur_uptime % 3600)/60)
+
+        self.write(res)
 
 
 class StopHandler(tornado.web.RequestHandler):

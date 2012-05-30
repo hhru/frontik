@@ -18,7 +18,8 @@ def queue_worker(queue):
         try:
             (prio, (func, cb, exception_cb)) = queue.get(timeout=10)
         except Queue.Empty:
-            log.warn('No job in 10 secs')
+            if tornado.options.options.warn_no_jobs:
+                log.warn('No job in 10 secs')
             continue
         except Exception, e:
             log.exception('Cannot get new job')
