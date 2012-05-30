@@ -151,7 +151,7 @@ class DebugPageHandler(logging.Handler):
             # make deepcopy
             # if node was sent to debug, but later was appended in some other place
             # etree will move node from this place to new one
-            xml.append(copy.deepcopy(record.xml))
+            xml.append(copy.deepcopy(record._xml))
 
         self.log_data.append(entry)
 
