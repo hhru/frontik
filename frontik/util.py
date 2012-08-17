@@ -5,8 +5,10 @@ import os
 import mimetools
 import mimetypes
 import logging.handlers
+import re
 import socket
 
+import urlparse
 from urllib import urlencode
 
 from logging.handlers import  SysLogHandler
@@ -51,6 +53,10 @@ def make_url(base, **query_args):
         return base + '?' + qs
     else:
         return base
+
+def get_query_parameters(url):
+    url = 'http://' + url if not re.match(r'[a-z]+://.+\??.*', url, re.IGNORECASE) else url
+    return urlparse.parse_qs(urlparse.urlparse(url).query, True)
 
 def get_all_files(root, extension=None):
     out = list()

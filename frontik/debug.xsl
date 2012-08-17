@@ -220,16 +220,9 @@
     </xsl:template>
 
     <xsl:template match="param">
-        <table>
-            <tr>
-                <td class="param__name">
-                    <xsl:value-of select="@name"/><xsl:text>&#160;=&#160;</xsl:text>
-                </td>
-                <td class="param__value">
-                    <xsl:apply-templates select="str:tokenize(string(.), '&#0013;&#0010;')" mode="line"/>
-                </td>
-            </tr>
-        </table>
+        <div>
+            <xsl:value-of select="@name"/><xsl:text>&#160;=&#160;</xsl:text><xsl:value-of select="."/>
+        </div>
     </xsl:template>
 
 
@@ -282,12 +275,6 @@
                     display:block;
                 }
 
-            .param__name{
-                vertical-align:top;
-            }
-            .param__value{
-                vertical-align:top;
-            }
             .servicelink{
                 color:#666;
                 font-size:.8em;
