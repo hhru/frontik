@@ -17,6 +17,7 @@ from datetime import datetime
 import lxml.etree as etree
 import tornado.options
 from lxml.builder import E
+from frontik.util import get_query_parameters
 
 
 log = logging.getLogger('XML_debug')
@@ -79,7 +80,7 @@ def request_to_xml(request):
             cookies.append(E.cookie(_cookies[cookie].value, name = cookie))
 
     params = etree.Element("params")
-    query = urlparse.parse_qs(urlparse.urlparse(request.url).query, True)
+    query = get_query_parameters(request.url)
     for name, values in query.iteritems():
         for value in values:
             params.append(E.param(unicode(value, "utf-8"), name = name))
