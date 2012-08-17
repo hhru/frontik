@@ -47,11 +47,11 @@
         </xsl:variable>
 
         <div class="textentry">
-            <pre class="textentry__head {$highlight} {$loglevel}">
+            <div class="textentry__head {$highlight} {$loglevel}">
                 <span title="{@msg}">
                     <xsl:value-of select="concat($loglevel,' ',@msg)"/>
                 </span>
-            </pre>
+            </div>
             <xsl:apply-templates select="@exc_text"/>
         </div>
     </xsl:template>
@@ -108,6 +108,19 @@
             <div class="details">
                 <xsl:apply-templates select="xml/node()" mode="color-xml"/>
             </div>
+        </div>
+    </xsl:template>
+
+    <xsl:template match="entry[protobuf]">
+        <div class="textentry m-textentry__expandable">
+            <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
+                <span title="{@msg}" class="textentry__head__expandtext">
+                    <xsl:value-of select="@msg"/>
+                </span>
+            </div>
+            <pre class="details">
+                <xsl:apply-templates select="protobuf/node()" mode="color-xml"/>
+            </pre>
         </div>
     </xsl:template>
 
@@ -228,6 +241,9 @@
             pre{
                 margin:0;
             }
+            .body{
+                word-break: break-all;
+            }
             .textentry{
                 padding-left:20px;
                 padding-right:20px;
@@ -243,6 +259,7 @@
                     margin-bottom:.5em;
                 }
                 .textentry__head{
+                    word-break: break-all;
                 }
                     .m-textentry__head_highlight{
                         font-weight:bold;

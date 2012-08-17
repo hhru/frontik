@@ -24,15 +24,23 @@ log = logging.getLogger('XML_debug')
 def response_to_xml(response):
     headers = etree.Element("headers")
     time_info = etree.Element("time_info")
+    content_type = response.headers.get('Content-Type','')
 
-    if 'text/html' in response.headers.get('Content-Type',''):
+    if 'text/html' in content_type:
         try:
             body = response.body.decode("utf-8").replace("\n", "\\n").replace("'", "\\'")
         except Exception as e:
             body = 'Cant show response body, ' + str(e)
     else:
         try:
-            body = etree.fromstring(response.body)
+            if 'json' in content_type:
+                body = json.dumps(json.loads(response.body), sort_keys = True, indent = 4)
+            elif 'protobuf' in content_type:
+                body = repr(response.body)
+            elif 'text/plain' in content_type:
+                body = response.body
+            else:
+                body = etree.fromstring(response.body)
         except Exception as e:
             body = 'Cant show response body, ' + str(e)
 
@@ -44,7 +52,7 @@ def response_to_xml(response):
 
     return (
         E.response(
-            E.body(body, content_type=response.headers.get('Content-Type','')),
+            E.body(body, content_type = content_type),
             E.code(str(response.code)),
             E.effective_url(response.effective_url),
             E.error(str(response.error)),
@@ -76,21 +84,22 @@ def request_to_xml(request):
         for value in values:
             params.append(E.param(unicode(value, "utf-8"), name = name))
 
-    body = etree.Element("body", content_type = request.headers.get('Content-Type',''))
+    content_type = request.headers.get('Content-Type','')
+    body = etree.Element("body", content_type = content_type)
+
     if request.body:
-        if 'json' in request.headers.get('Content-Type',''):
-            try:
-                body.text = json.dumps(json.loads(request.body), sort_keys=True, indent=4)
-            except Exception as e:
-                body.text = "Cant show request body, " + str(e)
-        else:
-            try:
+        try:
+            if 'json' in content_type:
+                body.text = json.dumps(json.loads(request.body), sort_keys = True, indent = 4)
+            elif 'protobuf' in content_type:
+                body.text = repr(request.body)
+            else:
                 body_query = urlparse.parse_qs(str(request.body), True)
                 for name, values in body_query.iteritems():
                     for value in values:
                         body.append(E.param(value.decode("utf-8"), name = name))
-            except Exception as e:
-                body.text = "Cant show request body, " + str(e)
+        except Exception as e:
+            body.text = 'Cant show request body, ' + str(e)
 
     return (
         E.request(
@@ -152,6 +161,9 @@ class DebugPageHandler(logging.Handler):
             # if node was sent to debug, but later was appended in some other place
             # etree will move node from this place to new one
             xml.append(copy.deepcopy(record._xml))
+
+        if getattr(record, "_protobuf", None) is not None:
+            entry.append(E.protobuf(record._protobuf))
 
         self.log_data.append(entry)
 
