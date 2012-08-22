@@ -60,8 +60,8 @@ def read_xsl(filename, log=log, parser=parser):
 
 def dict_to_xml(dict_value, element_name):
     element = etree.Element(element_name)
-    if type(dict_value) != dict:
-        element.text = str(dict_value)
+    if not isinstance(dict_value, dict):
+        element.text = str(dict_value).decode('utf-8')
         return element
 
     for k, v in dict_value.items():
@@ -70,8 +70,8 @@ def dict_to_xml(dict_value, element_name):
 
 
 def xml_to_dict(xml):
-    if not len(xml):
-        return xml.text if xml.text is not None else ''
+    if len(xml) == 0:
+        return xml.text.encode('ascii', 'xmlcharrefreplace') if xml.text is not None else ''
 
     dictionary = {}
     for e in xml:
