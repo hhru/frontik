@@ -57,3 +57,23 @@ def read_xsl(filename, log=log, parser=parser):
         diff = new_xsl_files.difference(xsl_includes)
 
     return (etree.XSLT(result), xsl_includes)
+
+def dict_to_xml(dict_value, element_name):
+    element = etree.Element(element_name)
+    if type(dict_value) != dict:
+        element.text = str(dict_value)
+        return element
+
+    for k, v in dict_value.items():
+        element.append(dict_to_xml(v, k))
+    return element
+
+
+def xml_to_dict(xml):
+    if not len(xml):
+        return xml.text if xml.text is not None else ''
+
+    dictionary = {}
+    for e in xml:
+        dictionary[e.tag] = xml_to_dict(e)
+    return dictionary

@@ -2,7 +2,6 @@
 
 import Cookie
 import inspect
-from itertools import imap
 import logging
 import os.path
 import time
@@ -13,10 +12,12 @@ import xml.sax.saxutils
 import json
 import copy
 from datetime import datetime
+import frontik.handler
 
 import lxml.etree as etree
 import tornado.options
 from lxml.builder import E
+from frontik.xml_util import dict_to_xml
 
 
 log = logging.getLogger('XML_debug')
@@ -145,6 +146,9 @@ class DebugPageHandler(logging.Handler):
         if getattr(record, "_request", None) is not None:
             entry.append(request_to_xml(record._request))
 
+        if getattr(record, "_debug_response", None) is not None:
+            entry.append(E.debug(record._debug_response))
+
         if getattr(record, "_xml", None) is not None:
             xml = etree.Element("xml")
             entry.append(xml)
@@ -159,8 +163,13 @@ class DebugPageHandler(logging.Handler):
 class PageHandlerDebug(object):
     def __init__(self, handler):
         self.handler = weakref.proxy(handler)
+        debug_mode_enabled = (self.handler.get_argument('debug', None) is not None or
+                              self.handler.get_cookie("debug") is not None)
+        self.debug_mode_inherited = self.handler.request.headers.get(frontik.handler.PageHandler.INHERIT_DEBUG_HEADER_NAME)
+        self.pass_debug_mode = (self.handler.get_argument('pass_debug', None) is not None or
+                                self.handler.get_cookie("pass_debug") is not None or self.debug_mode_inherited)
 
-        if self.handler.get_argument('debug', None) is not None or self.handler.get_cookie("debug") is not None:
+        if debug_mode_enabled or self.debug_mode_inherited or self.pass_debug_mode:
             self.handler.require_debug_access()
             self.handler.log.debug('debug mode is on due to ?debug query arg')
             self.debug_mode = True
@@ -175,16 +184,21 @@ class PageHandlerDebug(object):
             self.handler.log.debug('using debug mode logging')
         else:
             self.debug_mode_logging = False
-    def get_debug_page(self, status_code, **kwargs):
+
+        if self.pass_debug_mode:
+            self.handler.log.debug('debug mode will be passed to all frontik apps requested')
+
+        if self.debug_mode_inherited:
+            self.handler.log.debug('debug mode is inherited due to request header')
+
+    def get_debug_page(self, status_code, original_response=None, **kwargs):
         self.debug_log_handler.log_data.set("code", str(status_code))
         self.debug_log_handler.log_data.set("mode", self.handler.get_argument('debug', 'text'))
         self.debug_log_handler.log_data.set("request-id", str(self.handler.request_id))
+        self.debug_log_handler.log_data.set("response-size", str(self.handler._response_size))
 
-        response_size = sum(imap(len, self.handler._write_buffer))
-        if hasattr(self.handler, '_finish_chunk_size'):
-            response_size += self.handler._finish_chunk_size
-        self.debug_log_handler.log_data.set("response-size", str(response_size))
-
+        if self.pass_debug_mode and original_response is not None:
+            self.debug_log_handler.log_data.append(dict_to_xml(original_response, 'original-response'))
 
         # if we have 500 but have "noxsl" in args without "debug" in args
         # apply xsl for debug info anyway

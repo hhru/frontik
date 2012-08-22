@@ -3,10 +3,12 @@
 from __future__ import with_statement
 
 from functools import partial
+from itertools import imap
 import json
 import re
 import time
 import traceback
+import cStringIO
 
 import lxml.etree as etree
 import tornado.curl_httpclient
@@ -25,6 +27,8 @@ import frontik.handler_xml_debug
 import frontik.future as future
 
 import logging
+from frontik.xml_util import xml_to_dict
+
 log = logging.getLogger('frontik.handler')
 
 def _parse_response_smth(response, logger = log, parser=None, type=None):
@@ -145,6 +149,8 @@ class PageHandlerGlobals(object):
 
 class PageHandler(tornado.web.RequestHandler):
 
+    INHERIT_DEBUG_HEADER_NAME = 'X-Inherit-Debug'
+
     # to restore tornado.web.RequestHandler compatibility
     def __init__(self, application, request, ph_globals=None, **kwargs):
         self.handler_started = time.time()
@@ -202,11 +208,6 @@ class PageHandler(tornado.web.RequestHandler):
 
             if not self.debug_access:
                 raise HTTPError(401, headers={'WWW-Authenticate': 'Basic realm="Secure Area"'})
-
-    def finish_with_401(self, auth_header='Basic realm="Secure Area"'):
-        #TODO remove this function after cleanup in hh.sites.api - no uses here
-        raise HTTPError(401, headers={'WWW-Authenticate': auth_header})
-
 
     def get_error_html(self, status_code, **kwargs):
         if  self._prepared and self.debug.debug_mode_logging:
@@ -276,10 +277,24 @@ class PageHandler(tornado.web.RequestHandler):
         # if debug_mode is on: ignore any output we intended to write
         # and use debug log instead
         if hasattr(self, 'debug') and self.debug.debug_mode:
-            self.set_header('Content-Type', 'text/html')
-            self._finish_chunk_size = len(chunk) if chunk is not None else 0
-            res = self.debug.get_debug_page(self._status_code)
-            self._status_code = 200
+            self._response_size = sum(imap(len, self._write_buffer))
+            self._response_size += len(chunk) if chunk is not None else 0
+
+            if self.debug.debug_mode_inherited:
+                headers = {'Content-Length': str(self._response_size)}
+                original_response = {
+                    'buffer': ''.join(self._write_buffer) + (chunk if chunk is not None else ''),
+                    'headers': dict(self._headers, **headers),
+                    'code': self._status_code
+                }
+
+                self.set_header(self.INHERIT_DEBUG_HEADER_NAME, True)
+            else:
+                original_response = None
+                self.set_header('Content-Type', 'text/html')
+                self._status_code = 200
+
+            res = self.debug.get_debug_page(self._status_code, original_response)
         else:
             res = chunk
 
@@ -337,6 +352,9 @@ class PageHandler(tornado.web.RequestHandler):
                     if response.body is not None:
                         self.log.warn('got strange response.body of type %s', type(response.body))
                 callback(response)
+
+            if hasattr(self, 'debug') and self.debug.pass_debug_mode:
+                req.headers[self.INHERIT_DEBUG_HEADER_NAME] = True
 
             req.headers['X-Request-Id'] = self.request_id
             req.connect_timeout *= tornado.options.options.timeout_multiplier
@@ -447,6 +465,22 @@ class PageHandler(tornado.web.RequestHandler):
         return placeholder
 
     def _fetch_request_response(self, placeholder, callback, request, response, request_types = None):
+        debug_extra = {}
+        if response.headers.get(self.INHERIT_DEBUG_HEADER_NAME):
+            debug_response = etree.XML(response.body)
+            original_response = debug_response.xpath('//original-response')
+            if original_response is not None:
+                response_info = xml_to_dict(original_response[0])
+                debug_response.remove(original_response[0])
+                debug_extra['_debug_response'] = debug_response
+
+                response = tornado.httpclient.HTTPResponse(request,
+                    int(response_info['code']), headers=dict(response.headers, **response_info['headers']),
+                    buffer=cStringIO.StringIO(response_info['buffer']),
+                    effective_url=response.effective_url, request_time=response.request_time,
+                    time_info=response.time_info)
+
+        debug_extra.update({"_response": response, "_request": request})
         self.log.debug(
             'got {code}{size} {url} in {time:.2f}ms'.format(
                 code=response.code,
@@ -454,7 +488,7 @@ class PageHandler(tornado.web.RequestHandler):
                 size=' {0:e} bytes'.format(len(response.body)) if response.body is not None else '',
                 time=response.request_time * 1000
             ),
-            extra = {"_response": response, "_request": request}
+            extra=debug_extra
         )
 
         if not request_types:

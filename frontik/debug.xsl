@@ -91,8 +91,8 @@
                 </span>
             </div>
             <div class="details">
+                <xsl:apply-templates select="debug"/>
                 <xsl:apply-templates select="request"/>
-                <div>---------------------------</div>
                 <xsl:apply-templates select="response"/>
             </div>
         </div>
@@ -130,6 +130,12 @@
         <xsl:apply-templates select="body"/>
     </xsl:template>
 
+    <xsl:template match="debug">
+        <div class="debug-inherited">
+            <xsl:apply-templates select="node()"/>
+        </div>
+    </xsl:template>
+
     <xsl:template match="error[text() = 'None']"/>
 
     <xsl:template match="error">
@@ -154,13 +160,18 @@
         </div>
     </xsl:template>
 
-    <xsl:template match="body[contains(@content_type, 'text/html')]">
+    <xsl:template match="body[contains(@content_type, 'text/html') and text() != '']">
         <xsl:variable name="id" select="generate-id(.)"/>
         <div class="delimeter">body</div>
         <div id="{$id}"><![CDATA[]]></div>
         <script>
             doiframe('<xsl:value-of select="$id"/>', '<xsl:value-of select="."/>');
         </script>
+    </xsl:template>
+
+    <xsl:template match="body[contains(@content_type, 'text/html') and text() = '']">
+        <div class="delimeter">body</div>
+        Empty response
     </xsl:template>
 
     <xsl:template match="body[contains(@content_type, 'json')]">
@@ -326,6 +337,12 @@
                 box-shadow:1px 1px 8px #aaacca;
                 -moz-box-shadow:1px 1px 8px #aaacca;
                 -webkit-box-shadow:1px 1px 8px #aaacca;
+            }
+            .debug-inherited{
+                margin: 10px 0;
+                padding: 10px;
+                border: 1px solid #ccc;
+                background: #fff;
             }
         </style>
     </xsl:template>
