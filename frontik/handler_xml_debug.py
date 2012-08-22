@@ -171,7 +171,7 @@ class PageHandlerDebug(object):
 
         if debug_mode_enabled or self.debug_mode_inherited or self.pass_debug_mode:
             self.handler.require_debug_access()
-            self.handler.log.debug('debug mode is on due to ?debug query arg')
+            self.handler.log.debug('debug mode is on')
             self.debug_mode = True
         else:
             self.debug_mode = False
@@ -180,7 +180,6 @@ class PageHandlerDebug(object):
             self.debug_mode_logging = True
             self.debug_log_handler = DebugPageHandler()
             self.handler.log.addHandler(self.debug_log_handler)
-
             self.handler.log.debug('using debug mode logging')
         else:
             self.debug_mode_logging = False
@@ -195,14 +194,16 @@ class PageHandlerDebug(object):
         self.debug_log_handler.log_data.set("code", str(status_code))
         self.debug_log_handler.log_data.set("mode", self.handler.get_argument('debug', 'text'))
         self.debug_log_handler.log_data.set("request-id", str(self.handler.request_id))
-        self.debug_log_handler.log_data.set("response-size", str(self.handler._response_size))
+
+        if getattr(self.handler, "response-size", None) is not None:
+            self.debug_log_handler.log_data.set("response-size", str(self.handler._response_size))
 
         if self.pass_debug_mode and original_response is not None:
             self.debug_log_handler.log_data.append(dict_to_xml(original_response, 'original-response'))
 
         # if we have 500 but have "noxsl" in args without "debug" in args
         # apply xsl for debug info anyway
-        if self.handler.xml.apply_xsl or not self.debug_mode:
+        if (self.handler.xml.apply_xsl or not self.debug_mode) and not self.debug_mode_inherited:
             # show 'awesome' debug page
             try:
                 xsl_file = open(tornado.options.options.debug_xsl)
