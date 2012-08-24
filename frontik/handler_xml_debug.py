@@ -201,10 +201,9 @@ class PageHandlerDebug(object):
         if self.pass_debug_mode and original_response is not None:
             self.debug_log_handler.log_data.append(dict_to_xml(original_response, 'original-response'))
 
-        # if we have 500 but have "noxsl" in args without "debug" in args
-        # apply xsl for debug info anyway
+        # show debug page if apply_xsl=True ('noxsl' flag is not set) or if 500 error occured
+        # if debug mode is inherited ('pass_debug' flag), than the response is always xml
         if (self.handler.xml.apply_xsl or not self.debug_mode) and not self.debug_mode_inherited:
-            # show 'awesome' debug page
             try:
                 xsl_file = open(tornado.options.options.debug_xsl)
                 tranform = etree.XSLT(etree.XML(xsl_file.read()))
