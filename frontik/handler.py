@@ -280,7 +280,7 @@ class PageHandler(tornado.web.RequestHandler):
             self._response_size = sum(imap(len, self._write_buffer))
             self._response_size += len(chunk) if chunk is not None else 0
 
-            if self.debug.debug_mode_inherited:
+            if self.debug.debug_return_response:
                 headers = {'Content-Length': str(self._response_size)}
                 original_response = {
                     'buffer': ''.join(self._write_buffer) + (chunk if chunk is not None else ''),
@@ -353,7 +353,7 @@ class PageHandler(tornado.web.RequestHandler):
                         self.log.warn('got strange response.body of type %s', type(response.body))
                 callback(response)
 
-            if hasattr(self, 'debug') and self.debug.pass_debug_mode:
+            if hasattr(self, 'debug') and self.debug.pass_debug_mode_further:
                 req.headers[self.INHERIT_DEBUG_HEADER_NAME] = True
 
             req.headers['X-Request-Id'] = self.request_id

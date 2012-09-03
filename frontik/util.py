@@ -187,6 +187,9 @@ def _asciify_url_char(c):
 def asciify_url(url):
     return ''.join(map(_asciify_url_char, url))
 
+def get_cookie_or_url_param_value(handler, param_name):
+    return handler.get_argument(param_name, handler.get_cookie(param_name, None))
+
 MIN_MSG_LENGTH_LIMIT = 100
 STD_MSG_LENGTH_LIMIT = 2048
 

@@ -18,6 +18,7 @@ import frontik.auth
 import frontik.xml_util
 
 import logging
+
 log = logging.getLogger('frontik.server')
 log_xsl = logging.getLogger('frontik.handler.xsl')
 log_fileloader = logging.getLogger('frontik.server.fileloader')
@@ -81,12 +82,12 @@ def _source_comment(src):
     return etree.Comment('Source: {0}'.format(frontik.util.asciify_url(src).replace('--', '%2D%2D')))
 
 def xml_from_file(filename):
-    ''' 
+    """
     filename -> (status, et.Element)
 
     status == True - результат хороший можно кешировать
            == False - результат плохой, нужно вернуть, но не кешировать
-    '''
+    """
 
     if os.path.exists(filename):
         try:
@@ -103,11 +104,11 @@ def xml_from_file(filename):
 
 
 def xsl_from_file(filename):
-    '''
+    """
     filename -> (True, et.XSLT)
-    
+
     в случае ошибки выкидывает исключение
-    '''
+    """
 
     transform, xsl_files = frontik.xml_util.read_xsl(filename)
 
@@ -165,7 +166,7 @@ class PageHandlerXML(object):
             self.log.debug('ignoring set_xsl() because config.apply_xsl=%s', self.handler.config.apply_xsl)
             self.apply_xsl = False
 
-        elif self.handler.get_argument('noxsl', None) is not None or self.handler.get_cookie("noxsl") is not None:
+        elif frontik.util.get_cookie_or_url_param_value(self.handler, 'noxsl') is not None:
             self.handler.require_debug_access()
             self.apply_xsl = False
             self.log.debug('apply_xsl==False due to ?noxsl query arg')

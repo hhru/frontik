@@ -68,7 +68,6 @@ def dict_to_xml(dict_value, element_name):
         element.append(dict_to_xml(v, k))
     return element
 
-
 def xml_to_dict(xml):
     if len(xml) == 0:
         return xml.text.encode('ascii', 'xmlcharrefreplace') if xml.text is not None else ''
