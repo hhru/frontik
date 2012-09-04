@@ -13,13 +13,12 @@ import json
 import copy
 from datetime import datetime
 import frontik.handler
+import frontik.util
+import frontik.xml_util
 
 import lxml.etree as etree
 import tornado.options
 from lxml.builder import E
-from frontik.util import get_cookie_or_url_param_value
-from frontik.xml_util import dict_to_xml
-
 
 log = logging.getLogger('XML_debug')
 
@@ -164,7 +163,7 @@ class DebugPageHandler(logging.Handler):
 class PageHandlerDebug(object):
     def __init__(self, handler):
         self.handler = weakref.proxy(handler)
-        debug_enabled = get_cookie_or_url_param_value(self.handler, 'debug')
+        debug_enabled = frontik.util.get_cookie_or_url_param_value(self.handler, 'debug')
         self.debug_mode_inherited = self.handler.request.headers.get(frontik.handler.PageHandler.INHERIT_DEBUG_HEADER_NAME)
         self.debug_return_response = debug_enabled == 'pass' or self.debug_mode_inherited
         self.pass_debug_mode_further = self.debug_return_response
@@ -199,7 +198,7 @@ class PageHandlerDebug(object):
             self.debug_log_handler.log_data.set("response-size", str(self.handler._response_size))
 
         if self.debug_return_response and original_response is not None:
-            self.debug_log_handler.log_data.append(dict_to_xml(original_response, 'original-response'))
+            self.debug_log_handler.log_data.append(frontik.xml_util.dict_to_xml(original_response, 'original-response'))
 
         # show debug page if apply_xsl=True ('noxsl' flag is not set) or if 500 error occured
         # if debug mode is inherited (through X-Inherit-Debug request header), than the response is always xml

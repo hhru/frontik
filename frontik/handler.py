@@ -8,7 +8,6 @@ import json
 import re
 import time
 import traceback
-import cStringIO
 
 import lxml.etree as etree
 import tornado.curl_httpclient
@@ -20,6 +19,7 @@ import tornado.ioloop
 import frontik.async
 import frontik.auth
 import frontik.util
+import frontik.xml_util
 import frontik.jobs
 import frontik.handler_xml
 import frontik.handler_whc_limit
@@ -27,7 +27,6 @@ import frontik.handler_xml_debug
 import frontik.future as future
 
 import logging
-from frontik.xml_util import xml_to_dict
 
 log = logging.getLogger('frontik.handler')
 
@@ -470,15 +469,10 @@ class PageHandler(tornado.web.RequestHandler):
             debug_response = etree.XML(response.body)
             original_response = debug_response.xpath('//original-response')
             if original_response is not None:
-                response_info = xml_to_dict(original_response[0])
+                response_info = frontik.xml_util.xml_to_dict(original_response[0])
                 debug_response.remove(original_response[0])
                 debug_extra['_debug_response'] = debug_response
-
-                response = tornado.httpclient.HTTPResponse(request,
-                    int(response_info['code']), headers=dict(response.headers, **response_info['headers']),
-                    buffer=cStringIO.StringIO(response_info['buffer']),
-                    effective_url=response.effective_url, request_time=response.request_time,
-                    time_info=response.time_info)
+                response = frontik.util.create_fake_response(request, response, **response_info)
 
         debug_extra.update({"_response": response, "_request": request})
         self.log.debug(
