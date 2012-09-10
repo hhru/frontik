@@ -233,6 +233,7 @@
             }
             pre{
                 margin:0;
+                white-space: pre-wrap;
             }
             .body{
                 word-break: break-all;
@@ -241,6 +242,7 @@
                 padding-left:20px;
                 padding-right:20px;
                 margin-bottom:4px;
+                word-break: break-all;
             }
                 .m-textentry__expandable{
                     padding-top:3px;
@@ -252,7 +254,6 @@
                     margin-bottom:.5em;
                 }
                 .textentry__head{
-                    word-break: break-all;
                 }
                     .m-textentry__head_highlight{
                         font-weight:bold;
@@ -263,6 +264,8 @@
                 .textentry__switcher{
                     height:1.3em;
                     overflow:hidden;
+                    white-space: nowrap;
+                    text-overflow: ellipsis;
                     cursor:pointer;
                 }
             .headers{
