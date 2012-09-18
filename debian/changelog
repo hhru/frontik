@@ -1,8 +1,19 @@
-frontik (2.13.0~dev) lucid; urgency=low
+frontik (2.13.0) unstable; urgency=low
 
-  * new iteration
+  [ Andrey Sumin ]
+  * HH-24363 implement passing debug log from services called by frontik app (debug=pass parameter)
 
- -- Vasily Katraev <v.katraev@hh.ru>  Thu, 03 May 2012 18:54:38 +0400
+  [ Vasily Katraev ]
+  * HH-26775 introduce 'No job in 10 seconds' message
+  * fixes for GELF logging HH-25681
+
+  [ Pavel Trukhanov ]
+  * HH-21428 fix FutureWarning
+
+  [ Georgiy Danschin ]
+  * HH-26489 fix error in need_finish condition
+
+ -- Andrey Sumin <an.sumin@hh.ru>  Tue, 18 Sep 2012 13:11:56 +0400
 
 frontik (2.12.0) unstable; urgency=low
 
