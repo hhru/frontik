@@ -7,7 +7,6 @@ from itertools import imap
 import json
 import re
 import time
-import traceback
 
 import lxml.etree as etree
 import tornado.curl_httpclient
@@ -56,9 +55,9 @@ _parse_response_json =  partial(_parse_response_smth,
                                type = 'JSON')
 
 default_request_types = {
-          re.compile(".*xml.?"): _parse_response_xml,
-          re.compile(".*json.?"): _parse_response_json
-          }
+    re.compile(".*xml.?"): _parse_response_xml,
+    re.compile(".*json.?"): _parse_response_json
+}
 
 # TODO cleanup this after release of frontik with frontik.async
 AsyncGroup = frontik.async.AsyncGroup
@@ -122,8 +121,12 @@ class PageLogger(logging.LoggerAdapter):
     def stage_tag_backdate(self, stage, time_delta):
         self._stage_tag(stage, time_delta)
 
-    def process_stages(self):
-        self.debug("Stages for {0} : ".format(self.page) + " ".join(["{0}:{1:.2f}ms".format(k, v) for k, v in self.stages]))
+    def process_stages(self, request_time, status_code):
+      stages_format = ' '.join(['{0}:{1:.2f}ms'.format(k, v) for k, v in self.stages])
+      stages_monik_format = ' '.join(['{0}={1:.2f}'.format(k, v) for k, v in self.stages + [('total', request_time)]])
+
+      self.debug("Stages for {0} : {1}".format(self.page, stages_format))
+      self.debug("[monik-stages] {0} : {1} code={2}".format(self.extra['handler'], stages_monik_format, status_code))
 
     def process(self, msg, kwargs):
         if "extra" in kwargs:
@@ -134,9 +137,9 @@ class PageLogger(logging.LoggerAdapter):
 
 
 class PageHandlerGlobals(object):
-    '''
+    """
     Объект с настройками для всех хендлеров
-    '''
+    """
     def __init__(self, app_package):
         self.config = app_package.config
 
@@ -187,6 +190,7 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.debug('apply_postprocessor==False due to ?nopost query arg')
         else:
             self.apply_postprocessor = True
+
         self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page_cb),
                                                      name = 'finish',
                                                      log = self.log.debug)
@@ -197,10 +201,8 @@ class PageHandler(tornado.web.RequestHandler):
             if tornado.options.options.debug:
                 self.debug_access = True
             else:
-                check_login = login if login is not None \
-                              else tornado.options.options.debug_login
-                check_passwd = passwd if passwd is not None \
-                               else tornado.options.options.debug_password
+                check_login = login if login is not None else tornado.options.options.debug_login
+                check_passwd = passwd if passwd is not None else tornado.options.options.debug_password
 
                 self.debug_access = frontik.auth.passed_basic_auth(
                     self, check_login, check_passwd)
@@ -270,8 +272,9 @@ class PageHandler(tornado.web.RequestHandler):
         if hasattr(self, 'whc_limit'):
             self.whc_limit.release()
 
-        self.log.debug('done in %.2fms', (time.time() - self.handler_started) * 1000)
-        self.log.process_stages()
+        request_time = (time.time() - self.handler_started) * 1000
+        self.log.debug('done in %.2fms', request_time)
+        self.log.process_stages(request_time, self._status_code)
 
         # if debug_mode is on: ignore any output we intended to write
         # and use debug log instead
@@ -300,13 +303,13 @@ class PageHandler(tornado.web.RequestHandler):
         tornado.web.RequestHandler.finish(self, res)
 
     def get_page(self):
-        ''' Эта функция должна быть переопределена в наследнике и
-        выполнять актуальную работу хендлера '''
+        """ Эта функция должна быть переопределена в наследнике и
+        выполнять актуальную работу хендлера """
         raise HTTPError(405, header={"Allow": "POST"})
 
     def post_page(self):
-        ''' Эта функция должна быть переопределена в наследнике и
-        выполнять актуальную работу хендлера '''
+        """ Эта функция должна быть переопределена в наследнике и
+        выполнять актуальную работу хендлера """
         raise HTTPError(405, headers={"Allow": "GET"})
 
     ###
@@ -327,19 +330,6 @@ class PageHandler(tornado.web.RequestHandler):
         return wrapper
 
     ###
-
-    def fetch_url(self, url, callback = None):
-        """
-        Прокси метод для get_url, логирующий употребления fetch_url
-        """
-        from urlparse import parse_qs, urlparse
-
-        self.log.error("Used deprecated method `fetch_url`. %s", traceback.format_stack()[-2][:-1])
-        scheme, netloc, path, params, query, fragment = urlparse(url)
-        new_url = "{0}://{1}{2}".format(scheme, netloc, path)
-        query = parse_qs(query)
-
-        return self.get_url(new_url, data = query, callback = callback)
 
     def fetch_request(self, req, callback):
         if not self._finished:
@@ -536,8 +526,6 @@ class PageHandler(tornado.web.RequestHandler):
     def _finish_page_cb(self):
         if not self._finished:
             self.log.stage_tag("page")
-
-            res = None
 
             if self.text is not None:
                 self._finish_with_postprocessor(self._prepare_finish_plaintext())
