@@ -7,6 +7,7 @@ from itertools import imap
 import json
 import re
 import time
+import weakref
 
 import lxml.etree as etree
 import tornado.curl_httpclient
@@ -95,14 +96,17 @@ log.addFilter(ContextFilter())
 
 
 class PageLogger(logging.LoggerAdapter):
-    def __init__(self, logger_name, page, handler_name, zero_time):
+    def __init__(self, handler, logger_name, page, zero_time):
 
         class Logger4Adapter(logging.Logger):
             def handle(self, record):
                 logging.Logger.handle(self, record)
                 log.handle(record)
 
-        logging.LoggerAdapter.__init__(self, Logger4Adapter('frontik.handler'), dict(request_id = logger_name, page = page, handler = handler_name))
+        self.handler = weakref.proxy(handler)
+        logging.LoggerAdapter.__init__(self, Logger4Adapter('frontik.handler'),
+            dict(request_id=logger_name, page=page, handler=self.handler.__module__))
+
         self._time = zero_time
         self.stages = []
         self.page = page
@@ -122,11 +126,12 @@ class PageLogger(logging.LoggerAdapter):
         self._stage_tag(stage, time_delta)
 
     def process_stages(self, request_time, status_code):
-      stages_format = ' '.join(['{0}:{1:.2f}ms'.format(k, v) for k, v in self.stages])
-      stages_monik_format = ' '.join(['{0}={1:.2f}'.format(k, v) for k, v in self.stages + [('total', request_time)]])
+        stages_format = ' '.join(['{0}:{1:.2f}ms'.format(k, v) for k, v in self.stages])
+        stages_monik_format = ' '.join(['{0}={1:.2f}'.format(k, v) for k, v in self.stages + [('total', request_time)]])
 
-      self.debug("Stages for {0} : {1}".format(self.page, stages_format))
-      self.debug("[monik-stages] {0} : {1} code={2}".format(self.extra['handler'], stages_monik_format, status_code))
+        self.debug('Stages for {0} : {1}'.format(self.page, stages_format))
+        self.debug('[monik-stages] {0} : {1} code={2}'.format(
+            self.handler.get_full_module_name(), stages_monik_format, status_code))
 
     def process(self, msg, kwargs):
         if "extra" in kwargs:
@@ -164,7 +169,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.name = self.__class__.__name__
         self.request_id = request.headers.get('X-Request-Id', str(stats.next_request_id()))
         logger_name = '.'.join(filter(None, [self.request_id, getattr(ph_globals.config, 'app_name', None)]))
-        self.log = PageLogger(logger_name, request.path or request.uri, self.__module__, self.handler_started)
+        self.log = PageLogger(self, logger_name, request.path or request.uri, self.handler_started)
 
         tornado.web.RequestHandler.__init__(self, application, request, logger = self.log, **kwargs)
 
@@ -311,6 +316,9 @@ class PageHandler(tornado.web.RequestHandler):
         """ Эта функция должна быть переопределена в наследнике и
         выполнять актуальную работу хендлера """
         raise HTTPError(405, headers={"Allow": "GET"})
+
+    def get_full_module_name(self):
+        return self.__module__
 
     ###
 
