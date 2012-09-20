@@ -130,8 +130,7 @@ class PageLogger(logging.LoggerAdapter):
         stages_monik_format = ' '.join(['{0}={1:.2f}'.format(k, v) for k, v in self.stages + [('total', request_time)]])
 
         self.debug('Stages for {0} : {1}'.format(self.page, stages_format))
-        self.debug('[monik-stages] {0} : {1} code={2}'.format(
-            self.handler.get_full_module_name(), stages_monik_format, status_code))
+        self.debug('[monik-stages] {0} : {1} code={2}'.format(self.handler.__repr__(), stages_monik_format, status_code))
 
     def process(self, msg, kwargs):
         if "extra" in kwargs:
@@ -180,6 +179,9 @@ class PageHandler(tornado.web.RequestHandler):
         self.debug_access = None
 
         self.text = None
+
+    def __repr__(self):
+      return '.'.join([self.__module__, self.__class__.__name__.lower()])
 
     def prepare(self):
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
@@ -316,9 +318,6 @@ class PageHandler(tornado.web.RequestHandler):
         """ Эта функция должна быть переопределена в наследнике и
         выполнять актуальную работу хендлера """
         raise HTTPError(405, headers={"Allow": "GET"})
-
-    def get_full_module_name(self):
-        return self.__module__
 
     ###
 
