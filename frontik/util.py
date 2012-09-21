@@ -5,8 +5,10 @@ import os
 import mimetools
 import mimetypes
 import logging.handlers
+import re
 import socket
 
+import urlparse
 from urllib import urlencode
 
 from logging.handlers import  SysLogHandler
@@ -52,6 +54,10 @@ def make_url(base, **query_args):
         return base + '?' + qs
     else:
         return base
+
+def get_query_parameters(url):
+    url = 'http://' + url if not re.match(r'[a-z]+://.+\??.*', url, re.IGNORECASE) else url
+    return urlparse.parse_qs(urlparse.urlparse(url).query, True)
 
 def get_all_files(root, extension=None):
     out = list()
@@ -144,7 +150,7 @@ def make_post_request(url, data='', headers=None, files=None,
         body = make_body(data)
 
     if content_type is None:
-        content_type = 'application/x-www-form-urlencoded'
+        content_type = headers['Content-Type'] if 'Content-Type' in headers else 'application/x-www-form-urlencoded'
 
     headers = {} if headers is None else headers
     headers.update({'Content-Type' : content_type,
