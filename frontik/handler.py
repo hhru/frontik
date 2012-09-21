@@ -103,9 +103,9 @@ class PageLogger(logging.LoggerAdapter):
                 logging.Logger.handle(self, record)
                 log.handle(record)
 
-        self.handler = weakref.proxy(handler)
+        self.handler_ref = weakref.ref(handler)
         logging.LoggerAdapter.__init__(self, Logger4Adapter('frontik.handler'),
-            dict(request_id=logger_name, page=page, handler=self.handler.__module__))
+            dict(request_id=logger_name, page=page, handler=self.handler_ref().__module__))
 
         self._time = zero_time
         self.stages = []
@@ -117,20 +117,22 @@ class PageLogger(logging.LoggerAdapter):
     def stage_tag(self, stage):
         self._stage_tag(stage, (time.time() - self._time) * 1000)
         self._time = time.time()
+        self.debug('Stage: {stage}'.format(stage = stage))
 
     def _stage_tag(self, stage, time_delta):
         self.stages.append((stage, time_delta))
-        self.debug('Stage: {stage}'.format(stage = stage))
 
     def stage_tag_backdate(self, stage, time_delta):
         self._stage_tag(stage, time_delta)
 
-    def process_stages(self, request_time, status_code):
+    def process_stages(self, status_code):
+        self._stage_tag('total', (time.time() - self.handler_ref().handler_started) * 1000)
+
         stages_format = ' '.join(['{0}:{1:.2f}ms'.format(k, v) for k, v in self.stages])
-        stages_monik_format = ' '.join(['{0}={1:.2f}'.format(k, v) for k, v in self.stages + [('total', request_time)]])
+        stages_monik_format = ' '.join(['{0}={1:.2f}'.format(k, v) for k, v in self.stages])
 
         self.debug('Stages for {0} : {1}'.format(self.page, stages_format))
-        self.debug('[monik-stages] {0} : {1} code={2}'.format(self.handler.__repr__(), stages_monik_format, status_code))
+        self.debug('[monik-stages] {0} : {1} code={2}'.format(repr(self.handler_ref()), stages_monik_format, status_code))
 
     def process(self, msg, kwargs):
         if "extra" in kwargs:
@@ -181,7 +183,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.text = None
 
     def __repr__(self):
-      return '.'.join([self.__module__, self.__class__.__name__.lower()])
+      return '.'.join([self.__module__, self.__class__.__name__])
 
     def prepare(self):
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
@@ -279,9 +281,7 @@ class PageHandler(tornado.web.RequestHandler):
         if hasattr(self, 'whc_limit'):
             self.whc_limit.release()
 
-        request_time = (time.time() - self.handler_started) * 1000
-        self.log.debug('done in %.2fms', request_time)
-        self.log.process_stages(request_time, self._status_code)
+        self.log.process_stages(self._status_code)
 
         # if debug_mode is on: ignore any output we intended to write
         # and use debug log instead
