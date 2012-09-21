@@ -47,11 +47,11 @@
         </xsl:variable>
 
         <div class="textentry">
-            <pre class="textentry__head {$highlight} {$loglevel}">
+            <div class="textentry__head {$highlight} {$loglevel}">
                 <span title="{@msg}">
                     <xsl:value-of select="concat($loglevel,' ',@msg)"/>
                 </span>
-            </pre>
+            </div>
             <xsl:apply-templates select="@exc_text"/>
         </div>
     </xsl:template>
@@ -108,6 +108,19 @@
             <div class="details">
                 <xsl:apply-templates select="xml/node()" mode="color-xml"/>
             </div>
+        </div>
+    </xsl:template>
+
+    <xsl:template match="entry[protobuf]">
+        <div class="textentry m-textentry__expandable">
+            <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
+                <span title="{@msg}" class="textentry__head__expandtext">
+                    <xsl:value-of select="@msg"/>
+                </span>
+            </div>
+            <pre class="details">
+                <xsl:apply-templates select="protobuf/node()" mode="color-xml"/>
+            </pre>
         </div>
     </xsl:template>
 
@@ -218,16 +231,9 @@
     </xsl:template>
 
     <xsl:template match="param">
-        <table>
-            <tr>
-                <td class="param__name">
-                    <xsl:value-of select="@name"/><xsl:text>&#160;=&#160;</xsl:text>
-                </td>
-                <td class="param__value">
-                    <xsl:apply-templates select="str:tokenize(string(.), '&#0013;&#0010;')" mode="line"/>
-                </td>
-            </tr>
-        </table>
+        <div>
+            <xsl:value-of select="@name"/><xsl:text>&#160;=&#160;</xsl:text><xsl:value-of select="."/>
+        </div>
     </xsl:template>
 
 
@@ -238,11 +244,16 @@
             }
             pre{
                 margin:0;
+                white-space: pre-wrap;
+            }
+            .body{
+                word-break: break-all;
             }
             .textentry{
                 padding-left:20px;
                 padding-right:20px;
                 margin-bottom:4px;
+                word-break: break-all;
             }
                 .m-textentry__expandable{
                     padding-top:3px;
@@ -264,6 +275,8 @@
                 .textentry__switcher{
                     height:1.3em;
                     overflow:hidden;
+                    white-space: nowrap;
+                    text-overflow: ellipsis;
                     cursor:pointer;
                 }
             .headers{
@@ -276,12 +289,6 @@
                     display:block;
                 }
 
-            .param__name{
-                vertical-align:top;
-            }
-            .param__value{
-                vertical-align:top;
-            }
             .servicelink{
                 color:#666;
                 font-size:.8em;
