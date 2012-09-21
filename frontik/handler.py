@@ -354,6 +354,7 @@ class PageHandler(tornado.web.RequestHandler):
 
             if hasattr(self, 'debug') and self.debug.pass_debug_mode_further:
                 req.headers[self.INHERIT_DEBUG_HEADER_NAME] = True
+                req.headers['Authorization'] = self.request.headers.get('Authorization', None)
 
             req.headers['X-Request-Id'] = self.request_id
             req.connect_timeout *= tornado.options.options.timeout_multiplier
