@@ -22,10 +22,15 @@ class MonikInfoLoggingFilter(logging.Filter):
 
 class MonikInfoLoggingHandler(logging.FileHandler):
     def __init__(self):
-        logging.FileHandler.__init__(self, tornado.options.options.logfile + '.monik')
+        logging.FileHandler.__init__(self, self.__get_logfile_name())
         self.setLevel(logging.INFO)
         self.addFilter(MonikInfoLoggingFilter())
         self.setFormatter(logging.Formatter(tornado.options.options.logformat))
+
+    def __get_logfile_name(self):
+        logfile_parts = tornado.options.options.logfile.rsplit('.', 1)
+        logfile_parts.insert(1, 'monik')
+        return '.'.join(logfile_parts)
 
 
 class MaxLenSysLogHandler(SysLogHandler):
@@ -89,7 +94,7 @@ class PageLogger(logging.LoggerAdapter):
         stages_monik_format = ' '.join(['{0}={1:.2f}'.format(k, v) for k, v in self.stages])
 
         self.debug('Stages for {0} : {1}'.format(self.page, stages_format))
-        self.info('Monik-stages {0} : {1} code={2}'.format(repr(self.handler_ref()), stages_monik_format, status_code),
+        self.info('Monik-stages {0!r} : {1} code={2}'.format(self.handler_ref(), stages_monik_format, status_code),
             extra={'_monik': True})
 
     def process(self, msg, kwargs):
