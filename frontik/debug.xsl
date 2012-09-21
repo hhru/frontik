@@ -29,12 +29,30 @@
                     bytes received: <xsl:value-of select="sum(entry/response/size)"/>,
                     bytes produced: <xsl:value-of select="@response-size"/>
                 </div>
+
+                <xsl:apply-templates select="." mode="general-info"/>
                 <xsl:apply-templates select="entry"/>
             </body>
         </html>
     </xsl:template>
 
     <xsl:template match="entry[contains(@msg, 'finish group') and /log/@mode != 'full']"/>
+
+    <xsl:template match="/log" mode="general-info">
+        <div class="textentry m-textentry__expandable">
+            <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
+                <span class="textentry__head__expandtext">
+                    General request/response info
+                </span>
+            </div>
+            <div class="details">
+                <xsl:apply-templates select="request/params"/>
+                <xsl:apply-templates select="request/headers"/>
+                <xsl:apply-templates select="request/cookies"/>
+                <xsl:apply-templates select="response/headers"/>
+            </div>
+        </div>
+    </xsl:template>
 
     <xsl:template match="entry">
 
