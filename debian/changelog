@@ -1,3 +1,11 @@
+frontik (2.13.1) unstable; urgency=low
+
+  [ Andrey Sumin ]
+  * HH-27375 enable json and protobuf request/response logging on debug page, various debug page improvements
+  * HH-28812 fix HH-24363 to enable debug log passing in production
+
+ -- Andrey Sumin <an.sumin@hh.ru>  Mon, 24 Sep 2012 11:41:04 +0400
+
 frontik (2.13.0) unstable; urgency=low
 
   [ Andrey Sumin ]
