@@ -5,6 +5,7 @@ tornado.options.define('urls', [], list)
 tornado.options.define('suppressed_loggers', ['tornado.curl_httpclient'], list)
 tornado.options.define('handlers_count', 100, int)
 
+tornado.options.define('logformat', '[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s', str)
 tornado.options.define('syslog_address', "/dev/log", str)
 tornado.options.define('syslog', False, bool)
 tornado.options.define('syslog_facility', 'user', str)

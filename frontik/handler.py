@@ -7,7 +7,7 @@ from itertools import imap
 import json
 import re
 import time
-import traceback
+import frontik_logging
 
 import lxml.etree as etree
 import tornado.curl_httpclient
@@ -26,11 +26,7 @@ import frontik.handler_whc_limit
 import frontik.handler_xml_debug
 import frontik.future as future
 
-import logging
-
-log = logging.getLogger('frontik.handler')
-
-def _parse_response_smth(response, logger = log, parser=None, type=None):
+def _parse_response_smth(response, logger = frontik_logging.log, parser=None, type=None):
     _preview_len = 100
     try:
         data = parser(response.body)
@@ -42,9 +38,9 @@ def _parse_response_smth(response, logger = log, parser=None, type=None):
 
         logger.exception('failed to parse {2} response from {0} Bad data:"{1}"'.format(
             response.effective_url, body_preview, type))
-        return (False, etree.Element('error', dict(url = response.effective_url, reason = 'invalid {0}'.format(type))))
+        return False, etree.Element('error', dict(url = response.effective_url, reason = 'invalid {0}'.format(type)))
 
-    return (True, data)
+    return True, data
 
 _xml_parser = etree.XMLParser(strip_cdata=False)
 _parse_response_xml =  partial(_parse_response_smth,
@@ -56,9 +52,9 @@ _parse_response_json =  partial(_parse_response_smth,
                                type = 'JSON')
 
 default_request_types = {
-          re.compile(".*xml.?"): _parse_response_xml,
-          re.compile(".*json.?"): _parse_response_json
-          }
+    re.compile(".*xml.?"): _parse_response_xml,
+    re.compile(".*json.?"): _parse_response_json
+}
 
 # TODO cleanup this after release of frontik with frontik.async
 AsyncGroup = frontik.async.AsyncGroup
@@ -88,55 +84,11 @@ class Stats(object):
 
 stats = Stats()
 
-class ContextFilter(logging.Filter):
-    def filter(self, record):
-        record.name = '.'.join(filter(None, [record.name, getattr(record, 'request_id', None)]))
-        return True
-log.addFilter(ContextFilter())
-
-
-class PageLogger(logging.LoggerAdapter):
-    def __init__(self, logger_name, page, handler_name, zero_time):
-
-        class Logger4Adapter(logging.Logger):
-            def handle(self, record):
-                logging.Logger.handle(self, record)
-                log.handle(record)
-
-        logging.LoggerAdapter.__init__(self, Logger4Adapter('frontik.handler'), dict(request_id = logger_name, page = page, handler = handler_name))
-        self._time = zero_time
-        self.stages = []
-        self.page = page
-        #backcompatibility with logger
-        self.warn = self.warning
-        self.addHandler = self.logger.addHandler
-
-    def stage_tag(self, stage):
-        self._stage_tag(stage, (time.time() - self._time) * 1000)
-        self._time = time.time()
-
-    def _stage_tag(self, stage, time_delta):
-        self.stages.append((stage, time_delta))
-        self.debug('Stage: {stage}'.format(stage = stage))
-
-    def stage_tag_backdate(self, stage, time_delta):
-        self._stage_tag(stage, time_delta)
-
-    def process_stages(self):
-        self.debug("Stages for {0} : ".format(self.page) + " ".join(["{0}:{1:.2f}ms".format(k, v) for k, v in self.stages]))
-
-    def process(self, msg, kwargs):
-        if "extra" in kwargs:
-            kwargs["extra"].update(self.extra)
-        else :
-            kwargs["extra"] = self.extra
-        return msg, kwargs
-
 
 class PageHandlerGlobals(object):
-    '''
+    """
     Объект с настройками для всех хендлеров
-    '''
+    """
     def __init__(self, app_package):
         self.config = app_package.config
 
@@ -161,7 +113,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.name = self.__class__.__name__
         self.request_id = request.headers.get('X-Request-Id', str(stats.next_request_id()))
         logger_name = '.'.join(filter(None, [self.request_id, getattr(ph_globals.config, 'app_name', None)]))
-        self.log = PageLogger(logger_name, request.path or request.uri, self.__module__, self.handler_started)
+        self.log = frontik_logging.PageLogger(self, logger_name, request.path or request.uri, self.handler_started)
 
         tornado.web.RequestHandler.__init__(self, application, request, logger = self.log, **kwargs)
 
@@ -172,6 +124,9 @@ class PageHandler(tornado.web.RequestHandler):
         self.debug_access = None
 
         self.text = None
+
+    def __repr__(self):
+      return '.'.join([self.__module__, self.__class__.__name__])
 
     def prepare(self):
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
@@ -187,6 +142,7 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.debug('apply_postprocessor==False due to ?nopost query arg')
         else:
             self.apply_postprocessor = True
+
         self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page_cb),
                                                      name = 'finish',
                                                      log = self.log.debug)
@@ -197,10 +153,8 @@ class PageHandler(tornado.web.RequestHandler):
             if tornado.options.options.debug:
                 self.debug_access = True
             else:
-                check_login = login if login is not None \
-                              else tornado.options.options.debug_login
-                check_passwd = passwd if passwd is not None \
-                               else tornado.options.options.debug_password
+                check_login = login if login is not None else tornado.options.options.debug_login
+                check_passwd = passwd if passwd is not None else tornado.options.options.debug_password
 
                 self.debug_access = frontik.auth.passed_basic_auth(
                     self, check_login, check_passwd)
@@ -270,8 +224,7 @@ class PageHandler(tornado.web.RequestHandler):
         if hasattr(self, 'whc_limit'):
             self.whc_limit.release()
 
-        self.log.debug('done in %.2fms', (time.time() - self.handler_started) * 1000)
-        self.log.process_stages()
+        self.log.process_stages(self._status_code)
 
         # if debug_mode is on: ignore any output we intended to write
         # and use debug log instead
@@ -300,13 +253,13 @@ class PageHandler(tornado.web.RequestHandler):
         tornado.web.RequestHandler.finish(self, res)
 
     def get_page(self):
-        ''' Эта функция должна быть переопределена в наследнике и
-        выполнять актуальную работу хендлера '''
+        """ Эта функция должна быть переопределена в наследнике и
+        выполнять актуальную работу хендлера """
         raise HTTPError(405, header={"Allow": "POST"})
 
     def post_page(self):
-        ''' Эта функция должна быть переопределена в наследнике и
-        выполнять актуальную работу хендлера '''
+        """ Эта функция должна быть переопределена в наследнике и
+        выполнять актуальную работу хендлера """
         raise HTTPError(405, headers={"Allow": "GET"})
 
     ###
@@ -327,19 +280,6 @@ class PageHandler(tornado.web.RequestHandler):
         return wrapper
 
     ###
-
-    def fetch_url(self, url, callback = None):
-        """
-        Прокси метод для get_url, логирующий употребления fetch_url
-        """
-        from urlparse import parse_qs, urlparse
-
-        self.log.error("Used deprecated method `fetch_url`. %s", traceback.format_stack()[-2][:-1])
-        scheme, netloc, path, params, query, fragment = urlparse(url)
-        new_url = "{0}://{1}{2}".format(scheme, netloc, path)
-        query = parse_qs(query)
-
-        return self.get_url(new_url, data = query, callback = callback)
 
     def fetch_request(self, req, callback):
         if not self._finished:
@@ -537,8 +477,6 @@ class PageHandler(tornado.web.RequestHandler):
     def _finish_page_cb(self):
         if not self._finished:
             self.log.stage_tag("page")
-
-            res = None
 
             if self.text is not None:
                 self._finish_with_postprocessor(self._prepare_finish_plaintext())
