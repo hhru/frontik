@@ -1,19 +1,13 @@
 # -*- coding: utf-8 -*-
-import codecs
 
+import cStringIO
 import os
 import mimetools
 import mimetypes
-import logging.handlers
 import re
-import socket
 
 import urlparse
 from urllib import urlencode
-
-from logging.handlers import  SysLogHandler
-import cStringIO
-
 import tornado.httpclient
 
 def list_unique(l):
@@ -43,11 +37,11 @@ def make_body(data):
     return make_qs(data) if isinstance(data,dict) else data
 
 def make_url(base, **query_args):
-    '''
+    """
     построить URL из базового урла и набора CGI-параметров
     параметры с пустым значением пропускаются, удобно для последовательности:
     make_url(base, hhtoken=request.cookies.get('hhtoken'))
-    '''
+    """
     qs = make_qs(query_args)
 
     if qs:
@@ -84,12 +78,12 @@ def get_content_type(filename):
 
 
 def make_mfd(fields, files):
-    '''
+    """
     Constructs request body in multipart/form-data format
 
     fields :: { field_name : field_value }
     files :: { field_name: [{ "filename" : fn, "body" : bytes }]}
-    '''
+    """
 
     BOUNDARY = mimetools.choose_boundary()
     body = ""
@@ -204,28 +198,3 @@ def create_fake_response(request, base_response, headers, code, buffer):
 
 def get_cookie_or_url_param_value(handler, param_name):
     return handler.get_argument(param_name, handler.get_cookie(param_name, None))
-
-
-MIN_MSG_LENGTH_LIMIT = 100
-STD_MSG_LENGTH_LIMIT = 2048
-
-class MaxLenSysLogHandler(SysLogHandler):
-    """
-    Extension of standard SysLogHandler with possibility to limit log message sizes
-    """
-
-    def __init__(self, msg_max_length = STD_MSG_LENGTH_LIMIT, *args, **kwargs):
-        if msg_max_length >= MIN_MSG_LENGTH_LIMIT:
-            self.max_length = msg_max_length
-        else:
-            self.max_length = STD_MSG_LENGTH_LIMIT
-        SysLogHandler.__init__(self, *args, **kwargs)
-
-    def format(self, record):
-        """
-        prio_length is length of '<prio>' header which is attached to message before sending to syslog
-        so we need to subtract it from max_length to guarantee that length of resulting message won't be greater than max_length
-        """
-        prio_length = len('%d' % self.encodePriority(self.facility, self.mapPriority(record.levelname))) + 2 # 2 is length of angle brackets
-        return SysLogHandler.format(self, record)[:(self.max_length - prio_length)]
-
