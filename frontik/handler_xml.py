@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import functools
 import copy
 import os.path
-import threading
 import time
-import urllib
 import weakref
 
 import lxml.etree as etree
@@ -54,9 +51,9 @@ class FileCache(object):
                 self.pop(self._order.pop(0))
             
     def __init__(self, root_dir, load_fn, max_len=None, step=None):
-        '''
+        """
         load_fn :: filename -> (status, result)
-        '''
+        """
 
         self.root_dir = root_dir
         self.load_fn = load_fn
@@ -66,11 +63,10 @@ class FileCache(object):
         if filename in self.cache:
             log_fileloader.debug('got %s file from cache', filename)
             return copy.deepcopy(self.cache[filename])
-        else:
-            real_filename = os.path.normpath(os.path.join(self.root_dir, filename))
 
-            log_fileloader.debug('reading %s file from %s', filename, real_filename)
-            ok, ret = self.load_fn(real_filename)
+        real_filename = os.path.normpath(os.path.join(self.root_dir, filename))
+        log_fileloader.debug('reading %s file from %s', filename, real_filename)
+        ok, ret = self.load_fn(real_filename)
 
         if ok:
             self.cache[filename] = ret
