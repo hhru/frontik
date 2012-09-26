@@ -65,7 +65,7 @@ class FileCache(object):
     def load(self, filename):
         if filename in self.cache:
             log_fileloader.debug('got %s file from cache', filename)
-            return self.cache[filename]
+            return copy.deepcopy(self.cache[filename])
         else:
             real_filename = os.path.normpath(os.path.join(self.root_dir, filename))
 
@@ -91,9 +91,8 @@ def xml_from_file(filename):
 
     if os.path.exists(filename):
         try:
-            res = etree.parse(file(filename)).getroot()
+            res = etree.parse(filename).getroot()
             tornado.autoreload.watch_file(filename)
-
             return True, [_source_comment(filename), res]
         except:
             log_fileloader.exception('failed to parse %s', filename)
