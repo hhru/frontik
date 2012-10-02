@@ -22,11 +22,12 @@ log_fileloader = logging.getLogger('frontik.server.fileloader')
 
 class FileCache(object):
     class LimitedDict(dict):
-        def __init__(self, max_len=None, step=None):
+        def __init__(self, max_len=None, step=None, deepcopy=False):
             dict.__init__(self)
             self._order = []
             self.max_len = max_len
             self.step = step
+            self.deepcopy = deepcopy
 
         def __getitem__(self, key):
             val = dict.__getitem__(self, key)
@@ -38,7 +39,7 @@ class FileCache(object):
                 else:
                     self._order.remove(key)
                     self._order.append(key)
-            return val
+            return copy.deepcopy(val) if self.deepcopy else val
 
         def __setitem__(self, key, value):
             dict.__setitem__(self, key, value)
@@ -50,19 +51,19 @@ class FileCache(object):
             if self.max_len and len(self._order) > self.max_len:
                 self.pop(self._order.pop(0))
             
-    def __init__(self, root_dir, load_fn, max_len=None, step=None):
+    def __init__(self, root_dir, load_fn, max_len=None, step=None, deepcopy=False):
         """
         load_fn :: filename -> (status, result)
         """
 
         self.root_dir = root_dir
         self.load_fn = load_fn
-        self.cache = FileCache.LimitedDict(max_len, step)
+        self.cache = FileCache.LimitedDict(max_len, step, deepcopy)
 
     def load(self, filename):
         if filename in self.cache:
             log_fileloader.debug('got %s file from cache', filename)
-            return copy.deepcopy(self.cache[filename])
+            return self.cache[filename]
 
         real_filename = os.path.normpath(os.path.join(self.root_dir, filename))
         log_fileloader.debug('reading %s file from %s', filename, real_filename)
@@ -121,9 +122,9 @@ class InvalidOptionCache(object):
         raise Exception('{0} option is undefined'.format(self.option))
 
 
-def make_file_cache(option_name, option_value, fun, max_len=None, step=None):
+def make_file_cache(option_name, option_value, fun, max_len=None, step=None, deepcopy=False):
     if option_value:
-        return FileCache(option_value, fun, max_len, step)
+        return FileCache(option_value, fun, max_len, step, deepcopy)
     else:
         return InvalidOptionCache(option_name)
 
@@ -138,7 +139,8 @@ class PageHandlerXMLGlobals(object):
                                          getattr(config, 'XML_root', None),
                                          xml_from_file,
                                          getattr(config, 'XML_cache_limit', None),
-                                         getattr(config, 'XML_cache_step', None))
+                                         getattr(config, 'XML_cache_step', None),
+                                         deepcopy=True)
 
         self.xsl_cache = make_file_cache('XSL_root',
                                          getattr(config, 'XSL_root', None),
