@@ -1,11 +1,10 @@
+import os
 import re
+
 try:
-    ver_path = __file__.rsplit("/", 2)[0]
-    deb_path = ver_path + "/debian/changelog"
-    changelog = open(deb_path, "r")
-    regmatch = re.match("frontik \((.*)\).*", changelog.readline())
-    version = regmatch.groups()[0]
-    changelog.close()
+    deb_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'debian/changelog')
+    with open(deb_path, 'r') as changelog:
+        regmatch = re.match(r'frontik \((.*)\).*', changelog.readline())
+        version = regmatch.groups()[0]
 except:
     version = 'DEVELOPMENT'
-
