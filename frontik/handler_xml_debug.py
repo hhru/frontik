@@ -8,6 +8,7 @@ import weakref
 import json
 import copy
 from datetime import datetime
+import frontik.app
 import frontik.handler
 import frontik.util
 import frontik.xml_util
@@ -203,6 +204,7 @@ class PageHandlerDebug(object):
         self.debug_log_handler.log_data.set('code', str(status_code))
         self.debug_log_handler.log_data.set('mode', self.handler.get_argument('debug', 'text'))
         self.debug_log_handler.log_data.set('request-id', str(self.handler.request_id))
+        self.debug_log_handler.log_data.append(frontik.app.get_frontik_and_apps_versions())
         self.debug_log_handler.log_data.append(E.request(
             _params_to_xml(self.handler.request.uri),
             _headers_to_xml(self.handler.request.headers),
