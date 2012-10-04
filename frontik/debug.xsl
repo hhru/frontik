@@ -12,7 +12,7 @@
         </xsl:if>
     </xsl:variable>
 
-    <xsl:template match="/log">
+    <xsl:template match="log">
         <html>
             <head>
                 <title>Status
@@ -39,7 +39,7 @@
 
     <xsl:template match="entry[contains(@msg, 'finish group') and /log/@mode != 'full']"/>
 
-    <xsl:template match="/log" mode="versions-info">
+    <xsl:template match="log" mode="versions-info">
         <div class="textentry m-textentry__expandable">
             <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
                 <span class="textentry__head__expandtext">
@@ -52,7 +52,7 @@
         </div>
     </xsl:template>
 
-    <xsl:template match="/log" mode="general-info">
+    <xsl:template match="log" mode="general-info">
         <div class="textentry m-textentry__expandable">
             <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
                 <span class="textentry__head__expandtext">
