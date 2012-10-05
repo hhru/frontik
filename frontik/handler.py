@@ -164,7 +164,7 @@ class PageHandler(tornado.web.RequestHandler):
 
     def get_error_html(self, status_code, **kwargs):
         if  self._prepared and self.debug.debug_mode_logging:
-            return self.debug.get_debug_page(status_code, **kwargs)
+            return self.debug.get_debug_page(status_code, self._headers, **kwargs)
         else:
             #if not prepared (for example, working handlers count limit) or not in
             #debug mode use default tornado error page
@@ -233,20 +233,22 @@ class PageHandler(tornado.web.RequestHandler):
             self._response_size += len(chunk) if chunk is not None else 0
 
             if self.debug.debug_return_response:
-                headers = {'Content-Length': str(self._response_size)}
+                original_headers = {'Content-Length': str(self._response_size)}
+                response_headers = dict(self._headers, **original_headers)
                 original_response = {
                     'buffer': ''.join(self._write_buffer) + (chunk if chunk is not None else ''),
-                    'headers': dict(self._headers, **headers),
+                    'headers': response_headers,
                     'code': self._status_code
                 }
 
                 self.set_header(self.INHERIT_DEBUG_HEADER_NAME, True)
             else:
+                response_headers = self._headers
                 original_response = None
                 self.set_header('Content-Type', 'text/html')
                 self._status_code = 200
 
-            res = self.debug.get_debug_page(self._status_code, original_response)
+            res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
         else:
             res = chunk
 

@@ -1,9 +1,10 @@
 import imp
 import logging
-import os.path
 import sys
 import re
 import time
+import functools
+import urlparse
 
 import lxml.etree as etree
 import tornado.autoreload
@@ -11,42 +12,41 @@ import tornado.web
 import tornado.ioloop
 from tornado.options import options
 
+import frontik.handler as handler
 import frontik.magic_imp
 import frontik.doc
-from frontik import __version__
-from frontik import etree
-from tornado.httpserver import HTTPRequest
-import urlparse
 
 
 log = logging.getLogger('frontik.server')
 
-import frontik.handler as handler
-import functools
+def __get_apps_versions():
+    app_versions = etree.Element('applications')
+
+    for path, app in options.urls:
+        app_info = etree.Element('application', name=repr(app), path=path)
+        try:
+            application = app.ph_globals.config.version
+            app_info.extend(list(application))
+        except:
+            etree.SubElement(app_info, 'version').text = 'app doesn''t support version'
+
+        etree.SubElement(app_info, 'initialized_wo_error').text = str(app.initialized_wo_error)
+        app_versions.append(app_info)
+
+    return app_versions
+
+def get_frontik_and_apps_versions():
+    from version import version
+    versions = etree.Element('versions')
+    etree.SubElement(versions, 'frontik').text = version
+    versions.append(__get_apps_versions())
+    return versions
+
 
 class VersionHandler(tornado.web.RequestHandler):
     def get(self):
         self.set_header('Content-Type', 'text/xml')
-        versions = etree.Element("versions")
-
-        from version import version
-        etree.SubElement(versions, "frontik").text = version
-
-        import frontik.options
-        application_versions = etree.Element("applications")
-
-        for path, app in options.urls:
-            app_info = etree.Element("application", name=repr(app), path = path)
-            try:
-                application = app.ph_globals.config.version
-                app_info.extend(list(application))
-            except:
-                etree.SubElement(app_info, "version").text = "app doesn't support version"
-            etree.SubElement(app_info, "initialized_wo_error").text = str(app.initialized_wo_error)
-            application_versions.append(app_info)
-            
-        versions.append(application_versions)
-        self.write(frontik.doc.etree_to_xml(versions))
+        self.write(frontik.doc.etree_to_xml(get_frontik_and_apps_versions()))
 
 
 class StatusHandler(tornado.web.RequestHandler):
@@ -57,11 +57,11 @@ class StatusHandler(tornado.web.RequestHandler):
         self.write('http reqs got: %s bytes\n' % (handler.stats.http_reqs_size_sum,))
         cur_uptime = time.time() - handler.stats.start_time
         if cur_uptime < 60:
-            res = 'uptime for : %d seconds\n' % ((cur_uptime),)
+            res = 'uptime for : %d seconds\n' % cur_uptime
         elif cur_uptime < 3600:
             res = 'uptime for : %d minutes\n' % ((cur_uptime/60),)
         else:
-            res = 'uptime for : %d hours and %d minutes \n' % ((cur_uptime/3600), (cur_uptime % 3600)/60)
+            res = 'uptime for : %d hours and %d minutes \n' % (cur_uptime/3600, (cur_uptime % 3600)/60)
 
         self.write(res)
 
@@ -131,7 +131,7 @@ def augment_request(request, match, parse):
             request.arguments.setdefault(name, []).extend(parse(value))
 
 def dispatcher(cls):
-    'makes on demand initializing class'
+    """makes on demand initializing class"""
     old_init = cls.__init__
     def __init__(self, *args, **kwargs):
         self._init_partial = functools.partial(old_init, self, *args, **kwargs)

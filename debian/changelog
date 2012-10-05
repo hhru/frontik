@@ -1,3 +1,10 @@
+frontik (2.14.0) unstable; urgency=low
+
+  [ Andrey Sumin ]
+  * HH-28791 display version info and cur req in debug log 
+
+ -- Vasily Katraev (hh.ru) <v.katraev@hh.ru>  Thu, 04 Oct 2012 16:28:52 +0400
+
 frontik (2.13.3) unstable; urgency=low
 
   [ Andrey Sumin ]
