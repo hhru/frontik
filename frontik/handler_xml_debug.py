@@ -1,17 +1,14 @@
 # -*- coding: utf-8 -*-
 
 import Cookie
-import inspect
 import logging
-import os.path
-import time
 import traceback
 import urlparse
 import weakref
-import xml.sax.saxutils
 import json
 import copy
 from datetime import datetime
+import frontik.app
 import frontik.handler
 import frontik.util
 import frontik.xml_util
@@ -24,7 +21,6 @@ from frontik.util import get_query_parameters
 log = logging.getLogger('XML_debug')
 
 def response_to_xml(response):
-    headers = etree.Element("headers")
     time_info = etree.Element("time_info")
     content_type = response.headers.get('Content-Type','')
 
@@ -46,9 +42,6 @@ def response_to_xml(response):
         except Exception as e:
             body = 'Cant show response body, ' + str(e)
 
-    for name, value in response.headers.iteritems():
-        headers.append(E.header(value, name = name))
-
     for name, value in response.time_info.iteritems():
         time_info.append(E.time(str(value), name = name))
 
@@ -60,32 +53,12 @@ def response_to_xml(response):
             E.error(str(response.error)),
             E.size(str(len(response.body)) if response.body is not None else '0'),
             E.request_time(str(int(response.request_time * 1000))),
-            headers,
+            _headers_to_xml(response.headers),
             time_info,
         )
     )
 
-
 def request_to_xml(request):
-    headers = etree.Element("headers")
-
-    for name, value in request.headers.iteritems():
-        if name != "Cookie":
-            headers.append(E.header(str(value), name = name))
-
-
-    cookies = etree.Element("cookies")
-    if "Cookie" in request.headers:
-        _cookies = Cookie.SimpleCookie(request.headers["Cookie"])
-        for cookie in _cookies:
-            cookies.append(E.cookie(_cookies[cookie].value, name = cookie))
-
-    params = etree.Element("params")
-    query = get_query_parameters(request.url)
-    for name, values in query.iteritems():
-        for value in values:
-            params.append(E.param(unicode(value, "utf-8"), name = name))
-
     content_type = request.headers.get('Content-Type','')
     body = etree.Element("body", content_type = content_type)
 
@@ -111,12 +84,35 @@ def request_to_xml(request):
             E.max_redirects(str(request.max_redirects)),
             E.method(request.method),
             E.request_timeout(str(request.request_timeout)),
-            params,
+            _params_to_xml(request.url),
             E.url(request.url),
-            headers,
-            cookies
+            _headers_to_xml(request.headers),
+            _cookies_to_xml(request.headers)
         )
     )
+
+def _params_to_xml(url):
+    params = etree.Element('params')
+    query = get_query_parameters(url)
+    for name, values in query.iteritems():
+        for value in values:
+            params.append(E.param(unicode(value, 'utf-8'), name = name))
+    return params
+
+def _headers_to_xml(request_or_response_headers):
+    headers = etree.Element('headers')
+    for name, value in request_or_response_headers.iteritems():
+        if name != 'Cookie':
+            headers.append(E.header(str(value), name = name))
+    return headers
+
+def _cookies_to_xml(request_headers):
+    cookies = etree.Element('cookies')
+    if 'Cookie' in request_headers:
+        _cookies = Cookie.SimpleCookie(request_headers['Cookie'])
+        for cookie in _cookies:
+            cookies.append(E.cookie(_cookies[cookie].value, name = cookie))
+    return cookies
 
 
 class DebugPageHandler(logging.Handler):
@@ -133,7 +129,9 @@ class DebugPageHandler(logging.Handler):
 
         self.log_data = etree.Element("log")
 
-    FIELDS = ['created', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
+    FIELDS = ['created', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs',
+              'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
+
     def handle(self, record):
         entry_attrs = {}
         for field in self.FIELDS:
@@ -202,10 +200,16 @@ class PageHandlerDebug(object):
         if self.debug_return_response:
             self.handler.log.debug('debug mode will be passed to all frontik apps requested (debug=pass)')
 
-    def get_debug_page(self, status_code, original_response=None, **kwargs):
-        self.debug_log_handler.log_data.set("code", str(status_code))
-        self.debug_log_handler.log_data.set("mode", self.handler.get_argument('debug', 'text'))
-        self.debug_log_handler.log_data.set("request-id", str(self.handler.request_id))
+    def get_debug_page(self, status_code, response_headers, original_response=None, **kwargs):
+        self.debug_log_handler.log_data.set('code', str(status_code))
+        self.debug_log_handler.log_data.set('mode', self.handler.get_argument('debug', 'text'))
+        self.debug_log_handler.log_data.set('request-id', str(self.handler.request_id))
+        self.debug_log_handler.log_data.append(frontik.app.get_frontik_and_apps_versions())
+        self.debug_log_handler.log_data.append(E.request(
+            _params_to_xml(self.handler.request.uri),
+            _headers_to_xml(self.handler.request.headers),
+            _cookies_to_xml(self.handler.request.headers)))
+        self.debug_log_handler.log_data.append(E.response(_headers_to_xml(response_headers)))
 
         if getattr(self.handler, "_response_size", None) is not None:
             self.debug_log_handler.log_data.set("response-size", str(self.handler._response_size))
