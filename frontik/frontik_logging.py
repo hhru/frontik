@@ -97,6 +97,9 @@ class PageLogger(logging.LoggerAdapter):
         self.info('Monik-stages {0!r} : {1} code={2}'.format(self.handler_ref(), stages_monik_format, status_code),
             extra={'_monik': True})
 
+    def stages_to_json(self):
+        return '{' + ', '.join([('%s: %s' % s) for s in self.stages]) + '}'
+
     def process(self, msg, kwargs):
         if "extra" in kwargs:
             kwargs["extra"].update(self.extra)
