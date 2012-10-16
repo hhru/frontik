@@ -5,7 +5,6 @@ import time
 import urllib2
 import lxml.etree as etree
 import nose
-import frontik.handler
 
 from integration_util import get_page, FrontikTestInstance
 
