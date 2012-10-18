@@ -174,12 +174,13 @@ class DebugPageHandler(logging.Handler):
 class PageHandlerDebug(object):
     def __init__(self, handler):
         self.handler = weakref.proxy(handler)
-        debug_enabled = frontik.util.get_cookie_or_url_param_value(self.handler, 'debug')
+        debug_param = frontik.util.get_cookie_or_url_param_value(self.handler, 'debug')
+        self.debug_mode_profile = debug_param == 'profile'
         self.debug_mode_inherited = self.handler.request.headers.get(frontik.handler.PageHandler.INHERIT_DEBUG_HEADER_NAME)
-        self.debug_return_response = debug_enabled == 'pass' or self.debug_mode_inherited
+        self.debug_return_response = debug_param == 'pass' or self.debug_mode_inherited
         self.pass_debug_mode_further = self.debug_return_response
 
-        if debug_enabled is not None or self.debug_mode_inherited:
+        if (debug_param is not None or self.debug_mode_inherited) and not self.debug_mode_profile:
             self.handler.require_debug_access()
             self.handler.log.debug('debug mode is on')
             self.debug_mode = True

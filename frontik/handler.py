@@ -122,7 +122,6 @@ class PageHandler(tornado.web.RequestHandler):
         self.http_client = self.ph_globals.http_client
 
         self.debug_access = None
-        self.profiling_display_enabled = None
 
         self.text = None
 
@@ -144,7 +143,6 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             self.apply_postprocessor = True
 
-        self.profiling_display_enabled = frontik.util.get_cookie_or_url_param_value(self, 'profiler') is not None
         self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page_cb),
                                                      name = 'finish',
                                                      log = self.log.debug)
@@ -252,7 +250,7 @@ class PageHandler(tornado.web.RequestHandler):
 
             res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
 
-        elif self.profiling_display_enabled:
+        elif self.debug.debug_mode_profile:
             buffer = ''.join(self._write_buffer) + (chunk if chunk is not None else '')
             res = buffer.replace("'%PROFILER_STAGES%'", self.log.stages_to_json())
 
