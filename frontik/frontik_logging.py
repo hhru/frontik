@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import json
 import logging
 from logging.handlers import SysLogHandler
 import weakref
@@ -79,7 +79,7 @@ class PageLogger(logging.LoggerAdapter):
     def stage_tag(self, stage):
         self._stage_tag(stage, (time.time() - self._time) * 1000)
         self._time = time.time()
-        self.debug('Stage: {stage}'.format(stage = stage))
+        self.debug('Stage: {stage}'.format(stage=stage))
 
     def _stage_tag(self, stage, time_delta):
         self.stages.append((stage, time_delta))
@@ -98,7 +98,7 @@ class PageLogger(logging.LoggerAdapter):
             extra={'_monik': True})
 
     def stages_to_json(self):
-        return '{' + ', '.join([('%s: %s' % s) for s in self.stages]) + '}'
+        return json.dumps(self.stages).replace('"', '\'')
 
     def process(self, msg, kwargs):
         if "extra" in kwargs:
