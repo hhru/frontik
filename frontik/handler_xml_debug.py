@@ -172,33 +172,42 @@ class DebugPageHandler(logging.Handler):
 
 
 class PageHandlerDebug(object):
+
+    class DebugMode(object):
+        def __init__(self, handler):
+            debug_param = frontik.util.get_cookie_or_url_param_value(handler, 'debug')
+            self.inherited = handler.request.headers.get(frontik.handler.PageHandler.INHERIT_DEBUG_HEADER_NAME)
+            self.profile = debug_param == 'profile'
+
+            if (debug_param is not None or self.inherited) and not self.profile:
+                self.enabled = True
+                self.return_response = debug_param == 'pass' or self.inherited
+                self.pass_further = self.return_response
+            else:
+                self.enabled = False
+                self.return_response = False
+                self.pass_further = False
+
+            self.logging = tornado.options.options.debug or self.enabled
+
+
     def __init__(self, handler):
         self.handler = weakref.proxy(handler)
-        debug_param = frontik.util.get_cookie_or_url_param_value(self.handler, 'debug')
-        self.debug_mode_profile = debug_param == 'profile'
-        self.debug_mode_inherited = self.handler.request.headers.get(frontik.handler.PageHandler.INHERIT_DEBUG_HEADER_NAME)
-        self.debug_return_response = debug_param == 'pass' or self.debug_mode_inherited
-        self.pass_debug_mode_further = self.debug_return_response
+        self.debug_mode = PageHandlerDebug.DebugMode(self.handler)
 
-        if (debug_param is not None or self.debug_mode_inherited) and not self.debug_mode_profile:
-            self.handler.require_debug_access()
-            self.handler.log.debug('debug mode is on')
-            self.debug_mode = True
-        else:
-            self.debug_mode = False
+        if self.debug_mode.enabled:
+            handler.require_debug_access()
+            handler.log.debug('debug mode is on')
 
-        if tornado.options.options.debug or self.debug_mode:
-            self.debug_mode_logging = True
+        if self.debug_mode.logging:
             self.debug_log_handler = DebugPageHandler()
             self.handler.log.addHandler(self.debug_log_handler)
             self.handler.log.debug('using debug mode logging')
-        else:
-            self.debug_mode_logging = False
 
-        if self.debug_mode_inherited:
+        if self.debug_mode.inherited:
             self.handler.log.debug('debug mode is inherited due to X-Inherit-Debug request header')
 
-        if self.debug_return_response:
+        if self.debug_mode.return_response:
             self.handler.log.debug('debug mode will be passed to all frontik apps requested (debug=pass)')
 
     def get_debug_page(self, status_code, response_headers, original_response=None, **kwargs):
@@ -215,12 +224,12 @@ class PageHandlerDebug(object):
         if getattr(self.handler, "_response_size", None) is not None:
             self.debug_log_handler.log_data.set("response-size", str(self.handler._response_size))
 
-        if self.debug_return_response and original_response is not None:
+        if self.debug_mode.return_response and original_response is not None:
             self.debug_log_handler.log_data.append(frontik.xml_util.dict_to_xml(original_response, 'original-response'))
 
         # show debug page if apply_xsl=True ('noxsl' flag is not set) or if 500 error occured
         # if debug mode is inherited (through X-Inherit-Debug request header), than the response is always xml
-        if (self.handler.xml.apply_xsl or not self.debug_mode) and not self.debug_mode_inherited:
+        if (self.handler.xml.apply_xsl or not self.debug_mode.enabled) and not self.debug_mode.inherited:
             try:
                 xsl_file = open(tornado.options.options.debug_xsl)
                 tranform = etree.XSLT(etree.XML(xsl_file.read()))
