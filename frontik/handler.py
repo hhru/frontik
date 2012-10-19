@@ -163,7 +163,7 @@ class PageHandler(tornado.web.RequestHandler):
                 raise HTTPError(401, headers={'WWW-Authenticate': 'Basic realm="Secure Area"'})
 
     def get_error_html(self, status_code, **kwargs):
-        if  self._prepared and self.debug.debug_mode_logging:
+        if  self._prepared and self.debug.debug_mode.logging:
             return self.debug.get_debug_page(status_code, self._headers, **kwargs)
         else:
             #if not prepared (for example, working handlers count limit) or not in
@@ -228,11 +228,11 @@ class PageHandler(tornado.web.RequestHandler):
 
         # if debug_mode is on: ignore any output we intended to write
         # and use debug log instead
-        if hasattr(self, 'debug') and self.debug.debug_mode:
+        if hasattr(self, 'debug') and self.debug.debug_mode.enabled:
             self._response_size = sum(imap(len, self._write_buffer))
             self._response_size += len(chunk) if chunk is not None else 0
 
-            if self.debug.debug_return_response:
+            if self.debug.debug_mode.return_response:
                 original_headers = {'Content-Length': str(self._response_size)}
                 response_headers = dict(self._headers, **original_headers)
                 original_response = {
@@ -250,7 +250,7 @@ class PageHandler(tornado.web.RequestHandler):
 
             res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
 
-        elif self.debug.debug_mode_profile:
+        elif hasattr(self, 'debug') and self.debug.debug_mode.profile:
             buffer = ''.join(self._write_buffer) + (chunk if chunk is not None else '')
             res = buffer.replace("'%PROFILER_STAGES%'", self.log.stages_to_json())
 
@@ -299,7 +299,7 @@ class PageHandler(tornado.web.RequestHandler):
                         self.log.warn('got strange response.body of type %s', type(response.body))
                 callback(response)
 
-            if hasattr(self, 'debug') and self.debug.pass_debug_mode_further:
+            if hasattr(self, 'debug') and self.debug.debug_mode.pass_further:
                 req.headers[self.INHERIT_DEBUG_HEADER_NAME] = True
                 req.headers['Authorization'] = self.request.headers.get('Authorization', None)
 
