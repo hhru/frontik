@@ -229,7 +229,8 @@ class PageHandlerDebug(object):
 
         # show debug page if apply_xsl=True ('noxsl' flag is not set) or if 500 error occured
         # if debug mode is inherited (through X-Inherit-Debug request header), than the response is always xml
-        if (self.handler.xml.apply_xsl or not self.debug_mode.enabled) and not self.debug_mode.inherited:
+        can_apply_xsl_or_500 = self.handler.xml.apply_xsl or not self.debug_mode.enabled
+        if can_apply_xsl_or_500 and not self.debug_mode.inherited:
             try:
                 xsl_file = open(tornado.options.options.debug_xsl)
                 tranform = etree.XSLT(etree.XML(xsl_file.read()))
