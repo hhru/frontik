@@ -22,19 +22,23 @@
                 <xsl:apply-templates select="." mode="js"/>
             </head>
             <body>
-                <div class="textentry m-textentry_title">
-                    requestid: <xsl:value-of select="@request-id"/>,
-                    status: <xsl:value-of select="@code"/>,
-                    requests: <xsl:value-of select="count(entry/response)"/>,
-                    bytes received: <xsl:value-of select="sum(entry/response/size)"/>,
-                    bytes produced: <xsl:value-of select="@response-size"/>
-                </div>
-
-                <xsl:apply-templates select="." mode="versions-info"/>
-                <xsl:apply-templates select="." mode="general-info"/>
-                <xsl:apply-templates select="entry"/>
+                <xsl:apply-templates select="." mode="debug-log"/>
             </body>
         </html>
+    </xsl:template>
+
+    <xsl:template match="log" mode="debug-log">
+        <div class="textentry m-textentry_title">
+            requestid: <xsl:value-of select="@request-id"/>,
+            status: <xsl:value-of select="@code"/>,
+            requests: <xsl:value-of select="count(entry/response)"/>,
+            bytes received: <xsl:value-of select="sum(entry/response/size)"/>,
+            bytes produced: <xsl:value-of select="@response-size"/>
+        </div>
+
+        <xsl:apply-templates select="." mode="versions-info"/>
+        <xsl:apply-templates select="." mode="general-info"/>
+        <xsl:apply-templates select="entry"/>
     </xsl:template>
 
     <xsl:template match="entry[contains(@msg, 'finish group') and /log/@mode != 'full']"/>
@@ -177,7 +181,7 @@
 
     <xsl:template match="debug">
         <div class="debug-inherited">
-            <xsl:apply-templates select="node()"/>
+            <xsl:apply-templates select="." mode="debug-log"/>
         </div>
     </xsl:template>
 
