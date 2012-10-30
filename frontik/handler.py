@@ -163,8 +163,9 @@ class PageHandler(tornado.web.RequestHandler):
                 raise HTTPError(401, headers={'WWW-Authenticate': 'Basic realm="Secure Area"'})
 
     def get_error_html(self, status_code, **kwargs):
-        if  self._prepared and self.debug.debug_mode.logging:
-            return self.debug.get_debug_page(status_code, self._headers, **kwargs)
+        if self._prepared and self.debug.debug_mode.logging:
+            debug_is_finished = not self.debug.debug_mode.inherited
+            return self.debug.get_debug_page(status_code, self._headers, finish_debug=debug_is_finished)
         else:
             #if not prepared (for example, working handlers count limit) or not in
             #debug mode use default tornado error page
@@ -219,7 +220,6 @@ class PageHandler(tornado.web.RequestHandler):
     def options(self, *args, **kwargs):
         raise HTTPError(405, headers={"Allow": "GET, POST"})
 
-
     def finish(self, chunk = None):
         if hasattr(self, 'whc_limit'):
             self.whc_limit.release()
@@ -246,9 +246,9 @@ class PageHandler(tornado.web.RequestHandler):
                 response_headers = self._headers
                 original_response = None
                 self.set_header('Content-Type', 'text/html')
-                self._status_code = 200
 
             res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
+            self._status_code = 200
 
         elif hasattr(self, 'debug') and self.debug.debug_mode.profile:
             buffer = ''.join(self._write_buffer) + (chunk if chunk is not None else '')
@@ -493,15 +493,15 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
     def _finish_with_postprocessor(self, res):
-            if hasattr(self.config, 'postprocessor'):
-                if self.apply_postprocessor:
-                    self.log.debug('applying postprocessor')
-                    self.async_callback(self.config.postprocessor)(self, res, self.async_callback(partial(self._wait_postprocessor, time.time())))
-                else:
-                    self.log.debug('skipping postprocessor')
-                    self.finish(res)
+        if hasattr(self.config, 'postprocessor'):
+            if self.apply_postprocessor:
+                self.log.debug('applying postprocessor')
+                self.async_callback(self.config.postprocessor)(self, res, self.async_callback(partial(self._wait_postprocessor, time.time())))
             else:
+                self.log.debug('skipping postprocessor')
                 self.finish(res)
+        else:
+            self.finish(res)
 
     def _wait_postprocessor(self, start_time, data):
         self.log.stage_tag("postprocess")

@@ -210,24 +210,31 @@ class PageHandlerDebug(object):
         if self.debug_mode.return_response:
             self.handler.log.debug('debug mode will be passed to all frontik apps requested (debug=pass)')
 
-    def get_debug_page(self, status_code, response_headers, original_response=None, **kwargs):
-        self.debug_log_handler.log_data.set('code', str(status_code))
-        self.debug_log_handler.log_data.set('mode', self.handler.get_argument('debug', 'text'))
-        self.debug_log_handler.log_data.set('request-id', str(self.handler.request_id))
-        self.debug_log_handler.log_data.append(frontik.app.get_frontik_and_apps_versions())
-        self.debug_log_handler.log_data.append(E.request(
+    def get_debug_page(self, status_code, response_headers, original_response=None, finish_debug=True):
+        if finish_debug:
+            debug_log_data = self.debug_log_handler.log_data
+        else:
+            debug_log_data = copy.deepcopy(self.debug_log_handler.log_data)
+
+        debug_log_data.set('code', str(status_code))
+        debug_log_data.set('mode', self.handler.get_argument('debug', 'text'))
+        debug_log_data.set('request-id', str(self.handler.request_id))
+
+        debug_log_data.append(frontik.app.get_frontik_and_apps_versions())
+        debug_log_data.append(E.request(
             _params_to_xml(self.handler.request.uri),
             _headers_to_xml(self.handler.request.headers),
             _cookies_to_xml(self.handler.request.headers)))
-        self.debug_log_handler.log_data.append(E.response(_headers_to_xml(response_headers)))
+        debug_log_data.append(E.response(_headers_to_xml(response_headers)))
 
         if getattr(self.handler, "_response_size", None) is not None:
-            self.debug_log_handler.log_data.set("response-size", str(self.handler._response_size))
+            debug_log_data.set("response-size", str(self.handler._response_size))
 
         if self.debug_mode.return_response and original_response is not None:
-            self.debug_log_handler.log_data.append(frontik.xml_util.dict_to_xml(original_response, 'original-response'))
+            debug_log_data.append(frontik.xml_util.dict_to_xml(original_response, 'original-response'))
 
-        # show debug page if apply_xsl=True ('noxsl' flag is not set) or if 500 error occured
+        # show debug page if apply_xsl=True ('noxsl' flag is not set)
+        # if debug mode is disabled, than we could have got there only after an exception — apply xsl anyway
         # if debug mode is inherited (through X-Inherit-Debug request header), than the response is always xml
         can_apply_xsl_or_500 = self.handler.xml.apply_xsl or not self.debug_mode.enabled
         if can_apply_xsl_or_500 and not self.debug_mode.inherited:
@@ -235,15 +242,14 @@ class PageHandlerDebug(object):
                 xsl_file = open(tornado.options.options.debug_xsl)
                 tranform = etree.XSLT(etree.XML(xsl_file.read()))
                 xsl_file.close()
-                log_document = str(tranform(self.debug_log_handler.log_data))
+                log_document = str(tranform(debug_log_data))
                 self.handler.set_header('Content-Type', 'text/html; charset=UTF-8')
             except Exception, e:
                 self.handler.log.exception('XSLT debug file error')
                 self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
-                log_document = etree.tostring(self.debug_log_handler.log_data, encoding = 'UTF-8',
-                                              xml_declaration = True)
+                log_document = etree.tostring(debug_log_data, encoding='UTF-8', xml_declaration=True)
         else:
             self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
-            log_document = etree.tostring(self.debug_log_handler.log_data, encoding = 'UTF-8', xml_declaration = True)
+            log_document = etree.tostring(debug_log_data, encoding='UTF-8', xml_declaration=True)
 
         return log_document
