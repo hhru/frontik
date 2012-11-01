@@ -275,6 +275,7 @@
 
     <xsl:template match="log" mode="css">
         <style>
+            body { margin: 0 10px; }
             body, pre{
                 font-family:Arial;
             }

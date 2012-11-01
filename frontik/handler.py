@@ -23,7 +23,7 @@ import frontik.xml_util
 import frontik.jobs
 import frontik.handler_xml
 import frontik.handler_whc_limit
-import frontik.handler_xml_debug
+import frontik.handler_debug
 import frontik.future as future
 
 def _parse_response_smth(response, logger = frontik_logging.log, parser=None, type=None):
@@ -113,7 +113,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.name = self.__class__.__name__
         self.request_id = request.headers.get('X-Request-Id', str(stats.next_request_id()))
         logger_name = '.'.join(filter(None, [self.request_id, getattr(ph_globals.config, 'app_name', None)]))
-        self.log = frontik_logging.PageLogger(self, logger_name, request.path or request.uri, self.handler_started)
+        self.log = frontik_logging.PageLogger(self, logger_name, request.path or request.uri)
 
         tornado.web.RequestHandler.__init__(self, application, request, logger = self.log, **kwargs)
 
@@ -130,7 +130,7 @@ class PageHandler(tornado.web.RequestHandler):
 
     def prepare(self):
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
-        self.debug = frontik.handler_xml_debug.PageHandlerDebug(self)
+        self.debug = frontik.handler_debug.PageHandlerDebug(self)
         self.log.info('page module: %s', self.__module__)
 
         self.xml = frontik.handler_xml.PageHandlerXML(self)
@@ -163,7 +163,7 @@ class PageHandler(tornado.web.RequestHandler):
                 raise HTTPError(401, headers={'WWW-Authenticate': 'Basic realm="Secure Area"'})
 
     def get_error_html(self, status_code, **kwargs):
-        if self._prepared and self.debug.debug_mode.logging:
+        if self._prepared and self.debug.debug_mode.write_debug:
             debug_is_finished = not self.debug.debug_mode.inherited
             return self.debug.get_debug_page(status_code, self._headers, finish_debug=debug_is_finished)
         else:
@@ -248,14 +248,19 @@ class PageHandler(tornado.web.RequestHandler):
                 self.set_header('Content-Type', 'text/html')
 
             res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
+            self._write_buffer = []
             self._status_code = 200
-
-        elif hasattr(self, 'debug') and self.debug.debug_mode.profile:
-            buffer = ''.join(self._write_buffer) + (chunk if chunk is not None else '')
-            res = buffer.replace("'%PROFILER_STAGES%'", self.log.stages_to_json())
-
         else:
             res = chunk
+
+        if hasattr(self, 'debug') and self.debug.debug_mode.profile:
+            profiler_document = self.debug.get_profiler_template()
+            if profiler_document is not None:
+                match = tornado.options.options.debug_profiler_tag
+                buffer = ''.join(self._write_buffer) + (res if res is not None else '')
+                res = buffer.replace(match, profiler_document)
+                self._write_buffer = []
+                self.log.debug('Profiler component added before %s tag' % match)
 
         tornado.web.RequestHandler.finish(self, res)
 
