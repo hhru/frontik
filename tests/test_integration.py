@@ -82,7 +82,7 @@ def test_content_type_with_xsl():
 
 
 def test_xsl_fail():
-    # this test became bizarre because of Firefox browser, see handler_xml_debug.py
+    # this test became bizarre because of Firefox browser, see handler_debug.py
     with frontik_debug.instance() as srv_port:
         try:
             _ = urllib2.urlopen('http://localhost:{0}/test_app/xsl_fail'.format(srv_port)).info()
@@ -92,7 +92,7 @@ def test_xsl_fail():
             assert(e.code == 500)
 
 def test_xsl_parse_fail():
-    # this test became bizarre because of Firefox browser, see handler_xml_debug.py
+    # this test became bizarre because of Firefox browser, see handler_debug.py
     with frontik_debug.instance() as srv_port:
         try:
             urllib2.urlopen('http://localhost:{0}/test_app/xsl_parse_fail'.format(srv_port)).info()
@@ -102,7 +102,7 @@ def test_xsl_parse_fail():
             assert(e.code == 500)
 
 def test_job_fail():
-    # this test became bizarre because of Firefox browser, see handler_xml_debug.py
+    # this test became bizarre because of Firefox browser, see handler_debug.py
     with frontik_debug.instance() as srv_port:
         try:
             urllib2.urlopen('http://localhost:{0}/test_app/job_fail'.format(srv_port)).info()

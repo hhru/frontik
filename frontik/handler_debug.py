@@ -175,31 +175,36 @@ class PageHandlerDebug(object):
 
     class DebugMode(object):
         def __init__(self, handler):
-            debug_param = frontik.util.get_cookie_or_url_param_value(handler, 'debug')
-            self.inherited = handler.request.headers.get(frontik.handler.PageHandler.INHERIT_DEBUG_HEADER_NAME)
-            self.profile = debug_param == 'profile'
+            debug_value = frontik.util.get_cookie_or_url_param_value(handler, 'debug')
+            debug_params = None if debug_value is None else debug_value.split(',')
+            has_debug_enable_param = debug_params is not None and filter(lambda x: x != 'profile', debug_params)
 
-            if (debug_param is not None or self.inherited) and not self.profile:
+            self.inherited = handler.request.headers.get(frontik.handler.PageHandler.INHERIT_DEBUG_HEADER_NAME)
+            self.profile = debug_params is not None and 'profile' in debug_params
+
+            if has_debug_enable_param or self.inherited:
                 self.enabled = True
-                self.return_response = debug_param == 'pass' or self.inherited
+                self.return_response = (debug_params is not None and 'pass' in debug_params) or self.inherited
                 self.pass_further = self.return_response
             else:
                 self.enabled = False
                 self.return_response = False
                 self.pass_further = False
 
-            self.logging = tornado.options.options.debug or self.enabled
+            self.write_debug = tornado.options.options.debug or self.enabled or self.profile
 
 
     def __init__(self, handler):
         self.handler = weakref.proxy(handler)
         self.debug_mode = PageHandlerDebug.DebugMode(self.handler)
 
-        if self.debug_mode.enabled:
-            handler.require_debug_access()
-            handler.log.debug('debug mode is on')
+        if self.debug_mode.enabled or self.debug_mode.profile:
+            self.handler.require_debug_access()
 
-        if self.debug_mode.logging:
+        if self.debug_mode.enabled:
+            self.handler.log.debug('debug mode is on')
+
+        if self.debug_mode.write_debug:
             self.debug_log_handler = DebugPageHandler()
             self.handler.log.addHandler(self.debug_log_handler)
             self.handler.log.debug('using debug mode logging')
@@ -209,6 +214,26 @@ class PageHandlerDebug(object):
 
         if self.debug_mode.return_response:
             self.handler.log.debug('debug mode will be passed to all frontik apps requested (debug=pass)')
+
+        if self.debug_mode.profile:
+            self.profiler_options = {
+                'warning-value': tornado.options.options.debug_profiler_warning_value,
+                'critical-value': tornado.options.options.debug_profiler_critical_value
+            }
+
+    def get_profiler_template(self):
+        try:
+            with open(tornado.options.options.debug_profiler_xsl) as xsl_file:
+                tranform = etree.XSLT(etree.XML(xsl_file.read()))
+
+            profiler_xml = etree.Element('profiler')
+            profiler_xml.append(self.handler.log.stages_to_xml())
+            profiler_xml.append(frontik.xml_util.dict_to_xml(self.profiler_options, 'options'))
+            return str(tranform(profiler_xml))
+
+        except Exception, e:
+            self.handler.log.exception('XSLT profiler file error')
+            return None
 
     def get_debug_page(self, status_code, response_headers, original_response=None, finish_debug=True):
         if finish_debug:
@@ -239,9 +264,8 @@ class PageHandlerDebug(object):
         can_apply_xsl_or_500 = self.handler.xml.apply_xsl or not self.debug_mode.enabled
         if can_apply_xsl_or_500 and not self.debug_mode.inherited:
             try:
-                xsl_file = open(tornado.options.options.debug_xsl)
-                tranform = etree.XSLT(etree.XML(xsl_file.read()))
-                xsl_file.close()
+                with open(tornado.options.options.debug_xsl) as xsl_file:
+                    tranform = etree.XSLT(etree.XML(xsl_file.read()))
                 log_document = str(tranform(debug_log_data))
                 self.handler.set_header('Content-Type', 'text/html; charset=UTF-8')
             except Exception, e:
