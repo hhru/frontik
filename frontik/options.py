@@ -18,7 +18,7 @@ tornado.options.define('debug_password', None, str)
 tornado.options.define('debug_xsl', '/usr/lib/frontik/debug.xsl', str)
 
 tornado.options.define('debug_profiler_tag', '</body>', str)
-tornado.options.define('debug_profiler_xsl', '/usr/lib/frontik/profiler.xsl', str)
+tornado.options.define('debug_profiler_template', '/usr/lib/frontik/profiler.html', str)
 tornado.options.define('debug_profiler_warning_value', 200, int)
 tornado.options.define('debug_profiler_critical_value', 500, int)
 

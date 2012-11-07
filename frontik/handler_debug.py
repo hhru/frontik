@@ -223,16 +223,18 @@ class PageHandlerDebug(object):
 
     def get_profiler_template(self):
         try:
-            with open(tornado.options.options.debug_profiler_xsl) as xsl_file:
-                tranform = etree.XSLT(etree.XML(xsl_file.read()))
+            with open(tornado.options.options.debug_profiler_template) as template:
+                round_f = lambda x: '%.2f' % round(1000 * x, 2)
+                data = json.dumps(dict([(x.name, {'start': round_f(x.start), 'delta': round_f(x.delta)})
+                                        for x in self.handler.log.stages]))
 
-            profiler_xml = etree.Element('profiler')
-            profiler_xml.append(self.handler.log.stages_to_xml())
-            profiler_xml.append(frontik.xml_util.dict_to_xml(self.profiler_options, 'options'))
-            return str(tranform(profiler_xml))
+                tpl_text = template.read()
+                tpl_text = tpl_text.replace("'<%FrontikProfilerData%>'", data)
+                tpl_text = tpl_text.replace("'<%FrontikProfilerOptions%>'", json.dumps(self.profiler_options))
+                return tpl_text
 
-        except Exception, e:
-            self.handler.log.exception('XSLT profiler file error')
+        except IOError, e:
+            self.handler.log.exception('Cannot find profiler template file')
             return None
 
     def get_debug_page(self, status_code, response_headers, original_response=None, finish_debug=True):

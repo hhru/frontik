@@ -4,8 +4,6 @@ import logging
 from logging.handlers import SysLogHandler
 import weakref
 import time
-from lxml import etree
-from lxml.builder import E
 import tornado.options
 
 log = logging.getLogger('frontik.handler')
@@ -101,13 +99,6 @@ class PageLogger(logging.LoggerAdapter):
         self.debug('Stages for {0} : {1}'.format(self.page, stages_format))
         self.info('Monik-stages {0!r} : {1} code={2}'.format(self.handler_ref(), stages_monik_format, status_code),
             extra={'_monik': True})
-
-    def stages_to_xml(self):
-        round_f = lambda x: '%.2f' % round(1000 * x, 2)
-        stages = etree.Element('stages')
-        for stage in self.stages:
-            stages.append(E.stage(name=stage.name, start=round_f(stage.start), delta=round_f(stage.delta)))
-        return stages
 
     def process(self, msg, kwargs):
         if "extra" in kwargs:
