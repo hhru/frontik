@@ -2,7 +2,7 @@
 <div id="Frontik-Profiler-Component" class="noprint frontik-profiler">
     <span class="frontik-profiler__total_time">
         Время генерации страницы: <span id="Frontik-Profiler-Total-Time"></span>&#160;
-        <a href="#" id="Frontik-Profiler-Toggle-Table-Button" onclick="return FrontikProfilerComponent.toggleTable(this)">Подробнее »</a>
+        <a href="#" id="Frontik-Profiler-Toggle-Table-Button" onclick="return FrontikProfilerComponent.toggleTable(this)">Подробнее</a>
     </span>
     <span class="Frontik-Profiler-Button-Close frontik-profiler__button_close" onclick="FrontikProfilerComponent.close()">x</span>
     <table id="Frontik-Profiler-Component-Table"></table>
@@ -53,7 +53,7 @@
                 setCookie('debug', 'profile');
                 if (getCookie('frontik-profiler') === 'show') {
                     addClass(profilerTable, 'visible');
-                    document.getElementById('Frontik-Profiler-Toggle-Table-Button').innerText = 'Скрыть «';
+                    document.getElementById('Frontik-Profiler-Toggle-Table-Button').innerText = 'Скрыть';
                 }
 
                 document.body.insertBefore(profiler, document.body.firstChild);
@@ -85,10 +85,10 @@
                 var profilerTable = document.getElementById('Frontik-Profiler-Component-Table');
 
                 if (hasClass(profilerTable, 'visible')) {
-                    e.innerText = 'Подробнее »';
+                    e.innerText = 'Подробнее';
                     setCookie('frontik-profiler', '', -1);
                 } else {
-                    e.innerText = 'Скрыть «';
+                    e.innerText = 'Скрыть';
                     setCookie('frontik-profiler', 'show');
                 }
 
@@ -97,9 +97,9 @@
             }
         };
 
-        contentLoaded(window, function() {
+        document.addEventListener('DOMContentLoaded', function() {
             FrontikProfilerComponent.init('<%FrontikProfilerData%>', '<%FrontikProfilerOptions%>');
-        });
+        }, false);
 
         /* Class manipulation functions (based on jQuery implementation) */
 
@@ -176,51 +176,6 @@
                 return data ? fn( data ) : fn;
             };
         })();
-
-        /*!
-        * contentloaded.js
-        *
-        * Author: Diego Perini (diego.perini at gmail.com)
-        * Summary: cross-browser wrapper for DOMContentLoaded
-        * Updated: 20101020
-        * License: MIT
-        * Version: 1.2
-        *
-        * URL:
-        * http://javascript.nwbox.com/ContentLoaded/
-        * http://javascript.nwbox.com/ContentLoaded/MIT-LICENSE
-        */
-
-        function contentLoaded(win, fn) {
-            var done = false, top = true,
-            doc = win.document, root = doc.documentElement,
-            add = doc.addEventListener ? 'addEventListener' : 'attachEvent',
-            rem = doc.addEventListener ? 'removeEventListener' : 'detachEvent',
-            pre = doc.addEventListener ? '' : 'on',
-
-            init = function(e) {
-                if (e.type == 'readystatechange' && doc.readyState != 'complete') return;
-                (e.type == 'load' ? win : doc)[rem](pre + e.type, init, false);
-                if (!done && (done = true)) fn.call(win, e.type || e);
-            },
-
-            poll = function() {
-                try { root.doScroll('left'); } catch(e) { setTimeout(poll, 50); return; }
-                init('poll');
-            };
-
-            if (doc.readyState == 'complete') fn.call(win, 'lazy');
-            else {
-                if (doc.createEventObject && root.doScroll) {
-                    try { top = !win.frameElement; } catch(e) { }
-                    if (top) poll();
-                }
-                doc[add](pre + 'DOMContentLoaded', init, false);
-                doc[add](pre + 'readystatechange', init, false);
-                win[add](pre + 'load', init, false);
-            }
-        }
-
     })();
 
 </script>
