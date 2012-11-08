@@ -8,15 +8,12 @@ import weakref
 import json
 import copy
 from datetime import datetime
-import frontik.app
-import frontik.handler
+import lxml.etree as etree
+from lxml.builder import E
+import tornado.options
+
 import frontik.util
 import frontik.xml_util
-
-import lxml.etree as etree
-import tornado.options
-from lxml.builder import E
-from frontik.util import get_query_parameters
 
 log = logging.getLogger('XML_debug')
 
@@ -93,7 +90,7 @@ def request_to_xml(request):
 
 def _params_to_xml(url):
     params = etree.Element('params')
-    query = get_query_parameters(url)
+    query = frontik.util.get_query_parameters(url)
     for name, values in query.iteritems():
         for value in values:
             params.append(E.param(unicode(value, 'utf-8'), name = name))
@@ -173,13 +170,15 @@ class DebugPageHandler(logging.Handler):
 
 class PageHandlerDebug(object):
 
+    INHERIT_DEBUG_HEADER_NAME = 'X-Inherit-Debug'
+
     class DebugMode(object):
         def __init__(self, handler):
             debug_value = frontik.util.get_cookie_or_url_param_value(handler, 'debug')
             debug_params = None if debug_value is None else debug_value.split(',')
             has_debug_enable_param = debug_params is not None and filter(lambda x: x != 'profile', debug_params)
 
-            self.inherited = handler.request.headers.get(frontik.handler.PageHandler.INHERIT_DEBUG_HEADER_NAME)
+            self.inherited = handler.request.headers.get(PageHandlerDebug.INHERIT_DEBUG_HEADER_NAME)
             self.profile = debug_params is not None and 'profile' in debug_params
 
             if has_debug_enable_param or self.inherited:
@@ -247,6 +246,7 @@ class PageHandlerDebug(object):
         debug_log_data.set('mode', self.handler.get_argument('debug', 'text'))
         debug_log_data.set('request-id', str(self.handler.request_id))
 
+        import frontik.app
         debug_log_data.append(frontik.app.get_frontik_and_apps_versions())
         debug_log_data.append(E.request(
             _params_to_xml(self.handler.request.uri),
