@@ -1,17 +1,21 @@
 from collections import defaultdict, namedtuple
+from functools import partial
 import httplib
 import logging
 import re
 from urlparse import urlparse
+from tornado.ioloop import IOLoop
 from lxml import etree
 import sys
-from tornado.ioloop import IOLoop
 
-from frontik.doc import Doc
+import frontik.app
+import frontik.async
+import frontik.handler
+import frontik.options
+import frontik.doc
 from frontik.handler import HTTPError
 
-
-frontik_testing_logger = logging.getLogger('frontik_testing')
+frontik_testing_logger = logging.getLogger('frontik.testing')
 frontik_testing_logger.addHandler(logging.StreamHandler(strm=sys.stdout))
 
 class GeneralStub(object):
@@ -26,92 +30,28 @@ class ResponseStub(GeneralStub):
         self.headers = {}
         super(ResponseStub, self).__init__(**kwargs)
 
-class AsyncGroup(object):
-    def __init__(self, finish_cb, name=None, **kwargs):
-        self.counter = 0
-        self.finished = False
-        self.finish_cb = finish_cb
-        self.log_fun = frontik_testing_logger.debug
-        self.name = name
+class Mock(object):
+    def __init__(self, routes, config, **kwargs):
+        self.routes = routes
+        self.config = config
+        self.handler_default_params = kwargs
 
-        if self.name is not None:
-            self.log_name = '{0} group'.format(self.name)
-        else:
-            self.log_name = 'group'
-
-    def log(self, msg):
-        self.log_fun(self.log_name + ": " + msg)
-
-    def finish(self):
-        if not self.finished:
-            self.log('finishing')
-            self.finished = True
-
-            try:
-                self.finish_cb()
-            finally:
-                # prevent possible cycle references
-                self.finish_cb = None
-
-    def try_finish(self):
-        self.log('trying to finish')
-        if self.counter == 0:
-            self.finish()
-
-    def _inc(self):
-        self.counter += 1
-
-    def _dec(self):
-        self.counter -= 1
-
-    def add(self, intermediate_cb):
-        self._inc()
-        self.log('adding callback')
-
-        def new_cb(*args, **kwargs):
-            if not self.finished:
-                try:
-                    self._dec()
-                    self.log('executing callback')
-                    intermediate_cb(*args, **kwargs)
-                finally:
-                    pass
-            else:
-                self.log('ignoring response because of already finished group')
-
-        return new_cb
-
-    def add_notification(self):
-        self._inc()
-        self.log('adding notification')
-
-        def new_cb(*args, **kwargs):
-            self._dec()
-            self.log('executing notification')
-            self.try_finish()
-
-        return new_cb
-
-# Replace AsyncGroup and IOLoop instance
-
-import frontik.async
-frontik.async.AsyncGroup = AsyncGroup
-
-IOLoop._instance = GeneralStub(
-    add_callback=lambda x: x()
-)
+    def new_handler(self, **kwargs):
+        return HandlerMock(self.routes, self.config, **dict(self.handler_default_params, **kwargs))
 
 class HandlerMock(GeneralStub):
 
     def __init__(self, routes, config, **kwargs):
         super(HandlerMock, self).__init__(**kwargs)
         self.log = frontik_testing_logger
+        self.config = config
+        self.xml = GeneralStub(doc=frontik.doc.Doc(root_node = etree.Element('doc', frontik = 'true')))
+        self.finish_group = frontik.async.AsyncGroup(lambda: None, name='finish', log=self.log.debug)
+
+        self.async_callbacks = []
         self.routes = routes
         self.routes_data = defaultdict(dict)
         self.routes_called = defaultdict(int)
-        self.config = config
-        self.xml = GeneralStub(doc=Doc(root_node = etree.Element('doc', frontik = 'true')))
-        self.finish_group = AsyncGroup(lambda: None)
 
         if getattr(self, 'cookies', None) is None:
             self.cookies = {}
@@ -125,8 +65,11 @@ class HandlerMock(GeneralStub):
             host=kwargs.get('host', '')
         )
 
-    def set_route_data(self, route_name, **kwargs):
-        self.routes_data[route_name].update(kwargs)
+        IOLoop._instance = GeneralStub(
+            add_callback=lambda x: self.__add_callback(x, 'IOLoop_callback', lambda: [])
+        )
+
+    # Mock methods replacements
 
     def get_arguments(self, name, default=None):
         args = self.request.arguments.get(name, None)
@@ -163,12 +106,21 @@ class HandlerMock(GeneralStub):
         for route_name, regex, route in self.routes:
             match = re.match(r'.+{0}/?$'.format(regex), route_url)
             if match:
-                frontik_testing_logger.debug('Call to {url} is mocked'.format(url=url))
-                self.routes_called[route_name] += 1
-                callback(*route(url, data, fetch_url_args=kwargs, **dict(match.groupdict(), **self.routes_data[route_name])))
+                frontik_testing_logger.debug('Call to {url} will be mocked'.format(url=url))
+                self.__add_callback(callback, route_name,
+                    partial(route, url, data, **dict(match.groupdict(), **self.routes_data[route_name])))
                 return
 
         raise NotImplementedError('Url "{url}" is not mocked'.format(url=route_url))
+
+    # Custom mock methods
+
+    def set_route_data(self, route_name, **kwargs):
+        self.routes_data[route_name].update(kwargs)
+
+    def call(self, function, *args, **kwargs):
+        function(*args, **kwargs)
+        self.__execute_callbacks()
 
     def called_once(self, route):
         return self.get_call_count(route) == 1
@@ -178,6 +130,18 @@ class HandlerMock(GeneralStub):
 
     def get_call_count(self, route):
         return self.routes_called[route]
+
+    def __add_callback(self, callback, route_name, route_function):
+        self.routes_called[route_name] += 1
+        self.async_callbacks.append((callback, route_function))
+        frontik_testing_logger.debug('Callback added, {0} total'.format(len(self.async_callbacks)))
+
+    def __execute_callbacks(self):
+        while self.async_callbacks:
+            cb, route = self.async_callbacks.pop()
+            cb(*route())
+
+            frontik_testing_logger.debug('Callback executed, {0} left'.format(len(self.async_callbacks)))
 
 
 Get = namedtuple('Get', ('url', 'data'))
@@ -196,7 +160,7 @@ class FrontikAppRequestMocker(object):
 
         try:
             page_method_name = self.PageMethodNames.get(http_request.__class__, self.PageMethodNames[Get])
-            module.Page.__dict__[page_method_name](handler)
+            handler.call(module.Page.__dict__[page_method_name], handler)
             return ResponseStub(code=200, body=handler.xml.doc.to_string(), headers={'Content-Type': 'application/xml'})
         except HTTPError, e:
             code = e.status_code
