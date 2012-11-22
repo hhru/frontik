@@ -5,6 +5,7 @@ import logging
 import re
 from urlparse import urlparse
 from tornado.ioloop import IOLoop
+from tornado.httpclient import HTTPResponse
 from lxml import etree
 import sys
 
@@ -23,12 +24,14 @@ class GeneralStub(object):
         for name, value in kwargs.items():
             setattr(self, name, value)
 
-class ResponseStub(GeneralStub):
-    def __init__(self, **kwargs):
-        self.error = None
-        self.body = None
-        self.headers = {}
-        super(ResponseStub, self).__init__(**kwargs)
+class HTTPResponseWrapper(HTTPResponse):
+    @property
+    def body(self):
+        return self._body
+
+    @body.setter
+    def body(self, body):
+        self._body = body
 
 class Mock(object):
     def __init__(self, routes, config, **kwargs):
@@ -87,28 +90,32 @@ class HandlerMock(GeneralStub):
         return self.cookies.get(name, default)
 
     def get_url(self, url, data=None, callback=None, **kwargs):
-        self.__fetch_url(url, data, callback, **kwargs)
+        request = frontik.util.make_get_request(url, data, kwargs.get('headers', None))
+        self.__fetch_url(request, data, callback, **kwargs)
 
     def post_url(self, url, data=None, callback=None, **kwargs):
-        self.__fetch_url(url, data, callback, **kwargs)
+        request = frontik.util.make_post_request(url, data, kwargs.get('headers', None))
+        self.__fetch_url(request, data, callback, **kwargs)
 
     def put_url(self, url, data=None, callback=None, **kwargs):
-        self.__fetch_url(url, data, callback, **kwargs)
+        request = frontik.util.make_put_request(url, data, kwargs.get('headers', None))
+        self.__fetch_url(request, data, callback, **kwargs)
 
     def delete_url(self, url, data=None, callback=None, **kwargs):
-        self.__fetch_url(url, data, callback, **kwargs)
+        request = frontik.util.make_delete_request(url, data, kwargs.get('headers', None))
+        self.__fetch_url(request, data, callback, **kwargs)
 
-    def __fetch_url(self, url, data=None, callback=None, **kwargs):
-        if data is None:
-            data = {}
+    def __fetch_url(self, request, data_dict=None, callback=None, **kwargs):
+        if data_dict is None:
+            data_dict = {}
 
-        route_url = urlparse(url).path
+        route_url = urlparse(request.url).path
         for route_name, regex, route in self.routes:
             match = re.match(r'.+{0}/?$'.format(regex), route_url)
             if match:
-                frontik_testing_logger.debug('Call to {url} will be mocked'.format(url=url))
+                frontik_testing_logger.debug('Call to {url} will be mocked'.format(url=request.url))
                 self.__add_callback(callback, route_name,
-                    partial(route, url, data, **dict(match.groupdict(), **self.routes_data[route_name])))
+                    partial(route, request, data_dict, **dict(match.groupdict(), **self.routes_data[route_name])))
                 return
 
         raise NotImplementedError('Url "{url}" is not mocked'.format(url=route_url))
@@ -149,37 +156,41 @@ Post = namedtuple('Post', ('url', 'data'))
 
 class FrontikAppRequestMocker(object):
 
-    PageMethodNames = {
-        Get: 'get_page',
-        Post: 'post_page'
+    PageMethodsMapping = {
+        Get: ('get_page', frontik.util.make_get_request),
+        Post: ('post_page', frontik.util.make_post_request)
     }
 
-    def serve_request(self, http_request, handler):
-        module_name = 'pages.' + '.'.join(http_request.url.strip('/').split('/'))
+    def serve_request(self, request, handler):
+        module_name = 'pages.' + '.'.join(request.url.strip('/').split('/'))
         module = frontik_import(module_name)
+        method_name, request_factory = self.PageMethodsMapping.get(request.__class__, self.PageMethodsMapping[Get])
+        http_request = request_factory(request.url, request.data)
 
         try:
-            page_method_name = self.PageMethodNames.get(http_request.__class__, self.PageMethodNames[Get])
-            handler.call(module.Page.__dict__[page_method_name], handler)
-            return ResponseStub(code=200, body=handler.xml.doc.to_string(), headers={'Content-Type': 'application/xml'})
+            handler.call(module.Page.__dict__[method_name], handler)
+            response = HTTPResponseWrapper(http_request, code=200, headers={'Content-Type': 'application/xml'})
+            response.body = handler.xml.doc.to_string()
+            return response
         except HTTPError, e:
             code = e.status_code
             if code not in httplib.responses:
                 code = 500
-            return ResponseStub(code=code, headers=e.headers, exception=e)
+            return HTTPResponseWrapper(http_request, code=code, headers=e.headers, exception=e)
         except Exception, e:
-            return ResponseStub(code=500, exception=e)
+            return HTTPResponseWrapper(http_request, code=500, exception=e)
 
 
 def service_response(response_type):
     def __wrapper(func):
-        def __internal(url, data, *args, **kwargs):
-            result = func(url, data, *args, **kwargs)
+        def __internal(request, data_dict, *args, **kwargs):
+            result = func(request.url, data_dict, *args, **kwargs)
+
             if isinstance(result, tuple):
                 response_body, response = result
             else:
                 response_body = result
-                response = ResponseStub(code=200)
+                response = HTTPResponseWrapper(request, code=200)
 
             if response_type == 'text/xml':
                 response.headers['Content-Type'] = 'text/xml'
