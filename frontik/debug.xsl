@@ -11,6 +11,9 @@
             <xsl:value-of select="substring(/log/@mode, 2)"/>
         </xsl:if>
     </xsl:variable>
+    <xsl:variable name="total-time">
+        <xsl:value-of select="/log/stages/stage[@name='total']"/>
+    </xsl:variable> 
 
     <xsl:template match="log">
         <html>
@@ -98,6 +101,9 @@
         </pre>
     </xsl:template>
 
+    <xsl:template match="entry[contains(@msg, 'finish group') and /log/@mode != 'full']"/>
+
+
     <xsl:template match="entry[response]">
         <xsl:variable name="status">
             <xsl:if test="response/code != 200">error</xsl:if>
@@ -125,6 +131,11 @@
                     <xsl:text>Kb </xsl:text>
                     <xsl:value-of select="request/url"/>
                 </span>
+                <div class="timebar">
+                    <div class="timebar__line" style="left: {format-number((1000 * (request/meta/start_time/text() - /log/@started)) div $total-time, '##%')}">
+                        <strong class="timebar__head" style="width:{format-number(response/request_time div $total-time, '##%')};"></strong>
+                    </div>
+                </div>
             </div>
             <div class="details">
                 <xsl:apply-templates select="debug"/>
@@ -286,6 +297,26 @@
             .body{
                 word-break: break-all;
             }
+            .timebar {
+                position: absolute;
+                left: 0;
+                top: 0;
+                height: 100%;
+                width: 100%;
+            }
+                .timebar__line{
+                    height: 3px;
+                    position: relative;
+                    vertical-align: middle;
+                }
+                .timebar__head{
+                    background-color: #94b24d;
+                    opacity: 0.5;
+                    padding-top: 3px;
+                    display: inline-block;
+                    height: 1em;
+                }
+
             .textentry{
                 padding-left:20px;
                 padding-right:20px;
@@ -302,6 +333,7 @@
                     margin-bottom:.5em;
                 }
                 .textentry__head{
+                    position: relative;
                 }
                     .m-textentry__head_highlight{
                         font-weight:bold;
