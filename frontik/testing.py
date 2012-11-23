@@ -4,14 +4,17 @@ import httplib
 import logging
 import re
 from urlparse import urlparse
-from tornado.ioloop import IOLoop
+from tornado.web import Application
 from tornado.httpclient import HTTPResponse
+from tornado.httpserver import HTTPRequest as HTTPServerRequest
 from lxml import etree
 import sys
 
 import frontik.app
 import frontik.async
 import frontik.handler
+import frontik.handler_xml
+import frontik.jobs
 import frontik.options
 import frontik.doc
 from frontik.handler import HTTPError
@@ -24,6 +27,15 @@ class GeneralStub(object):
         for name, value in kwargs.items():
             setattr(self, name, value)
 
+class HTTPRequestWrapper(HTTPServerRequest):
+    def __init__(self, method, url, data, **kwargs):
+        uri = frontik.util._encode(frontik.util.make_url(url, **data))
+        super(HTTPRequestWrapper, self).__init__(method, uri, remote_ip='127.0.0.1', **kwargs)
+
+        del self.connection
+        self.write = lambda c: None
+        self.finish = lambda: None
+
 class HTTPResponseWrapper(HTTPResponse):
     @property
     def body(self):
@@ -33,61 +45,22 @@ class HTTPResponseWrapper(HTTPResponse):
     def body(self, body):
         self._body = body
 
-class Mock(object):
-    def __init__(self, routes, config, **kwargs):
-        self.routes = routes
-        self.config = config
-        self.handler_default_params = kwargs
+class PageHandlerWrapper(frontik.handler.PageHandler):
 
-    def new_handler(self, **kwargs):
-        return HandlerMock(self.routes, self.config, **dict(self.handler_default_params, **kwargs))
-
-class HandlerMock(GeneralStub):
-
-    def __init__(self, routes, config, **kwargs):
-        super(HandlerMock, self).__init__(**kwargs)
+    def __init__(self, routes, handler_params, *args, **kwargs):
+        super(PageHandlerWrapper, self).__init__(*args, **kwargs)
         self.log = frontik_testing_logger
-        self.config = config
-        self.xml = GeneralStub(doc=frontik.doc.Doc(root_node = etree.Element('doc', frontik = 'true')))
-        self.finish_group = frontik.async.AsyncGroup(lambda: None, name='finish', log=self.log.debug)
+
+        for name, value in handler_params.items():
+            setattr(self, name, value)
 
         self.async_callbacks = []
         self.routes = routes
         self.routes_data = defaultdict(dict)
         self.routes_called = defaultdict(int)
-
-        if getattr(self, 'cookies', None) is None:
-            self.cookies = {}
-
-        if getattr(self, 'request_id', None) is None:
-            self.request_id = 'TEST_REQUEST_ID'
-
-        self.request = GeneralStub(
-            arguments=kwargs.get('arguments', {}),
-            headers=kwargs.get('headers', {}),
-            host=kwargs.get('host', '')
-        )
-
-        IOLoop._instance = GeneralStub(
-            add_callback=lambda x: self.__add_callback(x, 'IOLoop_callback', lambda: [])
-        )
+        self.exceptions = []
 
     # Mock methods replacements
-
-    def get_arguments(self, name, default=None):
-        args = self.request.arguments.get(name, None)
-        if args is None:
-            return default
-        return args if isinstance(args, list) else [args]
-
-    def get_argument(self, name, default=None):
-        args = self.get_arguments(name)
-        if args is None:
-            return default
-        return args[-1]
-
-    def get_cookie(self, name, default=None):
-        return self.cookies.get(name, default)
 
     def get_url(self, url, data=None, callback=None, **kwargs):
         request = frontik.util.make_get_request(url, data, kwargs.get('headers', None))
@@ -126,8 +99,9 @@ class HandlerMock(GeneralStub):
         self.routes_data[route_name].update(kwargs)
 
     def call(self, function, *args, **kwargs):
+        self.prepare()
         function(*args, **kwargs)
-        self.__execute_callbacks()
+        self.execute_callbacks()
 
     def called_once(self, route):
         return self.get_call_count(route) == 1
@@ -143,13 +117,35 @@ class HandlerMock(GeneralStub):
         self.async_callbacks.append((callback, route_function))
         frontik_testing_logger.debug('Callback added, {0} total'.format(len(self.async_callbacks)))
 
-    def __execute_callbacks(self):
+    def execute_callbacks(self):
         while self.async_callbacks:
             cb, route = self.async_callbacks.pop()
-            cb(*route())
+            frontik_testing_logger.debug('Executing callback, {0} left'.format(len(self.async_callbacks)))
 
-            frontik_testing_logger.debug('Callback executed, {0} left'.format(len(self.async_callbacks)))
+            try:
+                cb(*route())
+            except Exception, e:
+                self.exceptions.append(e)
+                frontik_testing_logger.debug('Callback raised exception: {0}'.format(e))
 
+        while self.exceptions:
+            raise self.exceptions.pop()
+
+class Mock(object):
+    def __init__(self, routes, config, **kwargs):
+        self.routes = routes
+        self.config = config
+        self.handler_default_params = kwargs
+
+    def new_handler(self, **kwargs):
+        ph_globals = frontik.handler.PageHandlerGlobals(GeneralStub(
+            config=self.config
+        ))
+
+        request = HTTPRequestWrapper('GET', '/', kwargs.get('arguments', {}), headers=kwargs.pop('headers', {}))
+        handler_params = dict(self.handler_default_params, **kwargs)
+        handler = PageHandlerWrapper(self.routes, handler_params, Application(), request, ph_globals)
+        return handler
 
 Get = namedtuple('Get', ('url', 'data'))
 Post = namedtuple('Post', ('url', 'data'))
@@ -161,24 +157,25 @@ class FrontikAppRequestMocker(object):
         Post: ('post_page', frontik.util.make_post_request)
     }
 
-    def serve_request(self, request, handler):
+    def serve_request(self, handler, request):
+        method_name, request_factory = self.PageMethodsMapping.get(request.__class__, self.PageMethodsMapping[Get])
+        http_client_request = request_factory(request.url, request.data)
+
         module_name = 'pages.' + '.'.join(request.url.strip('/').split('/'))
         module = frontik_import(module_name)
-        method_name, request_factory = self.PageMethodsMapping.get(request.__class__, self.PageMethodsMapping[Get])
-        http_request = request_factory(request.url, request.data)
 
         try:
             handler.call(module.Page.__dict__[method_name], handler)
-            response = HTTPResponseWrapper(http_request, code=200, headers={'Content-Type': 'application/xml'})
+            response = HTTPResponseWrapper(http_client_request, code=200, headers={'Content-Type': 'application/xml'})
             response.body = handler.xml.doc.to_string()
             return response
         except HTTPError, e:
             code = e.status_code
             if code not in httplib.responses:
                 code = 500
-            return HTTPResponseWrapper(http_request, code=code, headers=e.headers, exception=e)
+            return HTTPResponseWrapper(http_client_request, code=code, headers=e.headers)
         except Exception, e:
-            return HTTPResponseWrapper(http_request, code=500, exception=e)
+            return HTTPResponseWrapper(http_client_request, code=500)
 
 
 def service_response(response_type):
