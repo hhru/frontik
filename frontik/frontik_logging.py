@@ -5,6 +5,7 @@ from logging.handlers import SysLogHandler
 import weakref
 import time
 import tornado.options
+from lxml.builder import E
 
 log = logging.getLogger('frontik.handler')
 
@@ -98,7 +99,10 @@ class PageLogger(logging.LoggerAdapter):
 
         self.debug('Stages for {0} : {1}'.format(self.page, stages_format))
         self.info('Monik-stages {0!r} : {1} code={2}'.format(self.handler_ref(), stages_monik_format, status_code),
-            extra={'_monik': True})
+            extra={
+                '_monik': True,
+                '_stages': E.stages(*[E.stage(str(v), {'name':str(k)}) for k, v in self.stages])
+            })
 
     def process(self, msg, kwargs):
         if "extra" in kwargs:

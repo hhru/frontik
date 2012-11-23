@@ -5,7 +5,7 @@ import logging
 import traceback
 import urlparse
 import weakref
-import json
+import simplejson as json
 import copy
 from datetime import datetime
 import lxml.etree as etree
@@ -84,7 +84,11 @@ def request_to_xml(request):
             _params_to_xml(request.url),
             E.url(request.url),
             _headers_to_xml(request.headers),
-            _cookies_to_xml(request.headers)
+            _cookies_to_xml(request.headers),
+            E.meta(
+                E.start_time(
+                    str(request.start_time)
+                ))
         )
     )
 
@@ -166,6 +170,9 @@ class DebugPageHandler(logging.Handler):
             entry.append(E.protobuf(record._protobuf))
 
         self.log_data.append(entry)
+        if getattr(record, "_stages", None) is not None:
+            self.log_data.append(record._stages)
+
 
 
 class PageHandlerDebug(object):
@@ -244,6 +251,7 @@ class PageHandlerDebug(object):
 
         debug_log_data.set('code', str(status_code))
         debug_log_data.set('mode', self.handler.get_argument('debug', 'text'))
+        debug_log_data.set('started', str(self.handler.handler_started))
         debug_log_data.set('request-id', str(self.handler.request_id))
 
         import frontik.app
@@ -272,6 +280,13 @@ class PageHandlerDebug(object):
                 self.handler.set_header('Content-Type', 'text/html; charset=UTF-8')
             except Exception, e:
                 self.handler.log.exception('XSLT debug file error')
+                try:
+                    self.handler.log.error('XSL error log entries:\n%s' % "\n".join(map(
+                    'File "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
+                        .format, transform.error_log)))
+                except Exception:
+                    pass
+
                 self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
                 log_document = etree.tostring(debug_log_data, encoding='UTF-8', xml_declaration=True)
         else:
