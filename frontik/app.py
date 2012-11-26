@@ -202,6 +202,29 @@ class App(object):
             for filename in self.importer.get_probable_module_filenames('config'):
                 tornado.autoreload.watch_file(filename)
 
+            watch_dir = getattr(self.module.config, 'watch_dir', None)
+            watch_function = getattr(self.module.config, 'watch_function', None)
+
+            if options.debug and watch_dir is not None and callable(watch_function):
+                debug_function = self.log.debug
+                self.log.debug('Watching directory %s', watch_dir)
+
+                try:
+                    from watchdog.observers import Observer
+                    from watchdog.events import FileSystemEventHandler
+
+                    class WatchEventHandler(FileSystemEventHandler):
+                        def on_any_event(self, event):
+                            watch_function(event, debug_function)
+
+                    event_handler = WatchEventHandler()
+                    observer = Observer()
+                    observer.schedule(event_handler, path=self.module.config.watch_dir, recursive=True)
+                    observer.start()
+
+                except ImportError:
+                    self.log.error('Directory watching is enabled, but failed to import watchdog. Please, install watchdog python package.')
+
             self.ph_globals = frontik.handler.PageHandlerGlobals(self.module)
         except:
             #we do not want to break frontik on app

@@ -33,9 +33,10 @@ def _read_xsl_one(filename, log=log, parser=parser):
 
     log.debug("read file %s", filename)
     tree = etree.parse(filename, parser)
-    xsl_includes = [_abs_filename(filename, i.get("href"))
-                    for i in tree.findall("{http://www.w3.org/1999/XSL/Transform}import")
-                    if i.get("href").find(":") == -1]
+    namespaces = {'xsl': 'http://www.w3.org/1999/XSL/Transform'}
+    xsl_includes = [_abs_filename(filename, i.get('href'))
+                    for i in tree.xpath('xsl:import|xsl:include', namespaces=namespaces)
+                    if i.get('href').find(':') == -1]
     return tree, xsl_includes
 
 def read_xsl(filename, log=log, parser=parser):
