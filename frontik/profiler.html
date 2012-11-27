@@ -48,12 +48,12 @@
                 }
 
                 profilerTable.innerHTML = stageRows;
-                document.getElementById('Frontik-Profiler-Total-Time').innerText = this.totalTime + ' ms';
+                document.getElementById('Frontik-Profiler-Total-Time').innerHTML = this.totalTime + ' ms';
 
                 setCookie('debug', 'profile');
                 if (getCookie('frontik-profiler') === 'show') {
                     addClass(profilerTable, 'visible');
-                    document.getElementById('Frontik-Profiler-Toggle-Table-Button').innerText = 'Скрыть';
+                    document.getElementById('Frontik-Profiler-Toggle-Table-Button').innerHTML = 'Скрыть';
                 }
 
                 document.body.insertBefore(profiler, document.body.firstChild);
@@ -85,10 +85,10 @@
                 var profilerTable = document.getElementById('Frontik-Profiler-Component-Table');
 
                 if (hasClass(profilerTable, 'visible')) {
-                    e.innerText = 'Подробнее';
+                    e.innerHTML = 'Подробнее';
                     setCookie('frontik-profiler', '', -1);
                 } else {
-                    e.innerText = 'Скрыть';
+                    e.innerHTML = 'Скрыть';
                     setCookie('frontik-profiler', 'show');
                 }
 
@@ -197,6 +197,14 @@
         box-shadow: -1px 2px 10px -3px #333;
         z-index: 1234567;
     }
+
+        .frontik-profiler a, .frontik-profiler a:focus {
+            color: #076cc7;
+        }
+
+            .frontik-profiler a:hover, .frontik-profiler a:active {
+                color: #c00;
+            }
 
         .frontik-profiler.visible {
             display: block;
