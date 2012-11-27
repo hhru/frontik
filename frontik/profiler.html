@@ -103,9 +103,11 @@
             }
         };
 
-        document.addEventListener('DOMContentLoaded', function() {
-            FrontikProfilerComponent.init('<%FrontikProfilerData%>', '<%FrontikProfilerOptions%>');
-        }, false);
+        if (document.addEventListener) {
+            document.addEventListener('DOMContentLoaded', function() {
+                FrontikProfilerComponent.init('<%FrontikProfilerData%>', '<%FrontikProfilerOptions%>');
+            }, false);
+        }
 
         /* Class manipulation functions (based on jQuery implementation) */
 
