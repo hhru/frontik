@@ -5,7 +5,9 @@
         <a href="#" id="Frontik-Profiler-Toggle-Table-Button" onclick="return FrontikProfilerComponent.toggleTable(this)">Подробнее</a>
     </span>
     <span class="Frontik-Profiler-Button-Close frontik-profiler__button_close" onclick="FrontikProfilerComponent.close()">x</span>
-    <table id="Frontik-Profiler-Component-Table"></table>
+    <table id="Frontik-Profiler-Component-Table">
+        <tbody></tbody>
+    </table>
 </div>
 
 <script type="text/javascript">
@@ -47,7 +49,11 @@
                     stageRows += this.getStageHtml(s, data[s]);
                 }
 
-                profilerTable.innerHTML = stageRows;
+                /* Just innerHTML doesn't work in IE */
+                var temp = document.createElement('div');
+                temp.innerHTML = '<table>' + stageRows + '</table>';
+                profilerTable.replaceChild(temp.firstChild.firstChild, profilerTable.firstChild);
+
                 document.getElementById('Frontik-Profiler-Total-Time').innerHTML = this.totalTime + ' ms';
 
                 setCookie('debug', 'profile');
