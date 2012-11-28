@@ -1,3 +1,39 @@
+"""
+
+# configure service mocks
+routes = [
+    ('route_name', r'url_path', service_mock_function),
+    ('vacancy_search', r'/SearchService/VacancySearch', post_proto_search)
+]
+
+# config is a frontik config stub
+test_env = frontik.testing.TestEnvironment(routes, config,
+    # here come additional parameters for PageHandler object or HTTPRequest (query and headers)
+    session=applicant_session, headers={'X-HH-Snapshot': 'TEST-SNAPSHOT'})
+
+app = test_env.create_test_app()
+
+# provide sample data to service mocks
+app.set_route_data('vacancy_search', vacancies=vacancies)
+
+# this method will be called inside get_page/post_page of a test app
+def __tested(handler):
+    pass
+
+response = app.call(__tested)
+assert response.code == 200
+assert app.called_once('vacancy_search')
+
+# we can test http_request/http_response pairs as well
+
+app = test.create_test_app()
+http_request = Get('/search_vacancy', {data: 'data'})
+response = app.call_url(http_request)
+
+assert response.code == 200
+
+"""
+
 from collections import defaultdict, namedtuple
 from functools import partial
 import inspect
@@ -86,7 +122,17 @@ class PageHandlerReplacement(frontik.handler.PageHandler):
         self.saved_headers = self._headers
         super(PageHandlerReplacement, self).flush(include_footers)
 
+
+Get = namedtuple('Get', ('url', 'data'))
+Post = namedtuple('Post', ('url', 'data'))
+
 class TestApp(object):
+
+    PageMethodsMapping = {
+        Get: 'get_page',
+        Post: 'post_page'
+    }
+
     def __init__(self, routes, request, handler_params, ph_globals):
         self.request = request
         self.handler_params = handler_params
@@ -119,6 +165,13 @@ class TestApp(object):
         response = HTTPResponseWrapper(http_client_request, code=handler._status_code, headers=handler.saved_headers)
         response.body = ''.join(handler.saved_buffer)
         return response
+
+    def call_url(self, request):
+        method_name = self.PageMethodsMapping.get(request.__class__, self.PageMethodsMapping[Get])
+        module_name = 'pages.' + '.'.join(request.url.strip('/').split('/'))
+        method = frontik_import(module_name).Page.__dict__[method_name]
+
+        return self.call(method)
 
     def called_once(self, route):
         return self.get_call_count(route) == 1
@@ -171,45 +224,30 @@ class TestEnvironment(object):
         """
 
         self.routes = routes
-        self.handler_default_params = kwargs
+        self.default_params = kwargs
         self.ph_globals = frontik.handler.PageHandlerGlobals(GeneralStub(config=config))
-        self.__bootstarp_logging()
+        self.__bootstrap_logging()
 
-    def new_test_app(self, **kwargs):
+    def create_test_app(self, **kwargs):
         """
             kwargs can contain any properties that should be overriden in this particular handler
             'query' and 'headers' are used to build HTTPRequest object for the handler
         """
 
         caller_method = inspect.stack()[1][3]
-        request = HTTPRequestWrapper('GET', '/' + caller_method, kwargs.pop('query', {}), headers=kwargs.pop('headers', {}))
-        handler_params = dict(self.handler_default_params, **kwargs)
-        return TestApp(self.routes, request, handler_params, self.ph_globals)
+        query = dict(self.default_params.pop('query', {}), **kwargs.pop('query', {}))
+        headers = dict(self.default_params.pop('headers', {}), **kwargs.pop('headers', {}))
+        params = dict(self.default_params, **kwargs)
 
-    def __bootstarp_logging(self):
+        request = HTTPRequestWrapper('GET', '/' + caller_method, query, headers=headers)
+        return TestApp(self.routes, request, params, self.ph_globals)
+
+    def __bootstrap_logging(self):
         handlers = logging.getLogger().handlers
         for h in handlers:
             logging.getLogger().removeHandler(h)
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
             format="[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s")
-
-
-Get = namedtuple('Get', ('url', 'data'))
-Post = namedtuple('Post', ('url', 'data'))
-
-class FrontikAppRequestMocker(object):
-
-    PageMethodsMapping = {
-        Get: 'get_page',
-        Post: 'post_page'
-    }
-
-    def serve_request(self, app, request):
-        method_name = self.PageMethodsMapping.get(request.__class__, self.PageMethodsMapping[Get])
-        module_name = 'pages.' + '.'.join(request.url.strip('/').split('/'))
-        method = frontik_import(module_name).Page.__dict__[method_name]
-
-        return app.call(method)
 
 
 def service_response(response_type):
