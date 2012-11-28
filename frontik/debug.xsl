@@ -120,6 +120,18 @@
             </xsl:if>
         </xsl:variable>
 
+        <xsl:variable name="timebar-offset">
+            <xsl:value-of select="1000 * (request/meta/start_time/text() - /log/@started)"/>
+        </xsl:variable>
+        
+        <xsl:variable name="timebar-percent-offset">
+            <xsl:value-of select="format-number($timebar-offset div $total-time, '##.#%')"/>
+        </xsl:variable>
+
+        <xsl:variable name="timebar-len-percent">
+            <xsl:value-of select="format-number(response/request_time div $total-time, '##.#%')"/>
+        </xsl:variable>
+
         <div class="textentry m-textentry__expandable">
             <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher {$status} {$highlight}">
                 
@@ -136,19 +148,20 @@
                     <xsl:text>Kb </xsl:text>
                     <xsl:value-of select="request/url"/>
                 </span>
+
                 <div class="timebar">
-                    <div class="timebar__line" style="left: {format-number((1000 * (request/meta/start_time/text() - /log/@started)) div $total-time, '##.#%')}">
-                        <strong class="timebar__head timebar__head-{$status}" style="width:{format-number(response/request_time div $total-time, '##.#%')};"></strong>
+                    <div class="timebar__line" style="left: {$timebar-percent-offset}">
+                        <strong class="timebar__head timebar__head-{$status}" style="width:{$timebar-len-percent};"></strong>
                     </div>
                 </div>
             </div>
             <div class="details">
                 <div class="timebar-details">
-                    <div class="timebar__line" style="left: {format-number((1000 * (request/meta/start_time/text() - /log/@started)) div $total-time, '##.#%')}">
-                            [<xsl:value-of select="format-number(1000 * (request/meta/start_time/text() - /log/@started), '#0.##')"/>ms
+                    <div class="timebar__line" style="left: {$timebar-percent-offset}">
+                            [<xsl:value-of select="format-number($timebar-offset, '#0.##')"/>ms
                             <xsl:text> => </xsl:text>
-                            <xsl:value-of select="format-number(1000 * (request/meta/start_time/text() - /log/@started) + response/request_time, '#0.##')"/>ms] : 
-                            <xsl:value-of select="format-number(response/request_time div $total-time, '##.#%')"/>
+                            <xsl:value-of select="format-number($timebar-offset + response/request_time, '#0.##')"/>ms] : 
+                            <xsl:value-of select="$timebar-len-percent"/>
                     </div>
                 </div>
                 <xsl:apply-templates select="debug"/>
