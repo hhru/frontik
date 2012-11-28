@@ -85,6 +85,11 @@
             <xsl:value-of select="@levelname"/>
         </xsl:variable>
 
+        <xsl:variable name="time-offset">
+            <xsl:value-of select="1000* (@created - /log/@started)"/>
+        </xsl:variable>
+            <!-- <xsl:value-of select="{format-number((1000 * (request/meta/start_time/text() - /log/@started)) div $total-time, '##%')}"/> -->
+
         <div class="textentry">
             <div class="textentry__head {$highlight} {$loglevel}">
                 <span title="{@msg}">
@@ -118,6 +123,7 @@
 
         <div class="textentry m-textentry__expandable">
             <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher {$status} {$highlight}">
+                
                 <span title="{@msg}" class="textentry__head__expandtext">
                     <span class="time">
                         <xsl:value-of select="response/request_time"/>
@@ -133,13 +139,21 @@
                 </span>
                 <div class="timebar">
                     <div class="timebar__line" style="left: {format-number((1000 * (request/meta/start_time/text() - /log/@started)) div $total-time, '##%')}">
-                        <strong class="timebar__head" style="width:{format-number(response/request_time div $total-time, '##%')};"></strong>
+                        <strong class="timebar__head timebar__head-{$status}" style="width:{format-number(response/request_time div $total-time, '##%')};"></strong>
                     </div>
                 </div>
             </div>
             <div class="details">
-                <xsl:apply-templates select="debug"/>
+                <div class="timebar-details">
+                    <div class="timebar__line" style="left: {format-number((1000 * (request/meta/start_time/text() - /log/@started)) div $total-time, '##%')}">
+                            [<xsl:value-of select="format-number(1000 * (request/meta/start_time/text() - /log/@started), '#0.##')"/>ms
+                            <xsl:text> => </xsl:text>
+                            <xsl:value-of select="format-number(1000 * (request/meta/start_time/text() - /log/@started) + response/request_time, '#0.##')"/>ms] : 
+                            <xsl:value-of select="format-number(response/request_time div $total-time, '##%')"/>
+                    </div>
+                </div>
                 <xsl:apply-templates select="request"/>
+                <xsl:apply-templates select="debug"/>
                 <xsl:apply-templates select="response"/>
             </div>
         </div>
@@ -223,8 +237,8 @@
     <xsl:template match="body[contains(@content_type, 'text/html') and text() != '']">
         <xsl:variable name="id" select="generate-id(.)"/>
         <div class="delimeter">body</div>
-        <div id="{$id}"><![CDATA[]]></div>
-        <script>
+        <div id="{$id}"><![CDATA[]]></div> 
+       <script>
             doiframe('<xsl:value-of select="$id"/>', '<xsl:value-of select="."/>');
         </script>
     </xsl:template>
@@ -305,7 +319,6 @@
                 width: 100%;
             }
                 .timebar__line{
-                    height: 3px;
                     position: relative;
                     vertical-align: middle;
                 }
@@ -316,6 +329,16 @@
                     display: inline-block;
                     height: 1em;
                 }
+                    .timebar__head-error{
+                        background-color: red;
+                    }
+
+            .timebar-details {
+                left: 0;
+                top: 0;
+                height: 100%;
+                width: 100%;
+            }
 
             .textentry{
                 padding-left:20px;
@@ -353,6 +376,7 @@
             .details{
                 display:none;
                 margin-bottom:15px;
+                position: relative;
             }
                 .m-details_visible{
                     display:block;
