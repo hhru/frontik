@@ -88,8 +88,7 @@
         <xsl:variable name="time-offset">
             <xsl:value-of select="1000* (@created - /log/@started)"/>
         </xsl:variable>
-            <!-- <xsl:value-of select="{format-number((1000 * (request/meta/start_time/text() - /log/@started)) div $total-time, '##%')}"/> -->
-
+            
         <div class="textentry">
             <div class="textentry__head {$highlight} {$loglevel}">
                 <span title="{@msg}">
@@ -138,22 +137,22 @@
                     <xsl:value-of select="request/url"/>
                 </span>
                 <div class="timebar">
-                    <div class="timebar__line" style="left: {format-number((1000 * (request/meta/start_time/text() - /log/@started)) div $total-time, '##%')}">
-                        <strong class="timebar__head timebar__head-{$status}" style="width:{format-number(response/request_time div $total-time, '##%')};"></strong>
+                    <div class="timebar__line" style="left: {format-number((1000 * (request/meta/start_time/text() - /log/@started)) div $total-time, '##.#%')}">
+                        <strong class="timebar__head timebar__head-{$status}" style="width:{format-number(response/request_time div $total-time, '##.#%')};"></strong>
                     </div>
                 </div>
             </div>
             <div class="details">
                 <div class="timebar-details">
-                    <div class="timebar__line" style="left: {format-number((1000 * (request/meta/start_time/text() - /log/@started)) div $total-time, '##%')}">
+                    <div class="timebar__line" style="left: {format-number((1000 * (request/meta/start_time/text() - /log/@started)) div $total-time, '##.#%')}">
                             [<xsl:value-of select="format-number(1000 * (request/meta/start_time/text() - /log/@started), '#0.##')"/>ms
                             <xsl:text> => </xsl:text>
                             <xsl:value-of select="format-number(1000 * (request/meta/start_time/text() - /log/@started) + response/request_time, '#0.##')"/>ms] : 
-                            <xsl:value-of select="format-number(response/request_time div $total-time, '##%')"/>
+                            <xsl:value-of select="format-number(response/request_time div $total-time, '##.#%')"/>
                     </div>
                 </div>
-                <xsl:apply-templates select="request"/>
                 <xsl:apply-templates select="debug"/>
+                <xsl:apply-templates select="request"/>
                 <xsl:apply-templates select="response"/>
             </div>
         </div>
@@ -323,6 +322,8 @@
                     vertical-align: middle;
                 }
                 .timebar__head{
+                    border-left: 1px solid green;
+                    border-right: 1px solid green;
                     background-color: #94b24d;
                     opacity: 0.5;
                     padding-top: 3px;

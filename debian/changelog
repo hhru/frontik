@@ -1,6 +1,7 @@
-frontik (2.15.0~netinfo-hh1) unstable; urgency=low
+frontik (2.14.0~netinfo-hh2) unstable; urgency=low
 
   * net info in debug
+  * css styles fix
 
  -- Pavel Trukhanov <p.trukhanov@hh.ru>  Wed, 28 Nov 2012 12:28:14 +0400
 
