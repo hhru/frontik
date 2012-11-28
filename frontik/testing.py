@@ -19,10 +19,6 @@ import frontik.options
 import frontik.doc
 
 frontik_testing_logger = logging.getLogger('frontik.testing')
-frontik_testing_logger.addHandler(logging.StreamHandler(strm=sys.stdout))
-
-frontik_testing_logger.process_stages = lambda x: None
-frontik_testing_logger.stage_tag = lambda x: None
 
 class GeneralStub(object):
     def __init__(self, **kwargs):
@@ -48,14 +44,13 @@ class HTTPResponseWrapper(HTTPResponse):
         self._body = body
 
 class PageHandlerReplacement(frontik.handler.PageHandler):
-    def __init__(self, wrapper, handler_params, *args, **kwargs):
+    def __init__(self, test_app, handler_params, *args, **kwargs):
         super(PageHandlerReplacement, self).__init__(*args, **kwargs)
 
         for name, value in handler_params.items():
             setattr(self, name, value)
 
-        self.log = frontik_testing_logger
-        self.wrapper = wrapper
+        self.test_app = test_app
         self.saved_buffer = []
         self.saved_headers = {}
 
@@ -78,13 +73,13 @@ class PageHandlerReplacement(frontik.handler.PageHandler):
         self.__fetch_url(request, data, callback, **kwargs)
 
     def __fetch_url(self, request, data_dict=None, callback=None, **kwargs):
-        self.wrapper.add_callback(request, data_dict if data_dict is not None else {}, callback)
+        self.test_app.add_callback(request, data_dict if data_dict is not None else {}, callback)
 
     def _stack_context_handle_exception(self, type, value, traceback):
         try:
             super(PageHandlerReplacement, self)._stack_context_handle_exception(type, value, traceback)
         except Exception, e:
-            self.wrapper.add_exception(e)
+            self.test_app.add_exception(e)
 
     def flush(self, include_footers=False):
         self.saved_buffer = self._write_buffer
@@ -178,6 +173,7 @@ class TestEnvironment(object):
         self.routes = routes
         self.handler_default_params = kwargs
         self.ph_globals = frontik.handler.PageHandlerGlobals(GeneralStub(config=config))
+        self.__bootstarp_logging()
 
     def new_test_app(self, **kwargs):
         """
@@ -189,6 +185,13 @@ class TestEnvironment(object):
         request = HTTPRequestWrapper('GET', '/' + caller_method, kwargs.pop('query', {}), headers=kwargs.pop('headers', {}))
         handler_params = dict(self.handler_default_params, **kwargs)
         return TestApp(self.routes, request, handler_params, self.ph_globals)
+
+    def __bootstarp_logging(self):
+        handlers = logging.getLogger().handlers
+        for h in handlers:
+            logging.getLogger().removeHandler(h)
+        logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
+            format="[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s")
 
 
 Get = namedtuple('Get', ('url', 'data'))
