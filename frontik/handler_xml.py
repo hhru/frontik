@@ -74,6 +74,13 @@ class FileCache(object):
 
         return ret
 
+    def invalidate(self, filename):
+        if len(self.cache):
+            log.debug('Xsl file "{0}" changed, invalidating cache'.format(filename))
+            keys = self.cache.keys()
+            for k in keys:
+                del self.cache[k]
+
 
 def _source_comment(src):
     return etree.Comment('Source: {0}'.format(frontik.util.asciify_url(src).replace('--', '%2D%2D')))
@@ -107,10 +114,6 @@ def xsl_from_file(filename):
     """
 
     transform, xsl_files = frontik.xml_util.read_xsl(filename)
-
-    for xsl_file in xsl_files:
-        tornado.autoreload.watch_file(xsl_file)
-
     return True, transform
 
 
@@ -124,7 +127,16 @@ class InvalidOptionCache(object):
 
 def make_file_cache(option_name, option_value, fun, max_len=None, step=None, deepcopy=False):
     if option_value:
-        return FileCache(option_value, fun, max_len, step, deepcopy)
+        file_cache = FileCache(option_value, fun, max_len, step, deepcopy)
+
+        if tornado.options.options.debug:
+            def __watch_function(event, log_function):
+                if event.event_type == 'modified':
+                    file_cache.invalidate(os.path.relpath(event.src_path, option_value))
+
+            frontik.util.create_watchdog_observer(__watch_function, option_value, log.debug)
+
+        return file_cache
     else:
         return InvalidOptionCache(option_name)
 
