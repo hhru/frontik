@@ -8,10 +8,10 @@ routes = [
 
 # config is a frontik config stub
 test_env = frontik.testing.TestEnvironment(routes, config,
-    # here come additional parameters for PageHandler object or HTTPRequest (query and headers)
+    # here come additional properties for PageHandler object and common headers
     session=applicant_session, headers={'X-HH-Snapshot': 'TEST-SNAPSHOT'})
 
-app = test_env.create_test_app()
+app = test_env.create_test_app(more_handler_properties={})
 
 # provide sample data to service mocks
 app.set_route_data('vacancy_search', vacancies=vacancies)
@@ -20,7 +20,7 @@ app.set_route_data('vacancy_search', vacancies=vacancies)
 def __tested(handler):
     pass
 
-response = app.call(__tested)
+response = app.call(__tested, data={}, headers={})
 assert response.code == 200
 assert app.called_once('vacancy_search')
 
@@ -84,8 +84,8 @@ class TestApp(object):
         Post: 'post_page'
     }
 
-    def __init__(self, routes, request, handler_params, ph_globals):
-        self.request = request
+    def __init__(self, routes, default_headers, handler_params, ph_globals):
+        self.default_headers = default_headers
         self.handler_params = handler_params
         self.ph_globals = ph_globals
 
@@ -99,14 +99,20 @@ class TestApp(object):
         self.routes_data[route_name].update(kwargs)
 
     def call(self, function, *function_args, **function_kwargs):
-        self.saved_buffer = None
-        self.saved_headers = None
+        self.saved_buffer = []
+        self.saved_headers = {}
+
+        caller_method = inspect.stack()[1][3]
+        data = function_kwargs.pop('data', {})
+        headers = dict(self.default_headers, **function_kwargs.pop('headers', {}))
+        request = HTTPRequestWrapper('GET', '/' + caller_method, data, headers=headers)
 
         create_handler = partial(self.__create_page_handler, function, function_args, function_kwargs)
         app = Application([(r'/.*', create_handler, dict(ph_globals=self.ph_globals))])
-        handler = app(self.request)
+        handler = app(request)
 
-        http_client_request = frontik.util.make_get_request(self.request.uri)
+        # request data is lost
+        http_client_request = frontik.util.make_get_request(request.uri)
         return HTTPResponse(http_client_request, code=handler._status_code, headers=self.saved_headers,
             buffer=cStringIO.StringIO(''.join(self.saved_buffer)))
 
@@ -201,29 +207,16 @@ class TestApp(object):
 
 class TestEnvironment(object):
     def __init__(self, routes, config, **kwargs):
-        """
-            Creates test environment (predefined routes, config and default handler properties)
-        """
-
         self.__bootstrap_logging()
 
         self.routes = routes
+        self.default_headers = kwargs.pop('headers', {})
         self.default_params = kwargs
         self.ph_globals = frontik.handler.PageHandlerGlobals(GeneralStub(config=config))
 
     def create_test_app(self, **kwargs):
-        """
-            kwargs can contain any properties that should be overriden in this particular handler
-            'query' and 'headers' are used to build HTTPRequest object for the handler
-        """
-
-        caller_method = inspect.stack()[1][3]
-        query = dict(self.default_params.pop('query', {}), **kwargs.pop('query', {}))
-        headers = dict(self.default_params.pop('headers', {}), **kwargs.pop('headers', {}))
         params = dict(self.default_params, **kwargs)
-
-        request = HTTPRequestWrapper('GET', '/' + caller_method, query, headers=headers)
-        return TestApp(self.routes, request, params, self.ph_globals)
+        return TestApp(self.routes, self.default_headers, params, self.ph_globals)
 
     def __bootstrap_logging(self):
         handlers = logging.getLogger().handlers
