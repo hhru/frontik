@@ -42,6 +42,7 @@ import re
 from urlparse import urlparse
 import time
 import cStringIO
+from tornado.ioloop import IOLoop
 from tornado.web import Application
 from tornado.httpclient import HTTPResponse
 from tornado.httpclient import HTTPRequest as HTTPClientRequest
@@ -72,30 +73,6 @@ class HTTPRequestWrapper(HTTPServerRequest):
         self.write = lambda c: frontik_testing_logger.debug('Mocked HTTPRequest.write called, doing nothing')
         self.finish = lambda: frontik_testing_logger.debug('Mocked HTTPRequest.finish called, doing nothing')
 
-class PageHandlerReplacement(frontik.handler.PageHandler):
-    def __init__(self, test_app, handler_params, *args, **kwargs):
-        super(PageHandlerReplacement, self).__init__(*args, **kwargs)
-
-        for name, value in handler_params.items():
-            setattr(self, name, value)
-
-        self.test_app = test_app
-        self.saved_buffer = []
-        self.saved_headers = {}
-
-    # Methods replacements
-
-    def _stack_context_handle_exception(self, type, value, traceback):
-        try:
-            super(PageHandlerReplacement, self)._stack_context_handle_exception(type, value, traceback)
-        except Exception, e:
-            self.test_app.add_exception(e)
-
-    def flush(self, include_footers=False):
-        self.saved_buffer = self._write_buffer
-        self.saved_headers = self._headers
-        super(PageHandlerReplacement, self).flush(include_footers)
-
 
 Get = namedtuple('Get', ('url', 'data'))
 Post = namedtuple('Post', ('url', 'data'))
@@ -121,24 +98,17 @@ class TestApp(object):
     def set_route_data(self, route_name, **kwargs):
         self.routes_data[route_name].update(kwargs)
 
-    def call(self, function, *f_args, **f_kwargs):
-        def __create_page_handler(*args, **kwargs):
-            def __get_page():
-                function(handler, *f_args, **f_kwargs)
-                self.__execute_callbacks()
-                self.__reraise_exceptions()
+    def call(self, function, *function_args, **function_kwargs):
+        self.saved_buffer = None
+        self.saved_headers = None
 
-            handler = PageHandlerReplacement(self, self.handler_params, *args, **kwargs)
-            handler.get_page = __get_page
-            handler.http_client = GeneralStub(fetch=self.__http_client_fetch)
-            return handler
-
-        app = Application([(r'/.*', __create_page_handler, dict(ph_globals=self.ph_globals))])
+        create_handler = partial(self.__create_page_handler, function, function_args, function_kwargs)
+        app = Application([(r'/.*', create_handler, dict(ph_globals=self.ph_globals))])
         handler = app(self.request)
 
         http_client_request = frontik.util.make_get_request(self.request.uri)
-        return HTTPResponse(http_client_request, code=handler._status_code, headers=handler.saved_headers,
-            buffer=cStringIO.StringIO(''.join(handler.saved_buffer)))
+        return HTTPResponse(http_client_request, code=handler._status_code, headers=self.saved_headers,
+            buffer=cStringIO.StringIO(''.join(self.saved_buffer)))
 
     def call_url(self, request):
         method_name = self.PageMethodsMapping.get(request.__class__, self.PageMethodsMapping[Get])
@@ -156,12 +126,45 @@ class TestApp(object):
     def get_call_count(self, route):
         return self.routes_called[route]
 
+    def __create_page_handler(self, function, function_args, function_kwargs, *handler_args, **handler_kwargs):
+
+        IOLoop.instance().add_callback = lambda x: self.async_callbacks.append((x, lambda: tuple()))
+
+        def __get_page():
+            function(handler, *function_args, **function_kwargs)
+            self.__execute_callbacks()
+            self.__reraise_exceptions()
+
+        def __stack_context_handle_exception(type, value, traceback):
+            try:
+                handler_stack_context_handle_exception_orig(type, value, traceback)
+            except Exception, e:
+                self.__add_exception(e)
+
+        def __flush(include_footers=False):
+            self.saved_buffer = handler._write_buffer
+            self.saved_headers = handler._headers
+            handler_flush_orig(include_footers)
+
+        handler = frontik.handler.PageHandler(*handler_args, **handler_kwargs)
+        handler_flush_orig = handler.flush
+        handler_stack_context_handle_exception_orig = handler._stack_context_handle_exception
+
+        for name, value in self.handler_params.items():
+            setattr(handler, name, value)
+
+        handler.get_page = __get_page
+        handler.http_client = GeneralStub(fetch=self.__http_client_fetch)
+        handler.flush = __flush
+        handler._stack_context_handle_exception = __stack_context_handle_exception
+        return handler
+
     def __http_client_fetch(self, request, callback, **kwargs):
         if not isinstance(request, HTTPClientRequest):
             request = HTTPClientRequest(url=request, **kwargs)
-        self.add_callback(request, dict(started=time.time()), callback)
+        self.__add_callback(request, dict(started=time.time()), callback)
 
-    def add_callback(self, request, request_info, callback):
+    def __add_callback(self, request, request_info, callback):
         route_url = urlparse(request.url).path
         for route_name, regex, route in self.routes:
             match = re.match(r'.+{0}/?$'.format(regex), route_url)
@@ -184,12 +187,12 @@ class TestApp(object):
             frontik_testing_logger.debug('Executing callback, {0} left'.format(len(self.async_callbacks)))
 
             try:
-                cb(route())
+                cb(*route())
             except Exception, e:
-                self.add_exception(e)
+                self.__add_exception(e)
                 frontik_testing_logger.debug('Callback raised exception: {0}'.format(e))
 
-    def add_exception(self, e):
+    def __add_exception(self, e):
         self.exceptions.append(e)
 
     def __reraise_exceptions(self):
@@ -249,7 +252,7 @@ def service_response(response_type):
 
             response.request_time = time.time() - request_info['started']
             response.buffer = cStringIO.StringIO(response_body)
-            return response
+            return (response,)
 
         return __internal
 
