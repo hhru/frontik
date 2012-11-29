@@ -40,10 +40,12 @@ import inspect
 import logging
 import re
 from urlparse import urlparse
+import time
+import cStringIO
 from tornado.web import Application
 from tornado.httpclient import HTTPResponse
+from tornado.httpclient import HTTPRequest as HTTPClientRequest
 from tornado.httpserver import HTTPRequest as HTTPServerRequest
-from lxml import etree
 import sys
 
 import frontik.app
@@ -67,17 +69,8 @@ class HTTPRequestWrapper(HTTPServerRequest):
         super(HTTPRequestWrapper, self).__init__(method, uri, remote_ip='127.0.0.1', **kwargs)
 
         del self.connection
-        self.write = lambda c: None
-        self.finish = lambda: None
-
-class HTTPResponseWrapper(HTTPResponse):
-    @property
-    def body(self):
-        return self._body
-
-    @body.setter
-    def body(self, body):
-        self._body = body
+        self.write = lambda c: frontik_testing_logger.debug('Mocked HTTPRequest.write called, doing nothing')
+        self.finish = lambda: frontik_testing_logger.debug('Mocked HTTPRequest.finish called, doing nothing')
 
 class PageHandlerReplacement(frontik.handler.PageHandler):
     def __init__(self, test_app, handler_params, *args, **kwargs):
@@ -91,25 +84,6 @@ class PageHandlerReplacement(frontik.handler.PageHandler):
         self.saved_headers = {}
 
     # Methods replacements
-
-    def get_url(self, url, data=None, callback=None, **kwargs):
-        request = frontik.util.make_get_request(url, data, kwargs.get('headers', None))
-        self.__fetch_url(request, data, callback, **kwargs)
-
-    def post_url(self, url, data=None, callback=None, **kwargs):
-        request = frontik.util.make_post_request(url, data, kwargs.get('headers', None))
-        self.__fetch_url(request, data, callback, **kwargs)
-
-    def put_url(self, url, data=None, callback=None, **kwargs):
-        request = frontik.util.make_put_request(url, data, kwargs.get('headers', None))
-        self.__fetch_url(request, data, callback, **kwargs)
-
-    def delete_url(self, url, data=None, callback=None, **kwargs):
-        request = frontik.util.make_delete_request(url, data, kwargs.get('headers', None))
-        self.__fetch_url(request, data, callback, **kwargs)
-
-    def __fetch_url(self, request, data_dict=None, callback=None, **kwargs):
-        self.test_app.add_callback(request, data_dict if data_dict is not None else {}, callback)
 
     def _stack_context_handle_exception(self, type, value, traceback):
         try:
@@ -156,15 +130,15 @@ class TestApp(object):
 
             handler = PageHandlerReplacement(self, self.handler_params, *args, **kwargs)
             handler.get_page = __get_page
+            handler.http_client = GeneralStub(fetch=self.__http_client_fetch)
             return handler
 
         app = Application([(r'/.*', __create_page_handler, dict(ph_globals=self.ph_globals))])
         handler = app(self.request)
 
         http_client_request = frontik.util.make_get_request(self.request.uri)
-        response = HTTPResponseWrapper(http_client_request, code=handler._status_code, headers=handler.saved_headers)
-        response.body = ''.join(handler.saved_buffer)
-        return response
+        return HTTPResponse(http_client_request, code=handler._status_code, headers=handler.saved_headers,
+            buffer=cStringIO.StringIO(''.join(handler.saved_buffer)))
 
     def call_url(self, request):
         method_name = self.PageMethodsMapping.get(request.__class__, self.PageMethodsMapping[Get])
@@ -182,17 +156,22 @@ class TestApp(object):
     def get_call_count(self, route):
         return self.routes_called[route]
 
-    def add_callback(self, request, data_dict, callback):
+    def __http_client_fetch(self, request, callback, **kwargs):
+        if not isinstance(request, HTTPClientRequest):
+            request = HTTPClientRequest(url=request, **kwargs)
+        self.add_callback(request, dict(started=time.time()), callback)
+
+    def add_callback(self, request, request_info, callback):
         route_url = urlparse(request.url).path
         for route_name, regex, route in self.routes:
             match = re.match(r'.+{0}/?$'.format(regex), route_url)
             if match:
                 frontik_testing_logger.debug('Call to {url} will be mocked'.format(url=request.url))
                 self.__add_route_callback(callback, route_name,
-                    partial(route, request, data_dict, **dict(match.groupdict(), **self.routes_data[route_name])))
+                    partial(route, request, request_info, **dict(match.groupdict(), **self.routes_data[route_name])))
                 return
 
-        raise NotImplementedError('Url "{url}" is not mocked'.format(url=route_url))
+        raise NotImplementedError('Url {url} is not mocked'.format(url=route_url))
 
     def __add_route_callback(self, callback, route_name, route_function):
         self.routes_called[route_name] += 1
@@ -205,7 +184,7 @@ class TestApp(object):
             frontik_testing_logger.debug('Executing callback, {0} left'.format(len(self.async_callbacks)))
 
             try:
-                cb(*route())
+                cb(route())
             except Exception, e:
                 self.add_exception(e)
                 frontik_testing_logger.debug('Callback raised exception: {0}'.format(e))
@@ -223,10 +202,11 @@ class TestEnvironment(object):
             Creates test environment (predefined routes, config and default handler properties)
         """
 
+        self.__bootstrap_logging()
+
         self.routes = routes
         self.default_params = kwargs
         self.ph_globals = frontik.handler.PageHandlerGlobals(GeneralStub(config=config))
-        self.__bootstrap_logging()
 
     def create_test_app(self, **kwargs):
         """
@@ -247,29 +227,29 @@ class TestEnvironment(object):
         for h in handlers:
             logging.getLogger().removeHandler(h)
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
-            format="[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s")
+            format='[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s')
 
 
 def service_response(response_type):
     def __wrapper(func):
-        def __internal(request, data_dict, *args, **kwargs):
-            result = func(request.url, data_dict, *args, **kwargs)
+        def __internal(request, request_info, *args, **kwargs):
+            result = func(request, *args, **kwargs)
 
             if isinstance(result, tuple):
                 response_body, response = result
             else:
                 response_body = result
-                response = HTTPResponseWrapper(request, code=200)
+                response = HTTPResponse(request, code=200)
 
             if response_type == 'text/xml':
                 response.headers['Content-Type'] = 'text/xml'
-                response_body = etree.fromstring(response_body)
             elif response_type == 'application/x-protobuf':
                 response.headers['Content-Type'] = 'application/x-protobuf'
                 response_body = response_body.SerializeToString()
 
-            response.body = response_body
-            return response_body, response
+            response.request_time = time.time() - request_info['started']
+            response.buffer = cStringIO.StringIO(response_body)
+            return response
 
         return __internal
 
