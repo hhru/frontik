@@ -4,7 +4,7 @@ from __future__ import with_statement
 
 from functools import partial
 from itertools import imap
-import json
+import simplejson as json
 import re
 import time
 import frontik_logging
@@ -47,7 +47,7 @@ _parse_response_xml =  partial(_parse_response_smth,
                                parser = lambda x: etree.fromstring(x, parser=_xml_parser),
                                type = 'XML')
 
-_parse_response_json =  partial(_parse_response_smth,
+_parse_response_json = partial(_parse_response_smth,
                                parser = json.loads,
                                type = 'JSON')
 
