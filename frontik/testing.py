@@ -37,7 +37,9 @@ assert response.code == 200
 from collections import defaultdict, namedtuple
 from functools import partial
 import inspect
+import json
 import logging
+import os
 import re
 from urlparse import urlparse
 import time
@@ -73,9 +75,16 @@ class HTTPRequestWrapper(HTTPServerRequest):
         self.write = lambda c: frontik_testing_logger.debug('Mocked HTTPRequest.write called, doing nothing')
         self.finish = lambda: frontik_testing_logger.debug('Mocked HTTPRequest.finish called, doing nothing')
 
+Request = namedtuple('Request', ('method', 'url', 'data', 'headers'))
 
-Get = namedtuple('Get', ('url', 'data'))
-Post = namedtuple('Post', ('url', 'data'))
+class Get(Request):
+    def __new__(cls, url, data=None, headers=None):
+        return super(Get, cls).__new__(cls, 'GET', url, data, headers)
+
+class Post(Request):
+    def __new__(cls, url, data=None, headers=None):
+        return super(Post, cls).__new__(cls, 'POST', url, data, headers)
+
 
 class TestApp(object):
 
@@ -120,8 +129,10 @@ class TestApp(object):
         method_name = self.PageMethodsMapping.get(request.__class__, self.PageMethodsMapping[Get])
         module_name = 'pages.' + '.'.join(request.url.strip('/').split('/'))
         method = frontik_import(module_name).Page.__dict__[method_name]
+        response = self.call(method)
 
-        return self.call(method)
+        self.__save_test_pair(request, response, inspect.stack()[1])
+        return response
 
     def called_once(self, route):
         return self.get_call_count(route) == 1
@@ -131,6 +142,30 @@ class TestApp(object):
 
     def get_call_count(self, route):
         return self.routes_called[route]
+
+    def __save_test_pair(self, request, response, caller_info):
+        caller_method = caller_info[3]
+        caller_file = caller_info[1]
+
+        json_test = json.dumps(dict(
+            request=request,
+            response=dict(
+                code=response.code,
+                body=response.body,
+                headers=response.headers
+            )), indent=2)
+
+        tests_dir = os.path.join(os.path.dirname(caller_file), 'results')
+        if not os.path.exists(tests_dir):
+            os.mkdir(tests_dir)
+
+        url_tests_dir = os.path.join(tests_dir, request.url.strip('/'))
+        if not os.path.exists(url_tests_dir):
+            os.mkdir(url_tests_dir)
+
+        test_file = os.path.join(url_tests_dir, caller_method + '.json')
+        with open(test_file, 'w') as f:
+            f.write(json_test)
 
     def __create_page_handler(self, function, function_args, function_kwargs, *handler_args, **handler_kwargs):
 
