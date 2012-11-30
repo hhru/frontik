@@ -8,9 +8,9 @@ log = logging.getLogger('frontik.async')
 
 
 def before(before_fun):
-    '''
+    """
     before_fun :: f(self, cb)
-    '''
+    """
 
     def before_fun_deco(fun):
         def new_fun(self, *args, **kw):
@@ -22,12 +22,12 @@ def before(before_fun):
 
 
 class AsyncGroup(object):
-    '''
+    """
     Grouping of several async requests and final callback in such way, that final callback is invoked after the last
      request is finished.
 
     Frontik uses this class to find the right moment to finish page.
-    '''
+    """
 
     # in the breaking compatibility version parameters should be
     # rearranged: name, finish_cb, log
@@ -100,11 +100,11 @@ class AsyncGroup(object):
 
 
 class AsyncWorkPool(object):
-    '''
+    """
     AWP - machinery to limit the number of simultaneously working async processes
     add new task with .add_task(cb)
     let pool know when task is finished with .release()
-    '''
+    """
 
     def __init__(self, pool_size):
         self.pool_size = pool_size

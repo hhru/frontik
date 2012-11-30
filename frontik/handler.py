@@ -56,7 +56,6 @@ default_request_types = {
     re.compile(".*json.?"): _parse_response_json
 }
 
-# TODO cleanup this after release of frontik with frontik.async
 AsyncGroup = frontik.async.AsyncGroup
 
 class HTTPError(tornado.web.HTTPError):
@@ -91,11 +90,8 @@ class PageHandlerGlobals(object):
     """
     def __init__(self, app_package):
         self.config = app_package.config
-
         self.xml = frontik.handler_xml.PageHandlerXMLGlobals(app_package.config)
-
         self.http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(max_clients = 200, max_simultaneous_connections = 200)
-
         self.executor = frontik.jobs.executor()
 
 class PageHandler(tornado.web.RequestHandler):
@@ -141,9 +137,9 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             self.apply_postprocessor = True
 
-        self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page_cb),
-                                                     name = 'finish',
-                                                     log = self.log.debug)
+        self.finish_group = AsyncGroup(self.async_callback(self._finish_page_cb),
+                                       name = 'finish',
+                                       log = self.log.debug)
         self._prepared = True
 
     def require_debug_access(self, login = None, passwd = None):
