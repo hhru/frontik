@@ -134,7 +134,11 @@
 
         <div class="textentry m-textentry__expandable">
             <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher {$status} {$highlight}">
-                
+                <div class="timebar">
+                    <div class="timebar__line" style="left: {$timebar-percent-offset}">
+                        <strong class="timebar__head timebar__head_{$status}" style="width:{$timebar-len-percent};"></strong>
+                    </div>
+                </div>
                 <span title="{@msg}" class="textentry__head__expandtext">
                     <span class="time">
                         <xsl:value-of select="response/request_time"/>
@@ -148,12 +152,6 @@
                     <xsl:text>Kb </xsl:text>
                     <xsl:value-of select="request/url"/>
                 </span>
-
-                <div class="timebar">
-                    <div class="timebar__line" style="left: {$timebar-percent-offset}">
-                        <strong class="timebar__head timebar__head-{$status}" style="width:{$timebar-len-percent};"></strong>
-                    </div>
-                </div>
             </div>
             <div class="details">
                 <div class="timebar-details">
@@ -324,29 +322,27 @@
                 word-break: break-all;
             }
             .timebar {
-                position: absolute;
-                left: 0;
-                top: 0;
-                height: 100%;
                 width: 100%;
+                margin-bottom: -1.4em;
+                position: relative;
             }
-                .timebar__line{
+                .timebar__line {
                     position: relative;
                     vertical-align: middle;
                 }
-                .timebar__head{
+                .timebar__head {
                     border-left: 1px solid green;
                     border-right: 1px solid green;
                     background-color: #94b24d;
+                    border-bottom: 1px solid #94b24d;
                     opacity: 0.5;
-                    padding-top: 3px;
-                    display: inline-block;
-                    height: 1em;
+                    display: block;
+                    width: 0;
+                    height: 1.4em;
                 }
-                    .timebar__head-error{
+                    .timebar__head_error {
                         background-color: red;
                     }
-
             .timebar-details {
                 left: 0;
                 top: 0;
@@ -354,32 +350,34 @@
                 width: 100%;
             }
 
-            .textentry{
+            .textentry {
                 padding-left:20px;
                 padding-right:20px;
                 margin-bottom:4px;
                 word-break: break-all;
+                position: relative;
             }
-                .m-textentry__expandable{
-                    padding-top:3px;
-                    padding-bottom:3px;
+                .m-textentry__expandable {
                     background:#fffccf;
                 }
-                .m-textentry_title{
+                .m-textentry_title {
                     font-size:1.3em;
                     margin-bottom:.5em;
                 }
-                .textentry__head{
-                    position: relative;
+                .textentry__head {
                 }
-                    .m-textentry__head_highlight{
+                    .m-textentry__head_highlight {
                         font-weight:bold;
                     }
-                    .textentry__head__expandtext{
+                    .textentry__head__expandtext {
                         border-bottom:1px dotted #666;
+                        display: inline-block;
+                        position: relative;
+                        vertical-align: bottom;
+                        line-height: 1.4em;
+                        margin-top: -1px;
                     }
-                .textentry__switcher{
-                    height:1.3em;
+                .textentry__switcher {
                     overflow:hidden;
                     white-space: nowrap;
                     text-overflow: ellipsis;
