@@ -28,36 +28,16 @@ def _abs_filename(base_filename, filename):
         base_dir = os.path.dirname(base_filename)
         return os.path.normpath(os.path.join(base_dir, filename))
 
-def _read_xsl_one(filename, log=log, parser=parser):
-    """return (etree.ElementTree, xsl_includes)"""
-
-    log.debug("read file %s", filename)
+def get_xsl_includes(filename, parser=parser):
     tree = etree.parse(filename, parser)
     namespaces = {'xsl': 'http://www.w3.org/1999/XSL/Transform'}
-    xsl_includes = [_abs_filename(filename, i.get('href'))
-                    for i in tree.xpath('xsl:import|xsl:include', namespaces=namespaces)
-                    if i.get('href').find(':') == -1]
-    return tree, xsl_includes
+    return [_abs_filename(filename, i.get('href'))
+            for i in tree.xpath('xsl:import|xsl:include', namespaces=namespaces)
+            if i.get('href').find(':') == -1]
 
 def read_xsl(filename, log=log, parser=parser):
-    """return (etree.XSL, xsl_files_watchlist)"""
-
-    xsl_includes = set([filename])
-
-    result, new_xsl_files = _read_xsl_one(filename, log, parser)
-
-    diff = set(new_xsl_files).difference(xsl_includes)
-    while diff:
-        new_xsl_files = set()
-
-        for i in diff:
-            _, i_files = _read_xsl_one(i, log)
-            xsl_includes.add(i)
-            new_xsl_files.update(i_files)
-
-        diff = new_xsl_files.difference(xsl_includes)
-
-    return (etree.XSLT(result), xsl_includes)
+    log.debug('read file %s', filename)
+    return etree.XSLT(etree.parse(filename, parser))
 
 def dict_to_xml(dict_value, element_name):
     element = etree.Element(element_name)
