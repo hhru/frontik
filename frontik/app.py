@@ -206,7 +206,7 @@ class App(object):
             watch_function = getattr(self.module.config, 'watch_function', None)
 
             if options.debug and watch_dir is not None and callable(watch_function):
-                frontik.util.create_watchdog_observer(watch_function, watch_dir, self.log.debug)
+                frontik.util.create_watchdog_observer(watch_function, watch_dir, self.log)
 
             self.ph_globals = frontik.handler.PageHandlerGlobals(self.module)
         except:

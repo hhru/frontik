@@ -199,8 +199,8 @@ def create_fake_response(request, base_response, headers, code, buffer):
 def get_cookie_or_url_param_value(handler, param_name):
     return handler.get_argument(param_name, handler.get_cookie(param_name, None))
 
-def create_watchdog_observer(function, path, log_function):
-    log_function('Watching directory %s', path)
+def create_watchdog_observer(function, path, logger):
+    logger.debug('Watching directory %s', path)
 
     try:
         from watchdog.observers import Observer
@@ -208,7 +208,7 @@ def create_watchdog_observer(function, path, log_function):
 
         class WatchEventHandler(FileSystemEventHandler):
             def on_any_event(self, event):
-                function(event, log_function)
+                function(event, logger)
 
         event_handler = WatchEventHandler()
         observer = Observer()
@@ -216,4 +216,4 @@ def create_watchdog_observer(function, path, log_function):
         observer.start()
 
     except ImportError:
-        log_function('Directory watching is enabled, but failed to import watchdog. Please, install watchdog python package.')
+        logger.warning('Directory watching is enabled, but failed to import watchdog. Please, install watchdog python package.')

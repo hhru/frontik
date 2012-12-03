@@ -130,11 +130,11 @@ def make_file_cache(option_name, option_value, fun, max_len=None, step=None, dee
         file_cache = FileCache(option_value, fun, max_len, step, deepcopy)
 
         if tornado.options.options.debug:
-            def __watch_function(event, log_function):
+            def __watch_function(event, logger):
                 if event.event_type == 'modified':
                     file_cache.invalidate(os.path.relpath(event.src_path, option_value))
 
-            frontik.util.create_watchdog_observer(__watch_function, option_value, log.debug)
+            frontik.util.create_watchdog_observer(__watch_function, option_value, log)
 
         return file_cache
     else:
