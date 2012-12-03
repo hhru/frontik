@@ -75,8 +75,9 @@ class FileCache(object):
         return ret
 
     def invalidate(self, filename):
+        # naive cache invalidation, maybe use xml_util.get_xsl_includes and reverse includes index instead
         if len(self.cache):
-            log.debug('Xsl file "{0}" changed, invalidating cache'.format(filename))
+            log.debug('Files changed, invalidating cache')
             keys = self.cache.keys()
             for k in keys:
                 del self.cache[k]
@@ -96,7 +97,6 @@ def xml_from_file(filename):
     if os.path.exists(filename):
         try:
             res = etree.parse(filename).getroot()
-            tornado.autoreload.watch_file(filename)
             return True, [_source_comment(filename), res]
         except:
             log_fileloader.exception('failed to parse %s', filename)
@@ -107,14 +107,7 @@ def xml_from_file(filename):
 
 
 def xsl_from_file(filename):
-    """
-    filename -> (True, et.XSLT)
-
-    в случае ошибки выкидывает исключение
-    """
-
-    transform, xsl_files = frontik.xml_util.read_xsl(filename)
-    return True, transform
+    return True, frontik.xml_util.read_xsl(filename)
 
 
 class InvalidOptionCache(object):
@@ -131,6 +124,7 @@ def make_file_cache(option_name, option_value, fun, max_len=None, step=None, dee
 
         if tornado.options.options.debug:
             def __watch_function(event, logger):
+                # naive watch implementation, any modified file will invalidate the cache
                 if event.event_type == 'modified':
                     file_cache.invalidate(os.path.relpath(event.src_path, option_value))
 
