@@ -202,6 +202,12 @@ class App(object):
             for filename in self.importer.get_probable_module_filenames('config'):
                 tornado.autoreload.watch_file(filename)
 
+            watch_dir = getattr(self.module.config, 'watch_dir', None)
+            watch_function = getattr(self.module.config, 'watch_function', None)
+
+            if options.debug and watch_dir is not None and callable(watch_function):
+                frontik.util.create_watchdog_observer(watch_function, watch_dir, self.log)
+
             self.ph_globals = frontik.handler.PageHandlerGlobals(self.module)
         except:
             #we do not want to break frontik on app
