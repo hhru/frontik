@@ -87,7 +87,11 @@ def request_to_xml(request):
             _params_to_xml(request.url),
             E.url(request.url),
             _headers_to_xml(request.headers),
-            _cookies_to_xml(request.headers)
+            _cookies_to_xml(request.headers),
+            E.meta(
+                E.start_time(
+                    str(request.start_time)
+                ))
         )
     )
 
@@ -169,6 +173,9 @@ class DebugPageHandler(logging.Handler):
             entry.append(E.protobuf(record._protobuf))
 
         self.log_data.append(entry)
+        if getattr(record, "_stages", None) is not None:
+            self.log_data.append(record._stages)
+
 
 
 class PageHandlerDebug(object):
@@ -203,6 +210,7 @@ class PageHandlerDebug(object):
     def get_debug_page(self, status_code, response_headers, original_response=None, **kwargs):
         self.debug_log_handler.log_data.set('code', str(status_code))
         self.debug_log_handler.log_data.set('mode', self.handler.get_argument('debug', 'text'))
+        self.debug_log_handler.log_data.set('started', str(self.handler.handler_started))
         self.debug_log_handler.log_data.set('request-id', str(self.handler.request_id))
         self.debug_log_handler.log_data.append(frontik.app.get_frontik_and_apps_versions())
         self.debug_log_handler.log_data.append(E.request(
@@ -222,12 +230,19 @@ class PageHandlerDebug(object):
         if (self.handler.xml.apply_xsl or not self.debug_mode) and not self.debug_mode_inherited:
             try:
                 xsl_file = open(tornado.options.options.debug_xsl)
-                tranform = etree.XSLT(etree.XML(xsl_file.read()))
+                transform = etree.XSLT(etree.XML(xsl_file.read()))
                 xsl_file.close()
-                log_document = str(tranform(self.debug_log_handler.log_data))
+                log_document = str(transform(self.debug_log_handler.log_data))
                 self.handler.set_header('Content-Type', 'text/html; charset=UTF-8')
             except Exception, e:
                 self.handler.log.exception('XSLT debug file error')
+                try:
+                    self.handler.log.error('XSL error log entries:\n%s' % "\n".join(map(
+                    'File "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
+                        .format, transform.error_log)))
+                except Exception:
+                    pass
+
                 self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
                 log_document = etree.tostring(self.debug_log_handler.log_data, encoding = 'UTF-8',
                                               xml_declaration = True)
