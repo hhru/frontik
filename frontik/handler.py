@@ -271,6 +271,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         tornado.web.RequestHandler.flush(self, include_footers=False)
 
+        self.log.request_finish_hook()
 
     def get_page(self):
         """ Эта функция должна быть переопределена в наследнике и
@@ -335,37 +336,6 @@ class PageHandler(tornado.web.RequestHandler):
                                                 request_timeout,
                                                 follow_redirects)
         self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request, request_types = request_types))
-
-        return placeholder
-
-    def get_url_retry(self, url, data = None, headers = None, retry_count = 3, retry_delay = 0.1, connect_timeout = 0.5, request_timeout = 2, callback = None, request_types = None):
-        placeholder = future.Placeholder()
-
-        request = frontik.util.make_get_request(url,
-                                                {} if data is None else data,
-                                                {} if headers is None else headers,
-                                                connect_timeout,
-                                                request_timeout)
-
-        def step1(retry_count, response):
-            if response.error and retry_count > 0:
-                self.log.warn('failed to get %s; retries left = %s; retrying', response.effective_url, retry_count)
-                # TODO use handler-specific ioloop
-                if retry_delay > 0:
-                    tornado.ioloop.IOLoop.instance().add_timeout(time.time() + retry_delay,
-                        self.finish_group.add(self.async_callback(partial(step2, retry_count))))
-                else:
-                    step2(retry_count)
-            else:
-                if response.error and retry_count == 0:
-                    self.log.warn('failed to get %s; no more retries left; give up retrying', response.effective_url)
-
-                self._fetch_request_response(placeholder, callback, request, response, request_types = request_types)
-
-        def step2(retry_count):
-            self.http_client.fetch(request, self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
-
-        self.http_client.fetch(request, self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
 
         return placeholder
 

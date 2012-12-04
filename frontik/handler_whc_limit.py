@@ -17,7 +17,7 @@ class PageHandlerWHCLimit(object):
                                    self.handler.request.uri,
                                    working_handlers_count)
         else:
-            self.handler.log.warn('dropping %s %s; too many workers (%s)',
+            self.handler.log.warn('dropping %s %s; too many handlers (%s)',
                                   self.handler.request.method,
                                   self.handler.request.uri,
                                   working_handlers_count)
