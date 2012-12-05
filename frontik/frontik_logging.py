@@ -123,7 +123,6 @@ class PageLogger(logging.LoggerAdapter):
                 return self.records_list
 
 
-            #    def flush(self, *a, **kw):
             def flush(self, **kw):
                 for handler in self.bulk_handlers:
                     handler.handler_bulk(self.records_list, **kw)
