@@ -101,7 +101,7 @@ class PageLogger(logging.LoggerAdapter):
         self.info('Monik-stages {0!r} : {1} code={2}'.format(self.handler_ref(), stages_monik_format, status_code),
             extra={
                 '_monik': True,
-                '_stages': E.stages(*[E.stage(str(v), {'name':str(k)}) for k, v in self.stages])
+                '_stages': E.stages(*[E.stage(str(st.delta*1000), {'name':str(st.name)}) for st in self.stages])
             })
 
     def process(self, msg, kwargs):
