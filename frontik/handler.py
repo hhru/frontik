@@ -224,43 +224,53 @@ class PageHandler(tornado.web.RequestHandler):
 
         self.log.process_stages(self._status_code)
 
-        # if debug_mode is on: ignore any output we intended to write
-        # and use debug log instead
-        if hasattr(self, 'debug') and self.debug.debug_mode.enabled:
-            self._response_size = sum(imap(len, self._write_buffer))
-            self._response_size += len(chunk) if chunk is not None else 0
+        tornado.web.RequestHandler.finish(self, chunk)
 
-            if self.debug.debug_mode.return_response:
-                original_headers = {'Content-Length': str(self._response_size)}
-                response_headers = dict(self._headers, **original_headers)
-                original_response = {
-                    'buffer': ''.join(self._write_buffer) + (chunk if chunk is not None else ''),
-                    'headers': response_headers,
-                    'code': self._status_code
-                }
+    def flush(self, include_footers=False):
+        orig_write_buffer = self._write_buffer
+        try:
+            # if debug_mode is on: ignore any output we intended to write
+            # and use debug log instead
+            if hasattr(self, 'debug') and self.debug.debug_mode.enabled:
+                self._response_size = sum(imap(len, self._write_buffer))
 
-                self.set_header(frontik.handler_debug.PageHandlerDebug.INHERIT_DEBUG_HEADER_NAME, True)
-            else:
-                response_headers = self._headers
-                original_response = None
-                self.set_header('Content-Type', 'text/html')
+                if self.debug.debug_mode.return_response:
+                    original_headers = {'Content-Length': str(self._response_size)}
+                    response_headers = dict(self._headers, **original_headers)
+                    original_response = {
+                        'buffer': ''.join(self._write_buffer),
+                        'headers': response_headers,
+                        'code': self._status_code
+                    }
 
-            res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
-            self._write_buffer = []
-            self._status_code = 200
-        else:
-            res = chunk
+                    self.set_header(frontik.handler_debug.PageHandlerDebug.INHERIT_DEBUG_HEADER_NAME, True)
+                else:
+                    response_headers = self._headers
+                    original_response = None
+                    self.set_header('Content-Type', 'text/html')
 
-        if hasattr(self, 'debug') and self.debug.debug_mode.profile:
-            profiler_document = self.debug.get_profiler_template()
-            if profiler_document is not None:
-                match = tornado.options.options.debug_profiler_tag
-                buffer = ''.join(self._write_buffer) + (res if res is not None else '')
-                res = buffer.replace(match, profiler_document)
-                self._write_buffer = []
-                self.log.debug('Profiler component added before %s tag' % match)
+                res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
+                self.set_header('Content-Length', str(len(res)))
+                self._write_buffer = [res]
+                self._status_code = 200
 
-        tornado.web.RequestHandler.finish(self, res)
+            if hasattr(self, 'debug') and self.debug.debug_mode.profile:
+                profiler_document = self.debug.get_profiler_template()
+                if profiler_document is not None:
+                    match = tornado.options.options.debug_profiler_tag
+                    buff = ''.join(self._write_buffer)
+                    res = buff.replace(match, profiler_document)
+                    self.set_header('Content-Length', str(len(res)))
+                    self._write_buffer = [res]
+                    if match in buff:
+                        self.log.debug('Profiler component added before %s tag' % match)
+
+        except Exception:
+            self.log.debug('Couldnt add profile info')
+            self._write_buffer = orig_write_buffer
+
+        tornado.web.RequestHandler.flush(self, include_footers=False)
+
 
     def get_page(self):
         """ Эта функция должна быть переопределена в наследнике и
