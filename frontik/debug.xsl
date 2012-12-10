@@ -355,7 +355,6 @@
                 padding-right:20px;
                 margin-bottom:4px;
                 word-break: break-all;
-                position: relative;
             }
                 .m-textentry__expandable {
                     background:#fffccf;
