@@ -1,3 +1,19 @@
+frontik (2.15.1) unstable; urgency=low
+
+  * fix debug profile for json (ajax) responses
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Mon, 10 Dec 2012 18:24:52 +0400
+
+frontik (2.15.0) unstable; urgency=low
+
+  [ Andrey Sumin ]
+  * debug profile mode with stages timings pop-up
+
+  [ Pavel Trukhanov ]
+  * net info in debug
+
+ -- Pavel Trukhanov <p.trukhanov@hh.ru>  Wed, 28 Nov 2012 12:28:14 +0400
+
 frontik (2.14.1) unstable; urgency=low
 
   * HH-30365 json replaced with simplejson [a.petruhin]
