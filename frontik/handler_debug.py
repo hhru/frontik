@@ -5,18 +5,15 @@ import logging
 import traceback
 import urlparse
 import weakref
-import json
+import simplejson as json
 import copy
 from datetime import datetime
-import frontik.app
-import frontik.handler
+import lxml.etree as etree
+from lxml.builder import E
+import tornado.options
+
 import frontik.util
 import frontik.xml_util
-
-import lxml.etree as etree
-import tornado.options
-from lxml.builder import E
-from frontik.util import get_query_parameters
 
 log = logging.getLogger('XML_debug')
 
@@ -87,13 +84,17 @@ def request_to_xml(request):
             _params_to_xml(request.url),
             E.url(request.url),
             _headers_to_xml(request.headers),
-            _cookies_to_xml(request.headers)
+            _cookies_to_xml(request.headers),
+            E.meta(
+                E.start_time(
+                    str(request.start_time)
+                ))
         )
     )
 
 def _params_to_xml(url):
     params = etree.Element('params')
-    query = get_query_parameters(url)
+    query = frontik.util.get_query_parameters(url)
     for name, values in query.iteritems():
         for value in values:
             params.append(E.param(unicode(value, 'utf-8'), name = name))
@@ -169,70 +170,127 @@ class DebugPageHandler(logging.Handler):
             entry.append(E.protobuf(record._protobuf))
 
         self.log_data.append(entry)
+        if getattr(record, "_stages", None) is not None:
+            self.log_data.append(record._stages)
+
 
 
 class PageHandlerDebug(object):
+
+    INHERIT_DEBUG_HEADER_NAME = 'X-Inherit-Debug'
+
+    class DebugMode(object):
+        def __init__(self, handler):
+            debug_value = frontik.util.get_cookie_or_url_param_value(handler, 'debug')
+            debug_params = None if debug_value is None else debug_value.split(',')
+            has_debug_enable_param = debug_params is not None and filter(lambda x: x != 'profile', debug_params)
+
+            self.inherited = handler.request.headers.get(PageHandlerDebug.INHERIT_DEBUG_HEADER_NAME)
+            self.profile = debug_params is not None and 'profile' in debug_params
+
+            if has_debug_enable_param or self.inherited:
+                self.enabled = True
+                self.return_response = (debug_params is not None and 'pass' in debug_params) or self.inherited
+                self.pass_further = self.return_response
+            else:
+                self.enabled = False
+                self.return_response = False
+                self.pass_further = False
+
+            self.write_debug = tornado.options.options.debug or self.enabled or self.profile
+
+
     def __init__(self, handler):
         self.handler = weakref.proxy(handler)
-        debug_enabled = frontik.util.get_cookie_or_url_param_value(self.handler, 'debug')
-        self.debug_mode_inherited = self.handler.request.headers.get(frontik.handler.PageHandler.INHERIT_DEBUG_HEADER_NAME)
-        self.debug_return_response = debug_enabled == 'pass' or self.debug_mode_inherited
-        self.pass_debug_mode_further = self.debug_return_response
+        self.debug_mode = PageHandlerDebug.DebugMode(self.handler)
 
-        if debug_enabled is not None or self.debug_mode_inherited:
+        if self.debug_mode.enabled or self.debug_mode.profile:
             self.handler.require_debug_access()
-            self.handler.log.debug('debug mode is on')
-            self.debug_mode = True
-        else:
-            self.debug_mode = False
 
-        if tornado.options.options.debug or self.debug_mode:
-            self.debug_mode_logging = True
+        if self.debug_mode.enabled:
+            self.handler.log.debug('debug mode is on')
+
+        if self.debug_mode.write_debug:
             self.debug_log_handler = DebugPageHandler()
             self.handler.log.addHandler(self.debug_log_handler)
             self.handler.log.debug('using debug mode logging')
-        else:
-            self.debug_mode_logging = False
 
-        if self.debug_mode_inherited:
+        if self.debug_mode.inherited:
             self.handler.log.debug('debug mode is inherited due to X-Inherit-Debug request header')
 
-        if self.debug_return_response:
+        if self.debug_mode.return_response:
             self.handler.log.debug('debug mode will be passed to all frontik apps requested (debug=pass)')
 
-    def get_debug_page(self, status_code, response_headers, original_response=None, **kwargs):
-        self.debug_log_handler.log_data.set('code', str(status_code))
-        self.debug_log_handler.log_data.set('mode', self.handler.get_argument('debug', 'text'))
-        self.debug_log_handler.log_data.set('request-id', str(self.handler.request_id))
-        self.debug_log_handler.log_data.append(frontik.app.get_frontik_and_apps_versions())
-        self.debug_log_handler.log_data.append(E.request(
+        if self.debug_mode.profile:
+            self.profiler_options = {
+                'warning-value': tornado.options.options.debug_profiler_warning_value,
+                'critical-value': tornado.options.options.debug_profiler_critical_value
+            }
+
+    def get_profiler_template(self):
+        try:
+            with open(tornado.options.options.debug_profiler_template) as template:
+                round_f = lambda x: '%.2f' % round(1000 * x, 2)
+                data = json.dumps(dict([(x.name, {'start': round_f(x.start), 'delta': round_f(x.delta)})
+                                        for x in self.handler.log.stages]))
+
+                tpl_text = template.read()
+                tpl_text = tpl_text.replace("'<%FrontikProfilerData%>'", data)
+                tpl_text = tpl_text.replace("'<%FrontikProfilerOptions%>'", json.dumps(self.profiler_options))
+                return tpl_text
+
+        except IOError, e:
+            self.handler.log.exception('Cannot find profiler template file')
+            return None
+
+    def get_debug_page(self, status_code, response_headers, original_response=None, finish_debug=True):
+        if finish_debug:
+            debug_log_data = self.debug_log_handler.log_data
+        else:
+            debug_log_data = copy.deepcopy(self.debug_log_handler.log_data)
+
+        debug_log_data.set('code', str(status_code))
+        debug_log_data.set('mode', self.handler.get_argument('debug', 'text'))
+        debug_log_data.set('started', str(self.handler.handler_started))
+        debug_log_data.set('request-id', str(self.handler.request_id))
+
+        import frontik.app
+        debug_log_data.append(frontik.app.get_frontik_and_apps_versions())
+        debug_log_data.append(E.request(
             _params_to_xml(self.handler.request.uri),
             _headers_to_xml(self.handler.request.headers),
             _cookies_to_xml(self.handler.request.headers)))
-        self.debug_log_handler.log_data.append(E.response(_headers_to_xml(response_headers)))
+        debug_log_data.append(E.response(_headers_to_xml(response_headers)))
 
         if getattr(self.handler, "_response_size", None) is not None:
-            self.debug_log_handler.log_data.set("response-size", str(self.handler._response_size))
+            debug_log_data.set("response-size", str(self.handler._response_size))
 
-        if self.debug_return_response and original_response is not None:
-            self.debug_log_handler.log_data.append(frontik.xml_util.dict_to_xml(original_response, 'original-response'))
+        if self.debug_mode.return_response and original_response is not None:
+            debug_log_data.append(frontik.xml_util.dict_to_xml(original_response, 'original-response'))
 
-        # show debug page if apply_xsl=True ('noxsl' flag is not set) or if 500 error occured
+        # show debug page if apply_xsl=True ('noxsl' flag is not set)
+        # if debug mode is disabled, than we could have got there only after an exception — apply xsl anyway
         # if debug mode is inherited (through X-Inherit-Debug request header), than the response is always xml
-        if (self.handler.xml.apply_xsl or not self.debug_mode) and not self.debug_mode_inherited:
+        can_apply_xsl_or_500 = self.handler.xml.apply_xsl or not self.debug_mode.enabled
+        if can_apply_xsl_or_500 and not self.debug_mode.inherited:
             try:
-                xsl_file = open(tornado.options.options.debug_xsl)
-                tranform = etree.XSLT(etree.XML(xsl_file.read()))
-                xsl_file.close()
-                log_document = str(tranform(self.debug_log_handler.log_data))
+                with open(tornado.options.options.debug_xsl) as xsl_file:
+                    tranform = etree.XSLT(etree.XML(xsl_file.read()))
+                log_document = str(tranform(debug_log_data))
                 self.handler.set_header('Content-Type', 'text/html; charset=UTF-8')
             except Exception, e:
                 self.handler.log.exception('XSLT debug file error')
+                try:
+                    self.handler.log.error('XSL error log entries:\n%s' % "\n".join(map(
+                    'File "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
+                        .format, transform.error_log)))
+                except Exception:
+                    pass
+
                 self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
-                log_document = etree.tostring(self.debug_log_handler.log_data, encoding = 'UTF-8',
-                                              xml_declaration = True)
+                log_document = etree.tostring(debug_log_data, encoding='UTF-8', xml_declaration=True)
         else:
             self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
-            log_document = etree.tostring(self.debug_log_handler.log_data, encoding = 'UTF-8', xml_declaration = True)
+            log_document = etree.tostring(debug_log_data, encoding='UTF-8', xml_declaration=True)
 
         return log_document

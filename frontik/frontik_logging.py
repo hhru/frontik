@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-
+from collections import namedtuple
 import logging
 from logging.handlers import SysLogHandler
 import weakref
 import time
 import tornado.options
+from lxml.builder import E
 
 log = logging.getLogger('frontik.handler')
 
@@ -58,7 +59,10 @@ class MaxLenSysLogHandler(SysLogHandler):
 
 
 class PageLogger(logging.LoggerAdapter):
-    def __init__(self, handler, logger_name, page, zero_time):
+
+    Stage = namedtuple('Stage', ['name', 'start', 'delta'])
+
+    def __init__(self, handler, logger_name, page):
 
         class Logger4Adapter(logging.Logger):
             def handle(self, record):
@@ -66,36 +70,39 @@ class PageLogger(logging.LoggerAdapter):
                 log.handle(record)
 
         self.handler_ref = weakref.ref(handler)
+        self.handler_started = self.handler_ref().handler_started
         logging.LoggerAdapter.__init__(self, Logger4Adapter('frontik.handler'),
             dict(request_id=logger_name, page=page, handler=self.handler_ref().__module__))
 
-        self._time = zero_time
+        self._time = self.handler_started
         self.stages = []
         self.page = page
-        #backcompatibility with logger
+        # backcompatibility with logger
         self.warn = self.warning
         self.addHandler = self.logger.addHandler
 
-    def stage_tag(self, stage):
-        self._stage_tag(stage, (time.time() - self._time) * 1000)
+    def stage_tag(self, stage_name):
+        zero_time = self.handler_started
+        self._stage_tag(PageLogger.Stage(stage_name, self._time - zero_time, time.time() - self._time))
         self._time = time.time()
-        self.debug('Stage: {stage}'.format(stage = stage))
+        self.debug('Stage: {stage}'.format(stage=stage_name))
 
-    def _stage_tag(self, stage, time_delta):
-        self.stages.append((stage, time_delta))
-
-    def stage_tag_backdate(self, stage, time_delta):
-        self._stage_tag(stage, time_delta)
+    def _stage_tag(self, stage):
+        self.stages.append(stage)
 
     def process_stages(self, status_code):
-        self._stage_tag('total', (time.time() - self.handler_ref().handler_started) * 1000)
+        self._stage_tag(PageLogger.Stage('total', 0, time.time() - self.handler_started))
 
-        stages_format = ' '.join(['{0}:{1:.2f}ms'.format(k, v) for k, v in self.stages])
-        stages_monik_format = ' '.join(['{0}={1:.2f}'.format(k, v) for k, v in self.stages])
+        format_f = lambda x: ' '.join([x.format(name=s.name, delta=1000*s.delta) for s in self.stages])
+        stages_format = format_f('{name}:{delta:.2f}ms')
+        stages_monik_format = format_f('{name}={delta:.2f}')
 
         self.debug('Stages for {0} : {1}'.format(self.page, stages_format))
         self.info('Monik-stages {0!r} : {1} code={2}'.format(self.handler_ref(), stages_monik_format, status_code),
-            extra={'_monik': True})
+            extra={
+                '_monik': True,
+                '_stages': E.stages(*[E.stage(str(st.delta*1000), {'name':str(st.name)}) for st in self.stages])
+            })
 
     def process(self, msg, kwargs):
         if "extra" in kwargs:

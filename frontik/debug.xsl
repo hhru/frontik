@@ -11,6 +11,9 @@
             <xsl:value-of select="substring(/log/@mode, 2)"/>
         </xsl:if>
     </xsl:variable>
+    <xsl:variable name="total-time">
+        <xsl:value-of select="/log/stages/stage[@name='total']"/>
+    </xsl:variable> 
 
     <xsl:template match="log">
         <html>
@@ -22,19 +25,23 @@
                 <xsl:apply-templates select="." mode="js"/>
             </head>
             <body>
-                <div class="textentry m-textentry_title">
-                    requestid: <xsl:value-of select="@request-id"/>,
-                    status: <xsl:value-of select="@code"/>,
-                    requests: <xsl:value-of select="count(entry/response)"/>,
-                    bytes received: <xsl:value-of select="sum(entry/response/size)"/>,
-                    bytes produced: <xsl:value-of select="@response-size"/>
-                </div>
-
-                <xsl:apply-templates select="." mode="versions-info"/>
-                <xsl:apply-templates select="." mode="general-info"/>
-                <xsl:apply-templates select="entry"/>
+                <xsl:apply-templates select="." mode="debug-log"/>
             </body>
         </html>
+    </xsl:template>
+
+    <xsl:template match="log" mode="debug-log">
+        <div class="textentry m-textentry_title">
+            requestid: <xsl:value-of select="@request-id"/>,
+            status: <xsl:value-of select="@code"/>,
+            requests: <xsl:value-of select="count(entry/response)"/>,
+            bytes received: <xsl:value-of select="sum(entry/response/size)"/>,
+            bytes produced: <xsl:value-of select="@response-size"/>
+        </div>
+
+        <xsl:apply-templates select="." mode="versions-info"/>
+        <xsl:apply-templates select="." mode="general-info"/>
+        <xsl:apply-templates select="entry"/>
     </xsl:template>
 
     <xsl:template match="entry[contains(@msg, 'finish group') and /log/@mode != 'full']"/>
@@ -78,6 +85,10 @@
             <xsl:value-of select="@levelname"/>
         </xsl:variable>
 
+        <xsl:variable name="time-offset">
+            <xsl:value-of select="1000* (@created - /log/@started)"/>
+        </xsl:variable>
+            
         <div class="textentry">
             <div class="textentry__head {$highlight} {$loglevel}">
                 <span title="{@msg}">
@@ -94,6 +105,9 @@
         </pre>
     </xsl:template>
 
+    <xsl:template match="entry[contains(@msg, 'finish group') and /log/@mode != 'full']"/>
+
+
     <xsl:template match="entry[response]">
         <xsl:variable name="status">
             <xsl:if test="response/code != 200">error</xsl:if>
@@ -106,8 +120,25 @@
             </xsl:if>
         </xsl:variable>
 
+        <xsl:variable name="timebar-offset">
+            <xsl:value-of select="1000 * (request/meta/start_time/text() - /log/@started)"/>
+        </xsl:variable>
+        
+        <xsl:variable name="timebar-percent-offset">
+            <xsl:value-of select="format-number($timebar-offset div $total-time, '##.#%')"/>
+        </xsl:variable>
+
+        <xsl:variable name="timebar-len-percent">
+            <xsl:value-of select="format-number(response/request_time div $total-time, '##.#%')"/>
+        </xsl:variable>
+
         <div class="textentry m-textentry__expandable">
             <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher {$status} {$highlight}">
+                <div class="timebar">
+                    <div class="timebar__line" style="left: {$timebar-percent-offset}">
+                        <strong class="timebar__head timebar__head_{$status}" style="width:{$timebar-len-percent};"></strong>
+                    </div>
+                </div>
                 <span title="{@msg}" class="textentry__head__expandtext">
                     <span class="time">
                         <xsl:value-of select="response/request_time"/>
@@ -123,6 +154,14 @@
                 </span>
             </div>
             <div class="details">
+                <div class="timebar-details">
+                    <div class="timebar__line" style="left: {$timebar-percent-offset}">
+                            [<xsl:value-of select="format-number($timebar-offset, '#0.##')"/>ms
+                            <xsl:text> => </xsl:text>
+                            <xsl:value-of select="format-number($timebar-offset + response/request_time, '#0.##')"/>ms] : 
+                            <xsl:value-of select="$timebar-len-percent"/>
+                    </div>
+                </div>
                 <xsl:apply-templates select="debug"/>
                 <xsl:apply-templates select="request"/>
                 <xsl:apply-templates select="response"/>
@@ -177,7 +216,7 @@
 
     <xsl:template match="debug">
         <div class="debug-inherited">
-            <xsl:apply-templates select="node()"/>
+            <xsl:apply-templates select="." mode="debug-log"/>
         </div>
     </xsl:template>
 
@@ -208,8 +247,8 @@
     <xsl:template match="body[contains(@content_type, 'text/html') and text() != '']">
         <xsl:variable name="id" select="generate-id(.)"/>
         <div class="delimeter">body</div>
-        <div id="{$id}"><![CDATA[]]></div>
-        <script>
+        <div id="{$id}"><![CDATA[]]></div> 
+       <script>
             doiframe('<xsl:value-of select="$id"/>', '<xsl:value-of select="."/>');
         </script>
     </xsl:template>
@@ -271,6 +310,7 @@
 
     <xsl:template match="log" mode="css">
         <style>
+            body { margin: 0 10px; }
             body, pre{
                 font-family:Arial;
             }
@@ -281,31 +321,62 @@
             .body{
                 word-break: break-all;
             }
-            .textentry{
+            .timebar {
+                width: 100%;
+                margin-bottom: -1.4em;
+                position: relative;
+            }
+                .timebar__line {
+                    position: relative;
+                    vertical-align: middle;
+                }
+                .timebar__head {
+                    border-left: 1px solid green;
+                    border-right: 1px solid green;
+                    background-color: #94b24d;
+                    border-bottom: 1px solid #94b24d;
+                    opacity: 0.5;
+                    display: block;
+                    width: 0;
+                    height: 1.4em;
+                }
+                    .timebar__head_error {
+                        background-color: red;
+                    }
+            .timebar-details {
+                left: 0;
+                top: 0;
+                height: 100%;
+                width: 100%;
+            }
+
+            .textentry {
                 padding-left:20px;
                 padding-right:20px;
                 margin-bottom:4px;
                 word-break: break-all;
             }
-                .m-textentry__expandable{
-                    padding-top:3px;
-                    padding-bottom:3px;
+                .m-textentry__expandable {
                     background:#fffccf;
                 }
-                .m-textentry_title{
+                .m-textentry_title {
                     font-size:1.3em;
                     margin-bottom:.5em;
                 }
-                .textentry__head{
+                .textentry__head {
                 }
-                    .m-textentry__head_highlight{
+                    .m-textentry__head_highlight {
                         font-weight:bold;
                     }
-                    .textentry__head__expandtext{
+                    .textentry__head__expandtext {
                         border-bottom:1px dotted #666;
+                        display: inline-block;
+                        position: relative;
+                        vertical-align: bottom;
+                        line-height: 1.4em;
+                        margin-top: -1px;
                     }
-                .textentry__switcher{
-                    height:1.3em;
+                .textentry__switcher {
                     overflow:hidden;
                     white-space: nowrap;
                     text-overflow: ellipsis;
@@ -316,6 +387,7 @@
             .details{
                 display:none;
                 margin-bottom:15px;
+                position: relative;
             }
                 .m-details_visible{
                     display:block;
