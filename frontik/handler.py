@@ -23,7 +23,7 @@ import frontik.xml_util
 import frontik.jobs
 import frontik.handler_xml
 import frontik.handler_whc_limit
-import frontik.handler_xml_debug
+import frontik.handler_debug
 import frontik.future as future
 
 def _parse_response_smth(response, logger = frontik_logging.log, parser=None, type=None):
@@ -100,8 +100,6 @@ class PageHandlerGlobals(object):
 
 class PageHandler(tornado.web.RequestHandler):
 
-    INHERIT_DEBUG_HEADER_NAME = 'X-Inherit-Debug'
-
     # to restore tornado.web.RequestHandler compatibility
     def __init__(self, application, request, ph_globals=None, **kwargs):
         self.handler_started = time.time()
@@ -113,7 +111,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.name = self.__class__.__name__
         self.request_id = request.headers.get('X-Request-Id', str(stats.next_request_id()))
         logger_name = '.'.join(filter(None, [self.request_id, getattr(ph_globals.config, 'app_name', None)]))
-        self.log = frontik_logging.PageLogger(self, logger_name, request.path or request.uri, self.handler_started)
+        self.log = frontik_logging.PageLogger(self, logger_name, request.path or request.uri)
 
         tornado.web.RequestHandler.__init__(self, application, request, logger = self.log, **kwargs)
 
@@ -130,7 +128,7 @@ class PageHandler(tornado.web.RequestHandler):
 
     def prepare(self):
         self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
-        self.debug = frontik.handler_xml_debug.PageHandlerDebug(self)
+        self.debug = frontik.handler_debug.PageHandlerDebug(self)
         self.log.info('page module: %s', self.__module__)
 
         self.xml = frontik.handler_xml.PageHandlerXML(self)
@@ -163,8 +161,9 @@ class PageHandler(tornado.web.RequestHandler):
                 raise HTTPError(401, headers={'WWW-Authenticate': 'Basic realm="Secure Area"'})
 
     def get_error_html(self, status_code, **kwargs):
-        if  self._prepared and self.debug.debug_mode_logging:
-            return self.debug.get_debug_page(status_code, self._headers, **kwargs)
+        if self._prepared and self.debug.debug_mode.write_debug:
+            debug_is_finished = not self.debug.debug_mode.inherited
+            return self.debug.get_debug_page(status_code, self._headers, finish_debug=debug_is_finished)
         else:
             #if not prepared (for example, working handlers count limit) or not in
             #debug mode use default tornado error page
@@ -219,40 +218,59 @@ class PageHandler(tornado.web.RequestHandler):
     def options(self, *args, **kwargs):
         raise HTTPError(405, headers={"Allow": "GET, POST"})
 
-
     def finish(self, chunk = None):
         if hasattr(self, 'whc_limit'):
             self.whc_limit.release()
 
         self.log.process_stages(self._status_code)
 
-        # if debug_mode is on: ignore any output we intended to write
-        # and use debug log instead
-        if hasattr(self, 'debug') and self.debug.debug_mode:
-            self._response_size = sum(imap(len, self._write_buffer))
-            self._response_size += len(chunk) if chunk is not None else 0
+        tornado.web.RequestHandler.finish(self, chunk)
 
-            if self.debug.debug_return_response:
-                original_headers = {'Content-Length': str(self._response_size)}
-                response_headers = dict(self._headers, **original_headers)
-                original_response = {
-                    'buffer': ''.join(self._write_buffer) + (chunk if chunk is not None else ''),
-                    'headers': response_headers,
-                    'code': self._status_code
-                }
+    def flush(self, include_footers=False):
+        orig_write_buffer = self._write_buffer
+        try:
+            # if debug_mode is on: ignore any output we intended to write
+            # and use debug log instead
+            if hasattr(self, 'debug') and self.debug.debug_mode.enabled:
+                self._response_size = sum(imap(len, self._write_buffer))
 
-                self.set_header(self.INHERIT_DEBUG_HEADER_NAME, True)
-            else:
-                response_headers = self._headers
-                original_response = None
-                self.set_header('Content-Type', 'text/html')
+                if self.debug.debug_mode.return_response:
+                    original_headers = {'Content-Length': str(self._response_size)}
+                    response_headers = dict(self._headers, **original_headers)
+                    original_response = {
+                        'buffer': ''.join(self._write_buffer),
+                        'headers': response_headers,
+                        'code': self._status_code
+                    }
+
+                    self.set_header(frontik.handler_debug.PageHandlerDebug.INHERIT_DEBUG_HEADER_NAME, True)
+                else:
+                    response_headers = self._headers
+                    original_response = None
+                    self.set_header('Content-Type', 'text/html')
+
+                res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
+                self.set_header('Content-Length', str(len(res)))
+                self._write_buffer = [res]
                 self._status_code = 200
 
-            res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
-        else:
-            res = chunk
+            if hasattr(self, 'debug') and self.debug.debug_mode.profile:
+                profiler_document = self.debug.get_profiler_template()
+                if profiler_document is not None:
+                    match = tornado.options.options.debug_profiler_tag
+                    buff = ''.join(self._write_buffer)
+                    res = buff.replace(match, profiler_document)
+                    self.set_header('Content-Length', str(len(res)))
+                    self._write_buffer = [res]
+                    if match in buff:
+                        self.log.debug('Profiler component added before %s tag' % match)
 
-        tornado.web.RequestHandler.finish(self, res)
+        except Exception:
+            self.log.debug('Couldnt add profile info')
+            self._write_buffer = orig_write_buffer
+
+        tornado.web.RequestHandler.flush(self, include_footers=False)
+
 
     def get_page(self):
         """ Эта функция должна быть переопределена в наследнике и
@@ -294,8 +312,8 @@ class PageHandler(tornado.web.RequestHandler):
                         self.log.warn('got strange response.body of type %s', type(response.body))
                 callback(response)
 
-            if hasattr(self, 'debug') and self.debug.pass_debug_mode_further:
-                req.headers[self.INHERIT_DEBUG_HEADER_NAME] = True
+            if hasattr(self, 'debug') and self.debug.debug_mode.pass_further:
+                req.headers[frontik.handler_debug.PageHandlerDebug.INHERIT_DEBUG_HEADER_NAME] = True
                 req.headers['Authorization'] = self.request.headers.get('Authorization', None)
 
             req.headers['X-Request-Id'] = self.request_id
@@ -408,7 +426,7 @@ class PageHandler(tornado.web.RequestHandler):
 
     def _fetch_request_response(self, placeholder, callback, request, response, request_types = None):
         debug_extra = {}
-        if response.headers.get(self.INHERIT_DEBUG_HEADER_NAME):
+        if response.headers.get(frontik.handler_debug.PageHandlerDebug.INHERIT_DEBUG_HEADER_NAME):
             debug_response = etree.XML(response.body)
             original_response = debug_response.xpath('//original-response')
             if original_response is not None:
@@ -488,15 +506,15 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
     def _finish_with_postprocessor(self, res):
-            if hasattr(self.config, 'postprocessor'):
-                if self.apply_postprocessor:
-                    self.log.debug('applying postprocessor')
-                    self.async_callback(self.config.postprocessor)(self, res, self.async_callback(partial(self._wait_postprocessor, time.time())))
-                else:
-                    self.log.debug('skipping postprocessor')
-                    self.finish(res)
+        if hasattr(self.config, 'postprocessor'):
+            if self.apply_postprocessor:
+                self.log.debug('applying postprocessor')
+                self.async_callback(self.config.postprocessor)(self, res, self.async_callback(partial(self._wait_postprocessor, time.time())))
             else:
+                self.log.debug('skipping postprocessor')
                 self.finish(res)
+        else:
+            self.finish(res)
 
     def _wait_postprocessor(self, start_time, data):
         self.log.stage_tag("postprocess")
