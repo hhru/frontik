@@ -42,7 +42,7 @@ class MonikInfoLoggingHandler(logging.FileHandler):
 
 class BulkGELFHandler(GELFHandler):
 
-    def handler_bulk(self, records_list, stages= None, status_code=None, exception=None, **kw):
+    def handle_bulk(self, records_list, stages= None, status_code=None, exception=None, **kw):
 
         if records_list != []:
             first_record = records_list[0]
@@ -61,8 +61,8 @@ class BulkGELFHandler(GELFHandler):
                 record_for_gelf.exc_info=traceback.format_exc(record.exc_info)
             record_for_gelf.message +=" {0} {1} {2} \n".format(record.asctime, record.levelname,record.message)
         if stages is not None:
-            for stage_name,stage_time in stages:
-                setattr(record_for_gelf,stage_name,str(int(stage_time)))
+            for stage_name, stage_start, stage_delta in stages:
+                setattr(record_for_gelf,stage_name,str(stage_delta - stage_start))
 
         record_for_gelf.code = status_code
         GELFHandler.handle(self, record_for_gelf)
@@ -125,7 +125,7 @@ class PageLogger(logging.LoggerAdapter):
 
             def flush(self, **kw):
                 for handler in self.bulk_handlers:
-                    handler.handler_bulk(self.records_list, **kw)
+                    handler.handle_bulk(self.records_list, **kw)
 
         self.handler_ref = weakref.ref(handler)
         self.handler_started = self.handler_ref().handler_started
