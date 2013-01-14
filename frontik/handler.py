@@ -424,7 +424,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         return placeholder
 
-    def _fetch_request_response(self, placeholder, callback, request, response, request_types = None):
+    def _fetch_request_response(self, placeholder, callback, request, response, request_types=None):
         debug_extra = {}
         if response.headers.get(frontik.handler_debug.PageHandlerDebug.INHERIT_DEBUG_HEADER_NAME):
             debug_response = etree.XML(response.body)
@@ -435,7 +435,7 @@ class PageHandler(tornado.web.RequestHandler):
                 debug_extra['_debug_response'] = debug_response
                 response = frontik.util.create_fake_response(request, response, **response_info)
 
-        debug_extra.update({"_response": response, "_request": request})
+        debug_extra.update({'_response': response, '_request': request})
         self.log.debug(
             'got {code}{size} {url} in {time:.2f}ms'.format(
                 code=response.code,
@@ -451,7 +451,7 @@ class PageHandler(tornado.web.RequestHandler):
         result = None
         if response.error:
             placeholder.set_data(self.show_response_error(response))
-        else:
+        elif response.code != 204:
             content_type = response.headers.get('Content-Type', '')
             for k, v in request_types.iteritems():
                 if k.search(content_type):
