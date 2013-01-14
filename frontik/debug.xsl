@@ -223,22 +223,21 @@
     <xsl:template match="error[text() = 'None']"/>
 
     <xsl:template match="error">
-        <div class="error">
-            <xsl:value-of select="."/>
-        </div>
+        <div class="delimeter">error code</div>
+        <div class="error"><xsl:value-of select="."/></div>
     </xsl:template>
 
     <xsl:template match="body"/>
 
     <xsl:template match="body[text()]">
-        <div class="delimeter">body</div>
+        <div class="delimeter"><xsl:value-of select="name(parent::*)"/> body</div>
         <div class="body">
             <xsl:value-of select="."/>
         </div>
     </xsl:template>
 
-    <xsl:template match="body[node()]">
-        <div class="delimeter">body</div>
+    <xsl:template match="body[contains(@content_type, 'text/xml')]">
+        <div class="delimeter">response body</div>
         <div class="coloredxml">
             <xsl:apply-templates select="node()" mode="color-xml"/>
         </div>
@@ -246,40 +245,39 @@
 
     <xsl:template match="body[contains(@content_type, 'text/html') and text() != '']">
         <xsl:variable name="id" select="generate-id(.)"/>
-        <div class="delimeter">body</div>
+        <div class="delimeter">response body</div>
         <div id="{$id}"><![CDATA[]]></div> 
-       <script>
+        <script>
             doiframe('<xsl:value-of select="$id"/>', '<xsl:value-of select="."/>');
         </script>
     </xsl:template>
 
-    <xsl:template match="body[contains(@content_type, 'text/html') and text() = '']">
-        <div class="delimeter">body</div>
-        Empty response
+    <xsl:template match="body[contains(@content_type, 'json')]">
+        <div class="delimeter">response body</div>
+        <pre><xsl:value-of select="."/></pre>
     </xsl:template>
 
-    <xsl:template match="body[contains(@content_type, 'json')]">
-        <div class="delimeter">body</div>
-        <pre><xsl:value-of select="."/></pre>
+    <xsl:template match="body[text() = '']">
+        <div class="delimeter">response body</div>
+        Empty response
     </xsl:template>
 
     <xsl:template match="body" mode="params">
         <div class="params">
-            <div class="delimeter">body</div>
+            <div class="delimeter">request body</div>
             <xsl:apply-templates select="param"/>
         </div>
     </xsl:template>
 
     <xsl:template match="headers">
         <div class="headers">
-            <div class="delimeter">headers</div>
+            <div class="delimeter"><xsl:value-of select="name(parent::*)"/> headers</div>
             <xsl:apply-templates select="header"/>
         </div>
     </xsl:template>
 
     <xsl:template match="header">
-        <div><xsl:value-of select="@name"/>: &#160;<xsl:value-of select="."/>
-        </div>
+        <div><xsl:value-of select="@name"/>: &#160;<xsl:value-of select="."/></div>
     </xsl:template>
 
     <xsl:template match="cookies">
@@ -290,13 +288,12 @@
     </xsl:template>
 
     <xsl:template match="cookie">
-        <div><xsl:value-of select="@name"/>&#160;=&#160;<xsl:value-of select="."/>
-        </div>
+        <div><xsl:value-of select="@name"/>&#160;=&#160;<xsl:value-of select="."/></div>
     </xsl:template>
 
     <xsl:template match="params">
         <div class="params">
-            <div class="delimeter">params</div>
+            <div class="delimeter">request params</div>
             <xsl:apply-templates select="param"/>
         </div>
     </xsl:template>
