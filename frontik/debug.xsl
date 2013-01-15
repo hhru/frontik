@@ -128,6 +128,10 @@
             <xsl:value-of select="format-number($timebar-offset div $total-time, '##.#%')"/>
         </xsl:variable>
 
+        <xsl:variable name="timebar-details-percent-width">
+            <xsl:value-of select="format-number(1 - ($timebar-offset div $total-time), '##.#%')"/>
+        </xsl:variable>
+
         <xsl:variable name="timebar-len-percent">
             <xsl:value-of select="format-number(response/request_time div $total-time, '##.#%')"/>
         </xsl:variable>
@@ -136,7 +140,7 @@
             <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher {$status} {$highlight}">
                 <div class="timebar">
                     <div class="timebar__line" style="left: {$timebar-percent-offset}">
-                        <strong class="timebar__head timebar__head_{$status}" style="width:{$timebar-len-percent};"></strong>
+                        <strong class="timebar__head timebar__head_{$status}" style="width: {$timebar-len-percent};"></strong>
                     </div>
                 </div>
                 <span title="{@msg}" class="textentry__head__expandtext">
@@ -155,11 +159,11 @@
             </div>
             <div class="details">
                 <div class="timebar-details">
-                    <div class="timebar__line" style="left: {$timebar-percent-offset}">
-                            [<xsl:value-of select="format-number($timebar-offset, '#0.##')"/>ms
-                            <xsl:text> => </xsl:text>
-                            <xsl:value-of select="format-number($timebar-offset + response/request_time, '#0.##')"/>ms] : 
-                            <xsl:value-of select="$timebar-len-percent"/>
+                    <div class="timebar__line" style="left: {$timebar-percent-offset}; width: {$timebar-details-percent-width}">
+                        [<xsl:value-of select="format-number($timebar-offset, '#0.##')"/>ms
+                        <xsl:text> => </xsl:text>
+                        <xsl:value-of select="format-number($timebar-offset + response/request_time, '#0.##')"/>ms] :
+                        <xsl:value-of select="$timebar-len-percent"/>
                     </div>
                 </div>
                 <xsl:apply-templates select="debug"/>
@@ -252,7 +256,7 @@
         </script>
     </xsl:template>
 
-    <xsl:template match="body[contains(@content_type, 'json')]">
+    <xsl:template match="body[contains(@content_type, 'json') and text() != '']">
         <div class="delimeter">response body</div>
         <pre><xsl:value-of select="."/></pre>
     </xsl:template>
