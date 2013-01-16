@@ -29,7 +29,7 @@ def response_to_xml(response):
         elif 'protobuf' in content_type:
             body = repr(response.body)
         elif 'text/plain' in content_type:
-            body = response.body
+            body = response.body.decode("utf-8").replace("\n", "\\n").replace("'", "\\'")
         else:
             body = etree.fromstring(response.body)
     except Exception as e:
