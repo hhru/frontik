@@ -12,7 +12,7 @@ import tornado.web
 import tornado.ioloop
 from tornado.options import options
 
-import frontik.handler as handler
+import handler
 import frontik.magic_imp
 import frontik.doc
 
