@@ -13,9 +13,6 @@ test_env = frontik.testing.TestEnvironment(module, test_module, routes, config,
 
 app = test_env.create_test_app(more_handler_properties={})
 
-# provide sample data to service mocks
-app.set_route_data('vacancy_search', vacancies=vacancies)
-
 # this method will be called inside get_page/post_page of a test app
 def __tested(handler):
     pass
@@ -110,13 +107,8 @@ class TestApp(object):
 
         self.async_callbacks = []
         self.routes = routes
-        self.routes_data = defaultdict(dict)
         self.routes_called = defaultdict(int)
         self.exceptions = []
-
-    # to be replaced with set_mock('mock_name', mock_function)
-    def set_route_data(self, route_name, **kwargs):
-        self.routes_data[route_name].update(kwargs)
 
     def set_mock(self, route_name, mock_function):
         route_regex, route_mock = self.routes[route_name]
@@ -210,8 +202,7 @@ class TestApp(object):
             match = re.match(r'.+{0}/?$'.format(regex), route_url)
             if match:
                 frontik_testing_logger.debug('Call to {url} will be mocked'.format(url=request.url))
-                self.__add_route_callback(callback, route_name, functools.partial(route, request, request_info,
-                    **dict(match.groupdict(), **self.routes_data[route_name])))
+                self.__add_route_callback(callback, route_name, functools.partial(route, request, request_info))
                 return
 
         raise NotImplementedError('Url {url} is not mocked'.format(url=route_url))
@@ -294,8 +285,8 @@ class TestEnvironment(object):
 
 def service_response(response_type):
     def __wrapper(func):
-        def __internal(request, request_info, *args, **kwargs):
-            result = func(request, *args, **kwargs)
+        def __internal(request, request_info):
+            result = func(request)
 
             if isinstance(result, tuple):
                 response_body, response = result
