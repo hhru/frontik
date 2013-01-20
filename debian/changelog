@@ -1,3 +1,9 @@
+frontik (2.15.3) unstable; urgency=low
+
+  * HH-29111 testing infrastructure
+
+ -- Alexander Shaposhnikov <a.shaposhnikov@hh.ru>  Sun, 20 Jan 2013 20:34:29 +0400
+
 frontik (2.15.2) unstable; urgency=low
 
   * HH-28576 implement infrastructure for directories watching
