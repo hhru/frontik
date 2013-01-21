@@ -47,6 +47,7 @@ from tornado.httpclient import HTTPResponse
 from tornado.httpclient import HTTPRequest as HTTPClientRequest
 from tornado.httpserver import HTTPRequest as HTTPServerRequest
 import sys
+import copy
 
 import frontik.app
 import frontik.async
@@ -119,6 +120,7 @@ class TestApp(object):
         self.async_callbacks = []
         self.routes = routes
         self.routes_called = defaultdict(int)
+        self.saved_responses = defaultdict(list)
         self.exceptions = []
 
     def set_mock(self, route_name, mock_source):
@@ -156,14 +158,18 @@ class TestApp(object):
         self.__save_test_pair(request, response, inspect.stack()[1][3])
         return response
 
-    def called_once(self, route):
-        return self.get_call_count(route) == 1
+    def called_once(self, route_name):
+        return self.get_call_count(route_name) == 1
 
-    def not_called(self, route):
-        return self.get_call_count(route) == 0
+    def not_called(self, route_name):
+        return self.get_call_count(route_name) == 0
 
-    def get_call_count(self, route):
-        return self.routes_called[route]
+    def get_call_count(self, route_name):
+        return self.routes_called[route_name]
+
+    def response_for(self, route_name):
+        responses = self.saved_responses[route_name]
+        return responses if len(responses) > 1 else responses[0]
 
     def __create_page_handler(self, handler_class, handler_method_name, function,
                               function_args, function_kwargs, *handler_args, **handler_kwargs):
@@ -221,16 +227,18 @@ class TestApp(object):
 
     def __add_route_callback(self, callback, route_name, route_function):
         self.routes_called[route_name] += 1
-        self.async_callbacks.append((callback, route_function))
+        self.async_callbacks.append((callback, route_name, route_function))
         frontik_testing_logger.debug('Callback added, {0} total'.format(len(self.async_callbacks)))
 
     def __execute_callbacks(self):
         while self.async_callbacks:
-            cb, route = self.async_callbacks.pop()
+            cb, route_name, route_fn = self.async_callbacks.pop()
             frontik_testing_logger.debug('Executing callback, {0} left'.format(len(self.async_callbacks)))
 
             try:
-                cb(route())
+                response = route_fn()
+                self.saved_responses[route_name].append(response)
+                cb(response)
             except Exception, e:
                 self.__add_exception(sys.exc_info())
                 frontik_testing_logger.debug('Callback raised exception: {0}'.format(e))
@@ -306,7 +314,7 @@ class TestEnvironment(object):
 
     def create_test_app(self, **kwargs):
         params = dict(self.default_params, **kwargs)
-        return TestApp(self.module, self.test_module, self.routes, self.default_headers, params, self.ph_globals)
+        return TestApp(self.module, self.test_module, copy.deepcopy(self.routes), self.default_headers, params, self.ph_globals)
 
 
 def service_response(response_type):
