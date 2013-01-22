@@ -131,16 +131,11 @@ class TestApp(object):
         caller_method = inspect.stack()[1][3]
         data = function_kwargs.pop('data', {})
         headers = dict(self.default_headers, **function_kwargs.pop('headers', {}))
-        request = HTTPRequestWrapper('GET', '/' + caller_method, data, headers=headers)
+        request = Get('/' + caller_method, data, headers=headers)
 
         create_handler = functools.partial(self.__create_page_handler, frontik.handler.PageHandler, 'get_page',
             function, function_args, function_kwargs)
-        app = Application([(r'/.*', create_handler, dict(ph_globals=self.ph_globals))])
-        handler = app(request)
-
-        http_client_request = frontik.util.make_get_request(request.uri, data)
-        return HTTPResponse(http_client_request, code=handler._status_code, headers=self.saved_headers,
-            buffer=cStringIO.StringIO(''.join(self.saved_buffer)))
+        return self.__get_response_from_handler(request, create_handler)
 
     def send_request(self, request):
         module_name = 'pages.' + '.'.join(request.url.strip('/').split('/'))
@@ -150,13 +145,17 @@ class TestApp(object):
 
         request.headers = dict(self.default_headers, **request.headers)
         create_handler = functools.partial(self.__create_page_handler, handler_class, request.handler_method, method, [], {})
+        response = self.__get_response_from_handler(request, create_handler)
+
+        self.__save_test_pair(request, response, inspect.stack()[1][3])
+        return response
+
+    def __get_response_from_handler(self, request, create_handler):
         app = Application([(r'/.*', create_handler, dict(ph_globals=self.ph_globals))])
         handler = app(request.get_server_request())
 
-        response = HTTPResponse(request.get_client_request(), code=handler._status_code, headers=self.saved_headers,
+        return HTTPResponse(request.get_client_request(), code=handler._status_code, headers=self.saved_headers,
             buffer=cStringIO.StringIO(''.join(self.saved_buffer)))
-        self.__save_test_pair(request, response, inspect.stack()[1][3])
-        return response
 
     def called_once(self, route_name):
         return self.get_call_count(route_name) == 1
@@ -344,6 +343,10 @@ def service_response(response_type):
         return __internal
 
     return __wrapper
+
+@service_response('text/xml')
+def empty_xml_500(request):
+    return 500, ''
 
 @service_response('text/xml')
 def empty_xml_403(request):
