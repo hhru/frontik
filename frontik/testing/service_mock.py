@@ -7,7 +7,7 @@ import tornado.httpserver
 from tornado.httputil import HTTPHeaders
 import functools
 import tornado.web
-from urlparse import urlparse
+from urlparse import urlparse, parse_qs
 from collections import namedtuple
 from tornado.httpclient import HTTPRequest
 import frozen_dict
@@ -20,22 +20,26 @@ from urllib import unquote_plus as unquote
 
 import unittest
 
-from logging import getLogger, basicConfig
-basicConfig()
+from logging import getLogger
+import tornado.options
+tornado.options.process_options_logging()
 
-class GET:   pass
-class POST:  pass
-methods = { 'GET':GET, 'POST':POST }
-def to_method(method):
-    return methods[method]
 
-def HTTPResponseStub(request=None, code=200, headers={}, buffer=None,
+def EmptyEnvironment():
+    return ExpectingHandler()
+
+def expecting(*args, **kwargs):
+    return ExpectingHandler().expect(*args, **kwargs)
+
+def HTTPResponseStub(request=None, code=200, headers=None, buffer=None,
                     effective_url='stub', error=None, request_time=1,
                     time_info=None):
     ''' Helper HTTPResponse object with error-proof defaults '''
+    if headers is None:
+        headers = {}
     if time_info is None:
         time_info = {}
-    return(HTTPResponse(request, code, headers, buffer,
+    return(HTTPResponse(request, code, headers, StringIO(buffer),
                 effective_url, error, request_time,
                 time_info))
 
@@ -48,16 +52,22 @@ def fromFile(fileName):
                 return f.read()
     raise ValueError("fromFile: could not find + " + fileName + " while searching recursively from " + os.path.abspath("."))
 
-raw_route = namedtuple('Route', 'path query cookies method headers')
+raw_route = namedtuple('raw_route', 'path query cookies method headers')
 
-def route(url, cookies = "", method = GET, headers = {}):
+def route(url, cookies = "", method = 'GET', headers = None):
+    if headers is None:
+        headers = {}
     parsed = urlparse(url)
     return _route(parsed.path, parsed.query, cookies, method, frozen_dict.FrozenDict(headers))
 
-def _route (path, query = "", cookies = "", method = GET, headers = {}):
+def _route (path, query = "", cookies = "", method = 'GET', headers = None):
+    if headers is None:
+        headers = {}
     return raw_route(path, query, cookies, method, frozen_dict.FrozenDict(headers))
 
-def route_less_or_equal_then(a,b):
+#===
+
+def route_less_or_equal_than(a,b):
     # ignore cookies and headers for now
     return a.method == b.method and url_less_or_equal_than(a,b)
 
@@ -78,80 +88,10 @@ def query_less_than_or_equal(a, b):
     return True
 
 def parse_query(query):
-    return dict([coerce_to_2len(param.split('=')) for param in query.lstrip('?').split('&') if param!=''])
-
-def test_parse_query_ok():
-    return parse_query('?a=&z=q&vacancyId=1432459') == {'a' : '', 'z' : 'q', 'vacancyId' : '1432459'}
-
-def test_route_less_then_or_equal():
-    eq = route_less_or_equal_then(route("/abc/?q=1"), route("/abc/?q=1"))
-    assert eq
-    swap = route_less_or_equal_then(route("/abc/?a=2&q=1"), route("/abc/?q=1&a=2"))
-    assert swap
-    path_differs = route_less_or_equal_then(route("/abc?q=1"), route("/abc/?q=1"))
-    assert not path_differs
-    more = route_less_or_equal_then(route("/abc/?a=2&q=1"), route("/abc/?q=1"))
-    assert not more
-
-def test_routing_by_url():
-    gogogo_handler = '<xml></xml>'
-    routes = {'asdasd.ru' : {
-            '/gogogo' : gogogo_handler
-        } }
-    expecting_handler = expecting( **routes )
-    assert expecting_handler.route_request(HTTPRequest('http://asdasd.ru/gogogo')).body == gogogo_handler
-
-def get_doc_shows_what_expected():
-    '''intergation test that shows main test path'''
-    import lxml.etree
-    from frontik.handler import HTTPError, AsyncGroup
-
-    def function_under_test(handler, ):
-        def finished():
-            res = lxml.etree.Element("result")
-            res.text = str(handler.result)
-            handler.doc.put(res)
-        handler.result = 0
-        ag = AsyncGroup(finished)
-        def accumulate(xml, response):
-            if response.code >= 400:
-                raise HTTPError(503, "remote server returned error with code =" + str(response.code))
-            if xml is None:
-                raise HTTPError(503)
-            handler.result += int(xml.findtext("a"))
-
-        handler.get_url(handler.config.serviceHost +  'vacancy/1234', callback = ag.add(accumulate))
-        handler.get_url(handler.config.serviceHost + 'employer/1234', callback = ag.add(accumulate))
-
-    class EtalonTest(unittest.TestCase):
-        def runTest(self,):
-            doc = expecting(serviceHost = {
-                    '/vacancy/1234' : (200, '<b><a>1</a></b>'),
-                    '/employer/1234' : '<b><a>2</a></b>'
-            }).call(function_under_test).get_doc().root_node
-
-            self.assertEqual(doc.findtext('result'), '3')
-
-    #test that test works (does not throw exception)
-    ts = unittest.TestSuite()
-    ts.addTest(EtalonTest())
-    tr = unittest.TextTestRunner()
-    tr.run(ts)
-
-
-def coerce_to_2len(a):
-    if len(a) == 2:
-        return a
-    if len(a) > 2:
-        return a[:2]
-    if len(a) == 1:
-        return a + [""]
-    raise Exception("input should be non-empty list")
-
-#===
+    return dict([(k,tuple(v)) for k,v in parse_qs(query, keep_blank_values=True).iteritems()])
 
 def to_route(req):
-    return route(req.url, method = to_method(req.method), headers = req.headers)
+    return route(req.url, method = req.method, headers = req.headers)
 
 class ServiceMock(object):
     def __init__(self, routes, strict = 0):
@@ -161,8 +101,8 @@ class ServiceMock(object):
     def fetch_request(self, req):
         route_of_incoming_request = to_route(req)
         for r in self.routes:
-            destination_route = r if isinstance(r,raw_route) else route(r)
-            if route_less_or_equal_then(destination_route, route_of_incoming_request):
+            destination_route = r if isinstance(r, raw_route) else route(r)
+            if route_less_or_equal_than(destination_route, route_of_incoming_request):
                 result = self.get_result(req, self.routes[r])
                 if self.strict:
                     del self.routes[r]
@@ -189,7 +129,7 @@ class ServiceMock(object):
             return handler
         else: raise ValueError("Handler " + str(handler) + "\n that matched request " + request.url + " "
             + str(request) + "\n is neither tuple nor HTTPResponse nor basestring instance nor callable returning any of above.")
-        return HTTPResponse(request, 200, buffer = StringIO(body), effective_url = request.url, request_time=1,
+        return HTTPResponseStub(request, buffer = body, effective_url = request.url,
                 headers = HTTPHeaders({'Content-Type': 'xml'}))
 
 class ExpectingHandler(object):
@@ -247,12 +187,16 @@ class ExpectingHandler(object):
             if callback:
                 self._callback_heap.append((None, callback))
         self._handler.flush = flush
+        #init registry
+        self.registry = {}
 
-        #mock registry
-        self.registry = dict([(name,ServiceMock(kwarg[name])) for name in kwarg])
-        for service in self.registry:
-            setattr(self._handler.config, service, 'http://' + service + '/')
+    def expect(self, **kwargs):
+        for name, routes in kwargs.iteritems():
+            service = self.registry.setdefault(name, ServiceMock({}))
+            service.routes.update(routes)
+            setattr(self._handler.config, name, 'http://' + name + '/')
 
+        return self
 
     def do(self, handler_processor):
         handler_processor(self._handler)
@@ -325,6 +269,8 @@ class ExpectingHandler(object):
     def process_fetch(self, req, callback):
         self._callback_heap.append((req, callback))
 
+#===
+
 class TestHttpClient(HTTPClient):
     '''_callback_heap aware'''
     def __init__(self, callback_heap):
@@ -333,11 +279,63 @@ class TestHttpClient(HTTPClient):
     def fetch(self, req, callback):
         self._callback_heap.process_fetch(req, callback)
 
-expecting = ExpectingHandler
+class TestServiceMock(unittest.TestCase):
+    def test_parse_query_ok(self, ):
+        self.assertEquals(parse_query('a=&z=q&vacancyId=1432459'), {'a' : ('',), 'z' : ('q',), 'vacancyId' : ('1432459',)})
+    def test_equal_route(self, ):
+        self.assertTrue(route_less_or_equal_than(route("/abc/?q=1"), route("/abc/?q=1")), "equal routes do not match each other")
+    def test_swapped(self, ):
+        self.assertTrue(route_less_or_equal_than(route("/abc/?a=2&q=1"), route("/abc/?q=1&a=2")), "swapped query parameters do not match each other")
+    def test_different_paths(self, ):
+        self.assertFalse(route_less_or_equal_than(route("/abc?q=1"), route("/abc/?q=1")), "different paths should not match")
+    def test_right_query_is_less(self, ):
+        self.assertFalse(route_less_or_equal_than(route("/abc/?a=2&q=1"), route("/abc/?q=1")), "insufficient query parameters should not match")
+
+    def test_routing_by_url(self, ):
+        gogogo_handler = '<xml></xml>'
+        routes = {'asdasd.ru' : {
+                '/gogogo' : gogogo_handler
+            } }
+        expecting_handler = expecting( **routes )
+        assert expecting_handler.route_request(HTTPRequest('http://asdasd.ru/gogogo')).body == gogogo_handler
+
+    def test_get_doc_shows_what_expected(self, ):
+        '''intergation test that shows main test path'''
+        import lxml.etree
+        from frontik.handler import HTTPError, AsyncGroup
+
+        def function_under_test(handler, ):
+            def finished():
+                res = lxml.etree.Element("result")
+                res.text = str(handler.result)
+                handler.doc.put(res)
+            handler.result = 0
+            ag = AsyncGroup(finished)
+            def accumulate(xml, response):
+                if response.code >= 400:
+                    raise HTTPError(503, "remote server returned error with code =" + str(response.code))
+                if xml is None:
+                    raise HTTPError(503)
+                handler.result += int(xml.findtext("a"))
+
+            handler.get_url(handler.config.serviceHost +  'vacancy/1234', callback = ag.add(accumulate))
+            handler.get_url(handler.config.serviceHost + 'employer/1234', callback = ag.add(accumulate))
+
+        class EtalonTest(unittest.TestCase):
+            def runTest(self,):
+                doc = expecting(serviceHost = {
+                        '/vacancy/1234' : (200, '<b><a>1</a></b>'),
+                        '/employer/1234' : '<b><a>2</a></b>'
+                }).call(function_under_test).get_doc().root_node
+
+                self.assertEqual(doc.findtext('result'), '3')
+
+        #test that test works (does not throw exception)
+        ts = unittest.TestSuite()
+        ts.addTest(EtalonTest())
+        tr = unittest.TextTestRunner()
+        tr.run(ts)
 
 if __name__ == '__main__':
-    assert test_parse_query_ok()
-    test_route_less_then_or_equal()
-    test_routing_by_url()
-    get_doc_shows_what_expected()
+    unittest.main()
 
