@@ -24,3 +24,9 @@ class FrozenDict(collections.Mapping):
             for pair in self.iteritems():
                 self._hash ^= hash(pair)
         return self._hash
+
+    def __str__(self):
+        return "frozen " + str(self._d)
+
+    def __unicode__(self):
+        return u"frozen " + unicode(self._d)
