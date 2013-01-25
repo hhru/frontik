@@ -3,13 +3,10 @@
 from frontik.version import version
 
 __version__ = VERSION = version
-try:
-    import lxml.etree as etree
-    from lxml.builder import E as etree_builder
+import lxml.etree as etree
+from lxml.builder import E as etree_builder
 
-    from frontik.doc import Doc
-    from frontik.util import make_url
-    from frontik.util import list_unique
-    from frontik.util import make_qs
-except ImportError:
-    pass
+from frontik.doc import Doc
+from frontik.util import make_url
+from frontik.util import list_unique
+from frontik.util import make_qs

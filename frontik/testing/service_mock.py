@@ -39,7 +39,6 @@ def HTTPResponseStub(request=None, code=200, headers=None, buffer=None,
         headers = {}
     if time_info is None:
         time_info = {}
-    print locals()
     return(HTTPResponse(request, code, headers, StringIO(buffer),
                 effective_url, error, request_time,
                 time_info))
