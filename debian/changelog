@@ -1,3 +1,11 @@
+frontik (2.15.4) unstable; urgency=low
+
+  [ Andrey Sumin ]
+  * HH-31250 debug page improvements
+  * HH-26920 added 204 code processing
+
+ -- Vasily Katraev (hh.ru) <v.katraev@hh.ru>  Fri, 25 Jan 2013 11:47:23 +0400
+
 frontik (2.15.3) unstable; urgency=low
 
   * HH-29111 testing infrastructure
