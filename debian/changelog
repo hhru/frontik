@@ -1,3 +1,9 @@
+frontik (2.15.5) unstable; urgency=low
+
+  * HH-30159 Fix problem when displaying multiline response to feedback
+
+ -- Alexey Anisimov <a.anisimov@hh.ru>  Tue, 29 Jan 2013 12:58:56 +0400
+
 frontik (2.15.4) unstable; urgency=low
 
   [ Andrey Sumin ]
