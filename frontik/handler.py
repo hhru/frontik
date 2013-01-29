@@ -338,37 +338,6 @@ class PageHandler(tornado.web.RequestHandler):
 
         return placeholder
 
-    def get_url_retry(self, url, data = None, headers = None, retry_count = 3, retry_delay = 0.1, connect_timeout = 0.5, request_timeout = 2, callback = None, request_types = None):
-        placeholder = future.Placeholder()
-
-        request = frontik.util.make_get_request(url,
-                                                {} if data is None else data,
-                                                {} if headers is None else headers,
-                                                connect_timeout,
-                                                request_timeout)
-
-        def step1(retry_count, response):
-            if response.error and retry_count > 0:
-                self.log.warn('failed to get %s; retries left = %s; retrying', response.effective_url, retry_count)
-                # TODO use handler-specific ioloop
-                if retry_delay > 0:
-                    tornado.ioloop.IOLoop.instance().add_timeout(time.time() + retry_delay,
-                        self.finish_group.add(self.async_callback(partial(step2, retry_count))))
-                else:
-                    step2(retry_count)
-            else:
-                if response.error and retry_count == 0:
-                    self.log.warn('failed to get %s; no more retries left; give up retrying', response.effective_url)
-
-                self._fetch_request_response(placeholder, callback, request, response, request_types = request_types)
-
-        def step2(retry_count):
-            self.http_client.fetch(request, self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
-
-        self.http_client.fetch(request, self.finish_group.add(self.async_callback(partial(step1, retry_count - 1))))
-
-        return placeholder
-
     def post_url(self, url, data = '',
                  headers = None,
                  files = None,
@@ -424,7 +393,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         return placeholder
 
-    def _fetch_request_response(self, placeholder, callback, request, response, request_types = None):
+    def _fetch_request_response(self, placeholder, callback, request, response, request_types=None):
         debug_extra = {}
         if response.headers.get(frontik.handler_debug.PageHandlerDebug.INHERIT_DEBUG_HEADER_NAME):
             debug_response = etree.XML(response.body)
@@ -435,7 +404,7 @@ class PageHandler(tornado.web.RequestHandler):
                 debug_extra['_debug_response'] = debug_response
                 response = frontik.util.create_fake_response(request, response, **response_info)
 
-        debug_extra.update({"_response": response, "_request": request})
+        debug_extra.update({'_response': response, '_request': request})
         self.log.debug(
             'got {code}{size} {url} in {time:.2f}ms'.format(
                 code=response.code,
@@ -451,7 +420,7 @@ class PageHandler(tornado.web.RequestHandler):
         result = None
         if response.error:
             placeholder.set_data(self.show_response_error(response))
-        else:
+        elif response.code != 204:
             content_type = response.headers.get('Content-Type', '')
             for k, v in request_types.iteritems():
                 if k.search(content_type):
