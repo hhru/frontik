@@ -66,6 +66,7 @@ class BulkGELFHandler(GELFHandler):
 
         record_for_gelf.code = status_code
         GELFHandler.handle(self, record_for_gelf)
+        self.close()
 
 
 class MaxLenSysLogHandler(SysLogHandler):
