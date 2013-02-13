@@ -235,12 +235,12 @@
 
     <xsl:template match="body[text()]">
         <div class="delimeter"><xsl:value-of select="name(parent::*)"/> body</div>
-        <div class="body">
+        <pre class="body">
             <xsl:value-of select="."/>
-        </div>
+        </pre>
     </xsl:template>
 
-    <xsl:template match="body[contains(@content_type, 'text/xml')]">
+    <xsl:template match="body[*]">
         <div class="delimeter">response body</div>
         <div class="coloredxml">
             <xsl:apply-templates select="node()" mode="color-xml"/>
@@ -273,7 +273,7 @@
         </div>
     </xsl:template>
 
-    <xsl:template match="headers">
+    <xsl:template match="headers[header]">
         <div class="headers">
             <div class="delimeter"><xsl:value-of select="name(parent::*)"/> headers</div>
             <xsl:apply-templates select="header"/>
@@ -284,7 +284,7 @@
         <div><xsl:value-of select="@name"/>: &#160;<xsl:value-of select="."/></div>
     </xsl:template>
 
-    <xsl:template match="cookies">
+    <xsl:template match="cookies[cookie]">
         <div class="cookies">
             <div class="delimeter">cookies</div>
             <xsl:apply-templates select="cookie"/>
@@ -295,7 +295,7 @@
         <div><xsl:value-of select="@name"/>&#160;=&#160;<xsl:value-of select="."/></div>
     </xsl:template>
 
-    <xsl:template match="params">
+    <xsl:template match="params[param]">
         <div class="params">
             <div class="delimeter">request params</div>
             <xsl:apply-templates select="param"/>
