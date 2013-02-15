@@ -252,6 +252,8 @@ class ExpectingHandler(object):
                         callback()
 
     def call(self, method, *arg, **kwarg):
+        if hasattr(method, 'im_class'):
+            self._handler.__class__ = type('Page', (method.im_class,) + self._handler.__class__.__bases__, {})
         handler = self._handler
         handler.prepare()
         handler._finished = False
