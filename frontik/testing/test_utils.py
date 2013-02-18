@@ -76,11 +76,11 @@ def _xml_compare_tag_attribs_text(xml1, xml2, reporter, compare_xml2_attribs=Tru
                 return False
     if not _xml_text_compare(xml1.text, xml2.text):
         reporter('Text: {t1} != {t2} (path: {path})'
-                 .format(t1=xml1.text, t2=xml2.text, path=_describe_element(xml1)))
+                 .format(t1=xml1.text.encode('utf-8'), t2=xml2.text.encode('utf-8'), path=_describe_element(xml1)))
         return False
     if not _xml_text_compare(xml1.tail, xml2.tail):
-        reporter('Tail: {tail1!r} != {tail2!r}'
-                 .format(tail1=xml1.tail, tail2=xml2.tail, path=_describe_element(xml1)))
+        reporter('Tail: {tail1} != {tail2}'
+                 .format(tail1=xml1.tail.encode('utf-8'), tail2=xml2.tail.encode('utf-8'), path=_describe_element(xml1)))
         return False
     return True
 
