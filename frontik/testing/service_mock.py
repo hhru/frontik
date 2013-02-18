@@ -72,8 +72,7 @@ def route_less_or_equal_than(a,b):
     return a.method == b.method and url_less_or_equal_than(a,b)
 
 def url_less_or_equal_than(a,b):
-    ap,bp = a.path, b.path
-    if ap != bp:
+    if a.path.lstrip('/') != b.path.lstrip('/'):
         return False
     return query_less_than_or_equal(a.query, b.query)
 
@@ -187,6 +186,7 @@ class ExpectingHandler(object):
             if callback:
                 self._callback_heap.append((None, callback))
         self._handler.flush = flush
+        self._handler.finish = finish
         #init registry
         self.registry = {}
 
@@ -219,6 +219,15 @@ class ExpectingHandler(object):
             setattr(config, name, kwargs[name])
         return self
 
+    def add_headers(self, headers):
+        self._handler.request.headers.update(headers)
+        return self
+
+    def add_arguments(self, arguments):
+        for key, val in arguments.iteritems():
+            self._handler.request.arguments[key] = [val] if isinstance(val, basestring) else val
+        return self
+
     def raise_exceptions(self):
         if self._exception_heap:
             raise self._exception_heap[0][0], self._exception_heap[0][1], self._exception_heap[0][2]
@@ -243,6 +252,8 @@ class ExpectingHandler(object):
                         callback()
 
     def call(self, method, *arg, **kwarg):
+        if hasattr(method, 'im_class'):
+            self._handler.__class__ = type('Page', (method.im_class,) + self._handler.__class__.__bases__, {})
         handler = self._handler
         handler.prepare()
         handler._finished = False
