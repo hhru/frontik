@@ -45,7 +45,7 @@ class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixi
         except self.failureException, e:
             self.fail('XML should be absolute equals (Reported error: "{0!s}")'.format(e))
 
-    def test_assertVacancyXmlAlmostEquals_with_strings(self):
+    def test_assertXmlAlmostEquals_with_strings(self):
         tree1_str, tree2_str = self._get_almost_equals_xml()
         try:
             self.assertXmlAlmostEquals(tree1_str, tree2_str)
