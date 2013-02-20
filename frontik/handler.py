@@ -271,6 +271,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         tornado.web.RequestHandler.flush(self, include_footers=False)
 
+        self.log.request_finish_hook()
 
     def get_page(self):
         """ Эта функция должна быть переопределена в наследнике и
