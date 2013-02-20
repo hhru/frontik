@@ -194,7 +194,7 @@ def remove_xpaths(elem, xpaths):
     return elem
 
 
-class XmlResponseTestCaseMixin:
+class XmlResponseTestCaseMixin(object):
     """
     Mixin for L{unittest.TestCase} or other class with similar API.
 
