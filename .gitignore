@@ -17,3 +17,13 @@ dist/
 frontik.egg-info/
 frontik.iml
 frontik_dev.cfg
+# OS X junk
+.AppleDouble
+.DS_Store
+Icon?
+.Spotlight-V100
+.Trashes
+# Windows junk
+ehthumbs.db
+Thumbs.db
+Desktop.ini
