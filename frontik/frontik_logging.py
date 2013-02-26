@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 from collections import namedtuple
 import copy
-
+import tornado.options
 import logging
 from logging.handlers import SysLogHandler
 import traceback
 import weakref
 import time
-import tornado.options
 from lxml.builder import E
 try:
     from graypy.handler import GELFHandler, LAN_CHUNK
@@ -39,35 +38,6 @@ class MonikInfoLoggingHandler(logging.FileHandler):
         logfile_parts = tornado.options.options.logfile.rsplit('.', 1)
         logfile_parts.insert(1, 'monik')
         return '.'.join(logfile_parts)
-
-class BulkGELFHandler(GELFHandler):
-
-    def handle_bulk(self, records_list, stages= None, status_code=None, exception=None, **kw):
-
-        if records_list != []:
-            first_record = records_list[0]
-        else:
-            return
-        record_for_gelf = copy.deepcopy(first_record)
-        record_for_gelf.message ="{0} {1} {2} \n".format(record_for_gelf.asctime,record_for_gelf.levelname, record_for_gelf.message)
-
-        record_for_gelf.exc_info = exception
-        for record in records_list[1:]:
-            if record.levelno > record_for_gelf.levelno:
-                record_for_gelf.levelno = record.levelno
-                record_for_gelf.lineno=record.lineno
-                record_for_gelf.filename=record.filename
-            if record.exc_info is not None:
-                record_for_gelf.exc_info=traceback.format_exc(record.exc_info)
-            record_for_gelf.message +=" {0} {1} {2} \n".format(record.asctime, record.levelname,record.message)
-        if stages is not None:
-            for stage_name, stage_start, stage_delta in stages:
-                setattr(record_for_gelf,stage_name,str(stage_delta - stage_start))
-
-        record_for_gelf.code = status_code
-        GELFHandler.handle(self, record_for_gelf)
-        self.close()
-
 
 class MaxLenSysLogHandler(SysLogHandler):
     """
@@ -141,6 +111,37 @@ class PageLogger(logging.LoggerAdapter):
         self.addHandler = self.logger.addHandler
 
         if tornado.options.options.graylog:
+
+            class BulkGELFHandler(GELFHandler):
+
+                def handle_bulk(self, records_list, stages=None, status_code=None, exception=None, **kw):
+                    if records_list != []:
+                        first_record = records_list[0]
+                    else:
+                        return
+                    record_for_gelf = copy.deepcopy(first_record)
+                    record_for_gelf.message = "{0} {1} {2} \n".format(record_for_gelf.asctime,record_for_gelf.levelname, record_for_gelf.message)
+                    setattr(record_for_gelf,"short", "{0} {1} {2}".format(handler.request.method, handler.request.uri, status_code))
+                    record_for_gelf.exc_info = exception
+                    record_for_gelf.levelno = 20
+                    for record in records_list[1:]:
+                        print record.levelno, record_for_gelf.levelno
+                        if record.levelno > record_for_gelf.levelno:
+                            record_for_gelf.levelno = record.levelno
+                            record_for_gelf.lineno = record.lineno
+                            record_for_gelf.short = record.message
+                        if record.exc_info is not None:
+                            record_for_gelf.exc_info=traceback.format_exc(record.exc_info)
+                            record.short += "\n" + traceback.format_exc(record.exc_info)
+                        record_for_gelf.message += " {0} {1} {2} \n".format(record.asctime, record.levelname,record.message)
+                    if stages is not None:
+                        for stage_name, stage_start, stage_delta in stages:
+                            setattr(record_for_gelf,stage_name+"_stage",str(int(stage_delta*1000)))
+                    record_for_gelf.name = record.handler
+                    record_for_gelf.code = status_code
+                    GELFHandler.handle(self, record_for_gelf)
+                    self.close()
+
             self.logger.add_bulk_handler(BulkGELFHandler(tornado.options.options.graylog_host,
                 tornado.options.options.graylog_port, LAN_CHUNK, False))
     def stage_tag(self, stage_name):
