@@ -26,10 +26,6 @@ def _describe_element(elem):
 
 
 def _xml_text_compare(t1, t2):
-    if not t1 and not t2:
-        return True
-    if t1 == '*' or t2 == '*':
-        return True
     return (t1 or '').strip() == (t2 or '').strip()
 
 
