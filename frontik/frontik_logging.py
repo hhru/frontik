@@ -121,11 +121,10 @@ class PageLogger(logging.LoggerAdapter):
                         return
                     record_for_gelf = copy.deepcopy(first_record)
                     record_for_gelf.message = "{0} {1} {2} \n".format(record_for_gelf.asctime,record_for_gelf.levelname, record_for_gelf.message)
-                    setattr(record_for_gelf,"short", "{0} {1} {2}".format(handler.request.method, handler.request.uri, status_code))
+                    record_for_gelf.short = "{0} {1} {2}".format(handler.request.method, handler.request.uri, status_code)
                     record_for_gelf.exc_info = exception
                     record_for_gelf.levelno = 20
                     for record in records_list[1:]:
-                        print record.levelno, record_for_gelf.levelno
                         if record.levelno > record_for_gelf.levelno:
                             record_for_gelf.levelno = record.levelno
                             record_for_gelf.lineno = record.lineno
