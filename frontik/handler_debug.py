@@ -33,7 +33,7 @@ def response_to_xml(response):
             try:
                 body = response.body.decode('cp1251')
             except UnicodeDecodeError as e:
-                log.exception('Cant decode body response', e)
+                log.exception('Cant decode body response')
                 body = 'Cant decode body response'
         return body
 
@@ -49,14 +49,14 @@ def response_to_xml(response):
         else:
             body = etree.fromstring(response.body)
     except Exception as e:
-        log.exception('Cant parse response body', e)
+        log.exception('Cant parse response body')
         body = 'Cant show response body'
 
     try:
         for name, value in response.time_info.iteritems():
             time_info.append(E.time(str(value), name=name))
     except Exception as e:
-        log.exception('Cant append time info', e)
+        log.exception('Cant append time info')
 
     try:
         response = E.response(
@@ -70,7 +70,7 @@ def response_to_xml(response):
                         time_info,
                     )
     except Exception as e:
-        log.exception('Cant log response info', e)
+        log.exception('Cant log response info')
         response = E.response(E.body('Cant log response info'))
     return response
 
@@ -90,7 +90,7 @@ def request_to_xml(request):
                     for value in values:
                         body.append(E.param(value.decode("utf-8"), name = name))
         except Exception as e:
-            log.exception('Cant parse request body', e)
+            log.exception('Cant parse request body')
             body.text = 'Cant show request body'
 
     try:
@@ -111,7 +111,7 @@ def request_to_xml(request):
                             ))
                     )
     except Exception as e:
-        log.exception('Cant parse request body', e)
+        log.exception('Cant parse request body')
         body.text = 'Cant show request body'
         request = E.request(body)
     return request
