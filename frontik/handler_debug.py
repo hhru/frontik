@@ -21,35 +21,58 @@ def response_to_xml(response):
     time_info = etree.Element('time_info')
     content_type = response.headers.get('Content-Type', '')
 
+    if 'charset' in content_type:
+        charset = content_type.partition('=')[-1]
+    else:
+        charset = 'utf-8'
+
+    def try_decode_body(charset):
+        try:
+            body = response.body.decode(charset)
+        except UnicodeDecodeError:
+            try:
+                body = response.body.decode('cp1251')
+            except UnicodeDecodeError as e:
+                log.exception('Cant decode body response')
+                body = 'Cant decode body response'
+        return body
+
     try:
         if 'text/html' in content_type:
-            body = response.body.decode('utf-8').replace('\n', '\\n').replace("'", "\\'")
+            body = try_decode_body(charset).replace('\n', '\\n').replace("'", "\\'")
         elif 'json' in content_type:
             body = json.dumps(json.loads(response.body), sort_keys=True, indent=4)
         elif 'protobuf' in content_type:
-            body = repr(response.body)
+            body = response.body.encode('hex')
         elif 'text/plain' in content_type:
-            body = response.body.decode("utf-8").replace("\n", "\\n").replace("'", "\\'")
+            body = try_decode_body(charset)
         else:
             body = etree.fromstring(response.body)
     except Exception as e:
-        body = 'Cant show response body, ' + str(e)
+        log.exception('Cant parse response body')
+        body = 'Cant show response body'
 
-    for name, value in response.time_info.iteritems():
-        time_info.append(E.time(str(value), name=name))
+    try:
+        for name, value in response.time_info.iteritems():
+            time_info.append(E.time(str(value), name=name))
+    except Exception as e:
+        log.exception('Cant append time info')
 
-    return (
-        E.response(
-            E.body(body, content_type=content_type),
-            E.code(str(response.code)),
-            E.effective_url(response.effective_url),
-            E.error(str(response.error)),
-            E.size(str(len(response.body)) if response.body is not None else '0'),
-            E.request_time(str(int(response.request_time * 1000))),
-            _headers_to_xml(response.headers),
-            time_info,
-        )
-    )
+    try:
+        response = E.response(
+                        E.body(body, content_type=content_type),
+                        E.code(str(response.code)),
+                        E.effective_url(response.effective_url),
+                        E.error(str(response.error)),
+                        E.size(str(len(response.body)) if response.body is not None else '0'),
+                        E.request_time(str(int(response.request_time * 1000))),
+                        _headers_to_xml(response.headers),
+                        time_info,
+                    )
+    except Exception as e:
+        log.exception('Cant log response info')
+        response = E.response(E.body('Cant log response info'))
+    return response
 
 def request_to_xml(request):
     content_type = request.headers.get('Content-Type','')
@@ -60,33 +83,38 @@ def request_to_xml(request):
             if 'json' in content_type:
                 body.text = json.dumps(json.loads(request.body), sort_keys = True, indent = 4)
             elif 'protobuf' in content_type:
-                body.text = repr(request.body)
+                body.text = request.body.encode('hex')
             else:
                 body_query = urlparse.parse_qs(str(request.body), True)
                 for name, values in body_query.iteritems():
                     for value in values:
                         body.append(E.param(value.decode("utf-8"), name = name))
         except Exception as e:
-            body.text = 'Cant show request body, ' + str(e)
+            log.exception('Cant parse request body')
+            body.text = 'Cant show request body'
 
-    return (
-        E.request(
-            body,
-            E.connect_timeout(str(request.connect_timeout)),
-            E.follow_redirects(str(request.follow_redirects)),
-            E.max_redirects(str(request.max_redirects)),
-            E.method(request.method),
-            E.request_timeout(str(request.request_timeout)),
-            _params_to_xml(request.url),
-            E.url(request.url),
-            _headers_to_xml(request.headers),
-            _cookies_to_xml(request.headers),
-            E.meta(
-                E.start_time(
-                    str(request.start_time)
-                ))
-        )
-    )
+    try:
+        request = E.request(
+                        body,
+                        E.connect_timeout(str(request.connect_timeout)),
+                        E.follow_redirects(str(request.follow_redirects)),
+                        E.max_redirects(str(request.max_redirects)),
+                        E.method(request.method),
+                        E.request_timeout(str(request.request_timeout)),
+                        _params_to_xml(request.url),
+                        E.url(request.url),
+                        _headers_to_xml(request.headers),
+                        _cookies_to_xml(request.headers),
+                        E.meta(
+                            E.start_time(
+                                str(request.start_time)
+                            ))
+                    )
+    except Exception as e:
+        log.exception('Cant parse request body')
+        body.text = 'Cant show request body'
+        request = E.request(body)
+    return request
 
 def _params_to_xml(url):
     params = etree.Element('params')
