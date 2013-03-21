@@ -1,3 +1,9 @@
+frontik (2.17.5) unstable; urgency=low
+
+  * HH-31752 Raplace stack trace exceptions on exceptions reason
+
+ -- Alexey Anisimov <a.anisimov@hh.ru>  Thu, 21 Mar 2013 13:01:31 +0400
+
 frontik (2.17.4) unstable; urgency=low
 
   * HH-31965 xml testing helpers, XmlResponseTestCase mixin and tests for them
