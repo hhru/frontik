@@ -1,4 +1,4 @@
-frontik (2.17.5) unstable; urgency=low
+frontik (2.17.7) unstable; urgency=low
 
   * HH-31752 Raplace stack trace exceptions on exceptions reason
 
