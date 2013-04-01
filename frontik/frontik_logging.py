@@ -30,7 +30,7 @@ try:
                     record_for_gelf.short = record.message
                 if record.exc_info is not None:
                     record_for_gelf.exc_info=traceback.format_exc(record.exc_info)
-                    record.short += "\n" + traceback.format_exc(record.exc_info)
+                    record_for_gelf.short += "\n" + traceback.format_exc(record.exc_info)
                 record_for_gelf.message += " {0} {1} {2} \n".format(record.asctime, record.levelname,record.message)
             if stages is not None:
                 for stage_name, stage_start, stage_delta in stages:
