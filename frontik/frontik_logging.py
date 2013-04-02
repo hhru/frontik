@@ -19,7 +19,7 @@ try:
             else:
                 return
             record_for_gelf = copy.deepcopy(first_record)
-            record_for_gelf.message = "{0} {1} {2} \n".format(record_for_gelf.asctime,record_for_gelf.levelname, record_for_gelf.message)
+            record_for_gelf.message = "{0} {1} {2} \n".format(record_for_gelf.asctime, record_for_gelf.levelname, record_for_gelf.message)
             record_for_gelf.short = "{0} {1} {2}".format(method, uri, status_code)
             record_for_gelf.exc_info = exception
             record_for_gelf.levelno = 20
@@ -31,10 +31,10 @@ try:
                 if record.exc_info is not None:
                     record_for_gelf.exc_info=traceback.format_exc(record.exc_info)
                     record_for_gelf.short += "\n" + traceback.format_exc(record.exc_info)
-                record_for_gelf.message += " {0} {1} {2} \n".format(record.asctime, record.levelname,record.message)
+                record_for_gelf.message += " {0} {1} {2} \n".format(record.asctime, record.levelname, record.message)
             if stages is not None:
                 for stage_name, stage_start, stage_delta in stages:
-                    setattr(record_for_gelf,stage_name+"_stage",str(int(stage_delta*1000)))
+                    setattr(record_for_gelf, stage_name + "_stage", str(int(stage_delta*1000)))
             record_for_gelf.name = record_for_gelf.handler
             record_for_gelf.code = status_code
             GELFHandler.handle(self, record_for_gelf)
