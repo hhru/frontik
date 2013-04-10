@@ -17,6 +17,16 @@ import frontik.xml_util
 
 log = logging.getLogger('XML_debug')
 
+
+def try_get_body_repr(body):
+    try:
+        body_repr = repr(body) if body is not None else ''
+    except Exception:
+        log.error('Could not get body repr')
+        body_repr = 'Got exception while getting body repr'
+    return body_repr
+
+
 def response_to_xml(response):
     time_info = etree.Element('time_info')
     content_type = response.headers.get('Content-Type', '')
@@ -27,15 +37,19 @@ def response_to_xml(response):
         charset = 'utf-8'
 
     def try_decode_body(charset):
-        try:
-            body = response.body.decode(charset)
-        except UnicodeDecodeError:
+        decoded_body = None
+        try_charsets = (charset, 'cp1251')
+        for c in try_charsets:
             try:
-                body = response.body.decode('cp1251')
-            except UnicodeDecodeError as e:
-                log.exception('Cant decode body response')
-                body = 'Cant decode body response'
-        return body
+                decoded_body = response.body.decode(c)
+                break
+            except UnicodeDecodeError:
+                continue
+
+        if decoded_body is None:
+            raise Exception('Could not decode response body (tried: %s)', ', '.join(try_charsets))
+
+        return decoded_body
 
     try:
         if 'text/html' in content_type:
@@ -48,14 +62,14 @@ def response_to_xml(response):
             body = try_decode_body(charset)
         else:
             body = etree.fromstring(response.body)
-    except Exception as e:
+    except Exception:
         log.exception('Cant parse response body')
-        body = 'Cant show response body'
+        body = try_get_body_repr(response.body)
 
     try:
         for name, value in response.time_info.iteritems():
             time_info.append(E.time(str(value), name=name))
-    except Exception as e:
+    except Exception:
         log.exception('Cant append time info')
 
     try:
@@ -69,7 +83,7 @@ def response_to_xml(response):
             _headers_to_xml(response.headers),
             time_info,
         )
-    except Exception as e:
+    except Exception:
         log.exception('Cant log response info')
         response = E.response(E.body('Cant log response info'))
     return response
@@ -90,9 +104,9 @@ def request_to_xml(request):
                 for name, values in body_query.iteritems():
                     for value in values:
                         body.append(E.param(value.decode("utf-8"), name=name))
-        except Exception as e:
+        except Exception:
             log.exception('Cant parse request body')
-            body.text = 'Cant show request body'
+            body.text = try_get_body_repr(request.body)
 
     try:
         request = E.request(
@@ -111,9 +125,9 @@ def request_to_xml(request):
                     str(request.start_time)
                 ))
         )
-    except Exception as e:
+    except Exception:
         log.exception('Cant parse request body')
-        body.text = 'Cant show request body'
+        body.text = try_get_body_repr(request.body)
         request = E.request(body)
     return request
 
@@ -299,8 +313,8 @@ class PageHandlerDebug(object):
             debug_log_data.append(frontik.xml_util.dict_to_xml(original_response, 'original-response'))
 
         # show debug page if apply_xsl=True ('noxsl' flag is not set)
-        # if debug mode is disabled, than we could have got there only after an exception — apply xsl anyway
-        # if debug mode is inherited (through X-Inherit-Debug request header), than the response is always xml
+        # if debug mode is disabled, then we could have got there only after an exception — apply xsl anyway
+        # if debug mode is inherited (through X-Inherit-Debug request header), then the response is always xml
         can_apply_xsl_or_500 = self.handler.xml.apply_xsl or not self.debug_mode.enabled
         if can_apply_xsl_or_500 and not self.debug_mode.inherited:
             try:
