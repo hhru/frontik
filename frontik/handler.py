@@ -26,6 +26,21 @@ import frontik.handler_whc_limit
 import frontik.handler_debug
 import frontik.future as future
 
+from tornado.httpserver import HTTPRequest
+
+
+#patching for logging post reqs without body for security
+def context_based_repr(self):
+    attrs = ["protocol", "host", "method", "uri", "version", "remote_ip"]
+    if self.request.method != "POST" or tornado.options.options.debug:
+        attrs.append("body")
+    args = ", ".join(["%s=%r" % (n, getattr(self, n)) for n in attrs])
+    return "%s(%s, headers=%s)" % (
+        self.__class__.__name__, args, dict(self.headers))
+
+
+HTTPRequest.__repr__ = context_based_repr
+
 def _parse_response_smth(response, logger = frontik_logging.log, parser=None, type=None):
     _preview_len = 100
     try:
