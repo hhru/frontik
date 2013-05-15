@@ -3,6 +3,8 @@
 import time
 import Queue
 
+from tornado.web import HTTPError
+
 import logging
 log = logging.getLogger('frontik.async')
 
@@ -82,7 +84,12 @@ class AsyncGroup(object):
                 try:
                     self._dec()
                     intermediate_cb(*args, **kwargs)
-                finally:
+                except HTTPError:
+                    raise
+                except Exception:
+                    self.try_finish()
+                    raise
+                else:
                     self.try_finish()
             else:
                 self.log("Ignoring response because of already finished group")
