@@ -60,83 +60,87 @@ def response_to_xml(response):
 
     try:
         response = E.response(
-                        E.body(body, content_type=content_type),
-                        E.code(str(response.code)),
-                        E.effective_url(response.effective_url),
-                        E.error(str(response.error)),
-                        E.size(str(len(response.body)) if response.body is not None else '0'),
-                        E.request_time(str(int(response.request_time * 1000))),
-                        _headers_to_xml(response.headers),
-                        time_info,
-                    )
+            E.body(body, content_type=content_type),
+            E.code(str(response.code)),
+            E.effective_url(response.effective_url),
+            E.error(str(response.error)),
+            E.size(str(len(response.body)) if response.body is not None else '0'),
+            E.request_time(str(int(response.request_time * 1000))),
+            _headers_to_xml(response.headers),
+            time_info,
+        )
     except Exception as e:
         log.exception('Cant log response info')
         response = E.response(E.body('Cant log response info'))
     return response
 
+
 def request_to_xml(request):
-    content_type = request.headers.get('Content-Type','')
-    body = etree.Element("body", content_type = content_type)
+    content_type = request.headers.get('Content-Type', '')
+    body = etree.Element("body", content_type=content_type)
 
     if request.body:
         try:
             if 'json' in content_type:
-                body.text = json.dumps(json.loads(request.body), sort_keys = True, indent = 4)
+                body.text = json.dumps(json.loads(request.body), sort_keys=True, indent=4)
             elif 'protobuf' in content_type:
                 body.text = request.body.encode('hex')
             else:
                 body_query = urlparse.parse_qs(str(request.body), True)
                 for name, values in body_query.iteritems():
                     for value in values:
-                        body.append(E.param(value.decode("utf-8"), name = name))
+                        body.append(E.param(value.decode("utf-8"), name=name))
         except Exception as e:
             log.exception('Cant parse request body')
             body.text = 'Cant show request body'
 
     try:
         request = E.request(
-                        body,
-                        E.connect_timeout(str(request.connect_timeout)),
-                        E.follow_redirects(str(request.follow_redirects)),
-                        E.max_redirects(str(request.max_redirects)),
-                        E.method(request.method),
-                        E.request_timeout(str(request.request_timeout)),
-                        _params_to_xml(request.url),
-                        E.url(request.url),
-                        _headers_to_xml(request.headers),
-                        _cookies_to_xml(request.headers),
-                        E.meta(
-                            E.start_time(
-                                str(request.start_time)
-                            ))
-                    )
+            body,
+            E.connect_timeout(str(request.connect_timeout)),
+            E.follow_redirects(str(request.follow_redirects)),
+            E.max_redirects(str(request.max_redirects)),
+            E.method(request.method),
+            E.request_timeout(str(request.request_timeout)),
+            _params_to_xml(request.url),
+            E.url(request.url),
+            _headers_to_xml(request.headers),
+            _cookies_to_xml(request.headers),
+            E.meta(
+                E.start_time(
+                    str(request.start_time)
+                ))
+        )
     except Exception as e:
         log.exception('Cant parse request body')
         body.text = 'Cant show request body'
         request = E.request(body)
     return request
 
+
 def _params_to_xml(url):
     params = etree.Element('params')
     query = frontik.util.get_query_parameters(url)
     for name, values in query.iteritems():
         for value in values:
-            params.append(E.param(unicode(value, 'utf-8'), name = name))
+            params.append(E.param(unicode(value, 'utf-8'), name=name))
     return params
+
 
 def _headers_to_xml(request_or_response_headers):
     headers = etree.Element('headers')
     for name, value in request_or_response_headers.iteritems():
         if name != 'Cookie':
-            headers.append(E.header(str(value), name = name))
+            headers.append(E.header(str(value), name=name))
     return headers
+
 
 def _cookies_to_xml(request_headers):
     cookies = etree.Element('cookies')
     if 'Cookie' in request_headers:
         _cookies = Cookie.SimpleCookie(request_headers['Cookie'])
         for cookie in _cookies:
-            cookies.append(E.cookie(_cookies[cookie].value, name = cookie))
+            cookies.append(E.cookie(_cookies[cookie].value, name=cookie))
     return cookies
 
 
@@ -170,7 +174,10 @@ class DebugPageHandler(logging.Handler):
 
         entry_attrs['msg'] = record.getMessage()
 
-        entry = etree.Element("entry", **entry_attrs)
+        try:
+            entry = etree.Element("entry", **entry_attrs)
+        except ValueError:
+            entry = etree.Element("entry")
         entry.set("asctime", str(datetime.fromtimestamp(record.created)))
 
         if getattr(record, "_response", None) is not None:
@@ -198,9 +205,7 @@ class DebugPageHandler(logging.Handler):
             self.log_data.append(record._stages)
 
 
-
 class PageHandlerDebug(object):
-
     INHERIT_DEBUG_HEADER_NAME = 'X-Inherit-Debug'
 
     class DebugMode(object):
@@ -256,7 +261,7 @@ class PageHandlerDebug(object):
             with open(tornado.options.options.debug_profiler_template) as template:
                 round_f = lambda x: '%.2f' % round(1000 * x, 2)
                 data = json.dumps(dict([(x.name, {'start': round_f(x.start), 'delta': round_f(x.delta)})
-                                        for x in self.handler.log.stages]))
+                for x in self.handler.log.stages]))
 
                 tpl_text = template.read()
                 tpl_text = tpl_text.replace("'<%FrontikProfilerData%>'", data)
@@ -279,6 +284,7 @@ class PageHandlerDebug(object):
         debug_log_data.set('request-id', str(self.handler.request_id))
 
         import frontik.app
+
         debug_log_data.append(frontik.app.get_frontik_and_apps_versions())
         debug_log_data.append(E.request(
             _params_to_xml(self.handler.request.uri),
@@ -306,7 +312,7 @@ class PageHandlerDebug(object):
                 self.handler.log.exception('XSLT debug file error')
                 try:
                     self.handler.log.error('XSL error log entries:\n%s' % "\n".join(map(
-                    'File "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
+                        'File "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
                         .format, transform.error_log)))
                 except Exception:
                     pass
