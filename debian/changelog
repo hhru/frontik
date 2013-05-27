@@ -1,3 +1,10 @@
+frontik (2.17.10) unstable; urgency=low
+
+  * HH-30031 proper HTTPError handling in AsyncGroup
+  * HH-28793 fix debug page timeout
+
+ -- Andrey Sumin <an.sumin@hh.ru>  Mon, 27 May 2013 12:50:49 +0400
+
 frontik (2.17.9) unstable; urgency=low
 
   * HH-33260 fix gelf exp logging
