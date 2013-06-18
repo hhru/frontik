@@ -1,3 +1,9 @@
+frontik (2.17.11) unstable; urgency=low
+
+  * HH-33588 always log response.body on parse errors
+
+ -- Andrey Sumin <an.sumin@hh.ru>  Tue, 18 Jun 2013 12:31:38 +0400
+
 frontik (2.17.10) unstable; urgency=low
 
   * HH-30031 proper HTTPError handling in AsyncGroup
