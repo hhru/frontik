@@ -29,12 +29,20 @@ import frontik.future as future
 from tornado.httpserver import HTTPRequest
 
 
-#patching for logging post reqs without body for security
+# this function replaces __repr__ function for tornado's HTTPRequest
+# the difference is in handling body attribute: values of various `password` fields in POST requests
+# are replaced with '***' to secure them from showing up in the logs
 def context_based_repr(self):
     attrs = ["protocol", "host", "method", "uri", "version", "remote_ip"]
-    if self.request.method != "POST" or tornado.options.options.debug:
-        attrs.append("body")
+    secured_body = self.body
+    if self.method == "POST":
+        secure_url_params = ('password', 'passwd', 'b', 'newPassword', 'newPasswordConfirm', 'passwordConfirm')
+        secure_regexp = r'(^|&)({0})(=[^&]+)(?=(&|$))'.format('|'.join(secure_url_params))
+        secured_body = re.sub(secure_regexp,
+                              lambda m: ''.join([m.groups()[0], m.groups()[1], '=***']),
+                              secured_body)
     args = ", ".join(["%s=%r" % (n, getattr(self, n)) for n in attrs])
+    args = ", ".join([args, "body=%r" % secured_body])
     return "%s(%s, headers=%s)" % (
         self.__class__.__name__, args, dict(self.headers))
 
