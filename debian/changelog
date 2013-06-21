@@ -1,3 +1,10 @@
+frontik (2.17.12) unstable; urgency=low
+
+  * HH-34910 append parameters with & in case there are already
+    some parameters in base url
+
+ -- Andrey Sumin <an.sumin@hh.ru>  Fri, 21 Jun 2013 16:13:49 +0400
+
 frontik (2.17.11) unstable; urgency=low
 
   * HH-33588 always log response.body on parse errors
