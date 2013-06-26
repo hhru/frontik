@@ -279,9 +279,12 @@ class PageHandler(tornado.web.RequestHandler):
                 else:
                     response_headers = self._headers
                     original_response = None
-                    self.set_header('Content-Type', 'text/html')
 
                 res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
+
+                if not self.debug.debug_mode.return_response:
+                    self.set_header('Content-Type', 'text/html')
+                    self.set_header('Content-disposition', '')
                 self.set_header('Content-Length', str(len(res)))
                 self._write_buffer = [res]
                 self._status_code = 200
@@ -298,7 +301,7 @@ class PageHandler(tornado.web.RequestHandler):
                         self.log.debug('Profiler component added before %s tag' % match)
 
         except Exception:
-            self.log.debug('Couldnt add profile info')
+            self.log.debug('Couldnt write debug info')
             self._write_buffer = orig_write_buffer
 
         tornado.web.RequestHandler.flush(self, include_footers=False)
