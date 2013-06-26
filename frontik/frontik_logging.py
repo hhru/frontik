@@ -1,14 +1,18 @@
 # -*- coding: utf-8 -*-
 from collections import namedtuple
 import copy
-import tornado.options
 import logging
 from logging.handlers import SysLogHandler
 import traceback
 import weakref
 import time
 import socket
+
+import tornado.options
+from tornado.escape import to_unicode
+
 from lxml.builder import E
+
 try:
     from graypy.handler import GELFHandler, LAN_CHUNK
 
@@ -19,9 +23,11 @@ try:
                 first_record = records_list[0]
             else:
                 return
+
             record_for_gelf = copy.deepcopy(first_record)
-            record_for_gelf.message = "{0} {1} {2} \n".format(record_for_gelf.asctime, record_for_gelf.levelname, record_for_gelf.message)
-            record_for_gelf.short = "{0} {1} {2}".format(method, uri, status_code)
+            record_for_gelf.message = u"{0} {1} {2} \n".format(record_for_gelf.asctime, record_for_gelf.levelname,
+                                                               to_unicode(record_for_gelf.message))
+            record_for_gelf.short = u"{0} {1} {2}".format(method, to_unicode(uri), status_code)
             record_for_gelf.exc_info = exception
             record_for_gelf.levelno = 20
             for record in records_list[1:]:
@@ -32,7 +38,8 @@ try:
                 if record.exc_info is not None:
                     record_for_gelf.exc_info=traceback.format_exc(record.exc_info)
                     record_for_gelf.short += "\n" + traceback.format_exc(record.exc_info)
-                record_for_gelf.message += " {0} {1} {2} \n".format(record.asctime, record.levelname, record.message)
+                record_for_gelf.message += u" {0} {1} {2} \n".format(record.asctime, record.levelname,
+                                                                     to_unicode(record.message))
             if stages is not None:
                 for stage_name, stage_start, stage_delta in stages:
                     setattr(record_for_gelf, stage_name + "_stage", str(int(stage_delta*1000)))
