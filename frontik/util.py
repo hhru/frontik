@@ -219,7 +219,8 @@ def create_watchdog_observer(function, path, logger):
     logger.debug('Watching directory %s', path)
 
     try:
-        from watchdog.observers import Observer
+        # use PollingObserver because of https://github.com/gorakhargosh/watchdog/issues/46
+        from watchdog.observers.polling import PollingObserver as Observer
         from watchdog.events import FileSystemEventHandler
 
         class WatchEventHandler(FileSystemEventHandler):
