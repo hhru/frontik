@@ -207,6 +207,9 @@ class App(object):
 
             if options.debug and watch_dir is not None and callable(watch_function):
                 frontik.util.create_watchdog_observer(watch_function, watch_dir, self.log)
+                # run watch function once after every restart for e.g. recompiling xsl files
+                # after git checkout <something>.
+                watch_function(None, self.log)
 
             self.ph_globals = frontik.handler.PageHandlerGlobals(self.module)
         except:
