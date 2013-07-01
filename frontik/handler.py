@@ -289,7 +289,8 @@ class PageHandler(tornado.web.RequestHandler):
 
                 if not self.debug.debug_mode.return_response:
                     self.set_header('Content-Type', 'text/html')
-                    self.set_header('Content-disposition', '')
+
+                self.set_header('Content-disposition', '')
                 self.set_header('Content-Length', str(len(res)))
                 self._write_buffer = [res]
                 self._status_code = 200
