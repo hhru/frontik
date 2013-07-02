@@ -44,7 +44,8 @@ def context_based_repr(self):
                 secured_body = "\n".join([secured_body,
                                           lines[i] if i < 2 or lines[i - 2].find(header) < 0 else "***"])
         else:
-            secure_url_params = ('password', 'passwd', 'b', 'newPassword', 'newPasswordConfirm', 'passwordConfirm')
+            secure_url_params = ('password', 'passwd', 'b', 'newPassword', 'newPasswordConfirm', 'passwordConfirm',
+                                 'passwordAdd')
             secure_regexp = r'(^|&)({0})(=[^&]+)(?=(&|$))'.format('|'.join(secure_url_params))
             secured_body = re.sub(secure_regexp,
                                   lambda m: ''.join([m.groups()[0], m.groups()[1], '=***']),
