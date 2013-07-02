@@ -63,7 +63,10 @@ class FrontikAppImporter(object):
             execfile(app_module_filename, module.__dict__)
         except:
             del sys.modules[module.__name__]
-            raise
+            exc_class, exc, tb = sys.exc_info()
+            reraised_exception = Exception('failed to load module "{0}", original exception was: {1}'.format(
+                module.__name__, exc or exc_class))
+            raise reraised_exception.__class__, reraised_exception, tb
 
         return module
 
