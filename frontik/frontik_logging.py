@@ -7,6 +7,7 @@ from logging.handlers import SysLogHandler
 import traceback
 import weakref
 import time
+import socket
 from lxml.builder import E
 try:
     from graypy.handler import GELFHandler, LAN_CHUNK
@@ -182,13 +183,16 @@ def bootstrap_all_logging():
     server_log = logging.getLogger("frontik.server")
 
     if tornado.options.options.syslog:
-        syslog_handler = MaxLenSysLogHandler(
-            facility=MaxLenSysLogHandler.facility_names[
-                     tornado.options.options.syslog_facility],
-            address=tornado.options.options.syslog_address,
-            msg_max_length=tornado.options.options.syslog_msg_max_length)
-        syslog_handler.setFormatter(logging.Formatter(tornado.options.options.logformat))
-        logging.getLogger().addHandler(syslog_handler)
+        try:
+            syslog_handler = MaxLenSysLogHandler(
+                facility=MaxLenSysLogHandler.facility_names[
+                         tornado.options.options.syslog_facility],
+                address=tornado.options.options.syslog_address,
+                msg_max_length=tornado.options.options.syslog_msg_max_length)
+            syslog_handler.setFormatter(logging.Formatter(tornado.options.options.logformat))
+            logging.getLogger().addHandler(syslog_handler)
+        except socket.error, e:
+            server_log.error("cannot initialize syslog: %s" % e)
 
     if tornado.options.options.logfile is not None:
         logging.getLogger().addHandler(MonikInfoLoggingHandler())
