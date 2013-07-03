@@ -131,8 +131,9 @@ class PageLogger(logging.LoggerAdapter):
 
         self.handler_ref = weakref.ref(handler)
         self.handler_started = self.handler_ref().handler_started
-        logging.LoggerAdapter.__init__(self, PerRequestLogBufferHandler('frontik.handler'),
-            dict(request_id=logger_name, page=page, handler=self.handler_ref().__module__))
+        logging.LoggerAdapter.__init__(self, PerRequestLogBufferHandler('frontik.handler',
+                                                 level=getattr(logging, tornado.options.options.loglevel.upper())),
+                dict(request_id=logger_name, page=page, handler=self.handler_ref().__module__))
 
         self._time = self.handler_started
         self.stages = []
