@@ -5,6 +5,7 @@ from tornado.httpclient import HTTPResponse, HTTPClient
 from cStringIO import StringIO
 import tornado.httpserver
 from tornado.httputil import HTTPHeaders
+from tornado.ioloop import IOLoop
 import functools
 import tornado.web
 from urlparse import urlparse, parse_qs
@@ -153,6 +154,9 @@ class ExpectingHandler(object):
         def write(s, callback=None):
             if callback:
                 self._callback_heap.append((None, callback))
+
+        IOLoop.instance().add_callback = lambda callback: self._callback_heap.append((None, callback))
+
 
         self.request.write = write
         self.request.finish = finish
