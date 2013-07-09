@@ -74,14 +74,6 @@ class FileCache(object):
 
         return ret
 
-    def invalidate(self, filename):
-        # naive cache invalidation, maybe use xml_util.get_xsl_includes and reverse includes index instead
-        if len(self.cache):
-            log.debug('Files changed, invalidating cache')
-            keys = self.cache.keys()
-            for k in keys:
-                del self.cache[k]
-
 
 def _source_comment(src):
     return etree.Comment('Source: {0}'.format(frontik.util.asciify_url(src).replace('--', '%2D%2D')))
@@ -120,17 +112,9 @@ class InvalidOptionCache(object):
 
 def make_file_cache(option_name, option_value, fun, max_len=None, step=None, deepcopy=False):
     if option_value:
-        file_cache = FileCache(option_value, fun, max_len, step, deepcopy)
-
-        if tornado.options.options.debug:
-            def __watch_function(event, logger):
-                # naive watch implementation, any modified file will invalidate the cache
-                if event.event_type == 'modified':
-                    file_cache.invalidate(os.path.relpath(event.src_path, option_value))
-
-            frontik.util.create_watchdog_observer(__watch_function, option_value, log)
-
-        return file_cache
+        # disable cache in development environment
+        max_len = None if tornado.options.options.debug else max_len
+        return FileCache(option_value, fun, max_len, step, deepcopy)
     else:
         return InvalidOptionCache(option_name)
 
