@@ -263,7 +263,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         tornado.web.RequestHandler.finish(self, chunk)
 
-    def flush(self, include_footers=False):
+    def flush(self, include_footers=False, **kwargs):
         orig_write_buffer = self._write_buffer
         try:
             # if debug_mode is on: ignore any output we intended to write
@@ -310,8 +310,7 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.debug('Couldnt write debug info')
             self._write_buffer = orig_write_buffer
 
-        tornado.web.RequestHandler.flush(self, include_footers=False)
-
+        tornado.web.RequestHandler.flush(self, include_footers=False, **kwargs)
         self.log.request_finish_hook()
 
     def get_page(self):
