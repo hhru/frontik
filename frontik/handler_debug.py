@@ -20,15 +20,6 @@ import frontik.xml_util
 debug_log = logging.getLogger('XML_debug')
 
 
-def try_get_body_repr(body):
-    try:
-        body_repr = repr(body) if body is not None else ''
-    except Exception:
-        debug_log.error('Cannot get body repr')
-        body_repr = 'Got exception while getting body repr'
-    return body_repr
-
-
 def response_to_xml(response):
     time_info = etree.Element('time_info')
     content_type = response.headers.get('Content-Type', '')
@@ -53,7 +44,7 @@ def response_to_xml(response):
             body = etree.fromstring(response.body)
     except Exception:
         debug_log.exception('Cannot parse response body')
-        body = try_get_body_repr(response.body)
+        body = repr(response.body)
 
     try:
         for name, value in response.time_info.iteritems():
@@ -95,7 +86,7 @@ def request_to_xml(request):
                         body.append(E.param(value.decode("utf-8"), name=name))
         except Exception:
             debug_log.exception('Cannot parse request body')
-            body.text = try_get_body_repr(request.body)
+            body.text = repr(request.body)
 
     try:
         request = E.request(
@@ -116,7 +107,7 @@ def request_to_xml(request):
         )
     except Exception:
         debug_log.exception('Cannot parse request body')
-        body.text = try_get_body_repr(request.body)
+        body.text = repr(request.body)
         request = E.request(body)
     return request
 
