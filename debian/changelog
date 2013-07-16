@@ -1,3 +1,14 @@
+frontik (2.17.13) unstable; urgency=low
+
+  * HH-32688 do not fail to start in case syslog is down and print
+    errormessage to server_log about the incident
+  * HH-30380 show original Content-Type and -Disposition on debug page, but
+    replace it in actual output
+  * HH-33539 httpreq class patching to remove body logging from POST reqs
+  * HH-34878 add new supervisor options into example config
+
+ -- Aleksey Rybalkin <aleksey@rybalkin.org>  Tue, 16 Jul 2013 13:32:13 +0400
+
 frontik (2.17.12) unstable; urgency=low
 
   * HH-34910 append parameters with & in case there are already
