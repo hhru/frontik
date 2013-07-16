@@ -180,7 +180,7 @@ class ExpectingHandler(object):
 
         self._handler = self.app(tornado_application, self.request, )
         self._handler.http_client = TestHttpClient(self)
-        self._handler.get_error_html = lambda handler, exception : None
+        self._handler.get_error_html = lambda *args, **kwargs: None
 
         def flush(include_footers=False, callback=None):
             if callback:
