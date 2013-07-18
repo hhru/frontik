@@ -14,7 +14,6 @@ import frozen_dict
 
 import sys
 import os
-import os.path
 from os.path import dirname
 from urllib import unquote_plus as unquote
 
@@ -103,6 +102,7 @@ class ServiceMock(object):
             destination_route = r if isinstance(r, raw_route) else route(r)
             if route_less_or_equal_than(destination_route, route_of_incoming_request):
                 result = self.get_result(req, self.routes[r])
+                result.request = req
                 if self.strict:
                     del self.routes[r]
                 return result
