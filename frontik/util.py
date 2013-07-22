@@ -45,7 +45,7 @@ def make_url(base, **query_args):
     qs = make_qs(query_args)
 
     if qs:
-        return base + '?' + qs
+        return base + ('&' if '?' in base else '?') + qs
     else:
         return base
 

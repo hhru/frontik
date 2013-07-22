@@ -1,6 +1,7 @@
 host = '0.0.0.0'
 port = 8080
 workers_count = 1
+supervisor_sigterm_timeout = 4
 
 daemonize = True
 
