@@ -15,7 +15,6 @@ import frozen_dict
 
 import sys
 import os
-import os.path
 from os.path import dirname
 from urllib import unquote_plus as unquote
 
@@ -104,6 +103,7 @@ class ServiceMock(object):
             destination_route = r if isinstance(r, raw_route) else route(r)
             if route_less_or_equal_than(destination_route, route_of_incoming_request):
                 result = self.get_result(req, self.routes[r])
+                result.request = req
                 if self.strict:
                     del self.routes[r]
                 return result
@@ -184,7 +184,7 @@ class ExpectingHandler(object):
 
         self._handler = self.app(tornado_application, self.request, )
         self._handler.http_client = TestHttpClient(self)
-        self._handler.get_error_html = lambda handler, exception : None
+        self._handler.get_error_html = lambda *args, **kwargs: None
 
         def flush(include_footers=False, callback=None):
             if callback:
