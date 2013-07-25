@@ -35,21 +35,14 @@ from tornado.httpserver import HTTPRequest
 def context_based_repr(self):
     attrs = ["protocol", "host", "method", "uri", "version", "remote_ip"]
     secured_body = self.body
-    if self.method == "POST":
-        if self.headers.get("Content-Type", "").startswith("multipart/form-data"):
-            lines = self.body.split("\n")
-            header = 'Content-Disposition: form-data; name="password"'
-            for i in xrange(len(lines)):
-                if i > 1 and lines[i - 2].find(header) > -1:
-                    lines[i] = "***"
-            secured_body = "\n".join(lines)
-        else:
-            secure_url_params = ('password', 'passwd', 'b', 'newPassword', 'newPasswordConfirm', 'passwordConfirm',
-                                 'passwordAdd')
-            secure_regexp = r'(^|&)({0})(=[^&]+)(?=(&|$))'.format('|'.join(secure_url_params))
-            secured_body = re.sub(secure_regexp,
-                                  lambda m: ''.join([m.groups()[0], m.groups()[1], '=***']),
-                                  secured_body)
+    # ignore multipart/form-data to not slow down file uploads
+    if self.method == "POST" and not self.headers.get("Content-Type", "").startswith("multipart/form-data"):
+        secure_url_params = ('password', 'passwd', 'b', 'newPassword', 'newPasswordConfirm', 'passwordConfirm',
+                             'passwordAdd')
+        secure_regexp = r'(^|&)({0})(=[^&]+)(?=(&|$))'.format('|'.join(secure_url_params))
+        secured_body = re.sub(secure_regexp,
+                              lambda m: ''.join([m.groups()[0], m.groups()[1], '=***']),
+                              secured_body)
     args = ", ".join(["%s=%r" % (n, getattr(self, n)) for n in attrs])
     args = ", ".join([args, "body=%r" % secured_body])
     return "%s(%s, headers=%s)" % (
