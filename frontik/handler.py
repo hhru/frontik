@@ -96,14 +96,10 @@ AsyncGroup = frontik.async.AsyncGroup
 class HTTPError(tornado.web.HTTPError):
     """An exception that will turn into an HTTP error response."""
     def __init__(self, status_code, log_message=None, headers=None, *args, **kwargs):
-        if headers is None:
-            headers = {}
-        for data in ["text", "xml", "xsl"]:
+        tornado.web.HTTPError.__init__(self, status_code, log_message, *args)
+        self.headers = headers if headers is not None else {}
+        for data in ('text', 'xml', 'xsl'):
             setattr(self, data, kwargs.setdefault(data, None))
-        self.status_code = status_code
-        self.log_message = log_message
-        self.headers = headers
-        self.args = args
 
 
 class Stats(object):
@@ -196,6 +192,18 @@ class PageHandler(tornado.web.RequestHandler):
 
             if not self.debug_access:
                 raise HTTPError(401, headers={'WWW-Authenticate': 'Basic realm="Secure Area"'})
+
+    def decode_argument(self, value, name=None):
+        try:
+            return super(PageHandler, self).decode_argument(value, name)
+        except UnicodeDecodeError:
+            self.log.exception('Cannot decode unicode query parameter, trying other charsets')
+
+        try:
+            return frontik.util.decode_string_from_charset(value)
+        except Exception:
+            self.log.exception('Cannot decode query parameter, falling back to empty string')
+            return ''
 
     def get_error_html(self, status_code, **kwargs):
         if self._prepared and self.debug.debug_mode.write_debug:

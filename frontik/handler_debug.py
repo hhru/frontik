@@ -10,21 +10,14 @@ import copy
 from datetime import datetime
 import lxml.etree as etree
 from lxml.builder import E
+from tornado.escape import to_unicode
 import tornado.options
 
 import frontik.util
+from frontik.util import decode_string_from_charset
 import frontik.xml_util
 
-log = logging.getLogger('XML_debug')
-
-
-def try_get_body_repr(body):
-    try:
-        body_repr = repr(body) if body is not None else ''
-    except Exception:
-        log.error('Could not get body repr')
-        body_repr = 'Got exception while getting body repr'
-    return body_repr
+debug_log = logging.getLogger('XML_debug')
 
 
 def response_to_xml(response):
@@ -36,41 +29,28 @@ def response_to_xml(response):
     else:
         charset = 'utf-8'
 
-    def try_decode_body(charset):
-        decoded_body = None
-        try_charsets = (charset, 'cp1251')
-        for c in try_charsets:
-            try:
-                decoded_body = response.body.decode(c)
-                break
-            except UnicodeDecodeError:
-                continue
-
-        if decoded_body is None:
-            raise Exception('Could not decode response body (tried: %s)', ', '.join(try_charsets))
-
-        return decoded_body
+    try_charsets = (charset, 'cp1251')
 
     try:
         if 'text/html' in content_type:
-            body = try_decode_body(charset).replace('\n', '\\n').replace("'", "\\'")
+            body = decode_string_from_charset(response.body, try_charsets).replace('\n', '\\n').replace("'", "\\'")
         elif 'json' in content_type:
             body = json.dumps(json.loads(response.body), sort_keys=True, indent=4)
         elif 'protobuf' in content_type:
             body = response.body.encode('hex')
         elif 'text/plain' in content_type:
-            body = try_decode_body(charset)
+            body = decode_string_from_charset(response.body, try_charsets)
         else:
             body = etree.fromstring(response.body)
     except Exception:
-        log.exception('Cant parse response body')
-        body = try_get_body_repr(response.body)
+        debug_log.exception('Cannot parse response body')
+        body = repr(response.body)
 
     try:
         for name, value in response.time_info.iteritems():
             time_info.append(E.time(str(value), name=name))
     except Exception:
-        log.exception('Cant append time info')
+        debug_log.exception('Cannot append time info')
 
     try:
         response = E.response(
@@ -84,8 +64,8 @@ def response_to_xml(response):
             time_info,
         )
     except Exception:
-        log.exception('Cant log response info')
-        response = E.response(E.body('Cant log response info'))
+        debug_log.exception('Cannot log response info')
+        response = E.response(E.body('Cannot log response info'))
     return response
 
 
@@ -105,8 +85,8 @@ def request_to_xml(request):
                     for value in values:
                         body.append(E.param(value.decode("utf-8"), name=name))
         except Exception:
-            log.exception('Cant parse request body')
-            body.text = try_get_body_repr(request.body)
+            debug_log.exception('Cannot parse request body')
+            body.text = repr(request.body)
 
     try:
         request = E.request(
@@ -126,18 +106,22 @@ def request_to_xml(request):
                 ))
         )
     except Exception:
-        log.exception('Cant parse request body')
-        body.text = try_get_body_repr(request.body)
+        debug_log.exception('Cannot parse request body')
+        body.text = repr(request.body)
         request = E.request(body)
     return request
 
 
-def _params_to_xml(url):
+def _params_to_xml(url, logger=debug_log):
     params = etree.Element('params')
     query = frontik.util.get_query_parameters(url)
     for name, values in query.iteritems():
         for value in values:
-            params.append(E.param(unicode(value, 'utf-8'), name=name))
+            try:
+                params.append(E.param(to_unicode(value), name=name))
+            except UnicodeDecodeError:
+                logger.exception('Cannot decode parameter value')
+                params.append(E.param(repr(value), name=name))
     return params
 
 
@@ -145,7 +129,8 @@ def _headers_to_xml(request_or_response_headers):
     headers = etree.Element('headers')
     for name, value in request_or_response_headers.iteritems():
         if name != 'Cookie':
-            headers.append(E.header(str(value), name=name))
+            str_value = value if isinstance(value, basestring) else str(value)
+            headers.append(E.header(to_unicode(str_value), name=name))
     return headers
 
 
@@ -158,19 +143,18 @@ def _cookies_to_xml(request_headers):
     return cookies
 
 
-class DebugPageHandler(logging.Handler):
+class DebugPageLogHandler(logging.Handler):
     def __init__(self):
         """
-        Initializes the instance - basically setting the formatter to None
-        and the filter list to empty.
+        Does the same as logging.Handler.__init__, except for adding handler in global handlers list
         """
         logging.Filterer.__init__(self)
         self.level = logging.DEBUG
         self.formatter = None
-        #get the module data lock, as we're updating a shared structure.
+        # get the module data lock, as we're updating a shared structure.
         self.createLock()
 
-        self.log_data = etree.Element("log")
+        self.log_data = etree.Element('log')
 
     FIELDS = ['created', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs',
               'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
@@ -242,7 +226,6 @@ class PageHandlerDebug(object):
 
             self.write_debug = tornado.options.options.debug or self.enabled or self.profile
 
-
     def __init__(self, handler):
         self.handler = weakref.proxy(handler)
         self.debug_mode = PageHandlerDebug.DebugMode(self.handler)
@@ -254,7 +237,7 @@ class PageHandlerDebug(object):
             self.handler.log.debug('debug mode is on')
 
         if self.debug_mode.write_debug:
-            self.debug_log_handler = DebugPageHandler()
+            self.debug_log_handler = DebugPageLogHandler()
             self.handler.log.addHandler(self.debug_log_handler)
             self.handler.log.debug('using debug mode logging')
 
@@ -301,7 +284,7 @@ class PageHandlerDebug(object):
 
         debug_log_data.append(frontik.app.get_frontik_and_apps_versions())
         debug_log_data.append(E.request(
-            _params_to_xml(self.handler.request.uri),
+            _params_to_xml(self.handler.request.uri, self.handler.log),
             _headers_to_xml(self.handler.request.headers),
             _cookies_to_xml(self.handler.request.headers)))
         debug_log_data.append(E.response(_headers_to_xml(response_headers)))

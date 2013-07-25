@@ -49,6 +49,22 @@ def make_url(base, **query_args):
     else:
         return base
 
+
+def decode_string_from_charset(string, charsets=('cp1251', 'koi8_r')):
+    decoded_body = None
+    for c in charsets:
+        try:
+            decoded_body = string.decode(c)
+            break
+        except UnicodeDecodeError:
+            continue
+
+    if decoded_body is None:
+        raise Exception('Could not decode string (tried: %s)', ', '.join(charsets))
+
+    return decoded_body
+
+
 def get_query_parameters(url):
     url = 'http://' + url if not re.match(r'[a-z]+://.+\??.*', url, re.IGNORECASE) else url
     return urlparse.parse_qs(urlparse.urlparse(url).query, True)
