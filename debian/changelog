@@ -1,3 +1,10 @@
+frontik (2.17.15) unstable; urgency=low
+
+  * HH-35564 try to parse query params from different encodings
+  * HH-33539 ignore multipart/form-data requests while removing password values from bodies of POST requests
+
+ -- Andrey Sumin <an.sumin@hh.ru>  Fri, 26 Jul 2013 17:10:48 +0400
+
 frontik (2.17.14) unstable; urgency=low
 
   * HH-35383 add IOLoop.instance().add_callback support
