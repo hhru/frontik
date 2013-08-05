@@ -1,12 +1,12 @@
 import functools
 import threading
 import Queue
+import logging
+
 import tornado.ioloop
 import tornado.options
 
-import logging
-
-log = logging.getLogger('frontik.jobs')
+jobs_log = logging.getLogger('frontik.jobs')
 
 
 def _schedule_cb_result(cb, result):
@@ -22,17 +22,29 @@ def queue_worker(queue):
             (prio, (func, cb, exception_cb)) = queue.get(timeout=10)
         except Queue.Empty:
             if tornado.options.options.warn_no_jobs:
-                log.warn('No job in 10 secs')
+                jobs_log.warn('No job in 10 secs')
             continue
-        except Exception, e:
-            log.exception('Cannot get new job')
+        except Exception:
+            jobs_log.exception('Cannot get new job')
             continue
 
         try:
             return_result(cb, func())
         except Exception, e:
-            log.exception('Cannot perform job')
+            jobs_log.exception('Cannot perform job')
             reraise(exception_cb, e)
+
+
+class IOLoopExecutor(object):
+    @staticmethod
+    def add_job(func, cb, exception_cb, prio=None):
+        def __wrapper():
+            try:
+                cb(func())
+            except Exception, e:
+                exception_cb(e)
+
+        tornado.ioloop.IOLoop.instance().add_callback(__wrapper)
 
 
 class ThreadPoolExecutor(object):
@@ -40,22 +52,21 @@ class ThreadPoolExecutor(object):
 
     def __init__(self, pool_size):
         assert pool_size > 0
-        self.log = log
         self.events = Queue.PriorityQueue()
 
-        self.log.debug('pool size: '+str(pool_size))
+        jobs_log.debug('pool size: ' + str(pool_size))
         self.workers = [threading.Thread(target=functools.partial(queue_worker, self.events))
                         for i in range(pool_size)]
         [i.setDaemon(True) for i in self.workers]
         [i.start() for i in self.workers]
-        self.log.debug('active threads count = ' + str(threading.active_count()))
+        jobs_log.debug('active threads count = ' + str(threading.active_count()))
 
     def add_job(self, func, cb, exception_cb, prio=10):
         try:
             ThreadPoolExecutor.count += 1
             self.events.put(((prio, ThreadPoolExecutor.count), (func, cb, exception_cb)))
         except Exception, e:
-            log.exception('Cannot put job to queue')
+            jobs_log.exception('Cannot put job to queue')
             reraise(exception_cb, e)
 
 _executor = None

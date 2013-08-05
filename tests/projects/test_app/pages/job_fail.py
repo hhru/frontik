@@ -17,4 +17,4 @@ class Page(frontik.handler.PageHandler):
         def exception_cb(e):
             raise e
 
-        self.ph_globals.executor.add_job(job, self.async_callback(success_cb), self.async_callback(exception_cb))
+        self.xml.executor.add_job(job, self.async_callback(success_cb), self.async_callback(exception_cb))
