@@ -21,6 +21,7 @@ tornado.options.define('timeout_multiplier', 1.0, float)
 tornado.options.define('long_request_timeout', None, float)
 tornado.options.define('kill_long_requests', False, bool)
 
+tornado.options.define('executor_type', 'threaded', str)  # available options: 'threaded', 'ioloop'
 tornado.options.define('executor_pool_size', 1, int)
 
 tornado.options.define('graylog', False, bool)
