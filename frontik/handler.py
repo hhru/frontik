@@ -7,6 +7,7 @@ from itertools import imap
 import simplejson as json
 import re
 import time
+import copy
 import frontik_logging
 
 import lxml.etree as etree
@@ -21,10 +22,10 @@ import frontik.auth
 import frontik.util
 import frontik.xml_util
 import frontik.jobs
-import frontik.handler_xml
 import frontik.handler_whc_limit
 import frontik.handler_debug
 import frontik.future as future
+import frontik.xsl_producer
 
 from tornado.httpserver import HTTPRequest
 
@@ -116,12 +117,10 @@ class PageHandlerGlobals(object):
     def __init__(self, app_package):
         self.config = app_package.config
 
-        self.xml = frontik.handler_xml.PageHandlerXMLGlobals(app_package.config)
+        self.xml = frontik.xml_util.PageHandlerXMLGlobals(app_package.config)
 
         self.http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(
             max_clients=200, max_simultaneous_connections=200)
-
-        self.executor = frontik.jobs.executor()
 
 
 class PageHandler(tornado.web.RequestHandler):
@@ -144,8 +143,12 @@ class PageHandler(tornado.web.RequestHandler):
         self.ph_globals = ph_globals
         self.config = self.ph_globals.config
         self.http_client = self.ph_globals.http_client
-
         self.debug_access = None
+
+        if hasattr(self.config, 'postprocessor'):
+            self._postprocessors = [self.config.postprocessor]
+        else:
+            self._postprocessors = []
 
         self.text = None
 
@@ -157,7 +160,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.debug = frontik.handler_debug.PageHandlerDebug(self)
         self.log.info('page module: %s', self.__module__)
 
-        self.xml = frontik.handler_xml.PageHandlerXML(self)
+        self.xml = frontik.xsl_producer.XslProducer(self)
         self.doc = self.xml.doc  # backwards compatibility for self.doc.put
 
         if self.get_argument('nopost', None) is not None:
@@ -173,8 +176,7 @@ class PageHandler(tornado.web.RequestHandler):
                 time.time() + tornado.options.options.long_request_timeout, self._handle_long_request)
 
         self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page_cb),
-                                                     name='finish',
-                                                     log=self.log.debug)
+                                                     name='finish', log=self.log.debug)
         self._prepared = True
 
     def require_debug_access(self, login=None, passwd=None):
@@ -207,7 +209,7 @@ class PageHandler(tornado.web.RequestHandler):
         headers = {} if headers is None else headers
         exception = kwargs.get('exception', None)
         finish_with_exception = exception is not None and (
-            199 < status_code < 400 or
+            199 < status_code < 400 or  # raise HTTPError(200) to finish page immediately
             getattr(exception, 'xml', None) is not None or getattr(exception, 'text', None) is not None)
 
         if finish_with_exception:
@@ -257,11 +259,31 @@ class PageHandler(tornado.web.RequestHandler):
     def options(self, *args, **kwargs):
         raise HTTPError(405, headers={"Allow": "GET, POST"})
 
+    def __make_postprocessors_chain(self, tpl):
+        def __chain_postprocessor(postprocessors, start_time, tpl):
+            if start_time is not None:
+                previous_pp = self._postprocessors[-len(postprocessors)]
+                time_delta = (time.time() - start_time) * 1000
+                self.log.debug('Finished postprocessor "{0!r}" in {1}ms'.format(previous_pp, time_delta))
+
+            postprocessor = postprocessors.pop(0)
+            self.log.debug('Started postprocessor "{0!r}"'.format(postprocessor))
+            return postprocessor(self, tpl, partial(__chain_postprocessor, postprocessors, time.time()))
+
+        self.log.debug('Applying postprocessors: {0!s}'.format(self._postprocessors))
+        finish_wrapper = lambda handler, result, cb: self.finish(result)
+        return __chain_postprocessor(self._postprocessors + [finish_wrapper], None, tpl)
+
+    def add_postprocessor(self, postprocessor):
+        self._postprocessors.append(postprocessor)
+
     def finish(self, chunk=None):
         if hasattr(self, 'finish_timeout_handle'):
             tornado.ioloop.IOLoop.instance().remove_timeout(self.finish_timeout_handle)
 
         if not self._finished:
+            self.log.stage_tag('postprocess')
+
             if hasattr(self, 'whc_limit'):
                 self.whc_limit.release()
             self.log.process_stages(self._status_code)
@@ -462,22 +484,15 @@ class PageHandler(tornado.web.RequestHandler):
             data = etree.Element('error',
                                  dict(url=response.effective_url, reason=str(response.error), code=str(response.code)))
         except ValueError:
-            self.log.warn("Could not add information about response head in debug, can't be serialized in xml.")
+            self.log.warn("Cannot add information about response head in debug, can't be serialized in xml.")
 
         if response.body:
             try:
                 data.append(etree.Comment(response.body.replace("--", "%2D%2D")))
             except ValueError:
-                self.log.warn("Could not add debug info in XML comment with unparseable response.body. non-ASCII response.")
+                self.log.warn('Cannot add debug info in XML comment with unparseable response.body: non-ASCII response')
 
         return data
-
-    ###
-
-    def set_plaintext_response(self, text):
-        self.text = text
-
-    ###
 
     def finish_page(self):
         self.finish_group.try_finish()
@@ -487,45 +502,29 @@ class PageHandler(tornado.web.RequestHandler):
 
     def _finish_page_cb(self):
         if not self._finished:
-            self.log.stage_tag("page")
-
-            if self.text is not None:
-                self._finish_with_postprocessor(self._prepare_finish_plaintext())
+            self.log.stage_tag('page')
+            producer = self.xml if self.text is None else self._plaintext_producer
+            if self.apply_postprocessor:
+                producer(callback=self.__make_postprocessors_chain)
             else:
-                self.xml.finish_xml(self.async_callback(self._finish_with_postprocessor))
+                producer(callback=self.finish)
         else:
             self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
-
-    def _finish_with_postprocessor(self, res):
-        if hasattr(self.config, 'postprocessor'):
-            if self.apply_postprocessor:
-                self.log.debug('applying postprocessor')
-                self.async_callback(self.config.postprocessor)(self, res, self.async_callback(partial(self._wait_postprocessor, time.time())))
-            else:
-                self.log.debug('skipping postprocessor')
-                self.finish(res)
-        else:
-            self.finish(res)
-
-    def _wait_postprocessor(self, start_time, data):
-        self.log.stage_tag("postprocess")
-        self.log.debug("applied postprocessor '%s' in %.2fms",
-                       self.config.postprocessor, (time.time() - start_time) * 1000)
-        self.finish(data)
-
-    def _prepare_finish_plaintext(self):
-        self.log.debug("finishing plaintext")
-        return self.text
-
-    ###
-
-    def xml_from_file(self, filename):
-        return self.xml.xml_from_file(filename)
-
-    def set_xsl(self, filename):
-        return self.xml.set_xsl(filename)
 
     def _handle_long_request(self):
         self.log.warning("long request detected (uri: {0})".format(self.request.uri))
         if tornado.options.options.kill_long_requests:
             self.send_error()
+
+    def _plaintext_producer(self, callback):
+        self.log.debug('finishing plaintext')
+        callback(self.text)
+
+    def set_plaintext_response(self, text):
+        self.text = text
+
+    def xml_from_file(self, filename):
+        return self.ph_globals.xml.xml_cache.load(filename, log=self.log)
+
+    def set_xsl(self, filename):
+        return self.xml.set_xsl(filename)
