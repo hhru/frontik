@@ -140,6 +140,7 @@ class ExpectingHandler(object):
         assert frontik.options # silence code style checkers
         # prevent log clubbering
         tornado.options.options.warn_no_jobs = False
+        tornado.options.options.handlers_count = 1000000
 
         # handler stuff
         from frontik.app import App
