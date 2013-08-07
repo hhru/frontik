@@ -1,3 +1,9 @@
+frontik (2.17.16) unstable; urgency=low
+
+  * HH-36008 raise max number of working handlers in testing framework
+
+ -- Anton Ivanov <an.ivanov@hh.ru>  Wed, 07 Aug 2013 10:50:51 +0400
+
 frontik (2.17.15) unstable; urgency=low
 
   * HH-35564 try to parse query params from different encodings
