@@ -208,30 +208,29 @@ class PageHandler(tornado.web.RequestHandler):
             debug_is_finished = not self.debug.debug_mode.inherited
             return self.debug.get_debug_page(status_code, self._headers, finish_debug=debug_is_finished)
         else:
-            #if not prepared (for example, working handlers count limit) or not in
-            #debug mode use default tornado error page
+            # if not prepared (for example, working handlers count limit) or not in
+            # debug mode use default tornado error page
             return super(PageHandler, self).get_error_html(status_code, **kwargs)
 
     def send_error(self, status_code=500, headers=None, **kwargs):
-        if headers is None:
-            headers = {}
-        exception = kwargs.get("exception", None)
-        need_finish = exception is not None and (199 < status_code < 400 or
-            not(getattr(exception, "xml", None) is None and getattr(exception, "text", None) is None))
+        headers = {} if headers is None else headers
+        exception = kwargs.get('exception', None)
+        finish_with_exception = exception is not None and (
+            getattr(exception, 'xml', None) is not None or getattr(exception, 'text', None) is not None)
 
-        if need_finish:
+        if finish_with_exception:
             self.set_status(status_code)
             for (name, value) in headers.iteritems():
                 self.set_header(name, value)
 
-            if getattr(exception, "text", None) is not None:
+            if getattr(exception, 'text', None) is not None:
                 self.text = exception.text
-            if getattr(exception, "xml", None) is not None:
+            elif getattr(exception, 'xml', None) is not None:
                 self.doc.put(exception.xml)
-                if getattr(exception, "xsl", None) is not None:
+                if getattr(exception, 'xsl', None) is not None:
                     self.set_xsl(exception.xsl)
-            self._force_finish()
 
+            self._force_finish()
         else:
             return super(PageHandler, self).send_error(status_code, headers=headers, **kwargs)
 
@@ -297,7 +296,7 @@ class PageHandler(tornado.web.RequestHandler):
                 res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
 
                 if not self.debug.debug_mode.return_response:
-                    self.set_header('Content-Type', 'text/html')
+                    self.set_header('Content-Type', 'text/html; charset=UTF-8')
 
                 self.set_header('Content-disposition', '')
                 self.set_header('Content-Length', str(len(res)))

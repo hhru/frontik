@@ -95,14 +95,66 @@
                     <xsl:value-of select="concat($loglevel,' ',@msg)"/>
                 </span>
             </div>
-            <xsl:apply-templates select="@exc_text"/>
+            <xsl:apply-templates select="exception"/>
+        </div>
+        <xsl:apply-templates select="exception/trace"/>
+    </xsl:template>
+
+    <xsl:template match="exception">
+        <pre class="exception">
+            <xsl:value-of select="text/text()"/>
+        </pre>
+    </xsl:template>
+
+    <xsl:template match="exception/trace">
+        <div class="textentry m-textentry__expandable">
+            <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
+                Exception traceback
+            </div>
+            <div class="details">
+                <xsl:apply-templates select="step"/>
+            </div>
         </div>
     </xsl:template>
 
-    <xsl:template match="@exc_text">
-        <pre class="exception">
-            <xsl:value-of select="."/>
+    <xsl:template match="step">
+        <pre class="trace-file">
+            <xsl:value-of select="file/text()"/>
         </pre>
+        <div class="textentry m-textentry__expandable trace-locals">
+            <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
+                <span class="trace-locals__caption">Show/hide locals</span>
+            </div>
+            <div class="details">
+                <pre class="trace-locals__text">
+                    <xsl:value-of select="locals/text()"/>
+                </pre>
+            </div>
+        </div>
+        <table class="trace-lines">
+            <tr>
+                <td class="trace-lines__column"><xsl:apply-templates select="lines/line" mode="line-numbers"/></td>
+                <td class="trace-lines__column"><xsl:apply-templates select="lines/line" mode="line-text"/></td>
+            </tr>
+        </table>
+    </xsl:template>
+
+    <xsl:template match="line" mode="line-numbers">
+        <span class="trace-lines__line">
+            <xsl:if test="@selected = 'true'">
+                <xsl:attribute name="class">trace-lines__line selected</xsl:attribute>
+            </xsl:if>
+            <xsl:value-of select="line/text()"/>
+        </span>
+    </xsl:template>
+
+    <xsl:template match="line" mode="line-text">
+        <span class="trace-lines__line">
+            <xsl:if test="@selected = 'true'">
+                <xsl:attribute name="class">trace-lines__line selected</xsl:attribute>
+            </xsl:if>
+            <xsl:value-of select="text/text()"/>
+        </span>
     </xsl:template>
 
     <xsl:template match="entry[contains(@msg, 'finish group') and /log/@mode != 'full']"/>
@@ -436,9 +488,51 @@
                 font-size:.8em;
                 color:#999;
             }
-            .exception{
-                margin-bottom:20px;
-                color:#c00;
+            .trace-file {
+                margin-top: 12px;
+                padding: 1px 4px;
+                background: #e0e0ff;
+            }
+            .trace-locals {
+                margin-top: 8px;
+                margin-left: 12px;
+                margin-bottom: 0;
+                padding: 0;
+                padding-top: 2px;
+            }
+                .trace-locals__caption {
+                    border-bottom: 1px dashed #000;
+                }
+                .trace-locals__text {
+                    margin-top: 10px;
+                    margin-left: 12px;
+                    padding: 4px;
+                    background: #fff;
+                    font-family: monospace;
+                }
+            .trace-lines {
+                margin: 10px 0;
+                margin-left: 12px;
+                padding: 4px;
+                border-collapse: collapse;
+                background: #fff;
+            }
+                .trace-lines__column {
+                    margin: 0;
+                    padding: 2px 4px;
+                }
+                .trace-lines__line {
+                    display: block;
+                    padding: 1px 0;
+                    font-family: monospace;
+                    white-space: pre;
+                    clear: both;
+                }
+                    .trace-lines__line.selected {
+                        color: #c00;
+                    }
+            .exception {
+                color: #c00;
             }
             .iframe{
                 width:100%;
