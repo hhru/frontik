@@ -7,6 +7,7 @@ import logging
 
 log = logging.getLogger('frontik.imp')
 
+
 def gen_module_name(app_name, module_name=None):
     if module_name:
         return 'frontik.imp.{0}.{1}'.format(app_name, module_name)
@@ -23,16 +24,16 @@ class FrontikAppImporter(object):
         module_name_as_path = os.path.join(*module_name.split('.'))
 
         app_module_probable_filenames = [
-                os.path.join(self.root, module_name_as_path, '__init__.py'),
-                os.path.join(self.root, module_name_as_path, 'index.py'),
-                os.path.join(self.root, '{0}.py'.format(module_name_as_path))]
+            os.path.join(self.root, module_name_as_path, '__init__.py'),
+            os.path.join(self.root, module_name_as_path, 'index.py'),
+            os.path.join(self.root, '{0}.py'.format(module_name_as_path))]
 
         return app_module_probable_filenames
 
     def imp_app_module(self, module_name):
-        '''
+        """
         module_path :: 'pages.index'
-        '''
+        """
         app_module_name = gen_module_name(self.name, module_name)
 
         if app_module_name in sys.modules:
@@ -46,10 +47,10 @@ class FrontikAppImporter(object):
                 break
         else:
             raise ImportError(
-                    '{module_name} module was not found in {app_name}, {app_module_filenames} expected'.format(
-                            module_name=module_name,
-                            app_name=self.name,
-                            app_module_filenames=app_module_probable_filenames))
+                '{module_name} module was not found in {app_name}, {app_module_filenames} expected'.format(
+                    module_name=module_name,
+                    app_name=self.name,
+                    app_module_filenames=app_module_probable_filenames))
 
         log.debug('importing %s from %s', app_module_name, app_module_filename)
 
@@ -63,7 +64,10 @@ class FrontikAppImporter(object):
             execfile(app_module_filename, module.__dict__)
         except:
             del sys.modules[module.__name__]
-            raise
+            exc_class, exc, tb = sys.exc_info()
+            reraised_exception = Exception('failed to load module "{0}", original exception was: {1}'.format(
+                module.__name__, exc or exc_class))
+            raise reraised_exception.__class__, reraised_exception, tb
 
         return module
 
@@ -79,4 +83,5 @@ class FrontikAppImporter(object):
             setattr(prev_mod, sub_name, sub_module)
 
             prev_mod = sub_module
+
         return sub_module
