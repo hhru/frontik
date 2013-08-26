@@ -1,3 +1,9 @@
+frontik (2.17.18) unstable; urgency=low
+
+  * HH-32140 xsl watchdog fixes
+
+ -- Aleksey Rybalkin <aleksey@rybalkin.org>  Mon, 26 Aug 2013 11:32:07 +0400
+
 frontik (2.17.17) unstable; urgency=low
 
   * HH-35140 reraise exception during module exec as Exception
