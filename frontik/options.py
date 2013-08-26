@@ -23,6 +23,7 @@ tornado.options.define('debug_profiler_warning_value', 200, int)
 tornado.options.define('debug_profiler_critical_value', 500, int)
 
 tornado.options.define('timeout_multiplier', 1.0, float)
+tornado.options.define('postprocessor_timeout', 30.0, float)
 
 tornado.options.define('executor_pool_size', 1, int)
 

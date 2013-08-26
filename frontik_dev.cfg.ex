@@ -31,4 +31,7 @@ stop_timeout = 4
 # 0.1*workers_count seconds more after sending SIGKILL
 supervisor_sigterm_timeout = 5
 
+# postprocessor execution timeout -- return 500 if postprocessor did not call finish callback after this amount of seconds
+postprocessor_timeout = 30.0
+
 log_blocked_ioloop_timeout = 2.0

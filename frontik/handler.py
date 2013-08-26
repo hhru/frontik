@@ -257,10 +257,13 @@ class PageHandler(tornado.web.RequestHandler):
         raise HTTPError(405, headers={"Allow": "GET, POST"})
 
     def finish(self, chunk = None):
-        if hasattr(self, 'whc_limit'):
-            self.whc_limit.release()
+        if hasattr(self, 'finish_timeout_handle'):
+            tornado.ioloop.IOLoop.instance().remove_timeout(self.finish_timeout_handle)
+        if not self._finished:
+            if hasattr(self, 'whc_limit'):
+                self.whc_limit.release()
 
-        self.log.process_stages(self._status_code)
+            self.log.process_stages(self._status_code)
 
         tornado.web.RequestHandler.finish(self, chunk)
 
@@ -511,6 +514,10 @@ class PageHandler(tornado.web.RequestHandler):
         if hasattr(self.config, 'postprocessor'):
             if self.apply_postprocessor:
                 self.log.debug('applying postprocessor')
+                # do not rely on external postprocessor to call callback and finish the request
+                #   and force finish and send 500 after `postprocessor_timeout` seconds
+                self.finish_timeout_handle = tornado.ioloop.IOLoop.instance().add_timeout(
+                        time.time() + tornado.options.options.postprocessor_timeout, self.send_error)
                 self.async_callback(self.config.postprocessor)(self, res, self.async_callback(partial(self._wait_postprocessor, time.time())))
             else:
                 self.log.debug('skipping postprocessor')
