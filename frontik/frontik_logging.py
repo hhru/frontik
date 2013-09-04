@@ -1,41 +1,51 @@
 # -*- coding: utf-8 -*-
 from collections import namedtuple
 import copy
-import tornado.options
 import logging
-from logging.handlers import SysLogHandler
 import traceback
 import weakref
 import time
 import socket
+
+import tornado.options
+from tornado.escape import to_unicode
+
 from lxml.builder import E
+
+from logging.handlers import SysLogHandler
+
 try:
     from graypy.handler import GELFHandler, LAN_CHUNK
 
     class BulkGELFHandler(GELFHandler):
 
-        def handle_bulk(self, records_list, stages=None, status_code=None, exception=None, uri=None, method=None,  **kw):
-            if records_list != []:
+        def handle_bulk(self, records_list, stages=None, status_code=None, exception=None, uri=None, method=None, **kwargs):
+            if len(records_list) > 0:
                 first_record = records_list[0]
             else:
                 return
+
             record_for_gelf = copy.deepcopy(first_record)
-            record_for_gelf.message = "{0} {1} {2} \n".format(record_for_gelf.asctime, record_for_gelf.levelname, record_for_gelf.message)
-            record_for_gelf.short = "{0} {1} {2}".format(method, uri, status_code)
+            record_for_gelf.message = u"{0} {1} {2} \n".format(record_for_gelf.asctime, record_for_gelf.levelname,
+                                                               to_unicode(record_for_gelf.message))
+            record_for_gelf.short = u"{0} {1} {2}".format(method, to_unicode(uri), status_code)
             record_for_gelf.exc_info = exception
             record_for_gelf.levelno = 20
+
             for record in records_list[1:]:
                 if record.levelno > record_for_gelf.levelno:
                     record_for_gelf.levelno = record.levelno
                     record_for_gelf.lineno = record.lineno
                     record_for_gelf.short = record.message
                 if record.exc_info is not None:
-                    record_for_gelf.exc_info=traceback.format_exc(record.exc_info)
+                    record_for_gelf.exc_info = traceback.format_exc(record.exc_info)
                     record_for_gelf.short += "\n" + traceback.format_exc(record.exc_info)
-                record_for_gelf.message += " {0} {1} {2} \n".format(record.asctime, record.levelname, record.message)
+                record_for_gelf.message += u" {0} {1} {2} \n".format(record.asctime, record.levelname,
+                                                                     to_unicode(record.message))
             if stages is not None:
                 for stage_name, stage_start, stage_delta in stages:
                     setattr(record_for_gelf, stage_name + "_stage", str(int(stage_delta*1000)))
+
             record_for_gelf.name = record_for_gelf.handler
             record_for_gelf.code = status_code
             GELFHandler.handle(self, record_for_gelf)
@@ -45,6 +55,7 @@ except ImportError:
     tornado.options.options.graylog = False
 
 log = logging.getLogger('frontik.handler')
+
 
 class ContextFilter(logging.Filter):
     def filter(self, record):
@@ -58,6 +69,7 @@ class MonikInfoLoggingFilter(logging.Filter):
     def filter(self, record):
         return getattr(record, '_monik', False)
 
+
 class MonikInfoLoggingHandler(logging.FileHandler):
     def __init__(self):
         logging.FileHandler.__init__(self, self.__get_logfile_name())
@@ -70,6 +82,7 @@ class MonikInfoLoggingHandler(logging.FileHandler):
         logfile_parts.insert(1, 'monik')
         return '.'.join(logfile_parts)
 
+
 class MaxLenSysLogHandler(SysLogHandler):
     """
     Extension of standard SysLogHandler with possibility to limit log message sizes
@@ -78,7 +91,7 @@ class MaxLenSysLogHandler(SysLogHandler):
     MIN_MSG_LENGTH_LIMIT = 100
     STD_MSG_LENGTH_LIMIT = 2048
 
-    def __init__(self, msg_max_length = STD_MSG_LENGTH_LIMIT, *args, **kwargs):
+    def __init__(self, msg_max_length=STD_MSG_LENGTH_LIMIT, *args, **kwargs):
         if msg_max_length >= self.MIN_MSG_LENGTH_LIMIT:
             self.max_length = msg_max_length
         else:
@@ -115,7 +128,7 @@ class PageLogger(logging.LoggerAdapter):
                 if len(self.bulk_handlers) > 0:
                     self.records_list.append(self.process_record(record))
 
-            def process_record(self,record):
+            def process_record(self, record):
                 return record
 
             def add_bulk_handler(self, bulk_handler):
@@ -124,7 +137,6 @@ class PageLogger(logging.LoggerAdapter):
             def get_records_list(self):
                 return self.records_list
 
-
             def flush(self, **kw):
                 for handler in self.bulk_handlers:
                     handler.handle_bulk(self.records_list, **kw)
@@ -132,7 +144,7 @@ class PageLogger(logging.LoggerAdapter):
         self.handler_ref = weakref.ref(handler)
         self.handler_started = self.handler_ref().handler_started
         logging.LoggerAdapter.__init__(self, PerRequestLogBufferHandler('frontik.handler'),
-            dict(request_id=logger_name, page=page, handler=self.handler_ref().__module__))
+                                       dict(request_id=logger_name, page=page, handler=self.handler_ref().__module__))
 
         self._time = self.handler_started
         self.stages = []
@@ -143,7 +155,7 @@ class PageLogger(logging.LoggerAdapter):
 
         if tornado.options.options.graylog:
             self.logger.add_bulk_handler(BulkGELFHandler(tornado.options.options.graylog_host,
-                tornado.options.options.graylog_port, LAN_CHUNK, False))
+                                                         tornado.options.options.graylog_port, LAN_CHUNK, False))
 
     def stage_tag(self, stage_name):
         zero_time = self.handler_started
@@ -163,10 +175,10 @@ class PageLogger(logging.LoggerAdapter):
 
         self.debug('Stages for {0} : {1}'.format(self.page, stages_format))
         self.info('Monik-stages {0!r} : {1} code={2}'.format(self.handler_ref(), stages_monik_format, status_code),
-            extra={
-                '_monik': True,
-                '_stages': E.stages(*[E.stage(str(st.delta*1000), {'name':str(st.name)}) for st in self.stages])
-            })
+                  extra={
+                      '_monik': True,
+                      '_stages': E.stages(*[E.stage(str(st.delta*1000), {'name': str(st.name)}) for st in self.stages])
+                  })
 
     def process(self, msg, kwargs):
         if "extra" in kwargs:
@@ -175,9 +187,10 @@ class PageLogger(logging.LoggerAdapter):
             kwargs["extra"] = self.extra
         return msg, kwargs
 
-    def request_finish_hook(self, exception = None):
+    def request_finish_hook(self, exception=None):
         self.logger.flush(status_code=self.handler_ref()._status_code, stages=self.stages, exception=exception,
-            method=self.handler_ref().request.method, uri=self.handler_ref().request.uri)
+                          method=self.handler_ref().request.method, uri=self.handler_ref().request.uri)
+
 
 def bootstrap_all_logging():
     server_log = logging.getLogger("frontik.server")
