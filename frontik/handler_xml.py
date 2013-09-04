@@ -31,7 +31,7 @@ class FileCache(object):
 
         def __getitem__(self, key):
             val = dict.__getitem__(self, key)
-            if self.max_len:
+            if self.max_len is not None:
                 if self.step:
                     ind = self._order.index(key)
                     self._order.remove(key)
@@ -43,12 +43,12 @@ class FileCache(object):
 
         def __setitem__(self, key, value):
             dict.__setitem__(self, key, value)
-            if self.max_len:
+            if self.max_len is not None:
                 if self.step:
                     self._order.insert(self.step, key)
                 else:
                     self._order.append(key)
-            if self.max_len and len(self._order) > self.max_len:
+            if self.max_len is not None and len(self._order) > self.max_len:
                 self.pop(self._order.pop(0))
             
     def __init__(self, root_dir, load_fn, max_len=None, step=None, deepcopy=False):
@@ -113,7 +113,7 @@ class InvalidOptionCache(object):
 def make_file_cache(option_name, option_value, fun, max_len=None, step=None, deepcopy=False):
     if option_value:
         # disable cache in development environment
-        max_len = None if tornado.options.options.debug else max_len
+        max_len = 0 if tornado.options.options.debug else max_len
         return FileCache(option_value, fun, max_len, step, deepcopy)
     else:
         return InvalidOptionCache(option_name)
