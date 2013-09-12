@@ -154,13 +154,17 @@ def _exception_to_xml(exc_info, log=debug_log):
         while trace:
             frame = trace.tb_frame
             trace_step_node = etree.Element('step')
-
             trace_lines = etree.Element('lines')
-            lines, starting_line = inspect.getsourcelines(frame)
+
+            try:
+                lines, starting_line = inspect.getsourcelines(frame)
+            except IOError, e:
+                lines, starting_line = [], None
+
             for i, l in enumerate(lines):
                 line_node = etree.Element('line')
                 line_node.append(E.text(to_unicode(l)))
-                line_node.append(E.line(str(starting_line + i)))
+                line_node.append(E.number(str(starting_line + i)))
                 if starting_line + i == frame.f_lineno:
                     line_node.set('selected', 'true')
                 trace_lines.append(line_node)
@@ -170,10 +174,9 @@ def _exception_to_xml(exc_info, log=debug_log):
             trace_step_node.append(E.locals(pprint.pformat(frame.f_locals)))
             trace_node.append(trace_step_node)
             trace = trace.tb_next
+        exc_node.append(trace_node)
     except Exception:
         log.exception('Could not add traceback lines')
-    else:
-        exc_node.append(trace_node)
 
     exc_node.append(E.text(''.join(traceback.format_exception(*exc_info))))
     return exc_node
