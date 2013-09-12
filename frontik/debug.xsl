@@ -109,7 +109,7 @@
     <xsl:template match="exception/trace">
         <div class="textentry m-textentry__expandable">
             <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
-                Exception traceback
+                <span class="textentry__head__expandtext">Exception traceback</span>
             </div>
             <div class="details">
                 <xsl:apply-templates select="step"/>
@@ -119,7 +119,7 @@
 
     <xsl:template match="step">
         <pre class="trace-file">
-            <xsl:value-of select="file/text()"/>
+            <xsl:value-of select="file"/>
         </pre>
         <div class="textentry m-textentry__expandable trace-locals">
             <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
@@ -133,27 +133,23 @@
         </div>
         <table class="trace-lines">
             <tr>
-                <td class="trace-lines__column"><xsl:apply-templates select="lines/line" mode="line-numbers"/></td>
-                <td class="trace-lines__column"><xsl:apply-templates select="lines/line" mode="line-text"/></td>
+                <xsl:apply-templates select="lines[not(line)]"/>
+                <td class="trace-lines__column"><xsl:apply-templates select="lines/line/number"/></td>
+                <td class="trace-lines__column"><xsl:apply-templates select="lines/line/text"/></td>
             </tr>
         </table>
     </xsl:template>
 
-    <xsl:template match="line" mode="line-numbers">
-        <span class="trace-lines__line">
-            <xsl:if test="@selected = 'true'">
-                <xsl:attribute name="class">trace-lines__line selected</xsl:attribute>
-            </xsl:if>
-            <xsl:value-of select="line/text()"/>
-        </span>
+    <xsl:template match="lines[not(line)]">
+        <td>Unable to find source file</td>
     </xsl:template>
 
-    <xsl:template match="line" mode="line-text">
+    <xsl:template match="line/number|line/text">
         <span class="trace-lines__line">
-            <xsl:if test="@selected = 'true'">
+            <xsl:if test="../@selected = 'true'">
                 <xsl:attribute name="class">trace-lines__line selected</xsl:attribute>
             </xsl:if>
-            <xsl:value-of select="text/text()"/>
+            <xsl:value-of select="."/>
         </span>
     </xsl:template>
 
@@ -438,8 +434,8 @@
             .headers{
             }
             .details{
-                display:none;
-                margin-bottom:15px;
+                display: none;
+                padding-bottom: 2px;
                 position: relative;
             }
                 .m-details_visible{
@@ -501,6 +497,7 @@
                 padding-top: 2px;
             }
                 .trace-locals__caption {
+                    display: inline-block;
                     border-bottom: 1px dashed #000;
                 }
                 .trace-locals__text {
