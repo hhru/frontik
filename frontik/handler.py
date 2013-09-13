@@ -167,6 +167,11 @@ class PageHandler(tornado.web.RequestHandler):
         else:
             self.apply_postprocessor = True
 
+        if tornado.options.options.long_request_timeout:
+            # add long requests timeout
+            self.finish_timeout_handle = tornado.ioloop.IOLoop.instance().add_timeout(
+                time.time() + tornado.options.options.long_request_timeout, self._handle_long_request)
+
         self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page_cb),
                                                      name='finish',
                                                      log=self.log.debug)
@@ -257,10 +262,13 @@ class PageHandler(tornado.web.RequestHandler):
         raise HTTPError(405, headers={"Allow": "GET, POST"})
 
     def finish(self, chunk = None):
-        if hasattr(self, 'whc_limit'):
-            self.whc_limit.release()
+        if hasattr(self, 'finish_timeout_handle'):
+            tornado.ioloop.IOLoop.instance().remove_timeout(self.finish_timeout_handle)
+        if not self._finished:
+            if hasattr(self, 'whc_limit'):
+                self.whc_limit.release()
 
-        self.log.process_stages(self._status_code)
+            self.log.process_stages(self._status_code)
 
         tornado.web.RequestHandler.finish(self, chunk)
 
@@ -535,3 +543,8 @@ class PageHandler(tornado.web.RequestHandler):
 
     def set_xsl(self, filename):
         return self.xml.set_xsl(filename)
+
+    def _handle_long_request(self):
+        self.log.warning("long request detected (uri: {0})".format(self.request.uri))
+        if tornado.options.options.kill_long_requests:
+            self.send_error()
