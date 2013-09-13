@@ -31,4 +31,11 @@ stop_timeout = 4
 # 0.1*workers_count seconds more after sending SIGKILL
 supervisor_sigterm_timeout = 5
 
+# call long request handler if page did not finish after this amount of seconds
+# remove or set to None to disable timeouts
+long_request_timeout = None
+
+# kill requests that did not finish after long_request_timeout
+kill_long_requests = False
+
 log_blocked_ioloop_timeout = 2.0
