@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import Cookie
+import inspect
 import logging
+import pprint
 import traceback
 import urlparse
 import weakref
@@ -143,6 +145,43 @@ def _cookies_to_xml(request_headers):
     return cookies
 
 
+def _exception_to_xml(exc_info, log=debug_log):
+    exc_node = etree.Element('exception')
+
+    try:
+        trace_node = etree.Element('trace')
+        trace = exc_info[2]
+        while trace:
+            frame = trace.tb_frame
+            trace_step_node = etree.Element('step')
+            trace_lines = etree.Element('lines')
+
+            try:
+                lines, starting_line = inspect.getsourcelines(frame)
+            except IOError, e:
+                lines, starting_line = [], None
+
+            for i, l in enumerate(lines):
+                line_node = etree.Element('line')
+                line_node.append(E.text(to_unicode(l)))
+                line_node.append(E.number(str(starting_line + i)))
+                if starting_line + i == frame.f_lineno:
+                    line_node.set('selected', 'true')
+                trace_lines.append(line_node)
+
+            trace_step_node.append(trace_lines)
+            trace_step_node.append(E.file(inspect.getfile(frame)))
+            trace_step_node.append(E.locals(pprint.pformat(frame.f_locals)))
+            trace_node.append(trace_step_node)
+            trace = trace.tb_next
+        exc_node.append(trace_node)
+    except Exception:
+        log.exception('Could not add traceback lines')
+
+    exc_node.append(E.text(''.join(traceback.format_exception(*exc_info))))
+    return exc_node
+
+
 class DebugPageLogHandler(logging.Handler):
     def __init__(self):
         """
@@ -166,17 +205,17 @@ class DebugPageLogHandler(logging.Handler):
             if val is not None:
                 entry_attrs[field] = str(val)
 
-        if record.exc_info is not None:
-            exc = record.exc_info
-            entry_attrs['exc_text'] = ''.join(traceback.format_exception(exc[0], exc[1], exc[2]))
-
         entry_attrs['msg'] = record.getMessage()
 
         try:
             entry = etree.Element("entry", **entry_attrs)
         except ValueError:
             entry = etree.Element("entry")
+
         entry.set("asctime", str(datetime.fromtimestamp(record.created)))
+
+        if record.exc_info is not None:
+            entry.append(_exception_to_xml(record.exc_info))
 
         if getattr(record, "_response", None) is not None:
             entry.append(response_to_xml(record._response))
