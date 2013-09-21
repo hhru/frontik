@@ -202,7 +202,15 @@ class PageHandlerXML(object):
             self.log.stage_tag("xsl")
             self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t)*1000)
             if len(self.transform.error_log):
-                map(self.log.info, (map("xsl message: {0.message}".format, self.transform.error_log)))
+                for msg in self.transform.error_log:
+                    level_name = msg.level_name.lower()
+
+                    if level_name in ['error', 'warn', 'warning', 'info']:
+                        _log = getattr(self.log, level_name)
+                    else:
+                        _log = self.log.debug
+                    _log("xsl error_log: {0}".format(msg))
+
             cb(result)
 
         def exception_cb(e):
