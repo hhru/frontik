@@ -19,10 +19,17 @@ try:
 
     class BulkGELFHandler(GELFHandler):
 
+        def __init__(self, *args, **kwargs):
+            self.min_level = getattr(logging, tornado.options.options.graylog_min_level.upper())
+            GELFHandler.__init__(self, *args, **kwargs)
+
         def handle_bulk(self, records_list, stages=None, status_code=None, exception=None, uri=None, method=None, **kwargs):
             if len(records_list) > 0:
                 first_record = records_list[0]
             else:
+                return
+
+            if not any(x.levelno >= self.min_level for x in records_list):
                 return
 
             record_for_gelf = copy.deepcopy(first_record)
@@ -30,7 +37,7 @@ try:
                                                                to_unicode(record_for_gelf.message))
             record_for_gelf.short = u"{0} {1} {2}".format(method, to_unicode(uri), status_code)
             record_for_gelf.exc_info = exception
-            record_for_gelf.levelno = 20
+            record_for_gelf.levelno = logging.INFO
 
             for record in records_list[1:]:
                 if record.levelno > record_for_gelf.levelno:
