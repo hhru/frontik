@@ -31,5 +31,6 @@ tornado.options.define('executor_pool_size', 1, int)
 tornado.options.define('graylog', False, bool)
 tornado.options.define('graylog_host', "localhost", str)
 tornado.options.define('graylog_port', 12201, int)
+tornado.options.define('graylog_min_level', 'warning', str)
 
 tornado.options.define('warn_no_jobs', True, bool)
