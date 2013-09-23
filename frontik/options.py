@@ -17,11 +17,6 @@ tornado.options.define('debug_login', None, str)
 tornado.options.define('debug_password', None, str)
 tornado.options.define('debug_xsl', '/usr/lib/frontik/debug.xsl', str)
 
-tornado.options.define('debug_profiler_tag', '</body>', str)
-tornado.options.define('debug_profiler_template', '/usr/lib/frontik/profiler.html', str)
-tornado.options.define('debug_profiler_warning_value', 200, int)
-tornado.options.define('debug_profiler_critical_value', 500, int)
-
 tornado.options.define('timeout_multiplier', 1.0, float)
 tornado.options.define('long_request_timeout', None, float)
 tornado.options.define('kill_long_requests', False, bool)
