@@ -205,11 +205,11 @@ class PageHandler(tornado.web.RequestHandler):
 
     def get_error_html(self, status_code, **kwargs):
         if self._prepared and self.debug.debug_mode.write_debug:
-            debug_is_finished = not self.debug.debug_mode.inherited
-            return self.debug.get_debug_page(status_code, self._headers, finish_debug=debug_is_finished)
+            self.debug.debug_mode.enabled = True
+            self._force_finish()
         else:
-            # if not prepared (for example, working handlers count limit) or not in
-            # debug mode use default tornado error page
+            # if not prepared (for example, working handlers count limit) or not in debug mode
+            # use default tornado error page
             return super(PageHandler, self).get_error_html(status_code, **kwargs)
 
     def send_error(self, status_code=500, headers=None, **kwargs):
@@ -260,63 +260,40 @@ class PageHandler(tornado.web.RequestHandler):
     def options(self, *args, **kwargs):
         raise HTTPError(405, headers={"Allow": "GET, POST"})
 
-    def finish(self, chunk = None):
+    def finish(self, chunk=None):
         if hasattr(self, 'finish_timeout_handle'):
             tornado.ioloop.IOLoop.instance().remove_timeout(self.finish_timeout_handle)
+
         if not self._finished:
             if hasattr(self, 'whc_limit'):
                 self.whc_limit.release()
-
             self.log.process_stages(self._status_code)
 
         tornado.web.RequestHandler.finish(self, chunk)
 
     def flush(self, include_footers=False, **kwargs):
-        orig_write_buffer = self._write_buffer
-        try:
-            # if debug_mode is on: ignore any output we intended to write
-            # and use debug log instead
-            if hasattr(self, 'debug') and self.debug.debug_mode.enabled:
+        if self._prepared and self.debug.debug_mode.enabled:
+            try:
                 self._response_size = sum(imap(len, self._write_buffer))
 
-                if self.debug.debug_mode.return_response:
-                    original_headers = {'Content-Length': str(self._response_size)}
-                    response_headers = dict(self._headers, **original_headers)
-                    original_response = {
-                        'buffer': ''.join(self._write_buffer),
-                        'headers': response_headers,
-                        'code': self._status_code
-                    }
-
-                    self.set_header(frontik.handler_debug.PageHandlerDebug.INHERIT_DEBUG_HEADER_NAME, True)
-                else:
-                    response_headers = self._headers
-                    original_response = None
+                original_headers = {'Content-Length': str(self._response_size)}
+                response_headers = dict(self._headers, **original_headers)
+                original_response = {
+                    'buffer': ''.join(self._write_buffer),
+                    'headers': response_headers,
+                    'code': self._status_code
+                }
 
                 res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
 
-                if not self.debug.debug_mode.return_response:
-                    self.set_header('Content-Type', 'text/html; charset=UTF-8')
-
+                self.set_header(frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME, True)
                 self.set_header('Content-disposition', '')
                 self.set_header('Content-Length', str(len(res)))
                 self._write_buffer = [res]
                 self._status_code = 200
 
-            if hasattr(self, 'debug') and self.debug.debug_mode.profile:
-                profiler_document = self.debug.get_profiler_template()
-                if profiler_document is not None:
-                    match = tornado.options.options.debug_profiler_tag
-                    buff = ''.join(self._write_buffer)
-                    res = buff.replace(match, profiler_document)
-                    self.set_header('Content-Length', str(len(res)))
-                    self._write_buffer = [res]
-                    if match in buff:
-                        self.log.debug('Profiler component added before %s tag' % match)
-
-        except Exception:
-            self.log.debug('Couldnt write debug info')
-            self._write_buffer = orig_write_buffer
+            except Exception:
+                self.log.exception('Cannot write debug info')
 
         tornado.web.RequestHandler.flush(self, include_footers=False, **kwargs)
         self.log.request_finish_hook()
@@ -361,8 +338,8 @@ class PageHandler(tornado.web.RequestHandler):
                         self.log.warn('got strange response.body of type %s', type(response.body))
                 callback(response)
 
-            if hasattr(self, 'debug') and self.debug.debug_mode.pass_further:
-                req.headers[frontik.handler_debug.PageHandlerDebug.INHERIT_DEBUG_HEADER_NAME] = True
+            if hasattr(self, 'debug') and self.debug.debug_mode.pass_debug:
+                req.headers[frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME] = True
                 req.headers['Authorization'] = self.request.headers.get('Authorization', None)
 
             req.headers['X-Request-Id'] = self.request_id
@@ -435,10 +412,10 @@ class PageHandler(tornado.web.RequestHandler):
 
     def _fetch_request_response(self, placeholder, callback, request, response, request_types=None, labels=None):
         debug_extra = {}
-        if response.headers.get(frontik.handler_debug.PageHandlerDebug.INHERIT_DEBUG_HEADER_NAME):
+        if response.headers.get(frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME):
             debug_response = etree.XML(response.body)
             original_response = debug_response.xpath('//original-response')
-            if original_response is not None:
+            if original_response:
                 response_info = frontik.xml_util.xml_to_dict(original_response[0])
                 debug_response.remove(original_response[0])
                 debug_extra['_debug_response'] = debug_response

@@ -46,7 +46,7 @@
         <xsl:apply-templates select="entry"/>
     </xsl:template>
 
-    <xsl:template match="entry[contains(@msg, 'finish group') and /log/@mode != 'full']"/>
+    <xsl:template match="entry[contains(@msg, 'finish group') and not(contains(/log/@mode, 'full'))]"/>
 
     <xsl:template match="log" mode="versions-info">
         <div class="textentry m-textentry__expandable">
@@ -159,8 +159,7 @@
         </span>
     </xsl:template>
 
-    <xsl:template match="entry[contains(@msg, 'finish group') and /log/@mode != 'full']"/>
-
+    <xsl:template match="entry[contains(@msg, 'finish group') and not(contains(/log/@mode, 'full'))]"/>
 
     <xsl:template match="entry[response]">
         <xsl:variable name="status">
@@ -426,6 +425,7 @@
                     margin-bottom:.5em;
                 }
                 .textentry__head {
+                    display: block;
                 }
                     .m-textentry__head_highlight {
                         font-weight:bold;
