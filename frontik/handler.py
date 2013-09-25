@@ -374,7 +374,7 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.warn('attempted to make http request to %s while page is already finished; ignoring', req.url)
 
     def get_url(self, url, data=None, headers=None, connect_timeout=0.5, request_timeout=2, callback=None,
-                follow_redirects=True, request_types=None):
+                follow_redirects=True, request_types=None, labels=None):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_get_request(url,
@@ -385,11 +385,11 @@ class PageHandler(tornado.web.RequestHandler):
                                                 follow_redirects)
 
         self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
-                                            request_types=request_types))
+                                            request_types=request_types, labels=labels))
         return placeholder
 
     def post_url(self, url, data='', headers=None, files=None, connect_timeout=0.5, request_timeout=2,
-                 follow_redirects=True, content_type=None, callback=None, request_types=None):
+                 follow_redirects=True, content_type=None, callback=None, request_types=None, labels=None):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_post_request(url,
@@ -402,11 +402,11 @@ class PageHandler(tornado.web.RequestHandler):
                                                  content_type)
 
         self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
-                                            request_types=request_types))
+                                            request_types=request_types, labels=labels))
         return placeholder
 
     def put_url(self, url, data='', headers=None, connect_timeout=0.5, request_timeout=2, callback=None,
-                request_types=None):
+                request_types=None, labels=None):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_put_request(url,
@@ -416,11 +416,11 @@ class PageHandler(tornado.web.RequestHandler):
                                                 request_timeout)
 
         self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
-                                            request_types=request_types))
+                                            request_types=request_types, labels=labels))
         return placeholder
 
     def delete_url(self, url, data='', headers=None, connect_timeout=0.5, request_timeout=2, callback=None,
-                   request_types=None):
+                   request_types=None, labels=None):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_delete_request(url,
@@ -430,10 +430,10 @@ class PageHandler(tornado.web.RequestHandler):
                                                    request_timeout)
 
         self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
-                                            request_types=request_types))
+                                            request_types=request_types, labels=labels))
         return placeholder
 
-    def _fetch_request_response(self, placeholder, callback, request, response, request_types=None):
+    def _fetch_request_response(self, placeholder, callback, request, response, request_types=None, labels=None):
         debug_extra = {}
         if response.headers.get(frontik.handler_debug.PageHandlerDebug.INHERIT_DEBUG_HEADER_NAME):
             debug_response = etree.XML(response.body)
@@ -445,6 +445,9 @@ class PageHandler(tornado.web.RequestHandler):
                 response = frontik.util.create_fake_response(request, response, **response_info)
 
         debug_extra.update({'_response': response, '_request': request})
+        if labels is not None:
+            debug_extra['_labels'] = labels
+
         self.log.debug(
             'got {code}{size} {url} in {time:.2f}ms'.format(
                 code=response.code,
