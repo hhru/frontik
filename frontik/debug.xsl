@@ -6,6 +6,8 @@
                 media-type="text/html" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"
                 doctype-public="-//W3C//DTD XHTML 1.0 Transitional//EN" version="1.1"/>
 
+    <xsl:key name="labels" match="/log/labels/*" use="local-name()"/>
+
     <xsl:variable name="highlight-text">
         <xsl:if test="contains(/log/@mode, '@')">
             <xsl:value-of select="substring(/log/@mode, 2)"/>
@@ -48,11 +50,12 @@
 
     <xsl:template match="log" mode="versions-info">
         <div class="textentry m-textentry__expandable">
-            <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
+            <label for="details_versions" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
                 <span class="textentry__head__expandtext">
                     Version info
                 </span>
-            </div>
+            </label>
+            <input type="checkbox" class="details-expander" id="details_versions"/>
             <div class="details">
                 <xsl:apply-templates select="versions/node()" mode="color-xml"/>
             </div>
@@ -61,11 +64,12 @@
 
     <xsl:template match="log" mode="general-info">
         <div class="textentry m-textentry__expandable">
-            <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
+            <label for="details_general" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
                 <span class="textentry__head__expandtext">
                     General request/response info
                 </span>
-            </div>
+            </label>
+            <input type="checkbox" class="details-expander" id="details_general"/>
             <div class="details">
                 <xsl:apply-templates select="request/params"/>
                 <xsl:apply-templates select="request/headers"/>
@@ -91,7 +95,7 @@
             
         <div class="textentry">
             <div class="textentry__head {$highlight} {$loglevel}">
-                <span title="{@msg}">
+                <span>
                     <xsl:value-of select="concat($loglevel,' ',@msg)"/>
                 </span>
             </div>
@@ -108,9 +112,10 @@
 
     <xsl:template match="exception/trace">
         <div class="textentry m-textentry__expandable">
-            <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
+            <label for="details_{generate-id(.)}"  onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
                 <span class="textentry__head__expandtext">Exception traceback</span>
-            </div>
+            </label>
+            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
             <div class="details">
                 <xsl:apply-templates select="step"/>
             </div>
@@ -122,9 +127,10 @@
             <xsl:value-of select="file"/>
         </pre>
         <div class="textentry m-textentry__expandable trace-locals">
-            <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
                 <span class="trace-locals__caption">Show/hide locals</span>
-            </div>
+            </label>
+            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
             <div class="details">
                 <pre class="trace-locals__text">
                     <xsl:value-of select="locals/text()"/>
@@ -160,12 +166,8 @@
         <xsl:variable name="status">
             <xsl:if test="response/code != 200">error</xsl:if>
         </xsl:variable>
-        <xsl:variable name="text">
-            <xsl:value-of select="."/>
-        </xsl:variable>
         <xsl:variable name="highlight">
-            <xsl:if test="$highlight-text != '' and contains($text, $highlight-text)">m-textentry__head_highlight
-            </xsl:if>
+            <xsl:if test="$highlight-text != '' and contains(., $highlight-text)">m-textentry__head_highlight</xsl:if>
         </xsl:variable>
 
         <xsl:variable name="timebar-offset">
@@ -185,17 +187,18 @@
         </xsl:variable>
 
         <div class="textentry m-textentry__expandable">
-            <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher {$status} {$highlight}">
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher {$status} {$highlight}">
                 <div class="timebar">
                     <div class="timebar__line" style="left: {$timebar-percent-offset}">
                         <strong class="timebar__head timebar__head_{$status}" style="width: {$timebar-len-percent};"></strong>
                     </div>
                 </div>
-                <span title="{@msg}" class="textentry__head__expandtext">
+                <span class="textentry__head__expandtext">
                     <span class="time">
                         <xsl:value-of select="response/request_time"/>
                         <xsl:text>ms </xsl:text>
                     </span>
+                    <xsl:apply-templates select="labels/label"/>
                     <xsl:value-of select="response/code"/>
                     <xsl:text> </xsl:text>
                     <xsl:value-of select="request/method"/>
@@ -204,7 +207,8 @@
                     <xsl:text>Kb </xsl:text>
                     <xsl:value-of select="request/url"/>
                 </span>
-            </div>
+            </label>
+            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
             <div class="details">
                 <div class="timebar-details">
                     <div class="timebar__line" style="left: {$timebar-percent-offset}; width: {$timebar-details-percent-width}">
@@ -221,13 +225,20 @@
         </div>
     </xsl:template>
 
+    <xsl:template match="label">
+        <span class="label" style="background-color: {key('labels', .)/text()}">
+            <xsl:value-of select="text()"/>
+        </span>
+    </xsl:template>
+
     <xsl:template match="entry[xml]">
         <div class="textentry m-textentry__expandable">
-            <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
-                <span title="{@msg}" class="textentry__head__expandtext">
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
+                <span class="textentry__head__expandtext">
                     <xsl:value-of select="@msg"/>
                 </span>
-            </div>
+            </label>
+            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
             <div class="details">
                 <xsl:apply-templates select="xml/node()" mode="color-xml"/>
             </div>
@@ -236,11 +247,12 @@
 
     <xsl:template match="entry[protobuf]">
         <div class="textentry m-textentry__expandable">
-            <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
-                <span title="{@msg}" class="textentry__head__expandtext">
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
+                <span class="textentry__head__expandtext">
                     <xsl:value-of select="@msg"/>
                 </span>
-            </div>
+            </label>
+            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
             <pre class="details">
                 <xsl:apply-templates select="protobuf/node()" mode="color-xml"/>
             </pre>
@@ -404,6 +416,7 @@
                 padding-right:20px;
                 margin-bottom:4px;
                 word-break: break-all;
+                position: relative;
             }
                 .m-textentry__expandable {
                     background:#fffccf;
@@ -433,12 +446,16 @@
                 }
             .headers{
             }
+            .details-expander {
+                display: none;
+            }
             .details{
                 display: none;
                 padding-bottom: 2px;
                 position: relative;
             }
-                .m-details_visible{
+                .m-details_visible,
+                .details-expander:checked + .details {
                     display:block;
                 }
 
@@ -463,6 +480,12 @@
             .time{
                 display:inline-block;
                 width:4em;
+            }
+            .label{
+                margin-right: 8px;
+                padding: 0 3px;
+                font-size: 14px;
+                border-radius: 5px;
             }
             .error{
                 color:red;
@@ -552,21 +575,16 @@
 
     <xsl:template match="log" mode="js">
         <script>
-            function toggle(entry){
-                var head = entry.querySelector('.textentry__head');
-                if (head.className.indexOf('m-textentry__switcher_expand') != -1)
-                    head.className = head.className.replace(/m-textentry__switcher_expand/, '');
-                else{
-                    head.className = head.className + ' m-textentry__switcher_expand';
-                }
-                var details = entry.querySelector('.details')
-                if (details.className.indexOf('m-details_visible') != -1)
-                    details.className = details.className.replace(/m-details_visible/, '');
-                else{
+            function toggle(entry) {
+                var details = entry.querySelector('.details');
+                if (details.className.indexOf('m-details_visible') != -1) {
+                    details.className = details.className.replace(/\bm-details_visible\b/, '');
+                } else {
                     details.className = details.className + ' m-details_visible';
                 }
             }
-            function doiframe(id, text){
+
+            function doiframe(id, text) {
                 var iframe = window.document.createElement('iframe');
                 iframe.className = 'iframe'
                 var html = text
