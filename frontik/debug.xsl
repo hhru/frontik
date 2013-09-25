@@ -6,6 +6,8 @@
                 media-type="text/html" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"
                 doctype-public="-//W3C//DTD XHTML 1.0 Transitional//EN" version="1.1"/>
 
+    <xsl:key name="labels" match="/log/labels/*" use="local-name()"/>
+
     <xsl:variable name="highlight-text">
         <xsl:if test="contains(/log/@mode, '@')">
             <xsl:value-of select="substring(/log/@mode, 2)"/>
@@ -91,7 +93,7 @@
             
         <div class="textentry">
             <div class="textentry__head {$highlight} {$loglevel}">
-                <span title="{@msg}">
+                <span>
                     <xsl:value-of select="concat($loglevel,' ',@msg)"/>
                 </span>
             </div>
@@ -191,11 +193,12 @@
                         <strong class="timebar__head timebar__head_{$status}" style="width: {$timebar-len-percent};"></strong>
                     </div>
                 </div>
-                <span title="{@msg}" class="textentry__head__expandtext">
+                <span class="textentry__head__expandtext">
                     <span class="time">
                         <xsl:value-of select="response/request_time"/>
                         <xsl:text>ms </xsl:text>
                     </span>
+                    <xsl:apply-templates select="labels/label"/>
                     <xsl:value-of select="response/code"/>
                     <xsl:text> </xsl:text>
                     <xsl:value-of select="request/method"/>
@@ -221,10 +224,16 @@
         </div>
     </xsl:template>
 
+    <xsl:template match="label">
+        <span class="label" style="background-color: {key('labels', .)/text()}">
+            <xsl:value-of select="text()"/>
+        </span>
+    </xsl:template>
+
     <xsl:template match="entry[xml]">
         <div class="textentry m-textentry__expandable">
             <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
-                <span title="{@msg}" class="textentry__head__expandtext">
+                <span class="textentry__head__expandtext">
                     <xsl:value-of select="@msg"/>
                 </span>
             </div>
@@ -237,7 +246,7 @@
     <xsl:template match="entry[protobuf]">
         <div class="textentry m-textentry__expandable">
             <div onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
-                <span title="{@msg}" class="textentry__head__expandtext">
+                <span class="textentry__head__expandtext">
                     <xsl:value-of select="@msg"/>
                 </span>
             </div>
@@ -463,6 +472,12 @@
             .time{
                 display:inline-block;
                 width:4em;
+            }
+            .label{
+                margin-right: 8px;
+                padding: 0 3px;
+                font-size: 14px;
+                border-radius: 5px;
             }
             .error{
                 color:red;

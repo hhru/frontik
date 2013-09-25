@@ -7,9 +7,10 @@ import pprint
 import traceback
 import urlparse
 import weakref
-import simplejson as json
 import copy
 from datetime import datetime
+
+import simplejson as json
 import lxml.etree as etree
 from lxml.builder import E
 from tornado.escape import to_unicode
@@ -217,6 +218,12 @@ class DebugPageLogHandler(logging.Handler):
         if record.exc_info is not None:
             entry.append(_exception_to_xml(record.exc_info))
 
+        if getattr(record, '_labels', None) is not None:
+            labels = E.labels()
+            for label in record._labels:
+                labels.append(E.label(label))
+            entry.append(labels)
+
         if getattr(record, "_response", None) is not None:
             entry.append(response_to_xml(record._response))
 
@@ -314,12 +321,15 @@ class PageHandlerDebug(object):
         else:
             debug_log_data = copy.deepcopy(self.debug_log_handler.log_data)
 
+        import frontik.app
+
         debug_log_data.set('code', str(status_code))
         debug_log_data.set('mode', self.handler.get_argument('debug', 'text'))
         debug_log_data.set('started', str(self.handler.handler_started))
         debug_log_data.set('request-id', str(self.handler.request_id))
 
-        import frontik.app
+        if hasattr(self.handler.config, 'debug_labels') and isinstance(self.handler.config.debug_labels, dict):
+            debug_log_data.append(frontik.xml_util.dict_to_xml(self.handler.config.debug_labels, 'labels'))
 
         debug_log_data.append(frontik.app.get_frontik_and_apps_versions())
         debug_log_data.append(E.request(
