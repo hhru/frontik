@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from collections import namedtuple
 import copy
+from functools import partial
 import logging
 import traceback
 import weakref
@@ -126,20 +127,20 @@ class PageLogger(logging.LoggerAdapter):
                 logging.Logger.handle(self, record)
                 log.handle(record)
                 if len(self.bulk_handlers) > 0:
-                    self.records_list.append(self.process_record(record))
+                    self.records_list.append(record)
 
-            def process_record(self, record):
-                return record
+            def add_bulk_handler(self, handler, auto_flush):
+                self.bulk_handlers.append((handler, auto_flush))
+                if not auto_flush:
+                    handler.flush = partial(self.flush_bulk_handler, handler)
 
-            def add_bulk_handler(self, bulk_handler):
-                self.bulk_handlers.append(bulk_handler)
+            def flush_bulk_handler(self, handler, **kwargs):
+                handler.handle_bulk(self.records_list)
 
-            def get_records_list(self):
-                return self.records_list
-
-            def flush(self, **kw):
-                for handler in self.bulk_handlers:
-                    handler.handle_bulk(self.records_list, **kw)
+            def flush(self, **kwargs):
+                for handler, auto_flush in self.bulk_handlers:
+                    if auto_flush:
+                        self.flush_bulk_handler(handler, **kwargs)
 
         self.handler_ref = weakref.ref(handler)
         self.handler_started = self.handler_ref().handler_started
@@ -183,9 +184,12 @@ class PageLogger(logging.LoggerAdapter):
     def process(self, msg, kwargs):
         if "extra" in kwargs:
             kwargs["extra"].update(self.extra)
-        else :
+        else:
             kwargs["extra"] = self.extra
         return msg, kwargs
+
+    def add_bulk_handler(self, handler, auto_flush=True):
+        self.logger.add_bulk_handler(handler, auto_flush)
 
     def request_finish_hook(self, exception=None):
         self.logger.flush(status_code=self.handler_ref()._status_code, stages=self.stages, exception=exception,
