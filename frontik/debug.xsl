@@ -38,7 +38,8 @@
             status: <xsl:value-of select="@code"/>,
             requests: <xsl:value-of select="count(entry/response)"/>,
             bytes received: <xsl:value-of select="sum(entry/response/size)"/>,
-            bytes produced: <xsl:value-of select="@response-size"/>
+            bytes produced: <xsl:value-of select="@response-size"/>,
+            debug generated in: <xsl:value-of select="format-number(@generate-time, '#0.##')"/>ms
         </div>
 
         <xsl:apply-templates select="." mode="versions-info"/>

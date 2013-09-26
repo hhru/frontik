@@ -4,6 +4,7 @@ import Cookie
 import inspect
 import logging
 import pprint
+import time
 import traceback
 import urlparse
 import weakref
@@ -183,21 +184,16 @@ def _exception_to_xml(exc_info, log=debug_log):
     return exc_node
 
 
-class DebugPageLogHandler(logging.Handler):
-    def __init__(self):
-        """
-        Does the same as logging.Handler.__init__, except for adding handler in global handlers list
-        """
-        logging.Filterer.__init__(self)
-        self.level = logging.DEBUG
-        self.formatter = None
-        # get the module data lock, as we're updating a shared structure.
-        self.createLock()
-
-        self.log_data = etree.Element('log')
-
+class DebugLogBulkHandler(object):
     FIELDS = ['created', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs',
               'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
+
+    def __init__(self):
+        self.log_data = etree.Element('log')
+
+    def handle_bulk(self, record_list, **kwargs):
+        for record in record_list:
+            self.handle(record)
 
     def handle(self, record):
         entry_attrs = {}
@@ -277,19 +273,22 @@ class PageHandlerDebug(object):
             self.handler.log.debug('debug mode is on')
 
         if self.debug_mode.write_debug:
-            self.debug_log_handler = DebugPageLogHandler()
-            self.handler.log.addHandler(self.debug_log_handler)
+            self.debug_log_handler = DebugLogBulkHandler()
+            self.handler.log.add_bulk_handler(self.debug_log_handler, auto_flush=False)
             self.handler.log.debug('using debug mode logging')
 
         if self.debug_mode.inherited:
-            self.handler.log.debug('debug mode is inherited due to X-Hh-Debug request header')
+            self.handler.log.debug('debug mode is inherited due to {0} request header'.format(self.DEBUG_HEADER_NAME))
 
         if self.debug_mode.pass_debug:
-            self.handler.log.debug('debug mode will be passed to all frontik apps requested (debug=pass)')
+            self.handler.log.debug('{0} header will be passed to all requests'.format(self.DEBUG_HEADER_NAME))
 
     def get_debug_page(self, status_code, response_headers, original_response=None):
 
         import frontik.app
+
+        start_time = time.time()
+        self.debug_log_handler.flush()
 
         debug_log_data = copy.deepcopy(self.debug_log_handler.log_data)
         debug_log_data.set('code', str(status_code))
@@ -312,6 +311,8 @@ class PageHandlerDebug(object):
 
         if original_response is not None:
             debug_log_data.append(frontik.xml_util.dict_to_xml(original_response, 'original-response'))
+
+        debug_log_data.set('generate-time', str((time.time() - start_time) * 1000))
 
         # show debug page if apply_xsl=True ('noxsl' flag is not set)
         # if debug mode is disabled, then we could have got there only after an exception — apply xsl anyway
