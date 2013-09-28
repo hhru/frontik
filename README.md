@@ -1,12 +1,10 @@
-What is Frontik?
-================
+## What is Frontik?
 
-Frontik is a simple xml aggregator for Yandex-like page generation workflow.
+Frontik is an asyncronous Tornado-based application server. It was designed to support simple xml aggregation with xsl transformation, but supports other content types as well.
 
-Frontik is developed and mantained by me (Andrey Tatarinov, elephantum@yandex.ru) while working at [hh.ru][hh] as a part of infrastructure development tasks.
+Frontik was originally developed by Andrey Tatarinov at [hh.ru][hh] as a part of infrastructure development tasks.
 
-How does it work?
-=================
+## How does it work?
 
     user   frontik   backend1 backend2 ...
     ====   =======   ======== ========
@@ -34,17 +32,13 @@ How does it work?
 
 Typically page generation process is split into several steps:
 
-  1. initiate requests: frontik makes several http-requests to underlying backends.
+  * initiate requests: frontik makes several http-requests to underlying backends
   * wait for either response or timeout for each backend request
-  * aggregate everything we got into one xml document, apply given xsl transformation
-  * return the result of transformation to user.
+  * aggregate everything we got into one xml document, apply xsl transformation (or construct result in any other way)
+  * return the result of transformation to user
 
-Where is it used?
-=================
+## Where is it used?
 
-  * Some of the pages of [hh.ru][hh] are served using frontik
-  * [hh.jsx.ru][hhjsx] is served entirely using frontik, with [sources][hhjsxsrc] available.
+  * All pages of [hh.ru][hh] are served using frontik
 
 [hh]: http://hh.ru/
-[hhjsx]: http://hh.jsx.ru/
-[hhjsxsrc]: http://github.com/AndrewSumin/hephaestus
