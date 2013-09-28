@@ -2,18 +2,17 @@
 
 import time
 import Queue
+import logging
 
 from tornado.web import HTTPError
 
-import logging
 log = logging.getLogger('frontik.async')
 
 
 def before(before_fun):
-    '''
+    """
     before_fun :: f(self, cb)
-    '''
-
+    """
     def before_fun_deco(fun):
         def new_fun(self, *args, **kw):
             def cb():
@@ -24,15 +23,13 @@ def before(before_fun):
 
 
 class AsyncGroup(object):
-    '''
+    """
     Grouping of several async requests and final callback in such way, that final callback is invoked after the last
      request is finished.
 
     Frontik uses this class to find the right moment to finish page.
-    '''
+    """
 
-    # in the breaking compatibility version parameters should be
-    # rearranged: name, finish_cb, log
     def __init__(self, finish_cb, log=log.debug, name=None):
         self.counter = 0
         self.finished = False
@@ -60,7 +57,6 @@ class AsyncGroup(object):
             try:
                 self.finish_cb()
             finally:
-
                 # prevent possible cycle references
                 self.finish_cb = None
 
@@ -104,34 +100,3 @@ class AsyncGroup(object):
             self.try_finish()
 
         return new_cb
-
-
-class AsyncWorkPool(object):
-    '''
-    AWP - machinery to limit the number of simultaneously working async processes
-    add new task with .add_task(cb)
-    let pool know when task is finished with .release()
-    '''
-
-    def __init__(self, pool_size):
-        self.pool_size = pool_size
-        self.workers = 0
-        self.queue = Queue.Queue()
-
-    def add_task(self, cb):
-        if self.workers < self.pool_size:
-            self.workers += 1
-            cb()
-        else:
-            self.queue.put(cb)
-            log.debug('postponing %s because worker pool is full; queue size = %s)', cb, self.queue.qsize())
-
-    def release(self):
-        assert (self.workers > 0)
-        self.workers -= 1
-
-        if not self.queue.empty():
-            cb = self.queue.get()
-            self.workers += 1
-            log.debug('invoking postponed cb %s; queue size = %s', cb, self.queue.qsize())
-            cb()

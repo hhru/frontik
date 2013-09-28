@@ -7,13 +7,11 @@ import traceback
 import weakref
 import time
 import socket
+from logging.handlers import SysLogHandler
 
 import tornado.options
 from tornado.escape import to_unicode
-
 from lxml.builder import E
-
-from logging.handlers import SysLogHandler
 
 try:
     from graypy.handler import GELFHandler, LAN_CHUNK
@@ -102,7 +100,8 @@ class MaxLenSysLogHandler(SysLogHandler):
     def format(self, record):
         """
         prio_length is length of '<prio>' header which is attached to message before sending to syslog
-        so we need to subtract it from max_length to guarantee that length of resulting message won't be greater than max_length
+        so we need to subtract it from max_length to guarantee that length of resulting message
+        won't be greater than max_length
         """
         prio_length = len('%d' % self.encodePriority(self.facility, self.mapPriority(record.levelname))) + 2 # 2 is length of angle brackets
         return SysLogHandler.format(self, record)[:(self.max_length - prio_length)]
