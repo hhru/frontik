@@ -4,9 +4,10 @@ import urlparse
 
 import lxml.etree as etree
 
-
 log = logging.getLogger("frontik.xml_util")
+
 parser = etree.XMLParser()
+
 
 class PrefixResolver(etree.Resolver):
     def __init__(self, scheme, path):
@@ -21,12 +22,14 @@ class PrefixResolver(etree.Resolver):
                 raise etree.XSLTParseError('Open files out of XSL root is not allowed: {0}'.format(path))
             return self.resolve_filename(path, context)
 
+
 def _abs_filename(base_filename, filename):
     if filename.startswith("/"):
         return filename
     else:
         base_dir = os.path.dirname(base_filename)
         return os.path.normpath(os.path.join(base_dir, filename))
+
 
 def get_xsl_includes(filename, parser=parser):
     tree = etree.parse(filename, parser)
@@ -35,9 +38,11 @@ def get_xsl_includes(filename, parser=parser):
             for i in tree.xpath('xsl:import|xsl:include', namespaces=namespaces)
             if i.get('href').find(':') == -1]
 
+
 def read_xsl(filename, log=log, parser=parser):
     log.debug('read file %s', filename)
     return etree.XSLT(etree.parse(filename, parser))
+
 
 def dict_to_xml(dict_value, element_name):
     element = etree.Element(element_name)
@@ -48,6 +53,7 @@ def dict_to_xml(dict_value, element_name):
     for k, v in dict_value.items():
         element.append(dict_to_xml(v, k))
     return element
+
 
 def xml_to_dict(xml):
     if len(xml) == 0:
