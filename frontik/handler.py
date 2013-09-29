@@ -203,19 +203,11 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.exception('Cannot decode query parameter, falling back to empty string')
             return ''
 
-    def get_error_html(self, status_code, **kwargs):
-        if self._prepared and self.debug.debug_mode.write_debug:
-            self.debug.debug_mode.enabled = True
-            self._force_finish()
-        else:
-            # if not prepared (for example, working handlers count limit) or not in debug mode
-            # use default tornado error page
-            return super(PageHandler, self).get_error_html(status_code, **kwargs)
-
     def send_error(self, status_code=500, headers=None, **kwargs):
         headers = {} if headers is None else headers
         exception = kwargs.get('exception', None)
         finish_with_exception = exception is not None and (
+            199 < status_code < 400 or
             getattr(exception, 'xml', None) is not None or getattr(exception, 'text', None) is not None)
 
         if finish_with_exception:
@@ -231,8 +223,13 @@ class PageHandler(tornado.web.RequestHandler):
                     self.set_xsl(exception.xsl)
 
             self._force_finish()
-        else:
-            return super(PageHandler, self).send_error(status_code, headers=headers, **kwargs)
+            return
+
+        elif self._prepared and self.debug.debug_mode.write_debug:
+            self.debug.debug_mode.enabled = True
+            self._error_debug = True
+
+        return super(PageHandler, self).send_error(status_code, headers=headers, **kwargs)
 
     @tornado.web.asynchronous
     def post(self, *args, **kw):
@@ -275,7 +272,6 @@ class PageHandler(tornado.web.RequestHandler):
         if self._prepared and self.debug.debug_mode.enabled:
             try:
                 self._response_size = sum(imap(len, self._write_buffer))
-
                 original_headers = {'Content-Length': str(self._response_size)}
                 response_headers = dict(self._headers, **original_headers)
                 original_response = {
@@ -286,11 +282,17 @@ class PageHandler(tornado.web.RequestHandler):
 
                 res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
 
-                self.set_header(frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME, True)
+                # debug can be shown on any error if it is enabled in config
+                # we should not change response code on such occasions
+                if not hasattr(self, '_error_debug'):
+                    self._status_code = 200
+
+                if self.debug.debug_mode.inherited:
+                    self.set_header(frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME, True)
+
                 self.set_header('Content-disposition', '')
                 self.set_header('Content-Length', str(len(res)))
                 self._write_buffer = [res]
-                self._status_code = 200
 
             except Exception:
                 self.log.exception('Cannot write debug info')
@@ -338,7 +340,7 @@ class PageHandler(tornado.web.RequestHandler):
                         self.log.warn('got strange response.body of type %s', type(response.body))
                 callback(response)
 
-            if hasattr(self, 'debug') and self.debug.debug_mode.pass_debug:
+            if self._prepared and self.debug.debug_mode.pass_debug:
                 req.headers[frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME] = True
                 req.headers['Authorization'] = self.request.headers.get('Authorization', None)
 

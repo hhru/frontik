@@ -314,17 +314,14 @@ class PageHandlerDebug(object):
 
         debug_log_data.set('generate-time', str((time.time() - start_time) * 1000))
 
-        # show debug page if apply_xsl=True ('noxsl' flag is not set)
-        # if debug mode is disabled, then we could have got there only after an exception — apply xsl anyway
-        # if debug mode is inherited (through X-Inherit-Debug request header), then the response is always xml
-        can_apply_xsl_or_500 = self.handler.xml.apply_xsl or not self.debug_mode.enabled
-        if can_apply_xsl_or_500 and not self.debug_mode.inherited:
+        # return raw xml if this is specified explicitly (noxsl=true) or when in inherited mode
+        if not frontik.util.get_cookie_or_url_param_value(self.handler, 'noxsl') and not self.debug_mode.inherited:
             try:
                 with open(tornado.options.options.debug_xsl) as xsl_file:
                     tranform = etree.XSLT(etree.XML(xsl_file.read()))
                 log_document = str(tranform(debug_log_data))
                 self.handler.set_header('Content-Type', 'text/html; charset=UTF-8')
-            except Exception, e:
+            except Exception:
                 self.handler.log.exception('XSLT debug file error')
                 try:
                     self.handler.log.error('XSL error log entries:\n%s' % "\n".join(map(

@@ -129,7 +129,7 @@ class PageLogger(logging.LoggerAdapter):
                 if len(self.bulk_handlers) > 0:
                     self.records_list.append(record)
 
-            def add_bulk_handler(self, handler, auto_flush):
+            def add_bulk_handler(self, handler, auto_flush=True):
                 self.bulk_handlers.append((handler, auto_flush))
                 if not auto_flush:
                     handler.flush = partial(self.flush_bulk_handler, handler)
