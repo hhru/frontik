@@ -1,3 +1,9 @@
+frontik (2.17.24) unstable; urgency=low
+
+  * HH-36340 remove debug=profile and refactor debug parameters
+
+ -- Andrey Sumin <an.sumin@hh.ru>  Thu, 03 Oct 2013 11:11:12 +0400
+
 frontik (2.17.23) unstable; urgency=low
 
   * HH-37114 add css fallback for js entries toggling
