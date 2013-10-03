@@ -1,6 +1,0 @@
-include MANIFEST.in
-include README.md
-recursive-include debian *
-recursive-include production *
-recursive-include scripts *
-recursive-include src *
