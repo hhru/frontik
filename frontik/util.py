@@ -51,16 +51,19 @@ def make_url(base, **query_args):
 
 
 def decode_string_from_charset(string, charsets=('cp1251', 'koi8_r')):
+    if isinstance(string, unicode):
+        return string
+
     decoded_body = None
     for c in charsets:
         try:
             decoded_body = string.decode(c)
             break
-        except UnicodeDecodeError:
+        except UnicodeError:
             continue
 
     if decoded_body is None:
-        raise Exception('Could not decode string (tried: %s)', ', '.join(charsets))
+        raise Exception('Could not decode string (tried: {0})'.format(', '.join(charsets)))
 
     return decoded_body
 

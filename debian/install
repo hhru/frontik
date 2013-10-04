@@ -1,3 +1,2 @@
 production/frontik.cfg /etc/frontik
 frontik/debug.xsl /usr/lib/frontik/
-frontik/profiler.html /usr/lib/frontik/

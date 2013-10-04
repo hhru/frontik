@@ -56,15 +56,8 @@ class FrontikTestInstance(object):
     @contextlib.contextmanager
     def instance(self):
         if not self.port:
-             self.start()
-        try:
-            yield self.port
-        finally:
-            data = urllib2.urlopen("http://localhost:{0}/ph_count/".format(self.port)).read().split("\n")
-            ph_count = int(data[0])
-            refs = data[1:]
-            print "ph_count={0}".format(ph_count)
-            print "refs={0}".format(refs)
+            self.start()
+        yield self.port
 
 
     @contextlib.contextmanager

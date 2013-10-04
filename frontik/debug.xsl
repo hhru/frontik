@@ -38,7 +38,8 @@
             status: <xsl:value-of select="@code"/>,
             requests: <xsl:value-of select="count(entry/response)"/>,
             bytes received: <xsl:value-of select="sum(entry/response/size)"/>,
-            bytes produced: <xsl:value-of select="@response-size"/>
+            bytes produced: <xsl:value-of select="@response-size"/>,
+            debug generated in: <xsl:value-of select="format-number(@generate-time, '#0.##')"/>ms
         </div>
 
         <xsl:apply-templates select="." mode="versions-info"/>
@@ -46,7 +47,7 @@
         <xsl:apply-templates select="entry"/>
     </xsl:template>
 
-    <xsl:template match="entry[contains(@msg, 'finish group') and /log/@mode != 'full']"/>
+    <xsl:template match="entry[contains(@msg, 'finish group') and not(contains(/log/@mode, 'full'))]"/>
 
     <xsl:template match="log" mode="versions-info">
         <div class="textentry m-textentry__expandable">
@@ -159,8 +160,7 @@
         </span>
     </xsl:template>
 
-    <xsl:template match="entry[contains(@msg, 'finish group') and /log/@mode != 'full']"/>
-
+    <xsl:template match="entry[contains(@msg, 'finish group') and not(contains(/log/@mode, 'full'))]"/>
 
     <xsl:template match="entry[response]">
         <xsl:variable name="status">
@@ -426,6 +426,7 @@
                     margin-bottom:.5em;
                 }
                 .textentry__head {
+                    display: block;
                 }
                     .m-textentry__head_highlight {
                         font-weight:bold;
