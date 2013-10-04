@@ -1,3 +1,9 @@
+frontik (2.17.25) unstable; urgency=low
+
+  * HH-36340 fix bulk handler
+
+ -- Andrey Sumin <an.sumin@hh.ru>  Fri, 04 Oct 2013 17:58:09 +0400
+
 frontik (2.17.24) unstable; urgency=low
 
   * HH-36340 remove debug=profile and refactor debug parameters
