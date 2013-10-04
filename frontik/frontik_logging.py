@@ -135,7 +135,7 @@ class PageLogger(logging.LoggerAdapter):
                     handler.flush = partial(self.flush_bulk_handler, handler)
 
             def flush_bulk_handler(self, handler, **kwargs):
-                handler.handle_bulk(self.records_list)
+                handler.handle_bulk(self.records_list, **kwargs)
 
             def flush(self, **kwargs):
                 for handler, auto_flush in self.bulk_handlers:
