@@ -51,12 +51,12 @@
 
     <xsl:template match="log" mode="versions-info">
         <div class="textentry m-textentry__expandable">
-            <label for="details_versions" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
                 <span class="textentry__head__expandtext">
                     Version info
                 </span>
             </label>
-            <input type="checkbox" class="details-expander" id="details_versions"/>
+            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
             <div class="details">
                 <xsl:apply-templates select="versions/node()" mode="color-xml"/>
             </div>
@@ -65,12 +65,12 @@
 
     <xsl:template match="log" mode="general-info">
         <div class="textentry m-textentry__expandable">
-            <label for="details_general" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
                 <span class="textentry__head__expandtext">
                     General request/response info
                 </span>
             </label>
-            <input type="checkbox" class="details-expander" id="details_general"/>
+            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
             <div class="details">
                 <xsl:apply-templates select="request/params"/>
                 <xsl:apply-templates select="request/headers"/>
