@@ -2,14 +2,15 @@
 
 import cStringIO
 
-import frontik.future
 import lxml.etree as etree
+
+import frontik.future
+
 
 class Doc(object):
     def __init__(self, root_node_name='doc', root_node=None):
         self.root_node_name = root_node_name
         self.root_node = root_node
-        
         self.data = []
         
     def put(self, chunk):
@@ -17,7 +18,6 @@ class Doc(object):
             self.data.extend(chunk)
         else:
             self.data.append(chunk)
-
         return self
 
     def _finalize_data(self):
@@ -96,8 +96,8 @@ class Doc(object):
     def to_string(self):
         return etree_to_xml(self.to_etree_element())
 
+
 def etree_to_xml(string):
     sio = cStringIO.StringIO()
     etree.ElementTree(string).write(sio, encoding='utf-8', xml_declaration=True)
     return sio.getvalue()
-
