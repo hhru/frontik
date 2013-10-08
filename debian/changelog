@@ -1,3 +1,9 @@
+frontik (2.17.27) unstable; urgency=low
+
+  * HH-37640 fix version info and general debug info
+
+ -- Andrey Sumin <an.sumin@hh.ru>  Tue, 08 Oct 2013 14:55:53 +0400
+
 frontik (2.17.25) unstable; urgency=low
 
   * HH-36340 fix bulk handler
