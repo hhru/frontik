@@ -16,8 +16,8 @@ import handler
 import frontik.magic_imp
 import frontik.doc
 
-
 log = logging.getLogger('frontik.server')
+
 
 def __get_apps_versions():
     app_versions = etree.Element('applications')
@@ -34,6 +34,7 @@ def __get_apps_versions():
         app_versions.append(app_info)
 
     return app_versions
+
 
 def get_frontik_and_apps_versions():
     from version import version
@@ -91,6 +92,7 @@ class CountPageHandlerInstancesHandler(tornado.web.RequestHandler):
         self.finish('{0}\n{1}'.format(len(hh), [i for i in gc.get_referrers(*hh)
                                                 if i is not hh]))
 
+
 class CountTypesHandler(tornado.web.RequestHandler):
     def get(self):
         import gc
@@ -107,19 +109,21 @@ class CountTypesHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-def get_to_dispatch(request, field = 'path'):
-    if hasattr(request, 're_'+field):
-        return getattr(request, 're_'+field)
+def get_to_dispatch(request, field='path'):
+    if hasattr(request, 're_' + field):
+        return getattr(request, 're_' + field)
     return getattr(request, field)
 
-def set_to_dispatch(request, value, field = 'path'):
-    setattr(request, 're_'+field, value)
+
+def set_to_dispatch(request, value, field='path'):
+    setattr(request, 're_' + field, value)
+
 
 def augment_request(request, match, parse):
     uri = get_to_dispatch(request, 'uri')
 
     new_uri = (uri[:match.start()] + uri[match.end():])
-    split = urlparse.urlsplit(new_uri[:1] +  new_uri[1:].strip('/'))
+    split = urlparse.urlsplit(new_uri[:1] + new_uri[1:].strip('/'))
 
     set_to_dispatch(request, new_uri, 'uri')
     set_to_dispatch(request, split.path, 'path')
@@ -130,9 +134,11 @@ def augment_request(request, match, parse):
         if value:
             request.arguments.setdefault(name, []).extend(parse(value))
 
+
 def dispatcher(cls):
     """makes on demand initializing class"""
     old_init = cls.__init__
+
     def __init__(self, *args, **kwargs):
         self._init_partial = functools.partial(old_init, self, *args, **kwargs)
         self._inited = False
@@ -161,7 +167,7 @@ class Map2ModuleName(object):
     def __call__(self, application, request, **kwargs):
         self.log.info('requested url: %s (%s)', get_to_dispatch(request, 'uri'), request.uri)
 
-        page_module_name = 'pages.' + '.'.join(get_to_dispatch(request,'path').strip('/').split('/'))
+        page_module_name = 'pages.' + '.'.join(get_to_dispatch(request, 'path').strip('/').split('/'))
         self.log.debug('page module: %s', page_module_name)
 
         try:
@@ -171,14 +177,14 @@ class Map2ModuleName(object):
             self.log.exception('%s module not found', (self.name, page_module_name))
             return tornado.web.ErrorHandler(application, request, status_code=404)
         except AttributeError:
-            self.log.exception('%s is not frontik application module, but needs to be and have "frontik_import" method', self.name)
+            self.log.exception('%s is not frontik application module (no "frontik_import" method)', self.name)
             return tornado.web.ErrorHandler(application, request, status_code=500)
         except:
             self.log.exception('error while importing %s module', (self.name, page_module_name))
             return tornado.web.ErrorHandler(application, request, status_code=500)
 
         if not hasattr(page_module, 'Page'):
-            log.exception('%s. Page class not found', page_module_name)
+            log.error('%s. Page class not found', page_module_name)
             return tornado.web.ErrorHandler(application, request, status_code=404)
 
         return page_module.Page(application, request, **kwargs)
@@ -194,19 +200,16 @@ class App(object):
         self.log.info('initializing...')
         try:
             self.importer = frontik.magic_imp.FrontikAppImporter(name, root)
-
             self.init_app_package(name)
 
-            #Track all possible filenames for each app's config
-            #module to reload in case of change
+            # track all possible filenames for each app's config module to reload in case of change
             for filename in self.importer.get_probable_module_filenames('config'):
                 tornado.autoreload.watch_file(filename)
 
             self.ph_globals = frontik.handler.PageHandlerGlobals(self.module)
         except:
-            #we do not want to break frontik on app
-            #initialization error, so we report error and skip
-            #the app.
+            # we do not want to break frontik on app initialization error,
+            # so we report error and skip the app.
             self.log.exception('failed to initialize, skipping from configuration')
             self.initialized_wo_error = False
 
@@ -235,6 +238,7 @@ class App(object):
             return tornado.web.ErrorHandler(application, request, status_code=404)
         return self.module.dispatcher(application, request, ph_globals = self.ph_globals, **kwargs)
 
+
 @dispatcher
 class RegexpDispatcher(object):
     def __init__(self, app_list, name='RegexpDispatcher'):
@@ -246,7 +250,7 @@ class RegexpDispatcher(object):
             try:
                 app._initialize()
             except AttributeError:
-                #its mean that app is not dispatcher -> nothing to _initialize
+                # it means that app is not dispatcher -> nothing to _initialize
                 pass
             return re.compile(pattern), app, parse
 
@@ -257,7 +261,7 @@ class RegexpDispatcher(object):
         for pattern, app, parse in self.apps:
 
             match = pattern.match(get_to_dispatch(request, 'uri'))
-            #app found
+            # app found
             if match:
                 self.log.debug('using %s' % app)
                 augment_request(request, match, parse)
@@ -273,10 +277,11 @@ class RegexpDispatcher(object):
         self.log.exception('match for request url "%s" not found', request.uri)
         return tornado.web.ErrorHandler(application, request, status_code=404)
 
+
 def get_app(app_urls, app_dict=None):
     app_roots = []
     if app_dict is not None:
-        app_roots.extend([('/'+prefix.lstrip('/'), App(prefix.strip('/'), path)) for prefix, path in app_dict.iteritems()])
+        app_roots.extend([('/' + prefix.lstrip('/'), App(prefix.strip('/'), path)) for prefix, path in app_dict.iteritems()])
     app_roots.extend(app_urls)
     dispatcher = RegexpDispatcher(app_roots, 'root')
     dispatcher._initialize()

@@ -12,6 +12,7 @@ import frontik.options
 
 log = logging.getLogger("frontik.server")
 
+
 def main(config_file="/etc/frontik/frontik.cfg"):
     tornado_util.server.bootstrap(config_file=config_file)
     frontik_logging.bootstrap_all_logging()
