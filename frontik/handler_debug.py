@@ -315,7 +315,7 @@ class PageHandlerDebug(object):
         debug_log_data.set('generate-time', str((time.time() - start_time) * 1000))
 
         # return raw xml if this is specified explicitly (noxsl=true) or when in inherited mode
-        if not frontik.util.get_cookie_or_url_param_value(self.handler, 'noxsl') and not self.debug_mode.inherited:
+        if frontik.util.get_cookie_or_url_param_value(self.handler, 'noxsl') is None and not self.debug_mode.inherited:
             try:
                 with open(tornado.options.options.debug_xsl) as xsl_file:
                     tranform = etree.XSLT(etree.XML(xsl_file.read()))

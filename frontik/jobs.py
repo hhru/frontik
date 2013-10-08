@@ -5,13 +5,16 @@ import tornado.ioloop
 import tornado.options
 
 import logging
+
 log = logging.getLogger('frontik.jobs')
+
 
 def _schedule_cb_result(cb, result):
     tornado.ioloop.IOLoop.instance().add_callback(functools.partial(cb, result))
 
 return_result = _schedule_cb_result
 reraise = _schedule_cb_result
+
 
 def queue_worker(queue):
     while True:
@@ -31,8 +34,10 @@ def queue_worker(queue):
             log.exception('Cannot perform job')
             reraise(exception_cb, e)
 
+
 class ThreadPoolExecutor(object):
     count = 0
+
     def __init__(self, pool_size):
         assert pool_size > 0
         self.log = log
@@ -53,7 +58,8 @@ class ThreadPoolExecutor(object):
             log.exception('Cannot put job to queue')
             reraise(exception_cb, e)
 
-_executor =  None
+_executor = None
+
 def executor():
     global _executor
     if _executor is None:

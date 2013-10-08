@@ -2,6 +2,7 @@ class FutureVal(object):
     def get(self):
         pass
 
+
 class Placeholder(FutureVal):
     def __init__(self):
         self.data = None
@@ -11,4 +12,3 @@ class Placeholder(FutureVal):
 
     def get(self):
         return self.data
-

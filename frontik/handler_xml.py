@@ -4,6 +4,7 @@ import copy
 import os.path
 import time
 import weakref
+import logging
 
 import lxml.etree as etree
 import tornado.autoreload
@@ -14,11 +15,10 @@ import frontik.util
 import frontik.auth
 import frontik.xml_util
 
-import logging
-
 log = logging.getLogger('frontik.server')
 log_xsl = logging.getLogger('frontik.handler.xsl')
 log_fileloader = logging.getLogger('frontik.server.fileloader')
+
 
 class FileCache(object):
     class LimitedDict(dict):
@@ -77,6 +77,7 @@ class FileCache(object):
 
 def _source_comment(src):
     return etree.Comment('Source: {0}'.format(frontik.util.asciify_url(src).replace('--', '%2D%2D')))
+
 
 def xml_from_file(filename):
     """
@@ -147,7 +148,7 @@ class PageHandlerXML(object):
         self.xml_cache = self.handler.ph_globals.xml.xml_cache
         self.xsl_cache = self.handler.ph_globals.xml.xsl_cache
 
-        self.doc = frontik.doc.Doc(root_node = etree.Element('doc', frontik = 'true'))
+        self.doc = frontik.doc.Doc(root_node=etree.Element('doc', frontik='true'))
         self.transform = None
         if not self.handler.config.apply_xsl:
             self.log.debug('ignoring set_xsl() because config.apply_xsl=%s', self.handler.config.apply_xsl)
@@ -219,5 +220,4 @@ class PageHandlerXML(object):
 
         # В режиме noxsl мы всегда отдаем xml.
         self.handler.set_header('Content-Type', 'application/xml')
-
         cb(self.doc.to_string())
