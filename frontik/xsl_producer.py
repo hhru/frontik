@@ -43,24 +43,25 @@ class XslProducer(object):
             self.apply_xsl = True
 
     def __call__(self, callback):
-        if self.apply_xsl and self.transform:
+        if self.apply_xsl and self.transform_filename:
+            try:
+                self.transform = self.xsl_cache.load(self.transform_filename, log=self.log)
+            except etree.XMLSyntaxError:
+                self.log.exception('failed parsing XSL file {0} (XML syntax)'.format(self.transform_filename))
+                raise frontik.handler.HTTPError(500)
+            except etree.XSLTParseError:
+                self.log.exception('failed parsing XSL file {0} (XSL parse error)'.format(self.transform_filename))
+                raise frontik.handler.HTTPError(500)
+            except:
+                self.log.exception('XSL transformation error with file {0}'.format(self.transform_filename))
+                raise frontik.handler.HTTPError(500)
+
             return self.__prepare_finish_with_xsl(callback)
         else:
             return self.__prepare_finish_wo_xsl(callback)
 
     def set_xsl(self, filename):
-        try:
-            self.transform_filename = filename
-            self.transform = self.xsl_cache.load(filename, log=self.log)
-        except etree.XMLSyntaxError:
-            self.log.exception('failed parsing XSL file {0} (XML syntax)'.format(filename))
-            raise frontik.handler.HTTPError(500)
-        except etree.XSLTParseError:
-            self.log.exception('failed parsing XSL file {0} (XSL parse error)'.format(filename))
-            raise frontik.handler.HTTPError(500)
-        except:
-            self.log.exception('XSL transformation error with file {0}'.format(filename))
-            raise frontik.handler.HTTPError(500)
+        self.transform_filename = filename
 
     def __prepare_finish_with_xsl(self, callback):
         self.log.debug('finishing with xsl')
