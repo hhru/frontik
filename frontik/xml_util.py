@@ -1,12 +1,46 @@
+# coding=utf-8
+
 import logging
 import os.path
 import urlparse
 
+import tornado.options
 import lxml.etree as etree
 
-log = logging.getLogger("frontik.xml_util")
+import frontik.util
+import frontik.file_cache
 
+
+log_xml_util = logging.getLogger('frontik.xml_util')
 parser = etree.XMLParser()
+
+
+def make_file_cache(option_name, option_value, fun, max_len=None, step=None, deepcopy=False):
+    if option_value:
+        # disable cache in development environment
+        max_len = 0 if tornado.options.options.debug else max_len
+        return frontik.file_cache.FileCache(option_value, fun, max_len, step, deepcopy)
+    else:
+        return frontik.file_cache.InvalidOptionCache(option_name)
+
+
+class PageHandlerXMLGlobals(object):
+    def __init__(self, config):
+        for schema, path in getattr(config, 'XSL_SCHEMAS', {}).items():
+            parser.resolvers.add(PrefixResolver(schema, path))
+
+        self.xml_cache = make_file_cache('XML_root',
+                                         getattr(config, 'XML_root', None),
+                                         xml_from_file,
+                                         getattr(config, 'XML_cache_limit', None),
+                                         getattr(config, 'XML_cache_step', None),
+                                         deepcopy=True)
+
+        self.xsl_cache = make_file_cache('XSL_root',
+                                         getattr(config, 'XSL_root', None),
+                                         xsl_from_file,
+                                         getattr(config, 'XSL_cache_limit', None),
+                                         getattr(config, 'XSL_cache_step', None))
 
 
 class PrefixResolver(etree.Resolver):
@@ -39,9 +73,31 @@ def get_xsl_includes(filename, parser=parser):
             if i.get('href').find(':') == -1]
 
 
-def read_xsl(filename, log=log, parser=parser):
+def xml_from_file(filename, log=log_xml_util):
+    """
+    filename -> (status, et.Element)
+
+    status == True - результат хороший можно кешировать
+           == False - результат плохой, нужно вернуть, но не кешировать
+    """
+    def _source_comment(src):
+        return etree.Comment('Source: {0}'.format(frontik.util.asciify_url(src).replace('--', '%2D%2D')))
+
+    if os.path.exists(filename):
+        try:
+            res = etree.parse(filename).getroot()
+            return True, [_source_comment(filename), res]
+        except:
+            log.exception('failed to parse %s', filename)
+            return False, etree.Element('error', dict(msg='failed to parse file: %s' % (filename,)))
+    else:
+        log.error('file not found: %s', filename)
+        return False, etree.Element('error', dict(msg='file not found: %s' % (filename,)))
+
+
+def xsl_from_file(filename, log=log_xml_util):
     log.debug('read file %s', filename)
-    return etree.XSLT(etree.parse(filename, parser))
+    return True, etree.XSLT(etree.parse(filename, parser))
 
 
 def dict_to_xml(dict_value, element_name):

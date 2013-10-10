@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import time
-import Queue
 import logging
 
 from tornado.web import HTTPError
@@ -88,7 +87,7 @@ class AsyncGroup(object):
                 else:
                     self.try_finish()
             else:
-                self.log("Ignoring response because of already finished group")
+                self.log('Ignoring response because of already finished group')
 
         return new_cb
 
