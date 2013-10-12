@@ -20,8 +20,6 @@ urls = [
             (r"/echo/(?P<id>(\d+))?",   SomeHandler),
 ]
 
-use_standart_doc = False
-
 debug = True
 debug_login = "hh"
 debug_password = "12345"

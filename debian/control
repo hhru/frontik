@@ -1,7 +1,7 @@
 Source: frontik
-Section: unknown
+Section: python
 Priority: extra
-Maintainer: Andrey Tatarinov <a.tatarinov@hh.ru>
+Maintainer: Andrey Sumin <an.sumin@hh.ru>
 Build-Depends: 
   cdbs,
   debhelper (>= 7), 
@@ -11,7 +11,7 @@ Standards-Version: 3.8.1
 
 Package: frontik
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, 
+Depends: ${python:Depends}, ${misc:Depends},
   python-daemon,
   python-lxml,
   python-simplejson,
@@ -19,4 +19,4 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
   python-tornado-util (>= 0.5.1),
   python, 
 Suggests: python-graypy (>= 1.0+hh3)
-Description: frontik - the python based XScript alternative 
+Description: Tornado-based application server
