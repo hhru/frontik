@@ -51,12 +51,12 @@
 
     <xsl:template match="log" mode="versions-info">
         <div class="textentry m-textentry__expandable">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
+            <label for="details_{generate-id(versions)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
                 <span class="textentry__head__expandtext">
                     Version info
                 </span>
             </label>
-            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
+            <input type="checkbox" class="details-expander" id="details_{generate-id(versions)}"/>
             <div class="details">
                 <xsl:apply-templates select="versions/node()" mode="color-xml"/>
             </div>
