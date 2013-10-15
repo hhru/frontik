@@ -21,7 +21,7 @@ import frontik.util
 from frontik.util import decode_string_from_charset
 import frontik.xml_util
 
-debug_log = logging.getLogger('XML_debug')
+debug_log = logging.getLogger('frontik.debug')
 
 
 def response_to_xml(response):
