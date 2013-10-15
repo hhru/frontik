@@ -6,8 +6,4 @@ include /usr/share/cdbs/1/rules/debhelper.mk
 
 DEB_PYTHON_SYSTEM = pysupport
 include /usr/share/cdbs/1/class/python-distutils.mk
-
-binary-install-python/frontik::
-	$(SHELL) debian/version-bump.sh
-
 include /usr/share/cdbs/1/rules/buildcore.mk 
