@@ -274,7 +274,7 @@ class RegexpDispatcher(object):
                     log.exception('%s. Internal server error, %s', app, e)
                 return tornado.web.ErrorHandler(application, request, status_code=500)
 
-        self.log.exception('match for request url "%s" not found', request.uri)
+        self.log.error('match for request url "%s" not found', request.uri)
         return tornado.web.ErrorHandler(application, request, status_code=404)
 
 
