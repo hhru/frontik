@@ -51,6 +51,7 @@ try:
             self.close()
 
 except ImportError:
+    import frontik.options
     tornado.options.options.graylog = False
 
 log = logging.getLogger('frontik.handler')
