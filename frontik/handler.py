@@ -263,8 +263,8 @@ class PageHandler(tornado.web.RequestHandler):
             url, {} if data is None else data, {} if headers is None else headers,
             connect_timeout, request_timeout, follow_redirects)
 
-        self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
-                                            request_types=request_types, labels=labels))
+        request._frontik_labels = labels
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, request_types=request_types))
         return placeholder
 
     def post_url(self, url, data='', headers=None, files=None, connect_timeout=0.5, request_timeout=2,
@@ -275,8 +275,8 @@ class PageHandler(tornado.web.RequestHandler):
             url, data, {} if headers is None else headers, {} if files is None else files,
             connect_timeout, request_timeout, follow_redirects, content_type)
 
-        self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
-                                            request_types=request_types, labels=labels))
+        request._frontik_labels = labels
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, request_types=request_types))
         return placeholder
 
     def put_url(self, url, data='', headers=None, connect_timeout=0.5, request_timeout=2, callback=None,
@@ -287,8 +287,8 @@ class PageHandler(tornado.web.RequestHandler):
             url, data, {} if headers is None else headers,
             connect_timeout, request_timeout)
 
-        self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
-                                            request_types=request_types, labels=labels))
+        request._frontik_labels = labels
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, request_types=request_types))
         return placeholder
 
     def delete_url(self, url, data='', headers=None, connect_timeout=0.5, request_timeout=2, callback=None,
@@ -299,20 +299,14 @@ class PageHandler(tornado.web.RequestHandler):
             url, data, {} if headers is None else headers,
             connect_timeout, request_timeout)
 
-        self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
-                                            request_types=request_types, labels=labels))
+        request._frontik_labels = labels
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, request_types=request_types))
         return placeholder
 
     def fetch_request(self, request, callback):
         """ Tornado HTTP client compatible method """
         if not self._finished:
             stats.http_reqs_count += 1
-            def _callback(response):
-                try:
-                    stats.http_reqs_size_sum += len(response.body)
-                except TypeError:
-                    self.log.warn('got strange response.body of type %s', type(response.body))
-                callback(response)
 
             if self._prepared and self.debug.debug_mode.pass_debug:
                 request.headers[frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME] = True
@@ -322,11 +316,17 @@ class PageHandler(tornado.web.RequestHandler):
             request.connect_timeout *= tornado.options.options.timeout_multiplier
             request.request_timeout *= tornado.options.options.timeout_multiplier
 
-            return self.http_client.fetch(request, self.finish_group.add(self.async_callback(_callback)))
+            return self.http_client.fetch(request, self.finish_group.add(self.async_callback(
+                self._log_response, request, callback)))
         else:
             self.log.warn('attempted to make http request to %s while page is already finished; ignoring', request.url)
 
-    def _fetch_request_response(self, placeholder, callback, request, response, request_types=None, labels=None):
+    def _log_response(self, request, callback, response):
+        try:
+            stats.http_reqs_size_sum += len(response.body)
+        except TypeError:
+            self.log.warn('got strange response.body of type %s', type(response.body))
+
         try:
             debug_extra = {}
             if response.headers.get(frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME):
@@ -339,8 +339,8 @@ class PageHandler(tornado.web.RequestHandler):
                     response = frontik.util.create_fake_response(request, response, **response_info)
 
             debug_extra.update({'_response': response, '_request': request})
-            if labels is not None:
-                debug_extra['_labels'] = labels
+            if getattr(request, '_frontik_labels', None) is not None:
+                debug_extra['_labels'] = request._frontik_labels
 
             self.log.debug(
                 'got {code}{size} {url} in {time:.2f}ms'.format(
@@ -354,6 +354,10 @@ class PageHandler(tornado.web.RequestHandler):
         except Exception:
             self.log.exception('Cannot log response info')
 
+        if callable(callback):
+            callback(response)
+
+    def _parse_response(self, placeholder, callback, response, request_types=None):
         if not request_types:
             request_types = default_request_types
         result = None
