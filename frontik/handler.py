@@ -81,12 +81,11 @@ default_request_types = {
     re.compile(".*json.?"): _parse_response_json
 }
 
-# TODO cleanup this after release of frontik with frontik.async
 AsyncGroup = frontik.async.AsyncGroup
 
 
 class HTTPError(tornado.web.HTTPError):
-    """An exception that will turn into an HTTP error response."""
+    """ An exception that will turn into an HTTP error response """
     def __init__(self, status_code, log_message=None, headers=None, *args, **kwargs):
         tornado.web.HTTPError.__init__(self, status_code, log_message, *args)
         self.headers = headers if headers is not None else {}
@@ -109,9 +108,7 @@ stats = Stats()
 
 
 class PageHandlerGlobals(object):
-    """
-    Объект с настройками для всех хендлеров
-    """
+    """ Global settings for Frontik instance """
     def __init__(self, app_package):
         self.config = app_package.config
 
@@ -203,6 +200,239 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.exception('Cannot decode query parameter, falling back to empty string')
             return ''
 
+    def async_callback(self, callback, *args, **kw):
+        return tornado.web.RequestHandler.async_callback(self, self.check_finished(callback, *args, **kw))
+
+    def check_finished(self, callback, *args, **kwargs):
+        if args or kwargs:
+            callback = partial(callback, *args, **kwargs)
+
+        def wrapper(*args, **kwargs):
+            if self._finished:
+                self.log.warn('Page was already finished, %s ignored', callback)
+            else:
+                callback(*args, **kwargs)
+
+        return wrapper
+
+    # Requests handling
+
+    @tornado.web.asynchronous
+    def post(self, *args, **kw):
+        if not self._finished:
+            self.post_page()
+            self.finish_page()
+
+    @tornado.web.asynchronous
+    def get(self, *args, **kw):
+        if not self._finished:
+            self.get_page()
+            self.finish_page()
+
+    @tornado.web.asynchronous
+    def head(self, *args, **kwargs):
+        if not self._finished:
+            self.get_page()
+            self.finish_page()
+
+    def delete(self, *args, **kwargs):
+        raise HTTPError(405, headers={"Allow": "GET, POST"})
+
+    def put(self, *args, **kwargs):
+        raise HTTPError(405, headers={"Allow": "GET, POST"})
+
+    def options(self, *args, **kwargs):
+        raise HTTPError(405, headers={"Allow": "GET, POST"})
+
+    def get_page(self):
+        """ This method should be implemented in the subclass """
+        raise HTTPError(405, header={'Allow': 'POST'})
+
+    def post_page(self):
+        """ This method should be implemented in the subclass """
+        raise HTTPError(405, headers={'Allow': 'GET'})
+
+    # HTTP client methods
+
+    def get_url(self, url, data=None, headers=None, connect_timeout=0.5, request_timeout=2, callback=None,
+                follow_redirects=True, request_types=None, labels=None):
+
+        placeholder = future.Placeholder()
+        request = frontik.util.make_get_request(
+            url, {} if data is None else data, {} if headers is None else headers,
+            connect_timeout, request_timeout, follow_redirects)
+
+        self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
+                                            request_types=request_types, labels=labels))
+        return placeholder
+
+    def post_url(self, url, data='', headers=None, files=None, connect_timeout=0.5, request_timeout=2,
+                 follow_redirects=True, content_type=None, callback=None, request_types=None, labels=None):
+
+        placeholder = future.Placeholder()
+        request = frontik.util.make_post_request(
+            url, data, {} if headers is None else headers, {} if files is None else files,
+            connect_timeout, request_timeout, follow_redirects, content_type)
+
+        self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
+                                            request_types=request_types, labels=labels))
+        return placeholder
+
+    def put_url(self, url, data='', headers=None, connect_timeout=0.5, request_timeout=2, callback=None,
+                request_types=None, labels=None):
+
+        placeholder = future.Placeholder()
+        request = frontik.util.make_put_request(
+            url, data, {} if headers is None else headers,
+            connect_timeout, request_timeout)
+
+        self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
+                                            request_types=request_types, labels=labels))
+        return placeholder
+
+    def delete_url(self, url, data='', headers=None, connect_timeout=0.5, request_timeout=2, callback=None,
+                   request_types=None, labels=None):
+
+        placeholder = future.Placeholder()
+        request = frontik.util.make_delete_request(
+            url, data, {} if headers is None else headers,
+            connect_timeout, request_timeout)
+
+        self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
+                                            request_types=request_types, labels=labels))
+        return placeholder
+
+    def fetch_request(self, request, callback):
+        """ Tornado HTTP client compatible method """
+        if not self._finished:
+            stats.http_reqs_count += 1
+            def _callback(response):
+                try:
+                    stats.http_reqs_size_sum += len(response.body)
+                except TypeError:
+                    self.log.warn('got strange response.body of type %s', type(response.body))
+                callback(response)
+
+            if self._prepared and self.debug.debug_mode.pass_debug:
+                request.headers[frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME] = True
+                request.headers['Authorization'] = self.request.headers.get('Authorization', None)
+
+            request.headers['X-Request-Id'] = self.request_id
+            request.connect_timeout *= tornado.options.options.timeout_multiplier
+            request.request_timeout *= tornado.options.options.timeout_multiplier
+
+            return self.http_client.fetch(request, self.finish_group.add(self.async_callback(_callback)))
+        else:
+            self.log.warn('attempted to make http request to %s while page is already finished; ignoring', request.url)
+
+    def _fetch_request_response(self, placeholder, callback, request, response, request_types=None, labels=None):
+        try:
+            debug_extra = {}
+            if response.headers.get(frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME):
+                debug_response = etree.XML(response.body)
+                original_response = debug_response.xpath('//original-response')
+                if original_response:
+                    response_info = frontik.xml_util.xml_to_dict(original_response[0])
+                    debug_response.remove(original_response[0])
+                    debug_extra['_debug_response'] = debug_response
+                    response = frontik.util.create_fake_response(request, response, **response_info)
+
+            debug_extra.update({'_response': response, '_request': request})
+            if labels is not None:
+                debug_extra['_labels'] = labels
+
+            self.log.debug(
+                'got {code}{size} {url} in {time:.2f}ms'.format(
+                    code=response.code,
+                    url=response.effective_url,
+                    size=' {0:e} bytes'.format(len(response.body)) if response.body is not None else '',
+                    time=response.request_time * 1000
+                ),
+                extra=debug_extra
+            )
+        except Exception:
+            self.log.exception('Cannot log response info')
+
+        if not request_types:
+            request_types = default_request_types
+        result = None
+        if response.error:
+            placeholder.set_data(self.show_response_error(response))
+        elif response.code != 204:
+            content_type = response.headers.get('Content-Type', '')
+            for k, v in request_types.iteritems():
+                if k.search(content_type):
+                    good_result, data = v(response)
+                    if good_result:
+                        result = data
+                    else:
+                        result = None
+                    placeholder.set_data(data)
+                    break
+        if callback:
+            callback(result, response)
+
+    def show_response_error(self, response):
+        self.log.warn('%s failed %s (%s)', response.code, response.effective_url, str(response.error))
+        try:
+            data = etree.Element('error',
+                                 dict(url=response.effective_url, reason=str(response.error), code=str(response.code)))
+        except ValueError:
+            self.log.warn("Cannot add information about response head in debug, can't be serialized in xml.")
+
+        if response.body:
+            try:
+                data.append(etree.Comment(response.body.replace("--", "%2D%2D")))
+            except ValueError:
+                self.log.warn('Cannot add debug info in XML comment with unparseable response.body: non-ASCII response')
+
+        return data
+
+    # Finish page
+
+    def finish_page(self):
+        self.finish_group.try_finish()
+
+    def _force_finish(self):
+        self.finish_group.finish()
+
+    def _finish_page_cb(self):
+        if not self._finished:
+            self.log.stage_tag('page')
+            producer = self.xml if self.text is None else self.__generic_producer
+            if self.apply_postprocessor:
+                producer(callback=self.__call_postprocessors_chain)
+            else:
+                producer(callback=self.finish)
+        else:
+            self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
+
+    def __handle_long_request(self):
+        self.log.warning("long request detected (uri: {0})".format(self.request.uri))
+        if tornado.options.options.kill_long_requests:
+            self.send_error()
+
+    def __call_postprocessors_chain(self, tpl):
+        def __chain_postprocessor(postprocessors, start_time, tpl):
+            if start_time is not None:
+                time_delta = (time.time() - start_time) * 1000
+                self.log.debug('Finished postprocessor "{0!r}" in {1}ms'.format(postprocessors.pop(0), time_delta))
+
+            if postprocessors:
+                postprocessor = postprocessors[0]
+                self.log.debug('Started postprocessor "{0!r}"'.format(postprocessor))
+                postprocessor(self, tpl, partial(__chain_postprocessor, postprocessors, time.time()))
+            else:
+                self.log.stage_tag('postprocess')
+                self.finish(tpl)
+
+        if self._postprocessors:
+            self.log.debug('Applying postprocessors: {0!s}'.format(self._postprocessors))
+        else:
+            self.log.debug('Finishing without postprocessor')
+
+        __chain_postprocessor(self._postprocessors[:], None, tpl)
+
     def send_error(self, status_code=500, headers=None, **kwargs):
         headers = {} if headers is None else headers
         exception = kwargs.get('exception', None)
@@ -230,32 +460,6 @@ class PageHandler(tornado.web.RequestHandler):
             self._error_debug = True
 
         return super(PageHandler, self).send_error(status_code, headers=headers, **kwargs)
-
-    @tornado.web.asynchronous
-    def post(self, *args, **kw):
-            self.post_page()
-            self.finish_page()
-
-    @tornado.web.asynchronous
-    def get(self, *args, **kw):
-        if not self._finished:
-            self.get_page()
-            self.finish_page()
-
-    @tornado.web.asynchronous
-    def head(self, *args, **kwargs):
-        if not self._finished:
-            self.get_page()
-            self.finish_page()
-
-    def delete(self, *args, **kwargs):
-        raise HTTPError(405, headers={"Allow": "GET, POST"})
-
-    def put(self, *args, **kwargs):
-        raise HTTPError(405, headers={"Allow": "GET, POST"})
-
-    def options(self, *args, **kwargs):
-        raise HTTPError(405, headers={"Allow": "GET, POST"})
 
     def finish(self, chunk=None):
         if hasattr(self, 'finish_timeout_handle'):
@@ -300,220 +504,7 @@ class PageHandler(tornado.web.RequestHandler):
         tornado.web.RequestHandler.flush(self, include_footers=False, **kwargs)
         self.log.request_finish_hook()
 
-    def get_page(self):
-        """ Эта функция должна быть переопределена в наследнике и
-        выполнять актуальную работу хендлера """
-        raise HTTPError(405, header={"Allow": "POST"})
-
-    def post_page(self):
-        """ Эта функция должна быть переопределена в наследнике и
-        выполнять актуальную работу хендлера """
-        raise HTTPError(405, headers={"Allow": "GET"})
-
-    ###
-
-    def async_callback(self, callback, *args, **kw):
-        return tornado.web.RequestHandler.async_callback(self, self.check_finished(callback, *args, **kw))
-
-    def check_finished(self, callback, *args, **kwargs):
-        if args or kwargs:
-            callback = partial(callback, *args, **kwargs)
-
-        def wrapper(*args, **kwargs):
-            if self._finished:
-                self.log.warn('Page was already finished, %s ignored', callback)
-            else:
-                callback(*args, **kwargs)
-
-        return wrapper
-
-    ###
-
-    def fetch_request(self, req, callback):
-        if not self._finished:
-            stats.http_reqs_count += 1
-            def _callback(response):
-                try:
-                    stats.http_reqs_size_sum += len(response.body)
-                except TypeError:
-                    if response.body is not None:
-                        self.log.warn('got strange response.body of type %s', type(response.body))
-                callback(response)
-
-            if self._prepared and self.debug.debug_mode.pass_debug:
-                req.headers[frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME] = True
-                req.headers['Authorization'] = self.request.headers.get('Authorization', None)
-
-            req.headers['X-Request-Id'] = self.request_id
-            req.connect_timeout *= tornado.options.options.timeout_multiplier
-            req.request_timeout *= tornado.options.options.timeout_multiplier
-
-            return self.http_client.fetch(req, self.finish_group.add(self.async_callback(_callback)))
-        else:
-            self.log.warn('attempted to make http request to %s while page is already finished; ignoring', req.url)
-
-    def get_url(self, url, data=None, headers=None, connect_timeout=0.5, request_timeout=2, callback=None,
-                follow_redirects=True, request_types=None, labels=None):
-
-        placeholder = future.Placeholder()
-        request = frontik.util.make_get_request(url,
-                                                {} if data is None else data,
-                                                {} if headers is None else headers,
-                                                connect_timeout,
-                                                request_timeout,
-                                                follow_redirects)
-
-        self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
-                                            request_types=request_types, labels=labels))
-        return placeholder
-
-    def post_url(self, url, data='', headers=None, files=None, connect_timeout=0.5, request_timeout=2,
-                 follow_redirects=True, content_type=None, callback=None, request_types=None, labels=None):
-
-        placeholder = future.Placeholder()
-        request = frontik.util.make_post_request(url,
-                                                 data,
-                                                 {} if headers is None else headers,
-                                                 {} if files is None else files,
-                                                 connect_timeout,
-                                                 request_timeout,
-                                                 follow_redirects,
-                                                 content_type)
-
-        self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
-                                            request_types=request_types, labels=labels))
-        return placeholder
-
-    def put_url(self, url, data='', headers=None, connect_timeout=0.5, request_timeout=2, callback=None,
-                request_types=None, labels=None):
-
-        placeholder = future.Placeholder()
-        request = frontik.util.make_put_request(url,
-                                                data,
-                                                {} if headers is None else headers,
-                                                connect_timeout,
-                                                request_timeout)
-
-        self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
-                                            request_types=request_types, labels=labels))
-        return placeholder
-
-    def delete_url(self, url, data='', headers=None, connect_timeout=0.5, request_timeout=2, callback=None,
-                   request_types=None, labels=None):
-
-        placeholder = future.Placeholder()
-        request = frontik.util.make_delete_request(url,
-                                                   data,
-                                                   {} if headers is None else headers,
-                                                   connect_timeout,
-                                                   request_timeout)
-
-        self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
-                                            request_types=request_types, labels=labels))
-        return placeholder
-
-    def _fetch_request_response(self, placeholder, callback, request, response, request_types=None, labels=None):
-        debug_extra = {}
-        if response.headers.get(frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME):
-            debug_response = etree.XML(response.body)
-            original_response = debug_response.xpath('//original-response')
-            if original_response:
-                response_info = frontik.xml_util.xml_to_dict(original_response[0])
-                debug_response.remove(original_response[0])
-                debug_extra['_debug_response'] = debug_response
-                response = frontik.util.create_fake_response(request, response, **response_info)
-
-        debug_extra.update({'_response': response, '_request': request})
-        if labels is not None:
-            debug_extra['_labels'] = labels
-
-        self.log.debug(
-            'got {code}{size} {url} in {time:.2f}ms'.format(
-                code=response.code,
-                url=response.effective_url,
-                size=' {0:e} bytes'.format(len(response.body)) if response.body is not None else '',
-                time=response.request_time * 1000
-            ),
-            extra=debug_extra
-        )
-
-        if not request_types:
-            request_types = default_request_types
-        result = None
-        if response.error:
-            placeholder.set_data(self.show_response_error(response))
-        elif response.code != 204:
-            content_type = response.headers.get('Content-Type', '')
-            for k, v in request_types.iteritems():
-                if k.search(content_type):
-                    good_result, data = v(response)
-                    if good_result:
-                        result = data
-                    else:
-                        result = None
-                    placeholder.set_data(data)
-                    break
-        if callback:
-            callback(result, response)
-
-    def show_response_error(self, response):
-        self.log.warn('%s failed %s (%s)', response.code, response.effective_url, str(response.error))
-        try:
-            data = etree.Element('error',
-                                 dict(url=response.effective_url, reason=str(response.error), code=str(response.code)))
-        except ValueError:
-            self.log.warn("Cannot add information about response head in debug, can't be serialized in xml.")
-
-        if response.body:
-            try:
-                data.append(etree.Comment(response.body.replace("--", "%2D%2D")))
-            except ValueError:
-                self.log.warn('Cannot add debug info in XML comment with unparseable response.body: non-ASCII response')
-
-        return data
-
-    def finish_page(self):
-        self.finish_group.try_finish()
-
-    def _force_finish(self):
-        self.finish_group.finish()
-
-    def _finish_page_cb(self):
-        if not self._finished:
-            self.log.stage_tag('page')
-            producer = self.xml if self.text is None else self.__generic_producer
-            if self.apply_postprocessor:
-                producer(callback=self.__call_postprocessors_chain)
-            else:
-                producer(callback=self.finish)
-        else:
-            self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
-
-    def __handle_long_request(self):
-        self.log.warning("long request detected (uri: {0})".format(self.request.uri))
-        if tornado.options.options.kill_long_requests:
-            self.send_error()
-
-    def __call_postprocessors_chain(self, tpl):
-        def __chain_postprocessor(postprocessors, start_time, tpl):
-            if start_time is not None:
-                time_delta = (time.time() - start_time) * 1000
-                self.log.debug('Finished postprocessor "{0!r}" in {1}ms'.format(postprocessors.pop(0), time_delta))
-
-            if postprocessors:
-                postprocessor = postprocessors[0]
-                self.log.debug('Started postprocessor "{0!r}"'.format(postprocessor))
-                postprocessor(self, tpl, partial(__chain_postprocessor, postprocessors, time.time()))
-            else:
-                self.log.stage_tag('postprocess')
-                self.finish(tpl)
-
-        if self._postprocessors:
-            self.log.debug('Applying postprocessors: {0!s}'.format(self._postprocessors))
-        else:
-            self.log.debug('Finishing without postprocessor')
-
-        __chain_postprocessor(self._postprocessors[:], None, tpl)
+    # Postprocessors and producers
 
     def add_postprocessor(self, postprocessor):
         self._postprocessors.append(postprocessor)
