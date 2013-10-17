@@ -140,10 +140,12 @@ class PageHandler(tornado.web.RequestHandler):
         self.http_client = self.ph_globals.http_client
         self.debug_access = None
 
+        self._template_postprocessors = []
+        self._early_postprocessors = []
+        self._late_postprocessors = []
+
         if hasattr(self.config, 'postprocessor'):
-            self._postprocessors = [self.config.postprocessor]
-        else:
-            self._postprocessors = []
+            self.add_template_postprocessor(self.config.postprocessor)
 
         self.text = None
 
@@ -399,11 +401,14 @@ class PageHandler(tornado.web.RequestHandler):
     def _finish_page_cb(self):
         if not self._finished:
             self.log.stage_tag('page')
-            producer = self.xml if self.text is None else self.__generic_producer
+
             if self.apply_postprocessor:
-                producer(callback=self.__call_postprocessors_chain)
+                callback = partial(self.__call_postprocessors, self._template_postprocessors[:], self.finish)
             else:
-                producer(callback=self.finish)
+                callback = self.finish
+
+            producer = self.xml if self.text is None else self.__generic_producer
+            self.__call_postprocessors(self._early_postprocessors[:], partial(producer, callback))
         else:
             self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
@@ -412,26 +417,21 @@ class PageHandler(tornado.web.RequestHandler):
         if tornado.options.options.kill_long_requests:
             self.send_error()
 
-    def __call_postprocessors_chain(self, tpl):
-        def __chain_postprocessor(postprocessors, start_time, tpl):
+    def __call_postprocessors(self, postprocessors, callback, *args):
+        def __chain_postprocessor(postprocessors, start_time, *args):
             if start_time is not None:
                 time_delta = (time.time() - start_time) * 1000
-                self.log.debug('Finished postprocessor "{0!r}" in {1}ms'.format(postprocessors.pop(0), time_delta))
+                self.log.debug('Finished postprocessor "{0!r}" in {1:.2f}ms'.format(postprocessors.pop(0), time_delta))
 
             if postprocessors:
                 postprocessor = postprocessors[0]
                 self.log.debug('Started postprocessor "{0!r}"'.format(postprocessor))
-                postprocessor(self, tpl, partial(__chain_postprocessor, postprocessors, time.time()))
+                postprocessor_callback = partial(__chain_postprocessor, postprocessors, time.time())
+                postprocessor(self, *(args + (postprocessor_callback,)))
             else:
-                self.log.stage_tag('postprocess')
-                self.finish(tpl)
+                callback(*args)
 
-        if self._postprocessors:
-            self.log.debug('Applying postprocessors: {0!s}'.format(self._postprocessors))
-        else:
-            self.log.debug('Finishing without postprocessor')
-
-        __chain_postprocessor(self._postprocessors[:], None, tpl)
+        __chain_postprocessor(postprocessors[:], None, *args)
 
     def send_error(self, status_code=500, headers=None, **kwargs):
         headers = {} if headers is None else headers
@@ -468,11 +468,13 @@ class PageHandler(tornado.web.RequestHandler):
         if not self._finished:
             if hasattr(self, 'whc_limit'):
                 self.whc_limit.release()
-            self.log.process_stages(self._status_code)
 
-        tornado.web.RequestHandler.finish(self, chunk)
+        self.__call_postprocessors(self._late_postprocessors[:], partial(super(PageHandler, self).finish, chunk))
 
     def flush(self, include_footers=False, **kwargs):
+        self.log.stage_tag('postprocess')
+        self.log.process_stages(self._status_code)
+
         if self._prepared and self.debug.debug_mode.enabled:
             try:
                 self._response_size = sum(imap(len, self._write_buffer))
@@ -506,8 +508,14 @@ class PageHandler(tornado.web.RequestHandler):
 
     # Postprocessors and producers
 
-    def add_postprocessor(self, postprocessor):
-        self._postprocessors.append(postprocessor)
+    def add_template_postprocessor(self, postprocessor):
+        self._template_postprocessors.append(postprocessor)
+
+    def add_early_postprocessor(self, postprocessor):
+        self._early_postprocessors.append(postprocessor)
+
+    def add_late_postprocessor(self, postprocessor):
+        self._late_postprocessors.append(postprocessor)
 
     def __generic_producer(self, callback):
         self.log.debug('finishing plaintext')
