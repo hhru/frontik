@@ -1,5 +1,6 @@
 # coding=utf-8
 
+import cStringIO
 import logging
 import os.path
 import urlparse
@@ -90,6 +91,12 @@ def xml_from_file(filename, log=log_xml_util):
 def xsl_from_file(filename, log=log_xml_util):
     log.debug('read file %s', filename)
     return True, etree.XSLT(etree.parse(filename, parser))
+
+
+def etree_to_xml_string(string):
+    sio = cStringIO.StringIO()
+    etree.ElementTree(string).write(sio, encoding='utf-8', xml_declaration=True)
+    return sio.getvalue()
 
 
 def dict_to_xml(dict_value, element_name):
