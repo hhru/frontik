@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
+# coding=utf-8
 
-from __future__ import with_statement
-
+import base64
 import nose
 import urllib2
 
@@ -10,9 +9,10 @@ from integration_util import FrontikTestInstance
 frontik_prod = FrontikTestInstance("./tests/projects/frontik_non_debug_mode.cfg")
 
 
-def simple2_test():
+def test_simple():
     with frontik_prod.get_page_text('test_app/simple') as html:
         assert(not html.find('ok') is None)
+
 
 def test_basic_auth_fail():
     with frontik_prod.instance() as srv_port:
@@ -23,7 +23,6 @@ def test_basic_auth_fail():
             assert(e.code == 401)
 
 
-import base64
 def test_basic_auth_fail_on_wrong_pass():
     with frontik_prod.instance() as srv_port:
         page_url = 'http://localhost:{0}/test_app/basic_auth/'.format(srv_port)
