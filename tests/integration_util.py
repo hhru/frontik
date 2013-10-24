@@ -1,25 +1,26 @@
-# -*- coding: utf-8 -*-
+# coding=utf-8
 
-import time
-import urllib2
 import contextlib
 import socket
+import time
+import urllib2
+
 import lxml.etree as etree
 
-import tornado_util.supervisor as supervisor
 import tornado.options
+import tornado_util.supervisor as supervisor
+
 
 def get_page(port, page, xsl=False):
-    url = "http://localhost:{0}/{1}{2}".format(port, page,
-                                               ("/?" if "?" not in page else "&") + ("noxsl=true" if not xsl else ""))
-    data = urllib2.urlopen(url)
-    return data
+    url = 'http://localhost:{0}/{1}{2}{3}'.format(
+        port, page, '/?' if '?' not in page else '&', 'noxsl=true' if not xsl else '')
+    return urllib2.urlopen(url)
 
 
 class FrontikTestInstance(object):
-    def __init__(self, cfg="./tests/projects/frontik.cfg"):
+    def __init__(self, cfg='./tests/projects/frontik.cfg'):
+        tornado.options.parse_config_file(cfg)
         self.cfg = cfg
-        tornado.options.parse_config_file(self.cfg)
         self.port = None
         self.supervisor = supervisor
 
@@ -27,18 +28,17 @@ class FrontikTestInstance(object):
         for port in xrange(9000, 10000):
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.bind(("", port))
+                s.bind(('', port))
                 s.close()
                 break
             except:
                 pass
         else:
-            raise AssertionError("no empty port in 9000-10000 for frontik test instance")
+            raise AssertionError('No empty port in range 9000..10000 for frontik test instance')
 
-        supervisor.start_worker("./dev_run.py", self.cfg, port)
+        supervisor.start_worker('./dev_run.py', self.cfg, port)
         self.wait_for(lambda: supervisor.is_running(port))
         self.port = port
-
 
     def __del__(self):
         self.supervisor.stop_worker(self.port)
@@ -50,7 +50,6 @@ class FrontikTestInstance(object):
             if fun():
                 return
             time.sleep(0.1)
-
         assert(fun())
 
     @contextlib.contextmanager
@@ -58,7 +57,6 @@ class FrontikTestInstance(object):
         if not self.port:
             self.start()
         yield self.port
-
 
     @contextlib.contextmanager
     def get_page_xml(self, page_name, xsl=True):
@@ -68,7 +66,7 @@ class FrontikTestInstance(object):
             try:
                 res = etree.fromstring(data)
             except:
-                print "failed to parse xml: \"%s\"" % (data,)
+                print 'failed to parse xml: "{0}"'.format(data)
                 raise
 
             yield res
@@ -78,5 +76,3 @@ class FrontikTestInstance(object):
         with self.instance() as srv_port:
             data = get_page(srv_port, page_name, xsl).read()
             yield data
-
-

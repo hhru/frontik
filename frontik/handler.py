@@ -81,12 +81,11 @@ default_request_types = {
     re.compile(".*json.?"): _parse_response_json
 }
 
-# TODO cleanup this after release of frontik with frontik.async
 AsyncGroup = frontik.async.AsyncGroup
 
 
 class HTTPError(tornado.web.HTTPError):
-    """An exception that will turn into an HTTP error response."""
+    """ An exception that will turn into an HTTP error response """
     def __init__(self, status_code, log_message=None, headers=None, *args, **kwargs):
         tornado.web.HTTPError.__init__(self, status_code, log_message, *args)
         self.headers = headers if headers is not None else {}
@@ -109,9 +108,7 @@ stats = Stats()
 
 
 class PageHandlerGlobals(object):
-    """
-    Объект с настройками для всех хендлеров
-    """
+    """ Global settings for Frontik instance """
     def __init__(self, app_package):
         self.config = app_package.config
 
@@ -143,10 +140,12 @@ class PageHandler(tornado.web.RequestHandler):
         self.http_client = self.ph_globals.http_client
         self.debug_access = None
 
+        self._template_postprocessors = []
+        self._early_postprocessors = []
+        self._late_postprocessors = []
+
         if hasattr(self.config, 'postprocessor'):
-            self._postprocessors = [self.config.postprocessor]
-        else:
-            self._postprocessors = []
+            self.add_template_postprocessor(self.config.postprocessor)
 
         self.text = None
 
@@ -203,36 +202,26 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.exception('Cannot decode query parameter, falling back to empty string')
             return ''
 
-    def send_error(self, status_code=500, headers=None, **kwargs):
-        headers = {} if headers is None else headers
-        exception = kwargs.get('exception', None)
-        finish_with_exception = exception is not None and (
-            199 < status_code < 400 or  # raise HTTPError(200) to finish page immediately
-            getattr(exception, 'xml', None) is not None or getattr(exception, 'text', None) is not None)
+    def async_callback(self, callback, *args, **kw):
+        return tornado.web.RequestHandler.async_callback(self, self.check_finished(callback, *args, **kw))
 
-        if finish_with_exception:
-            self.set_status(status_code)
-            for (name, value) in headers.iteritems():
-                self.set_header(name, value)
+    def check_finished(self, callback, *args, **kwargs):
+        if args or kwargs:
+            callback = partial(callback, *args, **kwargs)
 
-            if getattr(exception, 'text', None) is not None:
-                self.text = exception.text
-            elif getattr(exception, 'xml', None) is not None:
-                self.doc.put(exception.xml)
-                if getattr(exception, 'xsl', None) is not None:
-                    self.set_xsl(exception.xsl)
+        def wrapper(*args, **kwargs):
+            if self._finished:
+                self.log.warn('Page was already finished, %s ignored', callback)
+            else:
+                callback(*args, **kwargs)
 
-            self._force_finish()
-            return
+        return wrapper
 
-        elif self._prepared and self.debug.debug_mode.write_debug:
-            self.debug.debug_mode.enabled = True
-            self._error_debug = True
-
-        return super(PageHandler, self).send_error(status_code, headers=headers, **kwargs)
+    # Requests handling
 
     @tornado.web.asynchronous
     def post(self, *args, **kw):
+        if not self._finished:
             self.post_page()
             self.finish_page()
 
@@ -257,111 +246,23 @@ class PageHandler(tornado.web.RequestHandler):
     def options(self, *args, **kwargs):
         raise HTTPError(405, headers={"Allow": "GET, POST"})
 
-    def finish(self, chunk=None):
-        if hasattr(self, 'finish_timeout_handle'):
-            tornado.ioloop.IOLoop.instance().remove_timeout(self.finish_timeout_handle)
-
-        if not self._finished:
-            if hasattr(self, 'whc_limit'):
-                self.whc_limit.release()
-            self.log.process_stages(self._status_code)
-
-        tornado.web.RequestHandler.finish(self, chunk)
-
-    def flush(self, include_footers=False, **kwargs):
-        if self._prepared and self.debug.debug_mode.enabled:
-            try:
-                self._response_size = sum(imap(len, self._write_buffer))
-                original_headers = {'Content-Length': str(self._response_size)}
-                response_headers = dict(self._headers, **original_headers)
-                original_response = {
-                    'buffer': ''.join(self._write_buffer),
-                    'headers': response_headers,
-                    'code': self._status_code
-                }
-
-                res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
-
-                # debug can be shown on any error if it is enabled in config
-                # we should not change response code on such occasions
-                if not hasattr(self, '_error_debug'):
-                    self._status_code = 200
-
-                if self.debug.debug_mode.inherited:
-                    self.set_header(frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME, True)
-
-                self.set_header('Content-disposition', '')
-                self.set_header('Content-Length', str(len(res)))
-                self._write_buffer = [res]
-
-            except Exception:
-                self.log.exception('Cannot write debug info')
-
-        tornado.web.RequestHandler.flush(self, include_footers=False, **kwargs)
-        self.log.request_finish_hook()
-
     def get_page(self):
-        """ Эта функция должна быть переопределена в наследнике и
-        выполнять актуальную работу хендлера """
-        raise HTTPError(405, header={"Allow": "POST"})
+        """ This method should be implemented in the subclass """
+        raise HTTPError(405, header={'Allow': 'POST'})
 
     def post_page(self):
-        """ Эта функция должна быть переопределена в наследнике и
-        выполнять актуальную работу хендлера """
-        raise HTTPError(405, headers={"Allow": "GET"})
+        """ This method should be implemented in the subclass """
+        raise HTTPError(405, headers={'Allow': 'GET'})
 
-    ###
-
-    def async_callback(self, callback, *args, **kw):
-        return tornado.web.RequestHandler.async_callback(self, self.check_finished(callback, *args, **kw))
-
-    def check_finished(self, callback, *args, **kwargs):
-        if args or kwargs:
-            callback = partial(callback, *args, **kwargs)
-
-        def wrapper(*args, **kwargs):
-            if self._finished:
-                self.log.warn('Page was already finished, %s ignored', callback)
-            else:
-                callback(*args, **kwargs)
-
-        return wrapper
-
-    ###
-
-    def fetch_request(self, req, callback):
-        if not self._finished:
-            stats.http_reqs_count += 1
-            def _callback(response):
-                try:
-                    stats.http_reqs_size_sum += len(response.body)
-                except TypeError:
-                    if response.body is not None:
-                        self.log.warn('got strange response.body of type %s', type(response.body))
-                callback(response)
-
-            if self._prepared and self.debug.debug_mode.pass_debug:
-                req.headers[frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME] = True
-                req.headers['Authorization'] = self.request.headers.get('Authorization', None)
-
-            req.headers['X-Request-Id'] = self.request_id
-            req.connect_timeout *= tornado.options.options.timeout_multiplier
-            req.request_timeout *= tornado.options.options.timeout_multiplier
-
-            return self.http_client.fetch(req, self.finish_group.add(self.async_callback(_callback)))
-        else:
-            self.log.warn('attempted to make http request to %s while page is already finished; ignoring', req.url)
+    # HTTP client methods
 
     def get_url(self, url, data=None, headers=None, connect_timeout=0.5, request_timeout=2, callback=None,
                 follow_redirects=True, request_types=None, labels=None):
 
         placeholder = future.Placeholder()
-        request = frontik.util.make_get_request(url,
-                                                {} if data is None else data,
-                                                {} if headers is None else headers,
-                                                connect_timeout,
-                                                request_timeout,
-                                                follow_redirects)
+        request = frontik.util.make_get_request(
+            url, {} if data is None else data, {} if headers is None else headers,
+            connect_timeout, request_timeout, follow_redirects)
 
         self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
                                             request_types=request_types, labels=labels))
@@ -371,14 +272,9 @@ class PageHandler(tornado.web.RequestHandler):
                  follow_redirects=True, content_type=None, callback=None, request_types=None, labels=None):
 
         placeholder = future.Placeholder()
-        request = frontik.util.make_post_request(url,
-                                                 data,
-                                                 {} if headers is None else headers,
-                                                 {} if files is None else files,
-                                                 connect_timeout,
-                                                 request_timeout,
-                                                 follow_redirects,
-                                                 content_type)
+        request = frontik.util.make_post_request(
+            url, data, {} if headers is None else headers, {} if files is None else files,
+            connect_timeout, request_timeout, follow_redirects, content_type)
 
         self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
                                             request_types=request_types, labels=labels))
@@ -388,11 +284,9 @@ class PageHandler(tornado.web.RequestHandler):
                 request_types=None, labels=None):
 
         placeholder = future.Placeholder()
-        request = frontik.util.make_put_request(url,
-                                                data,
-                                                {} if headers is None else headers,
-                                                connect_timeout,
-                                                request_timeout)
+        request = frontik.util.make_put_request(
+            url, data, {} if headers is None else headers,
+            connect_timeout, request_timeout)
 
         self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
                                             request_types=request_types, labels=labels))
@@ -402,40 +296,64 @@ class PageHandler(tornado.web.RequestHandler):
                    request_types=None, labels=None):
 
         placeholder = future.Placeholder()
-        request = frontik.util.make_delete_request(url,
-                                                   data,
-                                                   {} if headers is None else headers,
-                                                   connect_timeout,
-                                                   request_timeout)
+        request = frontik.util.make_delete_request(
+            url, data, {} if headers is None else headers,
+            connect_timeout, request_timeout)
 
         self.fetch_request(request, partial(self._fetch_request_response, placeholder, callback, request,
                                             request_types=request_types, labels=labels))
         return placeholder
 
+    def fetch_request(self, request, callback):
+        """ Tornado HTTP client compatible method """
+        if not self._finished:
+            stats.http_reqs_count += 1
+            def _callback(response):
+                try:
+                    stats.http_reqs_size_sum += len(response.body)
+                except TypeError:
+                    self.log.warn('got strange response.body of type %s', type(response.body))
+                callback(response)
+
+            if self._prepared and self.debug.debug_mode.pass_debug:
+                request.headers[frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME] = True
+                request.headers['Authorization'] = self.request.headers.get('Authorization', None)
+
+            request.headers['X-Request-Id'] = self.request_id
+            request.connect_timeout *= tornado.options.options.timeout_multiplier
+            request.request_timeout *= tornado.options.options.timeout_multiplier
+
+            return self.http_client.fetch(request, self.finish_group.add(self.async_callback(_callback)))
+        else:
+            self.log.warn('attempted to make http request to %s while page is already finished; ignoring', request.url)
+
     def _fetch_request_response(self, placeholder, callback, request, response, request_types=None, labels=None):
-        debug_extra = {}
-        if response.headers.get(frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME):
-            debug_response = etree.XML(response.body)
-            original_response = debug_response.xpath('//original-response')
-            if original_response:
-                response_info = frontik.xml_util.xml_to_dict(original_response[0])
-                debug_response.remove(original_response[0])
-                debug_extra['_debug_response'] = debug_response
-                response = frontik.util.create_fake_response(request, response, **response_info)
+        try:
+            debug_extra = {}
+            if response.headers.get(frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME):
+                debug_response = etree.XML(response.body)
+                original_response = debug_response.xpath('//original-response')
+                if original_response:
+                    response_info = frontik.xml_util.xml_to_dict(original_response[0])
+                    debug_response.remove(original_response[0])
+                    debug_extra['_debug_response'] = debug_response
+                    response = frontik.util.create_fake_response(request, response, **response_info)
 
-        debug_extra.update({'_response': response, '_request': request})
-        if labels is not None:
-            debug_extra['_labels'] = labels
+            debug_extra.update({'_response': response, '_request': request})
+            if labels is not None:
+                debug_extra['_labels'] = labels
 
-        self.log.debug(
-            'got {code}{size} {url} in {time:.2f}ms'.format(
-                code=response.code,
-                url=response.effective_url,
-                size=' {0:e} bytes'.format(len(response.body)) if response.body is not None else '',
-                time=response.request_time * 1000
-            ),
-            extra=debug_extra
-        )
+            self.log.debug(
+                'got {code}{size} {url} in {time:.2f}ms'.format(
+                    code=response.code,
+                    url=response.effective_url,
+                    size=' {0:e} bytes'.format(len(response.body)) if response.body is not None else '',
+                    time=response.request_time * 1000
+                ),
+                extra=debug_extra
+            )
+        except Exception:
+            self.log.exception('Cannot log response info')
 
         if not request_types:
             request_types = default_request_types
@@ -472,6 +390,8 @@ class PageHandler(tornado.web.RequestHandler):
 
         return data
 
+    # Finish page
+
     def finish_page(self):
         self.finish_group.try_finish()
 
@@ -481,11 +401,14 @@ class PageHandler(tornado.web.RequestHandler):
     def _finish_page_cb(self):
         if not self._finished:
             self.log.stage_tag('page')
-            producer = self.xml if self.text is None else self.__generic_producer
+
             if self.apply_postprocessor:
-                producer(callback=self.__call_postprocessors_chain)
+                callback = partial(self.__call_postprocessors, self._template_postprocessors[:], self.finish)
             else:
-                producer(callback=self.finish)
+                callback = self.finish
+
+            producer = self.xml if self.text is None else self.__generic_producer
+            self.__call_postprocessors(self._early_postprocessors[:], partial(producer, callback))
         else:
             self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
@@ -494,29 +417,109 @@ class PageHandler(tornado.web.RequestHandler):
         if tornado.options.options.kill_long_requests:
             self.send_error()
 
-    def __call_postprocessors_chain(self, tpl):
-        def __chain_postprocessor(postprocessors, start_time, tpl):
+    def __call_postprocessors(self, postprocessors, callback, *args):
+        def __chain_postprocessor(postprocessors, start_time, *args):
             if start_time is not None:
                 time_delta = (time.time() - start_time) * 1000
-                self.log.debug('Finished postprocessor "{0!r}" in {1}ms'.format(postprocessors.pop(0), time_delta))
+                self.log.debug('Finished postprocessor "{0!r}" in {1:.2f}ms'.format(postprocessors.pop(0), time_delta))
 
             if postprocessors:
                 postprocessor = postprocessors[0]
                 self.log.debug('Started postprocessor "{0!r}"'.format(postprocessor))
-                postprocessor(self, tpl, partial(__chain_postprocessor, postprocessors, time.time()))
+                postprocessor_callback = partial(__chain_postprocessor, postprocessors, time.time())
+                postprocessor(self, *(args + (postprocessor_callback,)))
             else:
-                self.log.stage_tag('postprocess')
-                self.finish(tpl)
+                callback(*args)
 
-        if self._postprocessors:
-            self.log.debug('Applying postprocessors: {0!s}'.format(self._postprocessors))
-        else:
-            self.log.debug('Finishing without postprocessor')
+        __chain_postprocessor(postprocessors[:], None, *args)
 
-        __chain_postprocessor(self._postprocessors[:], None, tpl)
+    def send_error(self, status_code=500, headers=None, **kwargs):
+        headers = {} if headers is None else headers
+        exception = kwargs.get('exception', None)
+        finish_with_exception = exception is not None and (
+            199 < status_code < 400 or  # raise HTTPError(200) to finish page immediately
+            getattr(exception, 'xml', None) is not None or getattr(exception, 'text', None) is not None)
 
-    def add_postprocessor(self, postprocessor):
-        self._postprocessors.append(postprocessor)
+        if finish_with_exception:
+            self.set_status(status_code)
+            for (name, value) in headers.iteritems():
+                self.set_header(name, value)
+
+            if getattr(exception, 'text', None) is not None:
+                self.text = exception.text
+            elif getattr(exception, 'xml', None) is not None:
+                self.doc.put(exception.xml)
+                if getattr(exception, 'xsl', None) is not None:
+                    self.set_xsl(exception.xsl)
+
+            self._force_finish()
+            return
+
+        elif self._prepared and self.debug.debug_mode.write_debug:
+            # debug can be shown on any error if it is enabled in config
+            self.debug.debug_mode.error_debug = True
+
+        return super(PageHandler, self).send_error(status_code, headers=headers, **kwargs)
+
+    def finish(self, chunk=None):
+        if hasattr(self, 'finish_timeout_handle'):
+            tornado.ioloop.IOLoop.instance().remove_timeout(self.finish_timeout_handle)
+
+        if not self._finished:
+            if hasattr(self, 'whc_limit'):
+                self.whc_limit.release()
+
+        try:
+            self.__call_postprocessors(self._late_postprocessors[:], partial(super(PageHandler, self).finish, chunk))
+        except Exception:
+            self.log.exception('Error during late postprocessing stage, finishing with an exception')
+            self._status_code = 500
+            super(PageHandler, self).finish(chunk)
+
+    def flush(self, include_footers=False, **kwargs):
+        self.log.stage_tag('postprocess')
+        self.log.process_stages(self._status_code)
+
+        if self._prepared and (self.debug.debug_mode.enabled or self.debug.debug_mode.error_debug):
+            try:
+                self._response_size = sum(imap(len, self._write_buffer))
+                original_headers = {'Content-Length': str(self._response_size)}
+                response_headers = dict(self._headers, **original_headers)
+                original_response = {
+                    'buffer': ''.join(self._write_buffer),
+                    'headers': response_headers,
+                    'code': self._status_code
+                }
+
+                res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
+
+                if self.debug.debug_mode.enabled:
+                    # change status code only if debug was explicitly requested
+                    self._status_code = 200
+
+                if self.debug.debug_mode.inherited:
+                    self.set_header(frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME, True)
+
+                self.set_header('Content-disposition', '')
+                self.set_header('Content-Length', str(len(res)))
+                self._write_buffer = [res]
+
+            except Exception:
+                self.log.exception('Cannot write debug info')
+
+        tornado.web.RequestHandler.flush(self, include_footers=False, **kwargs)
+        self.log.request_finish_hook()
+
+    # Postprocessors and producers
+
+    def add_template_postprocessor(self, postprocessor):
+        self._template_postprocessors.append(postprocessor)
+
+    def add_early_postprocessor(self, postprocessor):
+        self._early_postprocessors.append(postprocessor)
+
+    def add_late_postprocessor(self, postprocessor):
+        self._late_postprocessors.append(postprocessor)
 
     def __generic_producer(self, callback):
         self.log.debug('finishing plaintext')
