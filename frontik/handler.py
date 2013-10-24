@@ -456,8 +456,8 @@ class PageHandler(tornado.web.RequestHandler):
             return
 
         elif self._prepared and self.debug.debug_mode.write_debug:
-            self.debug.debug_mode.enabled = True
-            self._error_debug = True
+            # debug can be shown on any error if it is enabled in config
+            self.debug.debug_mode.error_debug = True
 
         return super(PageHandler, self).send_error(status_code, headers=headers, **kwargs)
 
@@ -469,13 +469,18 @@ class PageHandler(tornado.web.RequestHandler):
             if hasattr(self, 'whc_limit'):
                 self.whc_limit.release()
 
-        self.__call_postprocessors(self._late_postprocessors[:], partial(super(PageHandler, self).finish, chunk))
+        try:
+            self.__call_postprocessors(self._late_postprocessors[:], partial(super(PageHandler, self).finish, chunk))
+        except Exception:
+            self.log.exception('Error during late postprocessing stage, finishing with an exception')
+            self._status_code = 500
+            super(PageHandler, self).finish(chunk)
 
     def flush(self, include_footers=False, **kwargs):
         self.log.stage_tag('postprocess')
         self.log.process_stages(self._status_code)
 
-        if self._prepared and self.debug.debug_mode.enabled:
+        if self._prepared and (self.debug.debug_mode.enabled or self.debug.debug_mode.error_debug):
             try:
                 self._response_size = sum(imap(len, self._write_buffer))
                 original_headers = {'Content-Length': str(self._response_size)}
@@ -488,9 +493,8 @@ class PageHandler(tornado.web.RequestHandler):
 
                 res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
 
-                # debug can be shown on any error if it is enabled in config
-                # we should not change response code on such occasions
-                if not hasattr(self, '_error_debug'):
+                if self.debug.debug_mode.enabled:
+                    # change status code only if debug was explicitly requested
                     self._status_code = 200
 
                 if self.debug.debug_mode.inherited:

@@ -32,6 +32,8 @@ _Template postprocessors_ could be used for modifying the response text after th
 postprocessor callable receives additional parameter containing the result of templating
 (see [Content types and producers](docs/producers.md)).
 
+If any postprocessor fails, the page would be finished with an error.
+
 ```python
 def postprocessor(handler, template, callback):
     callback(template.replace('foo', 'bar'))
