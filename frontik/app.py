@@ -1,9 +1,11 @@
+# coding=utf-8
+
+import functools
 import imp
 import logging
-import sys
 import re
+import sys
 import time
-import functools
 import urlparse
 
 import lxml.etree as etree
@@ -12,9 +14,10 @@ import tornado.web
 import tornado.ioloop
 from tornado.options import options
 
-import handler
-import frontik.magic_imp
 import frontik.doc
+import frontik.handler as handler
+import frontik.magic_imp
+import frontik.xml_util
 
 log = logging.getLogger('frontik.server')
 
@@ -47,7 +50,7 @@ def get_frontik_and_apps_versions():
 class VersionHandler(tornado.web.RequestHandler):
     def get(self):
         self.set_header('Content-Type', 'text/xml')
-        self.write(frontik.doc.etree_to_xml(get_frontik_and_apps_versions()))
+        self.write(frontik.xml_util.etree_to_xml_string(get_frontik_and_apps_versions()))
 
 
 class StatusHandler(tornado.web.RequestHandler):
@@ -274,7 +277,7 @@ class RegexpDispatcher(object):
                     log.exception('%s. Internal server error, %s', app, e)
                 return tornado.web.ErrorHandler(application, request, status_code=500)
 
-        self.log.exception('match for request url "%s" not found', request.uri)
+        self.log.error('match for request url "%s" not found', request.uri)
         return tornado.web.ErrorHandler(application, request, status_code=404)
 
 

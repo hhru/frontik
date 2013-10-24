@@ -187,8 +187,7 @@ def test_post_url_mfd():
     '''
     with frontik_debug.instance() as srv_port:
         xml = etree.fromstring(urllib2.urlopen("http://localhost:{0}/test_app/post_url/?port={0}".format(srv_port)).read())
-        print xml.text
-        assert("BAD" not in xml.text)
+        assert(xml.text is None)
 
 def test_error_in_cb():
     '''
