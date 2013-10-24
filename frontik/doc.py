@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import cStringIO
-
 import lxml.etree as etree
 
 import frontik.future
+import frontik.xml_util
 
 
 class Doc(object):
@@ -20,29 +19,6 @@ class Doc(object):
             self.data.append(chunk)
         return self
 
-    def _finalize_data(self):
-        def chunk_to_string(chunk):
-            if isinstance(chunk, etree._Element):
-                yield etree.tostring(chunk)
-            elif isinstance(chunk, Doc):
-                for i in chunk._finalize_data():
-                    yield i
-            elif isinstance(chunk, list):
-                for i in chunk:
-                    for x in chunk_to_string(i):
-                        yield x
-            else:
-                yield chunk
-        
-        for chunk in self.data:
-            if isinstance(chunk, frontik.future.FutureVal):
-                val = chunk.get()
-            else:
-                val = chunk
-            
-            for i in chunk_to_string(val):
-                yield i
-
     def to_etree_element(self):
         if self.root_node is not None:
             res = self.root_node
@@ -50,7 +26,6 @@ class Doc(object):
             res = etree.Element(self.root_node_name)
 
         def chunk_to_element(chunk):
-            # XXX изменится, при смене библиотеки!
             if isinstance(chunk, list):
                 for chunk_i in chunk:
                     for i in chunk_to_element(chunk_i):
@@ -69,7 +44,7 @@ class Doc(object):
             elif isinstance(chunk, basestring):
                 yield chunk
 
-            else:
+            elif chunk is not None:
                 yield str(chunk)
 
         last_element = None
@@ -94,10 +69,4 @@ class Doc(object):
         return res
 
     def to_string(self):
-        return etree_to_xml(self.to_etree_element())
-
-
-def etree_to_xml(string):
-    sio = cStringIO.StringIO()
-    etree.ElementTree(string).write(sio, encoding='utf-8', xml_declaration=True)
-    return sio.getvalue()
+        return frontik.xml_util.etree_to_xml_string(self.to_etree_element())

@@ -2,13 +2,13 @@
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
 <xsl:template match="doc">
-<html><body>
-<xsl:apply-templates select="ok" />
-</body></html>
+    <html>
+        <xsl:apply-templates select="node" />
+    </html>
 </xsl:template>
 
-<xsl:template match="ok">
-<h1>ok</h1>
+<xsl:template match="node">
+    <h1>{{header}}</h1>{{content}}
 </xsl:template>
 
 </xsl:stylesheet>
