@@ -14,9 +14,14 @@ from tornado.escape import to_unicode
 from lxml.builder import E
 
 try:
+    import frontik.options
     from graypy.handler import GELFHandler, LAN_CHUNK
 
     class BulkGELFHandler(GELFHandler):
+        @staticmethod
+        def format_time(record):
+            t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(record.created))
+            return "%s,%03d" % (t, record.msecs)
 
         def handle_bulk(self, records_list, stages=None, status_code=None, exception=None, uri=None, method=None, **kwargs):
             if len(records_list) > 0:
@@ -25,22 +30,24 @@ try:
                 return
 
             record_for_gelf = copy.deepcopy(first_record)
-            record_for_gelf.message = u"{0} {1} {2} \n".format(record_for_gelf.asctime, record_for_gelf.levelname,
-                                                               to_unicode(record_for_gelf.message))
+            record_for_gelf.message = u'{0} {1} {2} \n'.format(
+                self.format_time(record_for_gelf),
+                record_for_gelf.levelname,
+                to_unicode(record_for_gelf.getMessage()))
             record_for_gelf.short = u"{0} {1} {2}".format(method, to_unicode(uri), status_code)
             record_for_gelf.exc_info = exception
-            record_for_gelf.levelno = 20
+            record_for_gelf.levelno = logging.INFO
 
             for record in records_list[1:]:
                 if record.levelno > record_for_gelf.levelno:
                     record_for_gelf.levelno = record.levelno
                     record_for_gelf.lineno = record.lineno
-                    record_for_gelf.short = record.message
+                    record_for_gelf.short = record.getMessage()
                 if record.exc_info is not None:
                     record_for_gelf.exc_info = traceback.format_exc(record.exc_info)
                     record_for_gelf.short += "\n" + traceback.format_exc(record.exc_info)
-                record_for_gelf.message += u" {0} {1} {2} \n".format(record.asctime, record.levelname,
-                                                                     to_unicode(record.message))
+                record_for_gelf.message += u' {0} {1} {2} \n'.format(self.format_time(record), record.levelname,
+                                                                     to_unicode(record.getMessage()))
             if stages is not None:
                 for stage_name, stage_start, stage_delta in stages:
                     setattr(record_for_gelf, stage_name + "_stage", str(int(stage_delta*1000)))
@@ -108,40 +115,40 @@ class MaxLenSysLogHandler(SysLogHandler):
         return SysLogHandler.format(self, record)[:(self.max_length - prio_length)]
 
 
+class PerRequestLogBufferHandler(logging.Logger):
+    """
+    Handler for storing all LogRecords for current request in a buffer until finish
+    """
+    def __init__(self, name, level=logging.NOTSET):
+        logging.Logger.__init__(self, name, level)
+        self.records_list = []
+        self.bulk_handlers = []
+
+    def handle(self, record):
+        logging.Logger.handle(self, record)
+        log.handle(record)
+        if len(self.bulk_handlers) > 0:
+            self.records_list.append(record)
+
+    def add_bulk_handler(self, handler, auto_flush=True):
+        self.bulk_handlers.append((handler, auto_flush))
+        if not auto_flush:
+            handler.flush = partial(self.flush_bulk_handler, handler)
+
+    def flush_bulk_handler(self, handler, **kwargs):
+        handler.handle_bulk(self.records_list, **kwargs)
+
+    def flush(self, **kwargs):
+        for handler, auto_flush in self.bulk_handlers:
+            if auto_flush:
+                self.flush_bulk_handler(handler, **kwargs)
+
+
 class PageLogger(logging.LoggerAdapter):
 
     Stage = namedtuple('Stage', ['name', 'start', 'delta'])
 
     def __init__(self, handler, logger_name, page):
-
-        class PerRequestLogBufferHandler(logging.Logger):
-            """
-            Handler for storing all LogRecords for current request in a buffer until finish
-            """
-            def __init__(self, name, level=logging.NOTSET):
-                logging.Logger.__init__(self, name, level)
-                self.records_list = []
-                self.bulk_handlers = []
-
-            def handle(self, record):
-                logging.Logger.handle(self, record)
-                log.handle(record)
-                if len(self.bulk_handlers) > 0:
-                    self.records_list.append(record)
-
-            def add_bulk_handler(self, handler, auto_flush=True):
-                self.bulk_handlers.append((handler, auto_flush))
-                if not auto_flush:
-                    handler.flush = partial(self.flush_bulk_handler, handler)
-
-            def flush_bulk_handler(self, handler, **kwargs):
-                handler.handle_bulk(self.records_list, **kwargs)
-
-            def flush(self, **kwargs):
-                for handler, auto_flush in self.bulk_handlers:
-                    if auto_flush:
-                        self.flush_bulk_handler(handler, **kwargs)
-
         self.handler_ref = weakref.ref(handler)
         self.handler_started = self.handler_ref().handler_started
         logging.LoggerAdapter.__init__(self, PerRequestLogBufferHandler('frontik.handler'),
