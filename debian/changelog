@@ -1,3 +1,9 @@
+frontik (2.18.2) unstable; urgency=low
+
+  * HH-38164 add debug=xslt for XSLT profiling
+
+ -- Andrey Sumin <an.sumin@hh.ru>  Wed, 30 Oct 2013 15:46:20 +0400
+
 frontik (2.18.1) unstable; urgency=low
 
   * HH-37938 add early, late and template postprocessors
