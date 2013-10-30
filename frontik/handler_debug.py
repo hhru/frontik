@@ -229,6 +229,9 @@ class DebugLogBulkHandler(object):
         if getattr(record, "_debug_response", None) is not None:
             entry.append(E.debug(record._debug_response))
 
+        if getattr(record, '_xslt_profile', None) is not None:
+            entry.append(record._xslt_profile)
+
         if getattr(record, "_xml", None) is not None:
             xml = etree.Element("xml")
             entry.append(xml)
@@ -259,9 +262,11 @@ class PageHandlerDebug(object):
             if debug_value is not None or self.inherited:
                 self.enabled = True
                 self.pass_debug = 'nopass' not in self.mode_values or self.inherited
+                self.profile_xslt = 'xslt' in self.mode_values
             else:
                 self.enabled = False
                 self.pass_debug = False
+                self.profile_xslt = False
 
             self.write_debug = tornado.options.options.debug or self.enabled
 
