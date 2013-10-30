@@ -3,7 +3,7 @@
 Frontik is an asyncronous Tornado-based application server. It was designed to support simple xml aggregation with xsl
 transformation, but supports other content types as well.
 
-Frontik was originally developed by Andrey Tatarinov at [hh.ru][http://hh.ru/] as a part of infrastructure development tasks.
+Frontik was originally developed by Andrey Tatarinov at [hh.ru](http://hh.ru/) as a part of infrastructure development tasks.
 
 ## Documentation
 
@@ -17,4 +17,4 @@ Frontik was originally developed by Andrey Tatarinov at [hh.ru][http://hh.ru/] a
 
 ## Usages
 
-  * All pages of [hh.ru][http://hh.ru/] are served with frontik
+  * All pages of [hh.ru](http://hh.ru/) are served with frontik

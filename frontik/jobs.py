@@ -1,19 +1,13 @@
-import functools
 import threading
 import Queue
 import logging
+from functools import partial
 
 import tornado.ioloop
 import tornado.options
 
 jobs_log = logging.getLogger('frontik.jobs')
-
-
-def _schedule_cb_result(cb, result):
-    tornado.ioloop.IOLoop.instance().add_callback(functools.partial(cb, result))
-
-return_result = _schedule_cb_result
-reraise = _schedule_cb_result
+__threadpool_executor = None
 
 
 def queue_worker(queue):
@@ -29,10 +23,10 @@ def queue_worker(queue):
             continue
 
         try:
-            return_result(cb, func())
+            tornado.ioloop.IOLoop.instance().add_callback(partial(cb, *func()))
         except Exception, e:
             jobs_log.exception('Cannot perform job')
-            reraise(exception_cb, e)
+            tornado.ioloop.IOLoop.instance().add_callback(partial(exception_cb, e))
 
 
 class IOLoopExecutor(object):
@@ -40,7 +34,7 @@ class IOLoopExecutor(object):
     def add_job(func, cb, exception_cb, prio=None):
         def __wrapper():
             try:
-                cb(func())
+                cb(*func())
             except Exception, e:
                 exception_cb(e)
 
@@ -55,8 +49,7 @@ class ThreadPoolExecutor(object):
         self.events = Queue.PriorityQueue()
 
         jobs_log.debug('pool size: ' + str(pool_size))
-        self.workers = [threading.Thread(target=functools.partial(queue_worker, self.events))
-                        for i in range(pool_size)]
+        self.workers = [threading.Thread(target=partial(queue_worker, self.events)) for i in range(pool_size)]
         [i.setDaemon(True) for i in self.workers]
         [i.start() for i in self.workers]
         jobs_log.debug('active threads count = ' + str(threading.active_count()))
@@ -67,12 +60,11 @@ class ThreadPoolExecutor(object):
             self.events.put(((prio, ThreadPoolExecutor.count), (func, cb, exception_cb)))
         except Exception, e:
             jobs_log.exception('Cannot put job to queue')
-            reraise(exception_cb, e)
+            tornado.ioloop.IOLoop.instance().add_callback(partial(exception_cb, e))
 
-_executor = None
 
-def executor():
-    global _executor
-    if _executor is None:
-        _executor = ThreadPoolExecutor(tornado.options.options.executor_pool_size)
-    return _executor
+def get_threadpool_executor():
+    global __threadpool_executor
+    if __threadpool_executor is None:
+        __threadpool_executor = ThreadPoolExecutor(tornado.options.options.executor_pool_size)
+    return __threadpool_executor

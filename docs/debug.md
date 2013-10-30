@@ -6,6 +6,7 @@ Available options are:
 * ```debug=true``` (or just ```debug```) — simple debug
 * ```debug=full``` — extended debug
 * ```debug=nopass``` — disables passing debug header to services
+* ```debug=xslt``` — enables XSL transformation profiling
 * ```debug=@text``` — highlights log entries matching 'text'
 
 You can combine these options, for example: debug=full,nopass

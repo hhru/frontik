@@ -20,6 +20,7 @@ urls = [
 debug = True
 debug_login = "hh"
 debug_password = "12345"
+debug_xsl = 'frontik/debug.xsl'
 
 # wait this number of seconds (int) in workers before stopping IOLoop in each worker,
 # should be a little less than supervisor_sigterm_timeout

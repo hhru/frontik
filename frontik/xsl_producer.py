@@ -18,7 +18,7 @@ class XslProducer(object):
         self.log = weakref.proxy(self.handler.log)
 
         if tornado.options.options.executor_type == 'threaded':
-            self.executor = frontik.jobs.executor()
+            self.executor = frontik.jobs.get_threadpool_executor()
         elif tornado.options.options.executor_type == 'ioloop':
             self.executor = frontik.jobs.IOLoopExecutor
         else:
@@ -70,13 +70,16 @@ class XslProducer(object):
             self.handler.set_header('Content-Type', 'text/html')
 
         def job():
-            t = time.time()
-            return t, str(self.transform(copy.deepcopy(self.doc.to_etree_element())))
+            start_time = time.time()
+            result = self.transform(copy.deepcopy(self.doc.to_etree_element()),
+                                    profile_run=self.handler.debug.debug_mode.profile_xslt)
+            return start_time, str(result), result.xslt_profile
 
-        def success_cb(response):
-            t, result = response
-            self.log.stage_tag("xsl")
-            self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - t) * 1000)
+        def success_cb(start_time, result, xslt_profile=None):
+            self.log.stage_tag('xsl')
+            self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - start_time) * 1000)
+            if xslt_profile is not None:
+                self.log.debug('XSLT profiling results', extra={'_xslt_profile': xslt_profile.getroot()})
             if len(self.transform.error_log):
                 map(self.log.info, (map('xsl message: {0.message}'.format, self.transform.error_log)))
             callback(result)
