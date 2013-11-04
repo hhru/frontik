@@ -49,8 +49,8 @@ try:
                 record_for_gelf.message += u' {0} {1} {2} \n'.format(self.format_time(record), record.levelname,
                                                                      to_unicode(record.getMessage()))
             if stages is not None:
-                for stage_name, stage_start, stage_delta in stages:
-                    setattr(record_for_gelf, stage_name + "_stage", str(int(stage_delta*1000)))
+                for stage_name, stage_delta in stages:
+                    setattr(record_for_gelf, stage_name + "_stage", str(int(stage_delta)))
 
             record_for_gelf.name = record_for_gelf.handler
             record_for_gelf.code = status_code
@@ -146,7 +146,7 @@ class PerRequestLogBufferHandler(logging.Logger):
 
 class PageLogger(logging.LoggerAdapter):
 
-    Stage = namedtuple('Stage', ['name', 'start', 'delta'])
+    Stage = namedtuple('Stage', ['name', 'delta'])
 
     def __init__(self, handler, logger_name, page):
         self.handler_ref = weakref.ref(handler)
@@ -166,8 +166,7 @@ class PageLogger(logging.LoggerAdapter):
                                                          tornado.options.options.graylog_port, LAN_CHUNK, False))
 
     def stage_tag(self, stage_name):
-        zero_time = self.handler_started
-        self._stage_tag(PageLogger.Stage(stage_name, self._time - zero_time, time.time() - self._time))
+        self._stage_tag(PageLogger.Stage(stage_name, (time.time() - self._time) * 1000))
         self._time = time.time()
         self.debug('Stage: {stage}'.format(stage=stage_name))
 
@@ -175,9 +174,9 @@ class PageLogger(logging.LoggerAdapter):
         self.stages.append(stage)
 
     def process_stages(self, status_code):
-        self._stage_tag(PageLogger.Stage('total', 0, time.time() - self.handler_started))
+        self._stage_tag(PageLogger.Stage('total', (time.time() - self.handler_started) * 1000))
 
-        format_f = lambda x: ' '.join([x.format(name=s.name, delta=1000*s.delta) for s in self.stages])
+        format_f = lambda x: ' '.join([x.format(name=s.name, delta=s.delta) for s in self.stages])
         stages_format = format_f('{name}:{delta:.2f}ms')
         stages_monik_format = format_f('{name}={delta:.2f}')
 
@@ -185,7 +184,7 @@ class PageLogger(logging.LoggerAdapter):
         self.info('Monik-stages {0!r} : {1} code={2}'.format(self.handler_ref(), stages_monik_format, status_code),
                   extra={
                       '_monik': True,
-                      '_stages': E.stages(*[E.stage(str(st.delta*1000), {'name': str(st.name)}) for st in self.stages])
+                      '_stages': E.stages(*[E.stage(str(s.delta), {'name': str(s.name)}) for s in self.stages])
                   })
 
     def process(self, msg, kwargs):
