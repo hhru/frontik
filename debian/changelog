@@ -1,3 +1,9 @@
+frontik (2.18.3) unstable; urgency=low
+
+  * HH-38166 remove CurlAsyncHTTPClient max_simultaneous_connections parameter
+
+ -- Andrey Sumin <an.sumin@hh.ru>  Tue, 05 Nov 2013 14:37:51 +0400
+
 frontik (2.18.2) unstable; urgency=low
 
   * HH-38164 add debug=xslt for XSLT profiling
