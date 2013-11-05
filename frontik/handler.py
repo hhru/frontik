@@ -402,13 +402,14 @@ class PageHandler(tornado.web.RequestHandler):
         if not self._finished:
             self.log.stage_tag('page')
 
-            if self.apply_postprocessor:
-                callback = partial(self.__call_postprocessors, self._template_postprocessors[:], self.finish)
-            else:
-                callback = self.finish
+            def __callback():
+                producer = self.xml if self.text is None else self.__generic_producer
+                if self.apply_postprocessor:
+                    producer(partial(self.__call_postprocessors, self._template_postprocessors[:], self.finish))
+                else:
+                    producer(self.finish)
 
-            producer = self.xml if self.text is None else self.__generic_producer
-            self.__call_postprocessors(self._early_postprocessors[:], partial(producer, callback))
+            self.__call_postprocessors(self._early_postprocessors[:], __callback)
         else:
             self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
