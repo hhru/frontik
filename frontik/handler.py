@@ -114,8 +114,7 @@ class PageHandlerGlobals(object):
 
         self.xml = frontik.xml_util.PageHandlerXMLGlobals(app_package.config)
 
-        self.http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(
-            max_clients=200, max_simultaneous_connections=200)
+        self.http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(max_clients=200)
 
 
 class PageHandler(tornado.web.RequestHandler):
