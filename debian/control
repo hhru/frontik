@@ -4,20 +4,20 @@ Priority: extra
 Maintainer: Andrey Sumin <an.sumin@hh.ru>
 Build-Depends: 
   cdbs,
-  debhelper (>= 7), 
+  debhelper (>= 8),
   python-support,
   python,
   python-nose,
 Standards-Version: 3.8.4
+X-Python-Version: >= 2.6
 
 Package: frontik
 Architecture: all
 Depends: ${python:Depends}, ${misc:Depends},
-  python-daemon,
+  python, 
   python-lxml,
   python-simplejson,
-  python-tornado (>= 2.0~hh7),
-  python-tornado-util (>= 0.5.1),
-  python, 
-Suggests: python-graypy (>= 1.0+hh3)
+  python-tornado (>= 2.0+hh16),
+Suggests:
+  python-graypy (>= 1.0+hh3)
 Description: Tornado-based application server
