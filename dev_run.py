@@ -3,5 +3,5 @@
 
 from frontik.server import main
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main('./frontik_dev.cfg')

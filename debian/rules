@@ -1,13 +1,7 @@
 #!/usr/bin/make -f
-# -*- makefile -*-
 
-DEB_DH_INSTALLINIT_ARGS = --no-start
-include /usr/share/cdbs/1/rules/debhelper.mk
+%:
+	dh $@
 
-DEB_PYTHON_SYSTEM = pysupport
-include /usr/share/cdbs/1/class/python-distutils.mk
-
-binary-install-python/frontik::
-	$(SHELL) debian/version-bump.sh
-
-include /usr/share/cdbs/1/rules/buildcore.mk 
+override_dh_auto_test:
+	nosetests tests -vv || exit 1

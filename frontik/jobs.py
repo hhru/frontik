@@ -23,7 +23,7 @@ def queue_worker(queue):
             continue
 
         try:
-            tornado.ioloop.IOLoop.instance().add_callback(partial(cb, *func()))
+            tornado.ioloop.IOLoop.instance().add_callback(partial(cb, func()))
         except Exception, e:
             jobs_log.exception('Cannot perform job')
             tornado.ioloop.IOLoop.instance().add_callback(partial(exception_cb, e))
@@ -34,7 +34,7 @@ class IOLoopExecutor(object):
     def add_job(func, cb, exception_cb, prio=None):
         def __wrapper():
             try:
-                cb(*func())
+                cb(func())
             except Exception, e:
                 exception_cb(e)
 
