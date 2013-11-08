@@ -75,14 +75,15 @@ class XslProducer(object):
                                     profile_run=self.handler.debug.debug_mode.profile_xslt)
             return start_time, str(result), result.xslt_profile
 
-        def success_cb(start_time, result, xslt_profile=None):
+        def success_cb(result):
+            start_time, xml_result, xslt_profile = result
             self.log.stage_tag('xsl')
             self.log.debug('applied XSL %s in %.2fms', self.transform_filename, (time.time() - start_time) * 1000)
             if xslt_profile is not None:
                 self.log.debug('XSLT profiling results', extra={'_xslt_profile': xslt_profile.getroot()})
             if len(self.transform.error_log):
                 map(self.log.info, (map('xsl message: {0.message}'.format, self.transform.error_log)))
-            callback(result)
+            callback(xml_result)
 
         def exception_cb(exception):
             self.log.error('failed transformation with XSL %s', self.transform_filename)
