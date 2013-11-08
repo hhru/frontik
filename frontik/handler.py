@@ -255,7 +255,10 @@ class PageHandler(tornado.web.RequestHandler):
 
     # HTTP client methods
 
-    def get_url(self, url, data=None, headers=None, connect_timeout=0.5, request_timeout=2, callback=None,
+    DEFAULT_CONNECT_TIMEOUT = 0.5
+    DEFAULT_REQUEST_TIMEOUT = 2
+
+    def get_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None, callback=None,
                 follow_redirects=True, request_types=None, labels=None):
 
         placeholder = future.Placeholder()
@@ -267,7 +270,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.fetch_request(request, partial(self._parse_response, placeholder, callback, request_types=request_types))
         return placeholder
 
-    def post_url(self, url, data='', headers=None, files=None, connect_timeout=0.5, request_timeout=2,
+    def post_url(self, url, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
                  follow_redirects=True, content_type=None, callback=None, request_types=None, labels=None):
 
         placeholder = future.Placeholder()
@@ -279,7 +282,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.fetch_request(request, partial(self._parse_response, placeholder, callback, request_types=request_types))
         return placeholder
 
-    def put_url(self, url, data='', headers=None, connect_timeout=0.5, request_timeout=2, callback=None,
+    def put_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
                 request_types=None, labels=None):
 
         placeholder = future.Placeholder()
@@ -291,7 +294,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.fetch_request(request, partial(self._parse_response, placeholder, callback, request_types=request_types))
         return placeholder
 
-    def delete_url(self, url, data='', headers=None, connect_timeout=0.5, request_timeout=2, callback=None,
+    def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
                    request_types=None, labels=None):
 
         placeholder = future.Placeholder()
@@ -313,17 +316,24 @@ class PageHandler(tornado.web.RequestHandler):
                 request.headers['Authorization'] = self.request.headers.get('Authorization', None)
 
             request.headers['X-Request-Id'] = self.request_id
+
+            if request.connect_timeout is None:
+                request.connect_timeout = self.DEFAULT_CONNECT_TIMEOUT
+            if request.request_timeout is None:
+                request.request_timeout = self.DEFAULT_REQUEST_TIMEOUT
+
             request.connect_timeout *= tornado.options.options.timeout_multiplier
             request.request_timeout *= tornado.options.options.timeout_multiplier
 
-            return self.http_client.fetch(request, self.finish_group.add(self.async_callback(
-                self._log_response, request, callback)))
+            return self.http_client.fetch(request, self.finish_group.add(
+                self.async_callback(self._log_response, request, callback)))
         else:
             self.log.warn('attempted to make http request to %s while page is already finished; ignoring', request.url)
 
     def _log_response(self, request, callback, response):
         try:
-            stats.http_reqs_size_sum += len(response.body)
+            if response.body is not None:
+                stats.http_reqs_size_sum += len(response.body)
         except TypeError:
             self.log.warn('got strange response.body of type %s', type(response.body))
 
