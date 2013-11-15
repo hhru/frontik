@@ -220,17 +220,31 @@ class PageLogger(logging.LoggerAdapter):
 
 def bootstrap_logging():
     root_logger = logging.getLogger()
+    root_logger.setLevel(logging.NOTSET)
     level = getattr(logging, tornado.options.options.loglevel.upper())
 
     if tornado.options.options.logfile:
         handler = logging.handlers.WatchedFileHandler(tornado.options.options.logfile)
         handler.setFormatter(logging.Formatter(tornado.options.options.logformat))
-        handler.setLevel(level)
-        root_logger.setLevel(logging.NOTSET)
+
+        handler.setLevel(level)  # TODO: decopypaste after Tornado 3 migration
         root_logger.addHandler(handler)
-    else:
+
+    elif hasattr(tornado.options, 'enable_pretty_logging'):
+        # Old Tornado version
         root_logger.setLevel(level)
-        tornado.options.enable_pretty_logging()  # TODO: replace it with LogFormatter from Tornado 3
+        tornado.options.enable_pretty_logging()
+
+    else:
+        from tornado.log import LogFormatter
+
+        handler = logging.StreamHandler()
+        handler.setFormatter(
+            LogFormatter(fmt=tornado.options.options.stdoutformat, datefmt=tornado.options.options.stdoutdateformat)
+        )
+
+        handler.setLevel(level)
+        root_logger.addHandler(handler)
 
     if tornado.options.options.syslog:
         try:

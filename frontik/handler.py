@@ -5,6 +5,7 @@ import httplib
 import time
 from functools import partial
 
+import tornado.httputil
 import tornado.options
 import tornado.web
 from tornado.ioloop import IOLoop
@@ -142,6 +143,11 @@ class PageHandler(tornado.web.RequestHandler):
             if not self._debug_access:
                 raise HTTPError(401, headers={'WWW-Authenticate': 'Basic realm="Secure Area"'})
 
+    def set_default_headers(self):
+        self._headers = tornado.httputil.HTTPHeaders({
+            'Server': 'Frontik/{0}'.format(frontik.version)
+        })
+
     def decode_argument(self, value, name=None):
         try:
             return super(PageHandler, self).decode_argument(value, name)
@@ -167,10 +173,11 @@ class PageHandler(tornado.web.RequestHandler):
 
         return wrapper
 
-    def set_status(self, status_code):
+    # TODO: change signature after Tornado 3 migration
+    def set_status(self, status_code, **kwargs):
         if status_code not in httplib.responses:
             status_code = 503
-        super(PageHandler, self).set_status(status_code)
+        super(PageHandler, self).set_status(status_code, **kwargs)
 
     @staticmethod
     def add_callback(callback):
@@ -457,12 +464,19 @@ class PageHandler(tornado.web.RequestHandler):
             super(PageHandler, self).send_error(status_code, **kwargs)
 
         self.clear()
-        self.set_status(status_code)
+
+        set_status_kwargs = {}
+        if 'exc_info' in kwargs:
+            exception = kwargs['exc_info'][1]
+            if isinstance(exception, HTTPError) and exception.reason:
+                set_status_kwargs['reason'] = exception.reason
+
+        self.set_status(status_code, **set_status_kwargs)  # TODO: add explicit reason kwarg after Tornado 3 migration
 
         try:
             self.write_error(status_code, **kwargs)
         except Exception:
-            self._logger.error("Uncaught exception in write_error", exc_info=True)
+            self.log.exception('Uncaught exception in write_error')
 
     def write_error(self, status_code=500, **kwargs):
         # write_error in Frontik must be asynchronous when handling custom errors (due to XSLT)
@@ -474,10 +488,16 @@ class PageHandler(tornado.web.RequestHandler):
 
         # in Tornado 3 it may be better to rewrite this mechanism with futures
 
-        exception = kwargs.get('exception', None)
-        headers = getattr(exception, 'headers', None)
+        if 'exception' in kwargs:
+            exception = kwargs['exception']  # Old Tornado
+        elif 'exc_info' in kwargs:
+            exception = kwargs['exc_info'][1]
+        else:
+            exception = None
 
+        headers = getattr(exception, 'headers', None)
         override_content = any(getattr(exception, x, None) is not None for x in ('text', 'xml', 'json'))
+
         finish_with_exception = exception is not None and (
             199 < status_code < 400 or  # raise HTTPError(200) to finish page immediately
             override_content
