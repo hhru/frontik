@@ -232,10 +232,23 @@ def bootstrap_logging():
     if options.logfile:
         handler = logging.handlers.WatchedFileHandler(options.logfile)
         handler.setFormatter(logging.Formatter(options.logformat))
+        handler.setLevel(level)  # TODO: decopypaste after Tornado 3 migration
+        root_logger.addHandler(handler)
+
+    elif hasattr(tornado.options, 'enable_pretty_logging'):
+        # Old Tornado version
+        tornado.options.enable_pretty_logging(level)
+
+    else:
+        from tornado.log import LogFormatter
+
+        handler = logging.StreamHandler()
+        handler.setFormatter(
+            LogFormatter(fmt=tornado.options.options.stdoutformat, datefmt=tornado.options.options.stdoutdateformat)
+        )
+
         handler.setLevel(level)
         root_logger.addHandler(handler)
-    else:
-        tornado.options.enable_pretty_logging(level)  # TODO: replace it with LogFormatter from Tornado 3
 
     if options.syslog:
         try:

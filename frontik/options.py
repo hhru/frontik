@@ -11,6 +11,9 @@ tornado.options.define('handlers_count', default=100, type=int)
 tornado.options.define('logfile', default=None, type=str, help='log file name')
 tornado.options.define('loglevel', default='info', type=str, help='log level')
 tornado.options.define('logformat', default='[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s', type=str)
+tornado.options.define('stdoutformat', default='%(color)s[%(levelname)1.1s %(asctime)s %(name)s '
+                                               '%(module)s:%(lineno)d]%(end_color)s %(message)s', type=str)
+tornado.options.define('stdoutdateformat', default='%y.%m.%d %H:%M:%S', type=str)
 tornado.options.define('suppressed_loggers', default=['tornado.curl_httpclient'], type=list)
 
 tornado.options.define('timings_log_enabled', default=False, type=bool)
