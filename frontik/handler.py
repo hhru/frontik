@@ -51,30 +51,31 @@ def context_based_repr(self):
 HTTPRequest.__repr__ = context_based_repr
 
 
-def _parse_response_smth(response, logger=frontik_logging.log, parser=None, type_=None):
-    _preview_len = 100
+def _parse_response(response, logger=frontik_logging.log, parser=None, response_type=None):
     try:
         data = parser(response.body)
     except:
+        _preview_len = 100
+
         if len(response.body) > _preview_len:
-                body_preview = '{0}...'.format(response.body[:_preview_len])
+            body_preview = '{0}...'.format(response.body[:_preview_len])
         else:
             body_preview = response.body
 
-        logger.exception('failed to parse {2} response from {0} Bad data:"{1}"'.format(
-            response.effective_url, body_preview, type_))
-        return False, etree.Element('error', dict(url=response.effective_url, reason='invalid {0}'.format(type_)))
+        logger.exception('failed to parse {0} response from {1}, bad data: "{2}"'.format(
+            response_type, response.effective_url, body_preview))
+        return False, etree.Element('error', url=response.effective_url, reason='invalid {0}'.format(response_type))
 
     return True, data
 
 _xml_parser = etree.XMLParser(strip_cdata=False)
-_parse_response_xml = partial(_parse_response_smth,
+_parse_response_xml = partial(_parse_response,
                               parser=lambda x: etree.fromstring(x, parser=_xml_parser),
-                              type_='XML')
+                              response_type='XML')
 
-_parse_response_json = partial(_parse_response_smth,
+_parse_response_json = partial(_parse_response,
                                parser=json.loads,
-                               type_='JSON')
+                               response_type='JSON')
 
 default_request_types = {
     re.compile(".*xml.?"): _parse_response_xml,
@@ -259,7 +260,7 @@ class PageHandler(tornado.web.RequestHandler):
     DEFAULT_REQUEST_TIMEOUT = 2
 
     def get_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                follow_redirects=True, request_types=None, labels=None):
+                follow_redirects=True, parse_response=True, labels=None):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_get_request(
@@ -267,11 +268,11 @@ class PageHandler(tornado.web.RequestHandler):
             connect_timeout, request_timeout, follow_redirects)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, request_types=request_types))
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response))
         return placeholder
 
     def post_url(self, url, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
-                 follow_redirects=True, content_type=None, callback=None, request_types=None, labels=None):
+                 follow_redirects=True, content_type=None, callback=None, parse_response=True, labels=None):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_post_request(
@@ -279,11 +280,11 @@ class PageHandler(tornado.web.RequestHandler):
             connect_timeout, request_timeout, follow_redirects, content_type)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, request_types=request_types))
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response))
         return placeholder
 
     def put_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                request_types=None, labels=None):
+                parse_response=True, labels=None):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_put_request(
@@ -291,11 +292,11 @@ class PageHandler(tornado.web.RequestHandler):
             connect_timeout, request_timeout)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, request_types=request_types))
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response))
         return placeholder
 
     def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                   request_types=None, labels=None):
+                   parse_response=True, labels=None):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_delete_request(
@@ -303,7 +304,7 @@ class PageHandler(tornado.web.RequestHandler):
             connect_timeout, request_timeout)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, request_types=request_types))
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response))
         return placeholder
 
     def fetch_request(self, request, callback):
@@ -367,31 +368,29 @@ class PageHandler(tornado.web.RequestHandler):
         if callable(callback):
             callback(response)
 
-    def _parse_response(self, placeholder, callback, response, request_types=None):
-        if not request_types:
-            request_types = default_request_types
+    def _parse_response(self, placeholder, callback, response, parse_response=True):
         result = None
         if response.error:
             placeholder.set_data(self.show_response_error(response))
+        elif not parse_response:
+            result = response.body
         elif response.code != 204:
             content_type = response.headers.get('Content-Type', '')
-            for k, v in request_types.iteritems():
+            for k, v in default_request_types.iteritems():
                 if k.search(content_type):
                     good_result, data = v(response)
-                    if good_result:
-                        result = data
-                    else:
-                        result = None
+                    result = data if good_result else None
                     placeholder.set_data(data)
                     break
-        if callback:
+
+        if callable(callback):
             callback(result, response)
 
     def show_response_error(self, response):
         self.log.warn('%s failed %s (%s)', response.code, response.effective_url, str(response.error))
         try:
-            data = etree.Element('error',
-                                 dict(url=response.effective_url, reason=str(response.error), code=str(response.code)))
+            data = etree.Element(
+                'error', url=response.effective_url, reason=str(response.error), code=str(response.code))
         except ValueError:
             self.log.warn("Cannot add information about response head in debug, can't be serialized in xml.")
 
