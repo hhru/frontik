@@ -10,11 +10,11 @@ from frontik.version import parse_version_from_changelog
 
 class InstallHook(install):
     def run(self):
+        install.run(self)
+
         frontik_build_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), self.build_lib, 'frontik')
         with open(os.path.join(frontik_build_dir, 'version.py'), 'w') as version_file:
             version_file.write('version = "{0}"\n'.format(parse_version_from_changelog()))
-
-        install.run(self)
 
 setup(
     name='frontik',
