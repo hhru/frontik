@@ -1,3 +1,9 @@
+frontik (2.18.5) unstable; urgency=low
+
+  * HH-38215 add parse_response argument to *_url
+
+ -- Andrey Sumin <an.sumin@hh.ru>  Tue, 19 Nov 2013 18:32:39 +0400
+
 frontik (2.18.4) unstable; urgency=low
 
   * HH-37783 log responses in fetch_request
