@@ -221,18 +221,21 @@ class PageHandler(tornado.web.RequestHandler):
 
     @tornado.web.asynchronous
     def post(self, *args, **kw):
+        self.log.stage_tag('prepare')
         if not self._finished:
             self.post_page()
             self.finish_page()
 
     @tornado.web.asynchronous
     def get(self, *args, **kw):
+        self.log.stage_tag('prepare')
         if not self._finished:
             self.get_page()
             self.finish_page()
 
     @tornado.web.asynchronous
     def head(self, *args, **kwargs):
+        self.log.stage_tag('prepare')
         if not self._finished:
             self.get_page()
             self.finish_page()
@@ -313,8 +316,10 @@ class PageHandler(tornado.web.RequestHandler):
             stats.http_reqs_count += 1
 
             if self._prepared and self.debug.debug_mode.pass_debug:
+                authorization = self.request.headers.get('Authorization')
                 request.headers[frontik.handler_debug.PageHandlerDebug.DEBUG_HEADER_NAME] = True
-                request.headers['Authorization'] = self.request.headers.get('Authorization', None)
+                if authorization is not None:
+                    request.headers['Authorization'] = authorization
 
             request.headers['X-Request-Id'] = self.request_id
 
