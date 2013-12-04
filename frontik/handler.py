@@ -82,6 +82,7 @@ default_request_types = {
     re.compile(".*json.?"): _parse_response_json
 }
 
+
 AsyncGroup = frontik.async.AsyncGroup
 
 
@@ -240,22 +241,44 @@ class PageHandler(tornado.web.RequestHandler):
             self.get_page()
             self.finish_page()
 
+    @tornado.web.asynchronous
     def delete(self, *args, **kwargs):
-        raise HTTPError(405, headers={"Allow": "GET, POST"})
+        self.log.stage_tag('prepare')
+        if not self._finished:
+            self.delete_page()
+            self.finish_page()
 
+    @tornado.web.asynchronous
     def put(self, *args, **kwargs):
-        raise HTTPError(405, headers={"Allow": "GET, POST"})
+        self.log.stage_tag('prepare')
+        if not self._finished:
+            self.put_page()
+            self.finish_page()
 
     def options(self, *args, **kwargs):
-        raise HTTPError(405, headers={"Allow": "GET, POST"})
+        raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
 
     def get_page(self):
         """ This method should be implemented in the subclass """
-        raise HTTPError(405, header={'Allow': 'POST'})
+        raise HTTPError(405, header={'Allow': ', '.join(self.__get_allowed_methods())})
 
     def post_page(self):
         """ This method should be implemented in the subclass """
-        raise HTTPError(405, headers={'Allow': 'GET'})
+        raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
+
+    def put_page(self):
+        """ This method should be implemented in the subclass """
+        raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
+
+    def delete_page(self):
+        """ This method should be implemented in the subclass """
+        raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
+
+    def __get_allowed_methods(self):
+        return filter(
+            lambda name: '{0}_page'.format(name.lower()) in vars(self.__class__),
+            ('GET', 'POST', 'PUT', 'DELETE')
+        )
 
     # HTTP client methods
 
