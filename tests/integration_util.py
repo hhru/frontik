@@ -8,7 +8,7 @@ import urllib2
 import lxml.etree as etree
 
 import tornado.options
-import tornado_util.supervisor as supervisor
+import tornado.server.supervisor as supervisor
 
 
 def get_page(port, page, xsl=False):
