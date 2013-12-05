@@ -11,7 +11,7 @@
 # Description:       Enable service provided by daemon.
 ### END INIT INFO
 
-from tornado_util.supervisor import supervisor
+from tornado.server.supervisor import supervisor
 
 supervisor(
     script='/usr/bin/frontik',
