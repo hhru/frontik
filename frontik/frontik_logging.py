@@ -55,7 +55,9 @@ try:
             record_for_gelf.name = record_for_gelf.handler
             record_for_gelf.code = status_code
             GELFHandler.handle(self, record_for_gelf)
-            self.close()
+
+    graylog_handler = BulkGELFHandler(tornado.options.options.graylog_host,
+                                      tornado.options.options.graylog_port, LAN_CHUNK, False)
 
 except ImportError:
     import frontik.options
@@ -162,8 +164,7 @@ class PageLogger(logging.LoggerAdapter):
         self.addHandler = self.logger.addHandler
 
         if tornado.options.options.graylog:
-            self.logger.add_bulk_handler(BulkGELFHandler(tornado.options.options.graylog_host,
-                                                         tornado.options.options.graylog_port, LAN_CHUNK, False))
+            self.logger.add_bulk_handler(graylog_handler)
 
     def stage_tag(self, stage_name):
         self._stage_tag(PageLogger.Stage(stage_name, (time.time() - self._time) * 1000))
