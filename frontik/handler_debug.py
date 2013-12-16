@@ -37,7 +37,8 @@ def response_to_xml(response):
 
     try:
         if 'text/html' in content_type:
-            body = decode_string_from_charset(response.body, try_charsets).replace('\n', '\\n').replace("'", "\\'")
+            body = decode_string_from_charset(response.body, try_charsets)
+            body = body.replace('\n', '\\n').replace("'", "\\'").replace("<", "&lt;")
         elif 'json' in content_type:
             body = json.dumps(json.loads(response.body), sort_keys=True, indent=4)
         elif 'protobuf' in content_type:
