@@ -53,7 +53,7 @@ class XslProducer(object):
                 self.log.exception('failed parsing XSL file {0} (XSL parse error)'.format(self.transform_filename))
                 raise frontik.handler.HTTPError(500)
             except:
-                self.log.exception('XSL transformation error with file {0}'.format(self.transform_filename))
+                self.log.exception('failed loading XSL file {0}'.format(self.transform_filename))
                 raise frontik.handler.HTTPError(500)
 
             return self.__prepare_finish_with_xsl(callback)
@@ -82,15 +82,17 @@ class XslProducer(object):
             if xslt_profile is not None:
                 self.log.debug('XSLT profiling results', extra={'_xslt_profile': xslt_profile.getroot()})
             if len(self.transform.error_log):
-                map(self.log.info, (map('xsl message: {0.message}'.format, self.transform.error_log)))
+                self.log.info(get_xsl_log())
             callback(xml_result)
 
         def exception_cb(exception):
             self.log.error('failed transformation with XSL %s', self.transform_filename)
-            self.log.error('XSL error log entries:\n{0}'.format('\n'.join(map(
-                'File "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'.format,
-                self.transform.error_log))))
+            self.log.error(get_xsl_log())
             raise exception
+
+        def get_xsl_log():
+            xsl_line = 'XSLT {0.level_name} in file "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
+            return '\n'.join(map(xsl_line.format, self.transform.error_log))
 
         self.executor.add_job(job, self.handler.async_callback(success_cb), self.handler.async_callback(exception_cb))
 
