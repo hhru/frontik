@@ -406,7 +406,7 @@ class PageHandler(tornado.web.RequestHandler):
             content_type = response.headers.get('Content-Type', '')
             for k, v in default_request_types.iteritems():
                 if k.search(content_type):
-                    good_result, data = v(response)
+                    good_result, data = v(response, logger=self.log)
                     result = data if good_result else None
                     placeholder.set_data(data)
                     break
