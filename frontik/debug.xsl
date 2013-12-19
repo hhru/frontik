@@ -96,7 +96,7 @@
             
         <div class="textentry">
             <div class="textentry__head {$highlight} {$loglevel}">
-                <span>
+                <span class="textentry__head__message">
                     <xsl:value-of select="concat($loglevel,' ',@msg)"/>
                 </span>
             </div>
@@ -513,6 +513,9 @@
                         vertical-align: bottom;
                         line-height: 1.4em;
                         margin-top: -1px;
+                    }
+                    .textentry__head__message {
+                        white-space: pre;
                     }
                 .textentry__switcher {
                     overflow: hidden;
