@@ -1,3 +1,13 @@
+frontik (2.18.10) unstable; urgency=low
+
+  * HH-39153 improve logging of XSLT and failed _parse_response
+  * HH-39039 fix debug response body escaping
+  * HH-38149 remove stage.start
+  * HH-38149 make GELF bulk handler independent of record formatting and
+    refactor it
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 19 Dec 2013 12:24:01 +0400
+
 frontik (2.18.9) unstable; urgency=low
 
   * HH-38149 make GELF bulk handler independent of record formatting and refactor it
