@@ -2,7 +2,6 @@
 # coding=utf-8
 
 import logging
-import os
 import sys
 
 import tornado_util.server
@@ -23,10 +22,8 @@ def main(config_file=None):
             log.exception('no frontik application present (`app` option is not specified)')
             sys.exit(1)
 
-        app_name = os.path.basename(os.path.normpath(options.app))
         tornado_app = frontik.app.get_tornado_app(
-            options.app_root_url, frontik.app.App(app_name, options.app),
-            options.tornado_settings
+            options.app_root_url, frontik.app.App(options.app), options.tornado_settings
         )
     except:
         log.exception('failed to initialize frontik application, quitting')

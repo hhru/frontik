@@ -225,9 +225,8 @@ class EmptyEnvironment(object):
 
         # Create application with the only route — handler_class
         self._config.urls = [('', handler_class)]
-        frontik_app = frontik.app.App('', os.path.dirname(__file__), self._config)
+        frontik_app = frontik.app.App('frontik.testing', self._config)
         tornado_app = frontik.app.get_tornado_app('/', frontik_app)
-        frontik_app.app_globals.config = self._config
 
         # Mock methods
 

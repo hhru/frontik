@@ -11,7 +11,7 @@ where `config.file` must contain at least `app` parameter (see [Configuring Fron
 You could launch your application using `/usr/bin/frontik` script as well:
 
 ```shell
-/usr/bin/frontik --app=/path/to/application --config=/path/to/config.file
+/usr/bin/frontik --app=application.package --config=/path/to/config.file
 ```
 
 Configuration options can be set through command line or configuration file.
