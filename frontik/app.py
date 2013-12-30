@@ -1,15 +1,11 @@
 # coding=utf-8
 
-import imp
+import importlib
 import logging
-import os
 import re
-import sys
 import time
 
 from lxml import etree
-import simplejson
-import tornado
 import tornado.autoreload
 import tornado.web
 import tornado.ioloop
@@ -18,27 +14,28 @@ from tornado.options import options
 from frontik import frontik_logging
 from frontik.globals import global_stats
 from frontik.handler import ApplicationGlobals, PageHandler
-import frontik.magic_imp
-import frontik.xml_util
 
 app_logger = logging.getLogger('frontik.app')
 
 
 def _get_apps_versions():
-    app_name = os.path.basename(os.path.normpath(options.app))
-    app_version = etree.Element('application', name=app_name, path=options.app_root_url)
+    app_info = etree.Element('application', name=options.app)
 
     try:
-        app_config = frontik.magic_imp.FrontikAppImporter(app_name, options.app_root_url).imp_app_module('config')
-        app_version.extend(list(app_config.version))
-    except:
-        etree.SubElement(app_version, 'version').text = 'app doesn''t support version'
+        app_config = importlib.import_module('{}.config'.format(options.app))
+        app_info.extend(list(app_config.version))
+    except AttributeError:
+        etree.SubElement(app_info, 'version').text = 'unknown'
 
-    return app_version
+    return app_info
 
 
 def get_frontik_and_apps_versions():
     from frontik.version import version
+    import simplejson
+    import sys
+    import tornado
+
     versions = etree.Element('versions')
     etree.SubElement(versions, 'frontik').text = version
     etree.SubElement(versions, 'tornado').text = tornado.version
@@ -48,6 +45,7 @@ def get_frontik_and_apps_versions():
     etree.SubElement(versions, 'simplejson').text = simplejson.__version__
     etree.SubElement(versions, 'python').text = sys.version.replace('\n', '')
     versions.append(_get_apps_versions())
+
     return versions
 
 
@@ -95,9 +93,12 @@ class PdbHandler(tornado.web.RequestHandler):
 class CountPageHandlerInstancesHandler(tornado.web.RequestHandler):
     def get(self):
         import gc
-        hh = tuple([i for i in gc.get_objects() if isinstance(i, PageHandler)])
 
-        self.finish('{0}\n{1}'.format(len(hh), [i for i in gc.get_referrers(*hh) if i is not hh]))
+        handlers = tuple(i for i in gc.get_objects() if isinstance(i, PageHandler))
+
+        self.finish(
+            '{0}\n{1}'.format(len(handlers), [i for i in gc.get_referrers(*handlers) if i is not handlers])
+        )
 
 
 class CountTypesHandler(tornado.web.RequestHandler):
@@ -106,14 +107,11 @@ class CountTypesHandler(tornado.web.RequestHandler):
         from collections import defaultdict
 
         counts = defaultdict(int)
-
         for o in gc.get_objects():
             counts[type(o)] += 1
 
         for k, v in sorted(counts.items(), key=lambda x: x[0]):
             self.write('%s\t%s\n' % (v, k))
-
-        self.finish()
 
 
 def get_rewritten_request_attribute(request, field):
@@ -140,33 +138,30 @@ def extend_request_arguments(request, match, parse_function):
 
 class FileMappingDispatcher(object):
     def __init__(self, module, handler_404=None):
-        self.module = module
         self.name = module.__name__
         self.handler_404 = handler_404
         app_logger.info('initialized %r', self)
 
     def __call__(self, application, request, logger, **kwargs):
         url_parts = get_rewritten_request_attribute(request, 'path').strip('/').split('/')
-        page_module_name = 'pages.' + '.'.join(filter(None, url_parts))
+        page_name = '.'.join(filter(None, url_parts))
+        page_module_name = '.'.join(filter(None, (self.name, page_name)))
         logger.debug('page module: %s', page_module_name)
 
         try:
-            page_module = self.module.frontik_import(page_module_name)
-            logger.debug('using %s from %s', (self.name, page_module_name), page_module.__file__)
+            page_module = importlib.import_module(page_module_name)
+            logger.debug('using %s from %s', page_module_name, page_module.__file__)
         except ImportError:
             logger.exception('%s module not found', (self.name, page_module_name))
             if self.handler_404 is not None:
                 return self.handler_404
             return tornado.web.ErrorHandler(application, request, status_code=404, logger=logger)
-        except AttributeError:
-            logger.exception('%s is not frontik application module (no "frontik_import" method)', self.name)
-            return tornado.web.ErrorHandler(application, request, status_code=500, logger=logger)
         except:
-            logger.exception('error while importing %s module', (self.name, page_module_name))
+            logger.exception('error while importing %s module', page_module_name)
             return tornado.web.ErrorHandler(application, request, status_code=500, logger=logger)
 
         if not hasattr(page_module, 'Page'):
-            logger.error('%s. Page class not found', page_module_name)
+            logger.error('%s.Page class not found', page_module_name)
             return tornado.web.ErrorHandler(application, request, status_code=404, logger=logger)
 
         return page_module.Page(application, request, logger=logger, **kwargs)
@@ -182,46 +177,33 @@ class App(object):
     class DefaultConfig(object):
         pass
 
-    def __init__(self, name, root, config=None):
-        self.name = name
-        self.root = root
+    def __init__(self, module, config=None):
+        self.module = module
         self.config = config
 
-    def initialize_app(self):
         app_logger.info('initializing %r', self)
-        self.importer = frontik.magic_imp.FrontikAppImporter(self.name, self.root)
-        self.init_app_package(self.name, self.config)
-        self.app_globals = ApplicationGlobals(self.module)
 
-    def init_app_package(self, name, config=None):
-        self.module = imp.new_module(frontik.magic_imp.gen_module_name(name))
-        sys.modules[self.module.__name__] = self.module
-
-        self.pages_module = self.importer.imp_app_module('pages')
-        sys.modules[self.pages_module.__name__] = self.pages_module
-
-        if config is not None:
-            self.module.config = config
-        else:
+        if self.config is None:
             try:
-                self.module.config = self.importer.imp_app_module('config')
-                # track all possible filenames for each app's config module to reload in case of change
-                for filename in self.importer.get_probable_module_filenames('config'):
-                    tornado.autoreload.watch(filename)
+                self.config = importlib.import_module('{}.config'.format(self.module))
+                tornado.autoreload.watch(self.config.__file__)
             except ImportError:
-                self.module.config = App.DefaultConfig()
+                self.config = App.DefaultConfig()
                 app_logger.warning('no config.py file, using empty default')
 
-        if not hasattr(self.module.config, 'urls'):
-            self.module.config.urls = [('', Map2ModuleName(self.pages_module))]
+        if not hasattr(self.config, 'urls'):
+            self.config.urls = [
+                ('', FileMappingDispatcher(importlib.import_module('{}.pages'.format(self.module))))
+            ]
 
-        self.dispatcher = RegexpDispatcher(self.module.config.urls, self.module.__name__)
+        self.app_globals = ApplicationGlobals(self.config)
+        self.dispatcher = RegexpDispatcher(self.config.urls, self.module)
 
     def __call__(self, application, request, logger, **kwargs):
         return self.dispatcher(application, request, logger=logger, app_globals=self.app_globals, **kwargs)
 
     def __repr__(self):
-        return '{}.{}({})'.format(__package__, self.__class__.__name__, self.name)
+        return '{}.{}({})'.format(__package__, self.__class__.__name__, self.module)
 
 
 class RegexpDispatcher(object):
@@ -251,8 +233,8 @@ class RegexpDispatcher(object):
                     logger.exception('tornado error: %s in %r', e, app)
                     return tornado.web.ErrorHandler(application, request, status_code=e.status_code, logger=logger)
                 except Exception as e:
-                    logger.exception('internal server error: %s in %r', e, app)
-                return tornado.web.ErrorHandler(application, request, status_code=500, logger=logger)
+                    logger.exception('error handling request: %s in %r', e, app)
+                    return tornado.web.ErrorHandler(application, request, status_code=500, logger=logger)
 
         logger.error('match for request url "%s" not found', request.uri)
         return tornado.web.ErrorHandler(application, request, status_code=404, logger=logger)
@@ -262,8 +244,6 @@ class RegexpDispatcher(object):
 
 
 def get_tornado_app(app_root_url, frontik_app, tornado_settings=None):
-    frontik_app.initialize_app()
-
     def app_dispatcher(tornado_app, request, **kwargs):
         request_id = request.headers.get('X-Request-Id', str(global_stats.next_request_id()))
         request_logger = frontik_logging.RequestLogger(request, request_id)

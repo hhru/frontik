@@ -10,7 +10,7 @@ import requests
 from lxml import etree
 
 import tornado.options
-import tornado_util.supervisor as supervisor
+from tornado_util import supervisor
 
 try:
     import sys
@@ -26,7 +26,6 @@ class FrontikTestInstance(object):
         self.app = app
         self.config = config
         self.port = None
-        self.supervisor = supervisor
 
     def start(self):
         for port in xrange(9000, 10000):
@@ -51,16 +50,17 @@ class FrontikTestInstance(object):
 
     def stop(self):
         if self.port is not None:
-            self.supervisor.stop_worker(self.port)
-            self.wait_for(lambda: not(self.supervisor.is_running(self.port)))
-            self.supervisor.rm_pidfile(self.port)
+            supervisor.stop_worker(self.port)
+            self.wait_for(lambda: not(supervisor.is_running(self.port)))
+            supervisor.rm_pidfile(self.port)
 
     @staticmethod
-    def wait_for(fun, n=100):
+    def wait_for(fun, n=50):
         for i in xrange(n):
             if fun():
                 return
             time.sleep(0.01)
+
         assert fun()
 
     def get_page(self, page, notpl=False, method=requests.get, **kwargs):
@@ -102,7 +102,7 @@ class FrontikTestInstance(object):
 
 join_projects_dir = partial(os.path.join, os.path.dirname(__file__), 'projects')
 
-frontik_broken = FrontikTestInstance(join_projects_dir('broken_app'), join_projects_dir('frontik_debug.cfg'))
-frontik_test_app = FrontikTestInstance(join_projects_dir('test_app'), join_projects_dir('frontik_debug.cfg'))
-frontik_re_app = FrontikTestInstance(join_projects_dir('re_app'), join_projects_dir('frontik_debug.cfg'))
-frontik_non_debug = FrontikTestInstance(join_projects_dir('test_app'), join_projects_dir('frontik_non_debug.cfg'))
+frontik_broken_app = FrontikTestInstance('tests.projects.broken_app', join_projects_dir('frontik_debug.cfg'))
+frontik_test_app = FrontikTestInstance('tests.projects.test_app', join_projects_dir('frontik_debug.cfg'))
+frontik_re_app = FrontikTestInstance('tests.projects.re_app', join_projects_dir('frontik_debug.cfg'))
+frontik_non_debug = FrontikTestInstance('tests.projects.test_app', join_projects_dir('frontik_non_debug.cfg'))

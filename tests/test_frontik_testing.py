@@ -15,7 +15,7 @@ from frontik.testing.pages import Page
 
 def _function_under_test(handler):
     def finished():
-        res = lxml.etree.Element("result")
+        res = lxml.etree.Element('result')
         res.text = str(handler.result)
         handler.doc.put(res)
         handler.set_header('X-Foo', 'Bar')
@@ -26,10 +26,10 @@ def _function_under_test(handler):
 
     def accumulate(xml, response):
         if response.code >= 400:
-            raise HTTPError(503, "remote server returned error with code =" + str(response.code))
+            raise HTTPError(503, 'remote server returned error with code {}'.format(response.code))
         if xml is None:
             raise HTTPError(503)
-        handler.result += int(xml.findtext("a"))
+        handler.result += int(xml.findtext('a'))
 
     handler.get_url(handler.config.serviceHost + 'vacancy/1234', callback=ag.add(accumulate))
     handler.get_url(handler.config.serviceHost + 'employer/1234', callback=ag.add(accumulate))
@@ -40,20 +40,33 @@ class TestServiceMock(unittest.TestCase):
         self.assertEquals(parse_query('a=&z=q&vacancyId=1432459'), {'a': ('',), 'z': ('q',), 'vacancyId': ('1432459',)})
 
     def test_equal_route(self):
-        self.assertTrue(route_less_or_equal_than(route("/abc/?q=1"), route("/abc/?q=1")),
-                        "equal routes do not match each other")
+        self.assertTrue(
+            route_less_or_equal_than(route('/abc/?q=1'), route('/abc/?q=1')), 'equal routes do not match each other'
+        )
 
     def test_swapped(self):
-        self.assertTrue(route_less_or_equal_than(route("/abc/?a=2&q=1"), route("/abc/?q=1&a=2")),
-                        "swapped query parameters do not match each other")
+        self.assertTrue(
+            route_less_or_equal_than(route('/abc/?a=2&q=1'), route('/abc/?q=1&a=2')),
+            'swapped query parameters do not match each other'
+        )
 
     def test_different_paths(self):
-        self.assertTrue(route_less_or_equal_than(route('/abc?q=1'), route('/abc/?q=1')),
-                        'paths with and w/o trailing slash at the end should match')
+        self.assertTrue(
+            route_less_or_equal_than(route('/abc?q=1'), route('/abc/?q=1')),
+            'paths with and w/o trailing slash at the end should match'
+        )
 
     def test_right_query_is_less(self):
-        self.assertFalse(route_less_or_equal_than(route("/abc/?a=2&q=1"), route("/abc/?q=1")),
-                         "insufficient query parameters should not match")
+        self.assertFalse(
+            route_less_or_equal_than(route('/abc/?a=2&q=1'), route('/abc/?q=1')),
+            'insufficient query parameters should not match'
+        )
+
+    def test_config(self):
+        def check_config(handler):
+            self.assertTrue(handler.config.config_param)
+
+        EmptyEnvironment().configure(config_param=True).call_function(check_config)
 
     def test_routing_by_url(self):
         test_handler = '<xml></xml>'
@@ -100,6 +113,3 @@ class TestServiceMock(unittest.TestCase):
 
             tb = ''.join(traceback.format_tb(sys.exc_traceback))
             self.assertIn('_inner()', tb)
-
-if __name__ == '__main__':
-    unittest.main()
