@@ -164,7 +164,7 @@
 
     <xsl:template match="entry[response]">
         <xsl:variable name="status">
-            <xsl:if test="response/code != 200">error</xsl:if>
+            <xsl:if test="response/code &lt; 200 or response/code >= 300">error</xsl:if>
         </xsl:variable>
         <xsl:variable name="highlight">
             <xsl:if test="$highlight-text != '' and contains(., $highlight-text)">m-textentry__head_highlight</xsl:if>
@@ -515,7 +515,7 @@
                         margin-top: -1px;
                     }
                     .textentry__head__message {
-                        white-space: pre;
+                        white-space: pre-wrap;
                     }
                 .textentry__switcher {
                     overflow: hidden;
