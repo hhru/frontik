@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# coding=utf-8
 
 import cStringIO
 import os
@@ -69,7 +69,7 @@ def decode_string_from_charset(string, charsets=('cp1251', 'koi8_r')):
             continue
 
     if decoded_body is None:
-        raise Exception('Could not decode string (tried: {0})'.format(', '.join(charsets)))
+        raise UnicodeDecodeError('Could not decode string (tried: {0})'.format(', '.join(charsets)))
 
     return decoded_body
 
