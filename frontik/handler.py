@@ -194,14 +194,14 @@ class PageHandler(tornado.web.RequestHandler):
     def decode_argument(self, value, name=None):
         try:
             return super(PageHandler, self).decode_argument(value, name)
-        except UnicodeDecodeError:
-            self.log.exception('Cannot decode unicode query parameter, trying other charsets')
+        except UnicodeError:
+            self.log.warn('Cannot decode utf-8 query parameter, trying other charsets')
 
         try:
             return frontik.util.decode_string_from_charset(value)
-        except Exception:
-            self.log.exception('Cannot decode query parameter, falling back to empty string')
-            return ''
+        except UnicodeError:
+            self.log.exception('Cannot decode argument, ignoring invalid chars')
+            return value.decode('utf-8', 'ignore')
 
     def async_callback(self, callback, *args, **kw):
         return tornado.web.RequestHandler.async_callback(self, self.check_finished(callback, *args, **kw))
