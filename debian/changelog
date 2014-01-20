@@ -1,3 +1,11 @@
+frontik (2.18.11) unstable; urgency=low
+
+  * HH-39601 improve unicode handling
+  * HH-39620 mark debug entries as error if status < 200 or status >=
+    300
+
+ -- Automated Build <an.sumin@hh.ru>  Mon, 20 Jan 2014 12:26:26 +0400
+
 frontik (2.18.10) unstable; urgency=low
 
   * HH-39153 improve logging of XSLT and failed _parse_response
