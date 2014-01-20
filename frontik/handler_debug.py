@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# coding=utf-8
 
 import Cookie
 import inspect
@@ -203,11 +203,12 @@ class DebugLogBulkHandler(object):
             if val is not None:
                 entry_attrs[field] = str(val)
 
-        entry_attrs['msg'] = record.getMessage()
+        entry_attrs['msg'] = to_unicode(record.getMessage())
 
         try:
             entry = etree.Element("entry", **entry_attrs)
         except ValueError:
+            debug_log.exception('Error creating log entry with attrs: {0}'.format(entry_attrs))
             entry = etree.Element("entry")
 
         entry.set("asctime", str(datetime.fromtimestamp(record.created)))
