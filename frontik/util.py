@@ -69,7 +69,7 @@ def decode_string_from_charset(string, charsets=('cp1251', 'koi8_r')):
             continue
 
     if decoded_body is None:
-        raise UnicodeDecodeError('Could not decode string (tried: {0})'.format(', '.join(charsets)))
+        raise UnicodeError('Could not decode string (tried: {0})'.format(', '.join(charsets)))
 
     return decoded_body
 
