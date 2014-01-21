@@ -88,7 +88,7 @@ def request_to_xml(request):
                 body_query = urlparse.parse_qs(str(request.body), True)
                 for name, values in body_query.iteritems():
                     for value in values:
-                        body.append(E.param(value.decode("utf-8"), name=name))
+                        body.append(E.param(to_unicode(value), name=to_unicode(name)))
         except Exception:
             debug_log.exception('Cannot parse request body')
             body.text = repr(request.body)
@@ -123,10 +123,10 @@ def _params_to_xml(url, logger=debug_log):
     for name, values in query.iteritems():
         for value in values:
             try:
-                params.append(E.param(to_unicode(value), name=name))
+                params.append(E.param(to_unicode(value), name=to_unicode(name)))
             except UnicodeDecodeError:
-                logger.exception('Cannot decode parameter value')
-                params.append(E.param(repr(value), name=name))
+                logger.exception('Cannot decode parameter name or value')
+                params.append(E.param(repr(value), name=repr(name)))
     return params
 
 
