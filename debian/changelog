@@ -1,3 +1,9 @@
+frontik (2.18.12) unstable; urgency=low
+
+  * HH-39951 fix debug mode on pages with unicode query params names
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 21 Jan 2014 13:45:28 +0400
+
 frontik (2.18.11) unstable; urgency=low
 
   * HH-39601 improve unicode handling
