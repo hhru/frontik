@@ -2,7 +2,7 @@ import os
 
 XSL_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "xsl"))
 XML_root = None
-apply_xsl = True
+
 
 def post(self, data, cb):
     self.log.debug('posprocessor called')
