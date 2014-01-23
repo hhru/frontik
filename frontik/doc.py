@@ -1,12 +1,13 @@
-# -*- coding: utf-8 -*-
+# coding=utf-8
 
 import lxml.etree as etree
 
 import frontik.future
-import frontik.xml_util
 
 
 class Doc(object):
+    __slots__ = ('root_node_name', 'root_node', 'data')
+
     def __init__(self, root_node_name='doc', root_node=None):
         self.root_node_name = root_node_name
         self.root_node = root_node
@@ -18,6 +19,19 @@ class Doc(object):
         else:
             self.data.append(chunk)
         return self
+
+    def is_empty(self):
+        return len(self.data) == 0
+
+    @staticmethod
+    def get_error_node(response):
+        data = etree.Element('error', url=response.effective_url, reason=str(response.error), code=str(response.code))
+        if response.body:
+            try:
+                data.append(etree.Comment(response.body.replace('--', '%2D%2D')))
+            except ValueError:
+                pass
+        return data
 
     def to_etree_element(self):
         if self.root_node is not None:
@@ -34,6 +48,9 @@ class Doc(object):
             elif isinstance(chunk, frontik.future.FutureVal):
                 for i in chunk_to_element(chunk.get()):
                     yield i
+
+            elif isinstance(chunk, frontik.future.FailedFutureException):
+                yield self.get_error_node(chunk)
 
             elif isinstance(chunk, etree._Element):
                 yield chunk
@@ -69,4 +86,4 @@ class Doc(object):
         return res
 
     def to_string(self):
-        return frontik.xml_util.etree_to_xml_string(self.to_etree_element())
+        return etree.tostring(self.to_etree_element(), encoding='utf-8', xml_declaration=True)

@@ -9,8 +9,12 @@ from frontik.future import Placeholder
 class TestDoc(unittest.TestCase):
     def test_simple(self):
         d = frontik.doc.Doc('a')
+
+        self.assertTrue(d.is_empty())
+
         d.put('test')
 
+        self.assertFalse(d.is_empty())
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
 
     def test_placeholder_simple(self):
@@ -39,6 +43,15 @@ class TestDoc(unittest.TestCase):
         d.put(p)
         
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a><!--ccc--><bbb/></a>""")
+
+    def test_failed_future(self):
+        d = frontik.doc.Doc('a')
+        p = Placeholder()
+        p.set_data(frontik.future.FailedFutureException(effective_url='url', error='error', code='code', body='body'))
+        d.put(p)
+
+        self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n"""
+                                        """<a><error url="url" reason="error" code="code"><!--body--></error></a>""")
 
     def test_doc_nested(self):
         a = frontik.doc.Doc('a')
