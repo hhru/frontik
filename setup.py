@@ -23,12 +23,13 @@ setup(
     long_description=open('README.md').read(),
     url='https://github.com/hhru/frontik',
     cmdclass={'build_py': BuildHook},
-    packages=['frontik', 'frontik/testing', 'frontik/testing/pages'],
+    packages=['frontik', 'frontik/producers', 'frontik/testing', 'frontik/testing/pages'],
     scripts=['scripts/frontik'],
     package_data={
         'frontik': ['*.xsl'],
     },
     install_requires=[
+        'nose',
         'lxml >= 2.2.8, < 2.3a',
         'tornado'
     ],

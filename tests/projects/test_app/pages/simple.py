@@ -1,6 +1,6 @@
 # coding=utf-8
 
-import lxml.etree as etree
+from lxml import etree
 
 import frontik.handler
 

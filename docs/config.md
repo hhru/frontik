@@ -45,7 +45,8 @@ which run on one Frontik instance.
 | `graylog`            | `bool`  | `False`       | Enables sending logs to Graylog                                       |
 | `graylog_host`       | `str`   | `'localhost'` | Graylog host                                                          |
 | `graylog_port`       | `int`   | `12201`       | Graylog port                                                          |
-| `executor_type`      | `str`   | `'threaded'`  | Executor type for XSL templating (alternative: `'ioloop'`             |
+| `xsl_executor`       | `str`   | `'threaded'`  | Executor type for XSL templating (alternative: `'ioloop'`)            |
+| `json_executor`      | `str`   | `'ioloop'`    | Executor type for JSON templating                                     |
 | `warn_no_jobs`       | `bool`  | `True`        | Write a warning if no jobs were found in executor queue               |
 | `timeout_multiplier` | `float` | `1.0`         | Generic timeout multiplier for get_xxx calls (useful for testing)     |
 | `handlers_count`     | `int`   | `100`         | Limit for number of simultaneous requests handled by Frontik instance |
