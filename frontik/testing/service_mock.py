@@ -12,6 +12,7 @@ from urlparse import urlparse, parse_qs
 from collections import namedtuple
 from tornado.httpclient import HTTPRequest
 import frozen_dict
+import traceback
 
 import sys
 import os
@@ -24,6 +25,7 @@ from logging import getLogger
 import tornado.options
 tornado.options.process_options_logging()
 
+import frontik.handler_whc_limit as handler_whc_limit
 
 def EmptyEnvironment():
     return ExpectingHandler()
@@ -43,24 +45,15 @@ def HTTPResponseStub(request=None, code=200, headers=None, buffer=None,
                 effective_url, error, request_time,
                 time_info))
 
-def fromFile(fileName):
-    '''fromFile(fileName) -> file contents from existing file. Will serch fileName recursively to support for different locations from wich to test from'''
-    for root, _, _ in os.walk("."):
-        path = os.path.join(root, fileName)
-        if (os.path.exists(path)):
-            with open(path) as f:
-                return f.read()
-    raise ValueError("fromFile: could not find + " + fileName + " while searching recursively from " + os.path.abspath("."))
-
 raw_route = namedtuple('raw_route', 'path query cookies method headers')
 
-def route(url, cookies = "", method = 'GET', headers = None):
+def route(url, cookies="", method='GET', headers=None):
     if headers is None:
         headers = {}
     parsed = urlparse(url)
     return _route(parsed.path, parsed.query, cookies, method, frozen_dict.FrozenDict(headers))
 
-def _route (path, query = "", cookies = "", method = 'GET', headers = None):
+def _route (path, query="", cookies="", method='GET', headers=None):
     if headers is None:
         headers = {}
     return raw_route(path, query, cookies, method, frozen_dict.FrozenDict(headers))
@@ -90,10 +83,10 @@ def parse_query(query):
     return dict([(k,tuple(v)) for k,v in parse_qs(query, keep_blank_values=True).iteritems()])
 
 def to_route(req):
-    return route(req.url, method = req.method, headers = req.headers)
+    return route(req.url, method=req.method, headers=req.headers)
 
 class ServiceMock(object):
-    def __init__(self, routes, strict = 0):
+    def __init__(self, routes, strict=0):
         self.routes = routes
         self.strict = strict
 
@@ -107,11 +100,13 @@ class ServiceMock(object):
                 if self.strict:
                     del self.routes[r]
                 return result
-        raise NotImplementedError("No route in service mock matches request to " + unquote(req.url) +
-                                    " tried to match following: '" +
-                                    "'; '".join([unquote(str(rt)) for rt in self.routes]) +
-                                    "', " +
-                                    "strictness = " + str(self.strict))
+        raise NotImplementedError(
+            "No route in service mock matches request to: \n" +
+            "{} {}\n tried to match following: \n'{}', strictness = {}".format(
+                req.method,
+                unquote(req.url),
+                "';\n'".join([unquote(str(rt)) for rt in self.routes]),
+                str(self.strict)))
 
     def get_result(self, request, handler):
         if callable(handler):
@@ -129,8 +124,8 @@ class ServiceMock(object):
             return handler
         else: raise ValueError("Handler " + str(handler) + "\n that matched request " + request.url + " "
             + str(request) + "\n is neither tuple nor HTTPResponse nor basestring instance nor callable returning any of above.")
-        return HTTPResponseStub(request, buffer = body, effective_url = request.url,
-                headers = HTTPHeaders({'Content-Type': 'xml'}))
+        return HTTPResponseStub(request, buffer=body, code=code, effective_url=request.url,
+                headers=HTTPHeaders({'Content-Type': 'xml'}))
 
 class ExpectingHandler(object):
     def __init__(self, **kwarg):
@@ -140,7 +135,6 @@ class ExpectingHandler(object):
         assert frontik.options # silence code style checkers
         # prevent log clubbering
         tornado.options.options.warn_no_jobs = False
-        tornado.options.options.handlers_count = 1000000
 
         # handler stuff
         from frontik.app import App
@@ -148,19 +142,15 @@ class ExpectingHandler(object):
         self.app = App("", relative_path_to_test_application,)
         self.app._initialize()
 
-        self.request = tornado.httpserver.HTTPRequest('GET', '/', remote_ip = "remote_ip")
+        self.request = tornado.httpserver.HTTPRequest('GET', '/', remote_ip="remote_ip")
         del self.request.connection
-        def finish(*arg, **kwarg):
-            pass
         def write(s, callback=None):
             if callback:
-                self._callback_heap.append((None, callback))
+                self._callback_heap.append((None, callback, None))
 
-        IOLoop.instance().add_callback = lambda callback: self._callback_heap.append((None, callback))
-
+        IOLoop.instance().add_callback = lambda callback: self._callback_heap.append((None, callback, None))
 
         self.request.write = write
-        self.request.finish = finish
 
         def async_callback(tornado_handler, callback, *args, **kwargs):
             if callback is None:
@@ -187,11 +177,18 @@ class ExpectingHandler(object):
         self._handler.http_client = TestHttpClient(self)
         self._handler.get_error_html = lambda *args, **kwargs: None
 
+        self.finish_called = False
+        def handler_finish(*arg, **kwarg):
+            if hasattr(self._handler, 'whc_limit'):
+                self._handler.whc_limit.release()
+            self.finish_called = True
+
         def flush(include_footers=False, callback=None):
             if callback:
-                self._callback_heap.append((None, callback))
+                self._callback_heap.append((None, callback, None))
+
         self._handler.flush = flush
-        self._handler.finish = finish
+        self._handler.finish = handler_finish
         #init registry
         self.registry = {}
 
@@ -242,13 +239,15 @@ class ExpectingHandler(object):
             callbacks_snapshot = self._callback_heap
             self._callback_heap = []
             while callbacks_snapshot:
-                request, callback = callbacks_snapshot.pop(0)
+                request, callback, tb = callbacks_snapshot.pop(0)
                 if request:
                     self.log.debug('trying to route ' + request.url)
                     try:
                         result = self.route_request(request)
                     except NotImplementedError as e:
                         self.log.warn("Request to missing service")
+                        if tb:
+                            self.log.info("Caller stack trace might help:\n" + ''.join(traceback.format_list(tb)))
                         raise e
                     callback(result)
                     self.raise_exceptions()
@@ -270,6 +269,15 @@ class ExpectingHandler(object):
         self.raise_exceptions()
         self.process_callbacks()
 
+
+        if not self.finish_called:
+            self._handler.finish()
+            if  hasattr(method, 'im_class'):
+                assert False, 'Handler\'s method did not call finish upon '\
+                              'completion, failing. Check for unnessesary callbacks '\
+                              'added to finish group, and hanging callbacks not called. '
+
+        handler_whc_limit.working_handlers_count = 0 # in case of improper release of handlers
         self._result = result
         return self
 
@@ -283,7 +291,10 @@ class ExpectingHandler(object):
         return self._handler.doc
 
     def process_fetch(self, req, callback):
-        self._callback_heap.append((req, callback))
+        tb = traceback.extract_stack()
+        while tb and not tb.pop()[2] == 'fetch_request':
+            pass
+        self._callback_heap.append((req, callback, tb))
 
 #===
 
@@ -294,63 +305,6 @@ class TestHttpClient(HTTPClient):
 
     def fetch(self, req, callback):
         self._callback_heap.process_fetch(req, callback)
-
-class TestServiceMock(unittest.TestCase):
-    def test_parse_query_ok(self, ):
-        self.assertEquals(parse_query('a=&z=q&vacancyId=1432459'), {'a' : ('',), 'z' : ('q',), 'vacancyId' : ('1432459',)})
-    def test_equal_route(self, ):
-        self.assertTrue(route_less_or_equal_than(route("/abc/?q=1"), route("/abc/?q=1")), "equal routes do not match each other")
-    def test_swapped(self, ):
-        self.assertTrue(route_less_or_equal_than(route("/abc/?a=2&q=1"), route("/abc/?q=1&a=2")), "swapped query parameters do not match each other")
-    def test_different_paths(self, ):
-        self.assertFalse(route_less_or_equal_than(route("/abc?q=1"), route("/abc/?q=1")), "different paths should not match")
-    def test_right_query_is_less(self, ):
-        self.assertFalse(route_less_or_equal_than(route("/abc/?a=2&q=1"), route("/abc/?q=1")), "insufficient query parameters should not match")
-
-    def test_routing_by_url(self, ):
-        gogogo_handler = '<xml></xml>'
-        routes = {'asdasd.ru' : {
-                '/gogogo' : gogogo_handler
-            } }
-        expecting_handler = expecting( **routes )
-        assert expecting_handler.route_request(HTTPRequest('http://asdasd.ru/gogogo')).body == gogogo_handler
-
-    def test_get_doc_shows_what_expected(self, ):
-        '''intergation test that shows main test path'''
-        import lxml.etree
-        from frontik.handler import HTTPError, AsyncGroup
-
-        def function_under_test(handler, ):
-            def finished():
-                res = lxml.etree.Element("result")
-                res.text = str(handler.result)
-                handler.doc.put(res)
-            handler.result = 0
-            ag = AsyncGroup(finished)
-            def accumulate(xml, response):
-                if response.code >= 400:
-                    raise HTTPError(503, "remote server returned error with code =" + str(response.code))
-                if xml is None:
-                    raise HTTPError(503)
-                handler.result += int(xml.findtext("a"))
-
-            handler.get_url(handler.config.serviceHost +  'vacancy/1234', callback = ag.add(accumulate))
-            handler.get_url(handler.config.serviceHost + 'employer/1234', callback = ag.add(accumulate))
-
-        class EtalonTest(unittest.TestCase):
-            def runTest(self,):
-                doc = expecting(serviceHost = {
-                        '/vacancy/1234' : (200, '<b><a>1</a></b>'),
-                        '/employer/1234' : '<b><a>2</a></b>'
-                }).call(function_under_test).get_doc().root_node
-
-                self.assertEqual(doc.findtext('result'), '3')
-
-        #test that test works (does not throw exception)
-        ts = unittest.TestSuite()
-        ts.addTest(EtalonTest())
-        tr = unittest.TextTestRunner()
-        tr.run(ts)
 
 if __name__ == '__main__':
     unittest.main()
