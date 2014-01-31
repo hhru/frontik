@@ -45,15 +45,6 @@ def HTTPResponseStub(request=None, code=200, headers=None, buffer=None,
                 effective_url, error, request_time,
                 time_info))
 
-def fromFile(fileName):
-    '''fromFile(fileName) -> file contents from existing file. Will serch fileName recursively to support for different locations from wich to test from'''
-    for root, _, _ in os.walk("."):
-        path = os.path.join(root, fileName)
-        if (os.path.exists(path)):
-            with open(path) as f:
-                return f.read()
-    raise ValueError("fromFile: could not find + " + fileName + " while searching recursively from " + os.path.abspath("."))
-
 raw_route = namedtuple('raw_route', 'path query cookies method headers')
 
 def route(url, cookies = "", method = 'GET', headers = None):
@@ -109,11 +100,13 @@ class ServiceMock(object):
                 if self.strict:
                     del self.routes[r]
                 return result
-        raise NotImplementedError("No route in service mock matches request to: \n" + req.method + " " + unquote(req.url) +
-                                    "\n tried to match following: '" +
-                                    "';\n'".join([unquote(str(rt)) for rt in self.routes]) +
-                                    "', " +
-                                    "strictness = " + str(self.strict))
+        raise NotImplementedError(
+            "No route in service mock matches request to: \n" +
+            "{} {}\n tried to match following: \n'{}', strictness = {}".format(
+                req.method,
+                unquote(req.url),
+                "';\n'".join([unquote(str(rt)) for rt in self.routes]),
+                str(self.strict)))
 
     def get_result(self, request, handler):
         if callable(handler):
