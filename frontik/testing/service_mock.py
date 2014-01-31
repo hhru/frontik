@@ -102,7 +102,7 @@ class ServiceMock(object):
                 return result
         raise NotImplementedError(
             "No route in service mock matches request to: \n" +
-            "{} {}\n tried to match following: \n'{}', strictness = {}".format(
+            "{0} {1}\n tried to match following: \n'{2}', strictness = {3}".format(
                 req.method,
                 unquote(req.url),
                 "';\n'".join([unquote(str(rt)) for rt in self.routes]),
