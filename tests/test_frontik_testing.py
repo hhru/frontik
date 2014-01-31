@@ -22,6 +22,7 @@ class TestServiceMock(unittest.TestCase):
                 '/gogogo' : gogogo_handler
             } }
         expecting_handler = expecting( **routes )
+        self.assertRaises(NotImplementedError, expecting_handler.route_request, HTTPRequest('http://asdasd.ru/nonono'))
         assert expecting_handler.route_request(HTTPRequest('http://asdasd.ru/gogogo')).body == gogogo_handler
 
     def test_get_doc_shows_what_expected(self, ):
