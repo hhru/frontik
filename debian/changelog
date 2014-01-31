@@ -1,5 +1,14 @@
 frontik (2.18.13) unstable; urgency=low
 
+  * HH-37492 make python2.6 compatible
+  * HH-37492 PEP8ify
+  * HH-37492 more cleanup and proper error message formatting
+  * HH-37492 stricter handler release check
+
+ -- Automated Build <a.shaposhnikov@hh.ru>  Fri, 31 Jan 2014 14:23:12 +0400
+
+frontik (2.18.13) unstable; urgency=low
+
   * HH-37492 PEP8ify
   * HH-37492 more cleanup and proper error message formatting
   * HH-37492 stricter handler release check
