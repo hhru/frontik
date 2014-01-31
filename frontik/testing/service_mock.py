@@ -47,13 +47,13 @@ def HTTPResponseStub(request=None, code=200, headers=None, buffer=None,
 
 raw_route = namedtuple('raw_route', 'path query cookies method headers')
 
-def route(url, cookies = "", method = 'GET', headers = None):
+def route(url, cookies="", method='GET', headers=None):
     if headers is None:
         headers = {}
     parsed = urlparse(url)
     return _route(parsed.path, parsed.query, cookies, method, frozen_dict.FrozenDict(headers))
 
-def _route (path, query = "", cookies = "", method = 'GET', headers = None):
+def _route (path, query="", cookies="", method='GET', headers=None):
     if headers is None:
         headers = {}
     return raw_route(path, query, cookies, method, frozen_dict.FrozenDict(headers))
@@ -83,10 +83,10 @@ def parse_query(query):
     return dict([(k,tuple(v)) for k,v in parse_qs(query, keep_blank_values=True).iteritems()])
 
 def to_route(req):
-    return route(req.url, method = req.method, headers = req.headers)
+    return route(req.url, method=req.method, headers=req.headers)
 
 class ServiceMock(object):
-    def __init__(self, routes, strict = 0):
+    def __init__(self, routes, strict=0):
         self.routes = routes
         self.strict = strict
 
@@ -124,8 +124,8 @@ class ServiceMock(object):
             return handler
         else: raise ValueError("Handler " + str(handler) + "\n that matched request " + request.url + " "
             + str(request) + "\n is neither tuple nor HTTPResponse nor basestring instance nor callable returning any of above.")
-        return HTTPResponseStub(request, buffer = body, code = code, effective_url = request.url,
-                headers = HTTPHeaders({'Content-Type': 'xml'}))
+        return HTTPResponseStub(request, buffer=body, code=code, effective_url=request.url,
+                headers=HTTPHeaders({'Content-Type': 'xml'}))
 
 class ExpectingHandler(object):
     def __init__(self, **kwarg):
@@ -142,7 +142,7 @@ class ExpectingHandler(object):
         self.app = App("", relative_path_to_test_application,)
         self.app._initialize()
 
-        self.request = tornado.httpserver.HTTPRequest('GET', '/', remote_ip = "remote_ip")
+        self.request = tornado.httpserver.HTTPRequest('GET', '/', remote_ip="remote_ip")
         del self.request.connection
         def write(s, callback=None):
             if callback:
