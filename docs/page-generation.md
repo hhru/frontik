@@ -15,9 +15,9 @@
       |       |<--------|        |
       |       |<--------+--------|
       |       |         |        |
-      |    (xsl)        |        |
+      |  (templating)   |        |
       |       |--\      |        |
-      |       |  | xsl  |        |
+      |       |  |      |        |
       |       |<-/      |        |
       |       |         |        |
       |    (done)       |        |
@@ -26,7 +26,7 @@
 
 Typically page generation process is split into several steps:
 
-  * initiate requests: frontik makes several http-requests to underlying backends
-  * wait for response (or timeout) for each backend request
-  * aggregate all responses and apply xsl transformation or construct result in any other way (see [Producers](docs/producers.md))
-  * return the result to user after postprocessing (see [Postprocessing](docs/postprocessing.md))
+  * initiate requests: Frontik makes several HTTP requests to underlying backends (see [Making HTTP requests](/docs/http-client.md))
+  * wait for responses (or timeouts) from each backend, run callbacks and possibly make some more requests
+  * aggregate all responses and run templating or construct result in any other way (see [Producers](/docs/producers.md))
+  * return the result to user after postprocessing (see [Postprocessing](/docs/postprocessing.md))

@@ -1,6 +1,6 @@
 ## Debug mode
 
-Frontik supports extended debug mode. It is enabled by GET parameter 'debug' (you can also set cookie 'debug=...').
+Frontik supports extended debug mode. It is enabled by query or form parameter 'debug' (you can also set cookie `debug=...`).
 Available options are:
 
 * ```debug=true``` (or just ```debug```) — simple debug
@@ -9,7 +9,7 @@ Available options are:
 * ```debug=xslt``` — enables XSL transformation profiling
 * ```debug=@text``` — highlights log entries matching 'text'
 
-You can combine these options, for example: debug=full,nopass
+You can combine these options, for example: `debug=full,nopass`
 
 By default, in debug mode Frontik adds HTTP header ```X-Hh-Debug``` to all requests. Some services may in return form a
 debug response, containing debug log in XML format together with serialized original response. Debug responses should

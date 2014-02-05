@@ -25,4 +25,4 @@ self.set_xsl('transform.xsl')
 ```
 
 The rest is done automatically. Root directory for xsl files and other parameters are set up in application config file
-(see [Configuring application](docs/configure-app.md)).
+(see [Configuring Frontik application](/docs/config-app.md)).
