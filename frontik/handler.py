@@ -510,12 +510,16 @@ class PageHandler(tornado.web.RequestHandler):
             if hasattr(self, 'whc_limit'):
                 self.whc_limit.release()
 
+        def _finish_with_async_hook(chunk):
+            super(PageHandler, self).finish(chunk)
+            tornado.ioloop.IOLoop.instance().add_timeout(time.time() + 0.1, self.log.request_finish_hook)
+
         try:
-            self.__call_postprocessors(self._late_postprocessors[:], partial(super(PageHandler, self).finish, chunk))
+            self.__call_postprocessors(self._late_postprocessors[:], partial(_finish_with_async_hook, chunk))
         except Exception:
             self.log.exception('Error during late postprocessing stage, finishing with an exception')
             self._status_code = 500
-            super(PageHandler, self).finish(chunk)
+            _finish_with_async_hook(chunk)
 
     def flush(self, include_footers=False, **kwargs):
         self.log.stage_tag('postprocess')
@@ -549,7 +553,6 @@ class PageHandler(tornado.web.RequestHandler):
                 self.log.exception('Cannot write debug info')
 
         tornado.web.RequestHandler.flush(self, include_footers=False, **kwargs)
-        self.log.request_finish_hook()
 
     # Postprocessors and producers
 
