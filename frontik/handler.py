@@ -512,7 +512,10 @@ class PageHandler(tornado.web.RequestHandler):
 
         def _finish_with_async_hook(chunk):
             super(PageHandler, self).finish(chunk)
-            tornado.ioloop.IOLoop.instance().add_timeout(time.time() + 0.1, self.log.request_finish_hook)
+            tornado.ioloop.IOLoop.instance().add_timeout(
+                time.time() + 0.1,
+                partial(self.log.request_finish_hook, self._status_code, self.request.method, self.request.uri)
+            )
 
         try:
             self.__call_postprocessors(self._late_postprocessors[:], partial(_finish_with_async_hook, chunk))
