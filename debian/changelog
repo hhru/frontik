@@ -1,3 +1,9 @@
+frontik (2.18.14) unstable; urgency=low
+
+  * HH-40620 call request_finish_hook asyncronously
+
+ -- Andrey Sumin <an.sumin@hh.ru>  Thu, 13 Feb 2014 12:46:21 +0400
+
 frontik (2.18.13) unstable; urgency=low
 
   * HH-37492 make python2.6 compatible
