@@ -23,7 +23,7 @@ try:
             t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(record.created))
             return "%s,%03d" % (t, record.msecs)
 
-        def handle_bulk(self, records_list, stages=None, status_code=None, exception=None, uri=None, method=None, **kwargs):
+        def handle_bulk(self, records_list, stages=None, status_code=None, uri=None, method=None, **kwargs):
             if len(records_list) > 0:
                 first_record = records_list[0]
             else:
@@ -35,7 +35,6 @@ try:
                 record_for_gelf.levelname,
                 to_unicode(record_for_gelf.getMessage()))
             record_for_gelf.short = u"{0} {1} {2}".format(method, to_unicode(uri), status_code)
-            record_for_gelf.exc_info = exception
             record_for_gelf.levelno = logging.INFO
 
             for record in records_list[1:]:
@@ -197,9 +196,8 @@ class PageLogger(logging.LoggerAdapter):
     def add_bulk_handler(self, handler, auto_flush=True):
         self.logger.add_bulk_handler(handler, auto_flush)
 
-    def request_finish_hook(self, exception=None):
-        self.logger.flush(status_code=self.handler_ref()._status_code, stages=self.stages, exception=exception,
-                          method=self.handler_ref().request.method, uri=self.handler_ref().request.uri)
+    def request_finish_hook(self, status_code, request_method, request_uri):
+        self.logger.flush(status_code=status_code, stages=self.stages, method=request_method, uri=request_uri)
 
 
 def bootstrap_all_logging():
