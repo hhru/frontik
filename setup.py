@@ -23,7 +23,7 @@ setup(
     long_description=open('README.md').read(),
     url='https://github.com/hhru/frontik',
     cmdclass={'build_py': BuildHook},
-    packages=['frontik', 'frontik/testing', 'frontik/testing/pages'],
+    packages=['frontik', 'frontik/producers', 'frontik/testing', 'frontik/testing/pages'],
     scripts=['scripts/frontik'],
     package_data={
         'frontik': ['*.xsl'],

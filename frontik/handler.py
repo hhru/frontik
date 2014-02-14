@@ -1,13 +1,11 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import with_statement
+# coding=utf-8
 
 from functools import partial
 from itertools import imap
-import simplejson as json
 import re
 import time
 
+import simplejson as json
 import lxml.etree as etree
 import tornado.curl_httpclient
 import tornado.httpclient
@@ -19,13 +17,14 @@ from tornado.httpserver import HTTPRequest
 import frontik.async
 import frontik.auth
 import frontik.frontik_logging as frontik_logging
-import frontik.future as future
-import frontik.handler_whc_limit
+import frontik.future
+import frontik.handler_active_limit
 import frontik.handler_debug
 import frontik.jobs
 import frontik.util
 import frontik.xml_util
-import frontik.xsl_producer
+import frontik.producers.json
+import frontik.producers.xsl
 
 
 # this function replaces __repr__ function for tornado's HTTPRequest
@@ -109,12 +108,13 @@ class Stats(object):
 stats = Stats()
 
 
-class PageHandlerGlobals(object):
+class ApplicationGlobals(object):
     """ Global settings for Frontik instance """
     def __init__(self, app_package):
         self.config = app_package.config
 
-        self.xml = frontik.xml_util.PageHandlerXMLGlobals(app_package.config)
+        self.xml = frontik.xml_util.ApplicationXMLGlobals(app_package.config)
+        self.json = frontik.producers.json.ApplicationJsonGlobals(app_package.config)
 
         self.http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(max_clients=200)
 
@@ -122,23 +122,23 @@ class PageHandlerGlobals(object):
 class PageHandler(tornado.web.RequestHandler):
 
     # to restore tornado.web.RequestHandler compatibility
-    def __init__(self, application, request, ph_globals=None, **kwargs):
+    def __init__(self, application, request, app_globals=None, **kwargs):
         self.handler_started = time.time()
         self._prepared = False
 
-        if ph_globals is None:
-            raise Exception("%s need to have ph_globals" % PageHandler)
+        if app_globals is None:
+            raise Exception('{0} need to have app_globals'.format(PageHandler))
 
         self.name = self.__class__.__name__
         self.request_id = request.headers.get('X-Request-Id', str(stats.next_request_id()))
-        logger_name = '.'.join(filter(None, [self.request_id, getattr(ph_globals.config, 'app_name', None)]))
+        logger_name = '.'.join(filter(None, [self.request_id, getattr(app_globals.config, 'app_name', None)]))
         self.log = frontik_logging.PageLogger(self, logger_name, request.path or request.uri)
 
         tornado.web.RequestHandler.__init__(self, application, request, logger=self.log, **kwargs)
 
-        self.ph_globals = ph_globals
-        self.config = self.ph_globals.config
-        self.http_client = self.ph_globals.http_client
+        self.app_globals = app_globals
+        self.config = self.app_globals.config
+        self.http_client = self.app_globals.http_client
         self.debug_access = None
 
         self._template_postprocessors = []
@@ -154,17 +154,20 @@ class PageHandler(tornado.web.RequestHandler):
         return '.'.join([self.__module__, self.__class__.__name__])
 
     def prepare(self):
-        self.whc_limit = frontik.handler_whc_limit.PageHandlerWHCLimit(self)
+        self.active_limit = frontik.handler_active_limit.PageHandlerActiveLimit(self)
         self.debug = frontik.handler_debug.PageHandlerDebug(self)
-        self.log.info('page module: %s', self.__module__)
 
-        self.xml = frontik.xsl_producer.XslProducer(self)
-        self.doc = self.xml.doc  # backwards compatibility for self.doc.put
+        self.json_producer = frontik.producers.json.JsonProducer(self, self.app_globals.json)
+        self.json = self.json_producer.json
+
+        self.xsl_producer = frontik.producers.xsl.XslProducer(self, self.app_globals.xml)
+        self.xml = self.xsl_producer  # deprecated synonym
+        self.doc = self.xsl_producer.doc
 
         if self.get_argument('nopost', None) is not None:
             self.require_debug_access()
             self.apply_postprocessor = False
-            self.log.debug('apply_postprocessor==False due to ?nopost query arg')
+            self.log.debug('apply_postprocessor = False due to "nopost" argument')
         else:
             self.apply_postprocessor = True
 
@@ -185,8 +188,7 @@ class PageHandler(tornado.web.RequestHandler):
                 check_login = login if login is not None else tornado.options.options.debug_login
                 check_passwd = passwd if passwd is not None else tornado.options.options.debug_password
 
-                self.debug_access = frontik.auth.passed_basic_auth(
-                    self, check_login, check_passwd)
+                self.debug_access = frontik.auth.passed_basic_auth(self, check_login, check_passwd)
 
             if not self.debug_access:
                 raise HTTPError(401, headers={'WWW-Authenticate': 'Basic realm="Secure Area"'})
@@ -288,7 +290,7 @@ class PageHandler(tornado.web.RequestHandler):
     def get_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None, callback=None,
                 follow_redirects=True, parse_response=True, labels=None):
 
-        placeholder = future.Placeholder()
+        placeholder = frontik.future.Placeholder()
         request = frontik.util.make_get_request(
             url, {} if data is None else data, {} if headers is None else headers,
             connect_timeout, request_timeout, follow_redirects)
@@ -300,7 +302,7 @@ class PageHandler(tornado.web.RequestHandler):
     def post_url(self, url, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
                  follow_redirects=True, content_type=None, callback=None, parse_response=True, labels=None):
 
-        placeholder = future.Placeholder()
+        placeholder = frontik.future.Placeholder()
         request = frontik.util.make_post_request(
             url, data, {} if headers is None else headers, {} if files is None else files,
             connect_timeout, request_timeout, follow_redirects, content_type)
@@ -312,7 +314,7 @@ class PageHandler(tornado.web.RequestHandler):
     def put_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
                 parse_response=True, labels=None):
 
-        placeholder = future.Placeholder()
+        placeholder = frontik.future.Placeholder()
         request = frontik.util.make_put_request(
             url, data, {} if headers is None else headers,
             connect_timeout, request_timeout)
@@ -324,7 +326,7 @@ class PageHandler(tornado.web.RequestHandler):
     def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
                    parse_response=True, labels=None):
 
-        placeholder = future.Placeholder()
+        placeholder = frontik.future.Placeholder()
         request = frontik.util.make_delete_request(
             url, data, {} if headers is None else headers,
             connect_timeout, request_timeout)
@@ -399,7 +401,7 @@ class PageHandler(tornado.web.RequestHandler):
     def _parse_response(self, placeholder, callback, response, parse_response=True):
         result = None
         if response.error:
-            placeholder.set_data(self.show_response_error(response))
+            self._set_response_error(placeholder, response)
         elif not parse_response:
             result = response.body
         elif response.code != 204:
@@ -414,21 +416,16 @@ class PageHandler(tornado.web.RequestHandler):
         if callable(callback):
             callback(result, response)
 
-    def show_response_error(self, response):
-        self.log.warn('%s failed %s (%s)', response.code, response.effective_url, str(response.error))
+    def _set_response_error(self, placeholder, response):
+        log_func = self.log.error if response.code >= 500 else self.log.warn
+        log_func('{0} failed {1} ({2!s})'.format(response.code, response.effective_url, response.error))
+
         try:
-            data = etree.Element(
-                'error', url=response.effective_url, reason=str(response.error), code=str(response.code))
-        except ValueError:
-            self.log.warn("Cannot add information about response head in debug, can't be serialized in xml.")
-
-        if response.body:
-            try:
-                data.append(etree.Comment(response.body.replace("--", "%2D%2D")))
-            except ValueError:
-                self.log.warn('Cannot add debug info in XML comment with unparseable response.body: non-ASCII response')
-
-        return data
+            placeholder.set_data(frontik.future.FailedFutureException(
+                **dict((k, getattr(response, k, None)) for k in ('code', 'effective_url', 'error', 'body'))
+            ))
+        except Exception:
+            self.log.warn('Cannot add error node to response placeholder')
 
     # Finish page
 
@@ -443,11 +440,18 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.stage_tag('page')
 
             def __callback():
-                producer = self.xml if self.text is None else self.__generic_producer
+                producer = self._generic_producer
+                if not self.json.is_empty():
+                    producer = self.json_producer
+                elif self.text is None or not self.doc.is_empty():
+                    producer = self.xsl_producer
+
+                self.log.debug('Using {0} producer'.format(producer))
+
                 if self.apply_postprocessor:
-                    producer(partial(self.__call_postprocessors, self._template_postprocessors[:], self.finish))
+                    producer(self, partial(self.__call_postprocessors, self._template_postprocessors[:], self.finish))
                 else:
-                    producer(self.finish)
+                    producer(self, self.finish)
 
             self.__call_postprocessors(self._early_postprocessors[:], __callback)
         else:
@@ -508,7 +512,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         if not self._finished:
             if hasattr(self, 'whc_limit'):
-                self.whc_limit.release()
+                self.active_limit.release()
 
         def _finish_with_async_hook(chunk):
             super(PageHandler, self).finish(chunk)
@@ -565,15 +569,19 @@ class PageHandler(tornado.web.RequestHandler):
     def add_late_postprocessor(self, postprocessor):
         self._late_postprocessors.append(postprocessor)
 
-    def __generic_producer(self, callback):
-        self.log.debug('finishing plaintext')
-        callback(self.text)
+    @staticmethod
+    def _generic_producer(handler, callback):
+        handler.log.debug('finishing plaintext')
+        callback(handler.text)
 
     def set_plaintext_response(self, text):
         self.text = text
 
     def xml_from_file(self, filename):
-        return self.ph_globals.xml.xml_cache.load(filename, log=self.log)
+        return self.app_globals.xml.xml_cache.load(filename, log=self.log)
 
     def set_xsl(self, filename):
-        return self.xml.set_xsl(filename)
+        return self.xsl_producer.set_xsl(filename)
+
+    def set_template(self, filename):
+        return self.json_producer.set_template(filename)

@@ -1,11 +1,10 @@
 # coding=utf-8
 
-import cStringIO
 import logging
 import os.path
 import urlparse
 
-import lxml.etree as etree
+from lxml import etree
 
 import frontik.util
 import frontik.file_cache
@@ -15,7 +14,7 @@ log_xml_util = logging.getLogger('frontik.xml_util')
 parser = etree.XMLParser()
 
 
-class PageHandlerXMLGlobals(object):
+class ApplicationXMLGlobals(object):
     def __init__(self, config):
         for schema, path in getattr(config, 'XSL_SCHEMAS', {}).items():
             parser.resolvers.add(PrefixResolver(schema, path))
@@ -26,14 +25,16 @@ class PageHandlerXMLGlobals(object):
             xml_from_file,
             getattr(config, 'XML_cache_limit', None),
             getattr(config, 'XML_cache_step', None),
-            deepcopy=True)
+            deepcopy=True
+        )
 
         self.xsl_cache = frontik.file_cache.make_file_cache(
             'XSL', 'XSL_root',
             getattr(config, 'XSL_root', None),
             xsl_from_file,
             getattr(config, 'XSL_cache_limit', None),
-            getattr(config, 'XSL_cache_step', None))
+            getattr(config, 'XSL_cache_step', None)
+        )
 
 
 class PrefixResolver(etree.Resolver):
@@ -48,22 +49,6 @@ class PrefixResolver(etree.Resolver):
             if not os.path.commonprefix([self.path, path]).startswith(self.path):
                 raise etree.XSLTParseError('Open files out of XSL root is not allowed: {0}'.format(path))
             return self.resolve_filename(path, context)
-
-
-def _abs_filename(base_filename, filename):
-    if filename.startswith("/"):
-        return filename
-    else:
-        base_dir = os.path.dirname(base_filename)
-        return os.path.normpath(os.path.join(base_dir, filename))
-
-
-def get_xsl_includes(filename, parser=parser):
-    tree = etree.parse(filename, parser)
-    namespaces = {'xsl': 'http://www.w3.org/1999/XSL/Transform'}
-    return [_abs_filename(filename, i.get('href'))
-            for i in tree.xpath('xsl:import|xsl:include', namespaces=namespaces)
-            if i.get('href').find(':') == -1]
 
 
 def xml_from_file(filename, log=log_xml_util):
@@ -91,12 +76,6 @@ def xml_from_file(filename, log=log_xml_util):
 def xsl_from_file(filename, log=log_xml_util):
     log.debug('read file %s', filename)
     return True, etree.XSLT(etree.parse(filename, parser))
-
-
-def etree_to_xml_string(string):
-    sio = cStringIO.StringIO()
-    etree.ElementTree(string).write(sio, encoding='utf-8', xml_declaration=True)
-    return sio.getvalue()
 
 
 def dict_to_xml(dict_value, element_name):
