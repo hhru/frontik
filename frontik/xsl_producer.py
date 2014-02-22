@@ -94,7 +94,7 @@ class XslProducer(object):
             xsl_line = 'XSLT {0.level_name} in file "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
             return '\n'.join(map(xsl_line.format, self.transform.error_log))
 
-        self.executor.add_job(job, self.handler.async_callback(success_cb), self.handler.async_callback(exception_cb))
+        self.executor.add_job(job, self.handler.check_finished(success_cb), self.handler.check_finished(exception_cb))
 
     def __prepare_finish_wo_xsl(self, callback):
         self.log.debug('finishing wo xsl')

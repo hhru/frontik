@@ -152,24 +152,6 @@ class ExpectingHandler(object):
 
         self.request.write = write
 
-        def async_callback(tornado_handler, callback, *args, **kwargs):
-            if callback is None:
-                return None
-            if args or kwargs:
-                callback = functools.partial(callback, *args, **kwargs)
-            def wrapper(*args, **kwargs):
-                try:
-                    return callback(*args, **kwargs)
-                except Exception, e:
-                    self._exception_heap.append((sys.exc_type, sys.exc_value, sys.exc_traceback))
-                    if tornado_handler._headers_written:
-                        tornado_handler._logger.error("Exception after headers written",
-                                      exc_info=True)
-                    else:
-                        tornado_handler._handle_request_exception(e)
-            return wrapper
-
-        tornado.web.RequestHandler.async_callback = async_callback
         tornado_handler = tornado.web.RequestHandler
         tornado_application = tornado.web.Application([(".*", tornado_handler)])
 

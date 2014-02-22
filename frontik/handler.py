@@ -13,7 +13,7 @@ import tornado.curl_httpclient
 import tornado.httpclient
 import tornado.options
 import tornado.web
-import tornado.ioloop
+from tornado.ioloop import IOLoop
 from tornado.httpserver import HTTPRequest
 
 import frontik.async
@@ -170,10 +170,10 @@ class PageHandler(tornado.web.RequestHandler):
 
         if tornado.options.options.long_request_timeout:
             # add long requests timeout
-            self.finish_timeout_handle = tornado.ioloop.IOLoop.instance().add_timeout(
+            self.finish_timeout_handle = IOLoop.instance().add_timeout(
                 time.time() + tornado.options.options.long_request_timeout, self.__handle_long_request)
 
-        self.finish_group = frontik.async.AsyncGroup(self.async_callback(self._finish_page_cb),
+        self.finish_group = frontik.async.AsyncGroup(self.check_finished(self._finish_page_cb),
                                                      name='finish', log=self.log.debug)
         self._prepared = True
 
@@ -203,20 +203,28 @@ class PageHandler(tornado.web.RequestHandler):
             self.log.exception('Cannot decode argument, ignoring invalid chars')
             return value.decode('utf-8', 'ignore')
 
-    def async_callback(self, callback, *args, **kw):
-        return tornado.web.RequestHandler.async_callback(self, self.check_finished(callback, *args, **kw))
-
     def check_finished(self, callback, *args, **kwargs):
         if args or kwargs:
             callback = partial(callback, *args, **kwargs)
 
         def wrapper(*args, **kwargs):
             if self._finished:
-                self.log.warn('Page was already finished, %s ignored', callback)
+                self.log.warn('Page was already finished, {0} ignored'.format(callback))
             else:
                 callback(*args, **kwargs)
 
         return wrapper
+
+    # for backwards-compatibility
+    async_callback = check_finished
+
+    @staticmethod
+    def add_callback(callback):
+        IOLoop.instance().add_callback(callback)
+
+    @staticmethod
+    def add_timeout(deadline, callback):
+        IOLoop.instance().add_timeout(deadline, callback)
 
     # Requests handling
 
@@ -363,13 +371,13 @@ class PageHandler(tornado.web.RequestHandler):
             request.connect_timeout *= tornado.options.options.timeout_multiplier
             request.request_timeout *= tornado.options.options.timeout_multiplier
 
-            req_callback = self.async_callback(self._log_response, request, callback)
+            req_callback = self.check_finished(self._log_response, request, callback)
             if add_to_finish_group:
                 req_callback = self.finish_group.add(req_callback)
 
             return self.http_client.fetch(request, req_callback)
 
-        self.log.warn('attempted to make http request to %s while page is already finished; ignoring', request.url)
+        self.log.warn('attempted to make http request to {0} when page is already finished, ignoring'.format(request.url))
 
     def _log_response(self, request, callback, response):
         try:
@@ -519,25 +527,25 @@ class PageHandler(tornado.web.RequestHandler):
 
     def finish(self, chunk=None):
         if hasattr(self, 'finish_timeout_handle'):
-            tornado.ioloop.IOLoop.instance().remove_timeout(self.finish_timeout_handle)
+            IOLoop.instance().remove_timeout(self.finish_timeout_handle)
 
         if not self._finished:
             if hasattr(self, 'whc_limit'):
                 self.whc_limit.release()
 
-        def _finish_with_async_hook(chunk):
+        def _finish_with_async_hook():
             super(PageHandler, self).finish(chunk)
-            tornado.ioloop.IOLoop.instance().add_timeout(
+            IOLoop.instance().add_timeout(
                 time.time() + 0.1,
                 partial(self.log.request_finish_hook, self._status_code, self.request.method, self.request.uri)
             )
 
         try:
-            self.__call_postprocessors(self._late_postprocessors[:], partial(_finish_with_async_hook, chunk))
+            self.__call_postprocessors(self._late_postprocessors[:], _finish_with_async_hook)
         except Exception:
             self.log.exception('Error during late postprocessing stage, finishing with an exception')
             self._status_code = 500
-            _finish_with_async_hook(chunk)
+            _finish_with_async_hook()
 
     def flush(self, include_footers=False, **kwargs):
         self.log.stage_tag('postprocess')

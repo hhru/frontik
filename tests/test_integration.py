@@ -233,5 +233,16 @@ def test_exception_xml_xsl():
         assert (answer == "<html><body><h1>ok</h1></body></html>\n")
 
 
+def test_check_finished():
+    # Get the page for the first time
+
+    with frontik_debug.get_page_text('test_app/check_finished') as text:
+        assert text == ''
+
+    # And check that callback has not been called
+
+    with frontik_debug.get_page_text('test_app/check_finished') as text:
+        assert text == ''
+
 if __name__ == "__main__":
     nose.main()
