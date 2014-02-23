@@ -16,9 +16,6 @@ parser = etree.XMLParser()
 
 class ApplicationXMLGlobals(object):
     def __init__(self, config):
-        for schema, path in getattr(config, 'XSL_SCHEMAS', {}).items():
-            parser.resolvers.add(PrefixResolver(schema, path))
-
         self.xml_cache = frontik.file_cache.make_file_cache(
             'XML', 'XML_root',
             getattr(config, 'XML_root', None),
@@ -35,20 +32,6 @@ class ApplicationXMLGlobals(object):
             getattr(config, 'XSL_cache_limit', None),
             getattr(config, 'XSL_cache_step', None)
         )
-
-
-class PrefixResolver(etree.Resolver):
-    def __init__(self, scheme, path):
-        self.scheme = scheme
-        self.path = os.path.abspath(path)
-
-    def resolve(self, system_url, public_id, context):
-        parsed_url = urlparse.urlsplit(system_url)
-        if parsed_url.scheme == self.scheme:
-            path = os.path.abspath(os.path.join(self.path, parsed_url.path))
-            if not os.path.commonprefix([self.path, path]).startswith(self.path):
-                raise etree.XSLTParseError('Open files out of XSL root is not allowed: {0}'.format(path))
-            return self.resolve_filename(path, context)
 
 
 def xml_from_file(filename, log=log_xml_util):
