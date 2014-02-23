@@ -17,7 +17,6 @@ tornado.options.define('syslog_msg_max_length', 2048, int)
 tornado.options.define('debug', False, bool)
 tornado.options.define('debug_login', None, str)
 tornado.options.define('debug_password', None, str)
-tornado.options.define('debug_xsl', '/usr/lib/frontik/debug.xsl', str)
 
 tornado.options.define('timeout_multiplier', 1.0, float)
 tornado.options.define('long_request_timeout', None, float)

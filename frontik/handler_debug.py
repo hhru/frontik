@@ -3,6 +3,7 @@
 import Cookie
 import inspect
 import logging
+import os
 import pprint
 import time
 import traceback
@@ -18,7 +19,6 @@ from tornado.escape import to_unicode
 import tornado.options
 
 import frontik.util
-from frontik.util import decode_string_from_charset
 import frontik.xml_util
 
 debug_log = logging.getLogger('frontik.debug')
@@ -27,6 +27,7 @@ debug_log = logging.getLogger('frontik.debug')
 def response_to_xml(response):
     time_info = etree.Element('time_info')
     content_type = response.headers.get('Content-Type', '')
+    mode = ''
 
     if 'charset' in content_type:
         charset = content_type.partition('=')[-1]
@@ -37,16 +38,22 @@ def response_to_xml(response):
 
     try:
         if 'text/html' in content_type:
-            body = decode_string_from_charset(response.body, try_charsets)
+            body = frontik.util.decode_string_from_charset(response.body, try_charsets)
             body = body.replace('\n', '\\n').replace("'", "\\'").replace("<", "&lt;")
         elif 'json' in content_type:
-            body = json.dumps(json.loads(response.body), sort_keys=True, indent=4)
+            mode = 'json'
+            body = _pretty_print_json(json.loads(response.body))
         elif 'protobuf' in content_type:
             body = response.body.encode('hex')
-        elif 'text/plain' in content_type:
-            body = decode_string_from_charset(response.body, try_charsets)
+        elif response.body is None:
+            body = ''
+        elif 'xml' in content_type:
+            mode = 'xml'
+            body = _pretty_print_xml(etree.fromstring(response.body))
         else:
-            body = etree.fromstring(response.body)
+            if 'javascript' in content_type:
+                mode = 'javascript'
+            body = frontik.util.decode_string_from_charset(response.body, try_charsets)
     except Exception:
         debug_log.exception('Cannot parse response body')
         body = repr(response.body)
@@ -59,7 +66,7 @@ def response_to_xml(response):
 
     try:
         response = E.response(
-            E.body(body, content_type=content_type),
+            E.body(body, content_type=content_type, mode=mode),
             E.code(str(response.code)),
             E.effective_url(response.effective_url),
             E.error(str(response.error)),
@@ -185,6 +192,14 @@ def _exception_to_xml(exc_info, log=debug_log):
     return exc_node
 
 
+def _pretty_print_xml(node):
+    return etree.tostring(node, pretty_print=True)
+
+
+def _pretty_print_json(node):
+    return json.dumps(node, sort_keys=True, indent=4)
+
+
 class DebugLogBulkHandler(object):
     FIELDS = ['created', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs',
               'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
@@ -235,15 +250,13 @@ class DebugLogBulkHandler(object):
             entry.append(record._xslt_profile)
 
         if getattr(record, "_xml", None) is not None:
-            xml = etree.Element("xml")
-            entry.append(xml)
-            # make deepcopy
-            # if node was sent to debug, but later was appended in some other place
-            # etree will move node from this place to new one
-            xml.append(copy.deepcopy(record._xml))
+            entry.append(E.text(_pretty_print_xml(record._xml)))
 
         if getattr(record, "_protobuf", None) is not None:
-            entry.append(E.protobuf(record._protobuf))
+            entry.append(E.text(record._protobuf))
+
+        if getattr(record, "_text", None) is not None:
+            entry.append(E.text(record._text))
 
         self.log_data.append(entry)
         if getattr(record, "_stages", None) is not None:
@@ -252,6 +265,7 @@ class DebugLogBulkHandler(object):
 
 class PageHandlerDebug(object):
     DEBUG_HEADER_NAME = 'X-Hh-Debug'
+    DEBUG_XSL = os.path.join(os.path.dirname(__file__), 'debug/debug.xsl')
 
     class DebugMode(object):
         def __init__(self, handler):
@@ -307,11 +321,16 @@ class PageHandlerDebug(object):
         if hasattr(self.handler.config, 'debug_labels') and isinstance(self.handler.config.debug_labels, dict):
             debug_log_data.append(frontik.xml_util.dict_to_xml(self.handler.config.debug_labels, 'labels'))
 
-        debug_log_data.append(frontik.app.get_frontik_and_apps_versions())
+        debug_log_data.append(E.versions(
+            _pretty_print_xml(frontik.app.get_frontik_and_apps_versions())
+        ))
+
         debug_log_data.append(E.request(
             _params_to_xml(self.handler.request.uri, self.handler.log),
             _headers_to_xml(self.handler.request.headers),
-            _cookies_to_xml(self.handler.request.headers)))
+            _cookies_to_xml(self.handler.request.headers)
+        ))
+
         debug_log_data.append(E.response(_headers_to_xml(response_headers)))
 
         if getattr(self.handler, "_response_size", None) is not None:
@@ -325,9 +344,8 @@ class PageHandlerDebug(object):
         # return raw xml if this is specified explicitly (noxsl=true) or when in inherited mode
         if frontik.util.get_cookie_or_url_param_value(self.handler, 'noxsl') is None and not self.debug_mode.inherited:
             try:
-                with open(tornado.options.options.debug_xsl) as xsl_file:
-                    tranform = etree.XSLT(etree.XML(xsl_file.read()))
-                log_document = str(tranform(debug_log_data))
+                transform = etree.XSLT(etree.parse(self.DEBUG_XSL))
+                log_document = str(transform(debug_log_data))
                 self.handler.set_header('Content-Type', 'text/html; charset=UTF-8')
             except Exception:
                 self.handler.log.exception('XSLT debug file error')

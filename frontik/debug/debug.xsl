@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<xsl:stylesheet version="1.0" id="style" xmlns:str="http://exslt.org/strings"
-                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
     <xsl:output omit-xml-declaration="yes" method="html" indent="no" encoding="utf-8"/>
+
+    <xsl:include href="debug-css.xsl"/>
+    <xsl:include href="highlight-css.xsl"/>
+    <xsl:include href="debug-js.xsl"/>
+    <xsl:include href="highlight-js.xsl"/>
 
     <xsl:key name="labels" match="/log/labels/*" use="local-name()"/>
 
@@ -22,8 +26,10 @@
                 <title>Status
                     <xsl:value-of select="@code"/>
                 </title>
-                <xsl:apply-templates select="." mode="css"/>
-                <xsl:apply-templates select="." mode="js"/>
+                <xsl:call-template name="debug-css"/>
+                <xsl:call-template name="highlight-css"/>
+                <xsl:call-template name="debug-js"/>
+                <xsl:call-template name="highlight-js"/>
             </head>
             <body>
                 <xsl:apply-templates select="." mode="debug-log"/>
@@ -58,7 +64,9 @@
             </label>
             <input type="checkbox" class="details-expander" id="details_{generate-id(versions)}"/>
             <div class="details">
-                <xsl:apply-templates select="versions/node()" mode="color-xml"/>
+                <xsl:call-template name="highlighted-block">
+                    <xsl:with-param name="text" select="versions"/>
+                </xsl:call-template>
             </div>
         </div>
     </xsl:template>
@@ -88,10 +96,6 @@
 
         <xsl:variable name="loglevel">
             <xsl:value-of select="@levelname"/>
-        </xsl:variable>
-
-        <xsl:variable name="time-offset">
-            <xsl:value-of select="1000* (@created - /log/@started)"/>
         </xsl:variable>
             
         <div class="textentry">
@@ -231,21 +235,7 @@
         </span>
     </xsl:template>
 
-    <xsl:template match="entry[xml]">
-        <div class="textentry m-textentry__expandable">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
-                <span class="textentry__head__expandtext">
-                    <xsl:value-of select="@msg"/>
-                </span>
-            </label>
-            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
-            <div class="details">
-                <xsl:apply-templates select="xml/node()" mode="color-xml"/>
-            </div>
-        </div>
-    </xsl:template>
-
-    <xsl:template match="entry[protobuf]">
+    <xsl:template match="entry[text]">
         <div class="textentry m-textentry__expandable">
             <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
                 <span class="textentry__head__expandtext">
@@ -254,7 +244,9 @@
             </label>
             <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
             <pre class="details">
-                <xsl:apply-templates select="protobuf/node()" mode="color-xml"/>
+                <xsl:call-template name="highlighted-block">
+                    <xsl:with-param name="text" select="text/node()"/>
+                </xsl:call-template>
             </pre>
         </div>
     </xsl:template>
@@ -265,9 +257,9 @@
                 <xsl:value-of select="url"/>
             </a>
         </div>
+        <xsl:apply-templates select="params[param]"/>
         <xsl:apply-templates select="headers[header]"/>
         <xsl:apply-templates select="cookies[cookie]"/>
-        <xsl:apply-templates select="params[param]"/>
         <xsl:apply-templates select="body[param]" mode="params"/>
         <xsl:apply-templates select="body[not(param)]"/>
     </xsl:template>
@@ -293,18 +285,12 @@
 
     <xsl:template match="body"/>
 
-    <xsl:template match="body[text()]">
+    <xsl:template match="body[text() != '']">
         <div class="delimeter"><xsl:value-of select="name(parent::*)"/> body</div>
-        <pre class="body">
-            <xsl:value-of select="."/>
-        </pre>
-    </xsl:template>
-
-    <xsl:template match="body[*]">
-        <div class="delimeter"><xsl:value-of select="name(parent::*)"/> body</div>
-        <div class="coloredxml">
-            <xsl:apply-templates select="node()" mode="color-xml"/>
-        </div>
+        <xsl:call-template name="highlighted-block">
+            <xsl:with-param name="mode" select="@mode"/>
+            <xsl:with-param name="text" select="."/>
+        </xsl:call-template>
     </xsl:template>
 
     <xsl:template match="body[contains(@content_type, 'text/html') and text() != '']">
@@ -314,11 +300,6 @@
         <script>
             doiframe('<xsl:value-of select="$id"/>', '<xsl:value-of select="."/>');
         </script>
-    </xsl:template>
-
-    <xsl:template match="body[contains(@content_type, 'json') and text() != '']">
-        <div class="delimeter"><xsl:value-of select="name(parent::*)"/> body</div>
-        <pre><xsl:value-of select="."/></pre>
     </xsl:template>
 
     <xsl:template match="body[text() = '']">
@@ -366,6 +347,19 @@
         <div>
             <xsl:value-of select="@name"/><xsl:text>&#160;=&#160;</xsl:text><xsl:value-of select="."/>
         </div>
+    </xsl:template>
+
+    <!-- Response body highlighting -->
+
+    <xsl:template name="highlighted-block">
+        <xsl:param name="mode" select="''"/>
+        <xsl:param name="text"/>
+
+        <pre class="body">
+            <code class="{$mode}">
+                <xsl:value-of select="$text"/>
+            </code>
+        </pre>
     </xsl:template>
 
     <!-- XSLT profiling -->
@@ -442,359 +436,4 @@
         </td>
     </xsl:template>
 
-
-    <xsl:template match="log" mode="css">
-        <style>
-            body { margin: 0 10px; }
-            body, pre {
-                font-family: sans-serif;
-            }
-            pre {
-                margin: 0;
-                white-space: pre-wrap;
-            }
-            .body {
-                word-break: break-all;
-            }
-
-            .timebar {
-                width: 100%;
-                margin-bottom: -1.4em;
-                position: relative;
-            }
-                .timebar__line {
-                    position: relative;
-                    vertical-align: middle;
-                }
-                .timebar__head {
-                    border-left: 1px solid green;
-                    border-right: 1px solid green;
-                    background-color: #94b24d;
-                    border-bottom: 1px solid #94b24d;
-                    opacity: 0.5;
-                    display: block;
-                    width: 0;
-                    height: 1.4em;
-                }
-                    .timebar__head_error {
-                        background-color: red;
-                    }
-            .timebar-details {
-                left: 0;
-                top: 0;
-                height: 100%;
-                width: 100%;
-            }
-
-            .textentry {
-                padding-left: 20px;
-                padding-right: 20px;
-                margin-bottom: 4px;
-                word-break: break-all;
-                position: relative;
-            }
-                .m-textentry__expandable {
-                    background: #fffccf;
-                }
-                .m-textentry_title {
-                    font-size: 1.3em;
-                    margin-bottom: .5em;
-                }
-                .textentry__head {
-                    display: block;
-                }
-                    .m-textentry__head_highlight {
-                        font-weight: bold;
-                    }
-                    .textentry__head__expandtext {
-                        border-bottom: 1px dotted #666;
-                        display: inline-block;
-                        position: relative;
-                        vertical-align: bottom;
-                        line-height: 1.4em;
-                        margin-top: -1px;
-                    }
-                    .textentry__head__message {
-                        white-space: pre-wrap;
-                    }
-                .textentry__switcher {
-                    overflow: hidden;
-                    white-space: nowrap;
-                    text-overflow: ellipsis;
-                    cursor: pointer;
-                }
-            .headers{
-            }
-            .details-expander {
-                display: none;
-            }
-            .details {
-                display: none;
-                padding-bottom: 2px;
-                position: relative;
-            }
-                .m-details_visible,
-                .details-expander:checked + .details {
-                    display:block;
-                }
-
-            .servicelink {
-                color: #666;
-                font-size: .8em;
-            }
-            .coloredxml__line {
-                padding: 0px 0px 0px 20px;
-            }
-            .coloredxml__tag, .coloredxml__param {
-                color: #9c0628;
-            }
-            .coloredxml__comment {
-                color: #063;
-                display: block;
-                padding: 0px 0px 0px 30px;
-                padding-top: 20px;
-            }
-            .time {
-                display: inline-block;
-                width: 4em;
-            }
-            .label {
-                margin-right: 8px;
-                padding: 0 3px;
-                font-size: 14px;
-                border-radius: 5px;
-            }
-            .error {
-                color: red;
-            }
-            .ERROR {
-                color: #c00;
-            }
-            .WARNING {
-                color: #E80;
-            }
-            .INFO {
-                color: #060;
-            }
-            .DEBUG {
-                color: #00B;
-            }
-            .delimeter {
-                margin-top: 10px;
-                font-size: .8em;
-                color: #999;
-            }
-
-            .trace-file {
-                margin-top: 12px;
-                padding: 1px 4px;
-                background: #e0e0ff;
-            }
-            .trace-locals {
-                margin-top: 8px;
-                margin-left: 12px;
-                margin-bottom: 0;
-                padding: 0;
-                padding-top: 2px;
-            }
-                .trace-locals__caption {
-                    display: inline-block;
-                    border-bottom: 1px dashed #000;
-                }
-                .trace-locals__text {
-                    margin-top: 10px;
-                    margin-left: 12px;
-                    padding: 4px;
-                    background: #fff;
-                    font-family: monospace;
-                }
-            .trace-lines {
-                margin: 10px 0;
-                margin-left: 12px;
-                padding: 4px;
-                border-collapse: collapse;
-                background: #fff;
-            }
-                .trace-lines__column {
-                    margin: 0;
-                    padding: 2px 4px;
-                }
-                .trace-lines__line {
-                    display: block;
-                    padding: 1px 0;
-                    font-family: monospace;
-                    white-space: pre;
-                    clear: both;
-                }
-                    .trace-lines__line.selected {
-                        color: #c00;
-                    }
-            .exception {
-                color: #c00;
-            }
-
-            .iframe {
-                width: 100%;
-                height: 500px;
-                background: #fff;
-                border: 1px solid #ccc;
-                margin-top: 5px;
-                box-shadow: 1px 1px 8px #aaacca;
-                -moz-box-shadow: 1px 1px 8px #aaacca;
-                -webkit-box-shadow: 1px 1px 8px #aaacca;
-            }
-
-            .debug-inherited {
-                margin: 10px 0;
-                padding: 10px;
-                border: 1px solid #ccc;
-                background: #fff;
-            }
-
-            .xslt-profile {
-                margin: 8px 0;
-                background: #fff;
-            }
-                .xslt-profile-row:hover {
-                    background: #eee;
-                }
-                    .xslt-profile-item, .xslt-profile-header {
-                        padding: 4px 8px;
-                        background: #f5f5ff;
-                    }
-                    .xslt-profile-header {
-                        background: #ddf;
-                    }
-                        .xslt-profile-header__sortable:hover {
-                            text-decoration: underline;
-                            cursor: pointer;
-                        }
-                    .xslt-profile-item__text {
-                        width: 20%;
-                        text-align: left;
-                    }
-                    .xslt-profile-item__number {
-                        width: 10%;
-                        text-align: right;
-                    }
-        </style>
-    </xsl:template>
-
-    <xsl:template match="log" mode="js">
-        <script><![CDATA[
-            function toggle(entry) {
-                var details = entry.querySelector('.details');
-                if (details.className.indexOf('m-details_visible') != -1) {
-                    details.className = details.className.replace(/\bm-details_visible\b/, '');
-                } else {
-                    details.className = details.className + ' m-details_visible';
-                }
-            }
-
-            function doiframe(id, text) {
-                var iframe = window.document.createElement('iframe');
-                iframe.className = 'iframe'
-                var html = text
-                    .replace(/&lt;/g, '<')
-                    .replace(/&gt;/g, '>')
-                    .replace(/&amp;/g, '&');
-                window.document.getElementById(id).appendChild(iframe);
-                var document = iframe.contentWindow.document;
-                document.open();
-                document.write(html);
-                //document.close();
-            }
-
-            function sortTableColumn(table, columnIndex) {
-                var rows = [];
-                var tBody = table.tBodies[0];
-
-                for (var i = 0; i < tBody.rows.length; i++) {
-                    rows.push(tBody.rows[i]);
-                }
-
-                function cellText(row, index) {
-                    return row.cells[index].textContent || row.cells[index].innerText;
-                }
-
-                rows = rows.sort(function(a, b) {
-                    var v1 = parseFloat(cellText(a, columnIndex)),
-                        v2 = parseFloat(cellText(b, columnIndex));
-
-                    if (v1 == v2) {
-                        var s1 = cellText(a, 0) + cellText(a, 1) + cellText(a, 2),
-                            s2 = cellText(b, 0) + cellText(b, 1) + cellText(b, 2);
-                        return s1 <= s2 ? 1 : -1;
-                    }
-
-                    return v1 < v2 ? 1 : -1;
-                });
-
-                while (tBody.rows.length > 0) {
-                    tBody.deleteRow(0);
-                }
-                for (var i = 0; i < rows.length; i++) {
-                    tBody.appendChild(rows[i]);
-                }
-            }
-        ]]></script>
-    </xsl:template>
-
-    <xsl:template match="*" mode="color-xml">
-        <div class="coloredxml__line">
-            <xsl:text>&lt;</xsl:text>
-            <span class="coloredxml__tag">
-                <xsl:value-of select="name()"/>
-            </span>
-
-            <xsl:for-each select="@*">
-                <xsl:text> </xsl:text>
-                <span class="coloredxml__param">
-                    <xsl:value-of select="name()"/>
-                </span>
-                <xsl:text>="</xsl:text>
-                <span class="coloredxml__value">
-                    <xsl:if test="not(string-length(.))">
-                        <xsl:text> </xsl:text>
-                    </xsl:if>
-                    <xsl:value-of select="."/>
-                </span>
-                <xsl:text>"</xsl:text>
-            </xsl:for-each>
-
-            <xsl:choose>
-                <xsl:when test="node()">
-                    <xsl:text>&gt;</xsl:text>
-                    <xsl:apply-templates select="node()" mode="color-xml"/>
-                    <xsl:text>&lt;/</xsl:text>
-                    <span class="coloredxml__tag">
-                        <xsl:value-of select="name()"/>
-                    </span>
-                    <xsl:text>&gt;</xsl:text>
-                </xsl:when>
-                <xsl:otherwise>
-                    <xsl:text>/&gt;</xsl:text>
-                </xsl:otherwise>
-            </xsl:choose>
-        </div>
-    </xsl:template>
-
-    <xsl:template match="text()" mode="color-xml">
-        <span class="coloredxml__value">
-            <xsl:apply-templates select="str:tokenize(string(.), '&#0013;&#0010;')" mode="line"/>
-        </span>
-    </xsl:template>
-
-    <xsl:template match="token[text() != '']" mode="line">
-        <xsl:if test="position() != 1">
-            <br/>
-        </xsl:if>
-        <xsl:value-of select="."/>
-    </xsl:template>
-
-    <xsl:template match="comment()" mode="color-xml">
-        <span class="coloredxml__comment">
-            &lt;!--<xsl:value-of select="."/>--&gt;
-        </span>
-    </xsl:template>
 </xsl:stylesheet>
