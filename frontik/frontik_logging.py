@@ -30,31 +30,33 @@ try:
                 return
 
             record_for_gelf = copy.deepcopy(first_record)
-            record_for_gelf.message = u'{0} {1} {2} \n'.format(
-                self.format_time(record_for_gelf),
-                record_for_gelf.levelname,
-                to_unicode(record_for_gelf.getMessage()))
+            record_for_gelf.message = ''
+            record_for_gelf.exc_info = ''
             record_for_gelf.short = u"{0} {1} {2}".format(method, to_unicode(uri), status_code)
             record_for_gelf.levelno = logging.INFO
+            record_for_gelf.name = record_for_gelf.handler
+            record_for_gelf.code = status_code
 
-            for record in records_list[1:]:
+            for record in records_list:
+                message = to_unicode(record.getMessage())
                 if record.levelno > record_for_gelf.levelno:
                     record_for_gelf.levelno = record.levelno
                     record_for_gelf.lineno = record.lineno
-                    record_for_gelf.short = record.getMessage()
+                    record_for_gelf.short = message
                 if record.exc_info is not None:
-                    record_for_gelf.exc_info = traceback.format_exc(record.exc_info)
-                    record_for_gelf.short += "\n" + traceback.format_exc(record.exc_info)
-                record_for_gelf.message += u' {0} {1} {2} \n'.format(self.format_time(record), record.levelname,
-                                                                     to_unicode(record.getMessage()))
+                    exception_text = '\n' + ''.join(traceback.format_exception(*record.exc_info))
+                    record_for_gelf.exc_info += exception_text
+                    record_for_gelf.short += exception_text
+                
+                record_for_gelf.message += u' {0} {1} {2} \n'.format(
+                    self.format_time(record), record.levelname, message)
+
             if stages is not None:
                 for stage_name, stage_delta in stages:
-                    setattr(record_for_gelf, stage_name + "_stage", str(int(stage_delta)))
+                    setattr(record_for_gelf, stage_name + '_stage', str(int(stage_delta)))
 
-            record_for_gelf.name = record_for_gelf.handler
-            record_for_gelf.code = status_code
             GELFHandler.handle(self, record_for_gelf)
-            self.close()
+            GELFHandler.close(self)
 
 except ImportError:
     import frontik.options
