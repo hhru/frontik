@@ -286,7 +286,7 @@ class PageHandler(tornado.web.RequestHandler):
     DEFAULT_REQUEST_TIMEOUT = 2
 
     def get_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                follow_redirects=True, parse_response=True, labels=None):
+                follow_redirects=True, parse_response=True, labels=None, add_to_finish_group=True):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_get_request(
@@ -294,11 +294,14 @@ class PageHandler(tornado.web.RequestHandler):
             connect_timeout, request_timeout, follow_redirects)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response))
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response),
+                           add_to_finish_group=add_to_finish_group)
+
         return placeholder
 
     def post_url(self, url, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
-                 follow_redirects=True, content_type=None, callback=None, parse_response=True, labels=None):
+                 callback=None, follow_redirects=True, content_type=None, parse_response=True, labels=None,
+                 add_to_finish_group=True):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_post_request(
@@ -306,11 +309,13 @@ class PageHandler(tornado.web.RequestHandler):
             connect_timeout, request_timeout, follow_redirects, content_type)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response))
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response),
+                           add_to_finish_group=add_to_finish_group)
+
         return placeholder
 
     def put_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                parse_response=True, labels=None):
+                parse_response=True, labels=None, add_to_finish_group=True):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_put_request(
@@ -318,11 +323,13 @@ class PageHandler(tornado.web.RequestHandler):
             connect_timeout, request_timeout)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response))
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response),
+                           add_to_finish_group=add_to_finish_group)
+
         return placeholder
 
     def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                   parse_response=True, labels=None):
+                   parse_response=True, labels=None, add_to_finish_group=True):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_delete_request(
@@ -330,10 +337,12 @@ class PageHandler(tornado.web.RequestHandler):
             connect_timeout, request_timeout)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response))
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response),
+                           add_to_finish_group=add_to_finish_group)
+
         return placeholder
 
-    def fetch_request(self, request, callback):
+    def fetch_request(self, request, callback, add_to_finish_group=True):
         """ Tornado HTTP client compatible method """
         if not self._finished:
             stats.http_reqs_count += 1
@@ -354,10 +363,13 @@ class PageHandler(tornado.web.RequestHandler):
             request.connect_timeout *= tornado.options.options.timeout_multiplier
             request.request_timeout *= tornado.options.options.timeout_multiplier
 
-            return self.http_client.fetch(request, self.finish_group.add(
-                self.async_callback(self._log_response, request, callback)))
-        else:
-            self.log.warn('attempted to make http request to %s while page is already finished; ignoring', request.url)
+            req_callback = self.async_callback(self._log_response, request, callback)
+            if add_to_finish_group:
+                req_callback = self.finish_group.add(req_callback)
+
+            return self.http_client.fetch(request, req_callback)
+
+        self.log.warn('attempted to make http request to %s while page is already finished; ignoring', request.url)
 
     def _log_response(self, request, callback, response):
         try:
@@ -415,18 +427,21 @@ class PageHandler(tornado.web.RequestHandler):
             callback(result, response)
 
     def show_response_error(self, response):
-        self.log.warn('%s failed %s (%s)', response.code, response.effective_url, str(response.error))
+        self.log.warn('{code} failed {url} ({reason})'.format(
+            code=response.code, url=response.effective_url, reason=response.error))
+
         try:
-            data = etree.Element(
-                'error', url=response.effective_url, reason=str(response.error), code=str(response.code))
+            data = etree.Element('error', url=response.effective_url, reason=str(response.error),
+                                 code=str(response.code))
         except ValueError:
-            self.log.warn("Cannot add information about response head in debug, can't be serialized in xml.")
+            self.log.warn("cannot add information about response head in debug, can't be serialized in xml.")
+            return None
 
         if response.body:
             try:
-                data.append(etree.Comment(response.body.replace("--", "%2D%2D")))
+                data.append(etree.Comment(response.body.replace('--', '%2D%2D')))
             except ValueError:
-                self.log.warn('Cannot add debug info in XML comment with unparseable response.body: non-ASCII response')
+                self.log.warn('cannot add response body in XML comment: non-ASCII response')
 
         return data
 
