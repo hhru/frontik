@@ -1,3 +1,9 @@
+frontik (2.18.16) unstable; urgency=low
+
+  * HH-41098 send all exception tracebacks to graylog [maizy]
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 04 Mar 2014 11:36:18 +0400
+
 frontik (2.18.15) unstable; urgency=low
 
   * HH-40690 fixes for graylog bulk handler
