@@ -4,23 +4,24 @@ Frontik's [PageHandler](/frontik/handler.py) contains several methods for making
 
 ```python
 def get_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None,
-            callback=None, follow_redirects=True, parse_response=True, labels=None):
+            callback=None, follow_redirects=True, parse_response=True, labels=None,
+            add_to_finish_group=True):
 ```
 
 ```python
 def post_url(self, url, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
-             follow_redirects=True, content_type=None, callback=None, parse_response=True,
-             labels=None):
+             callback=None, follow_redirects=True, content_type=None, parse_response=True,
+             labels=None, add_to_finish_group=True):
 ```
 
 ```python
 def put_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None,
-            callback=None, parse_response=True, labels=None):
+            callback=None, parse_response=True, labels=None, add_to_finish_group=True):
 ```
 
 ```python
 def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None,
-               callback=None, parse_response=True, labels=None):
+               callback=None, parse_response=True, labels=None, add_to_finish_group=True):
 ```
 
 Method parameters are quite self-explaning. If `parse_response` is `True`, Frontik will try to parse the response
@@ -36,6 +37,7 @@ def callback(parsed_response_body, response):
 
 `labels` parameter is a list of debug labels to be assigned to this request, to be shown in debug mode.
 
-All callbacks are added to main [AsyncGroup](/frontik/async.py), `finish_group`.
-Only after all requests and callbacks are finished, AsyncGroup is marked as finished and
+All callbacks are always added to main [AsyncGroup](/frontik/async.py), `finish_group`,
+except when `add_to_finish_group` parameter is set to `False`. Only after all requests and callbacks
+have been finished, AsyncGroup is marked as finished and
 [postprocessing](/docs/postprocessing.md) and [templating](/docs/producers.md) takes place.
