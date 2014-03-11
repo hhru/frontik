@@ -1,3 +1,9 @@
+frontik (2.18.17) unstable; urgency=low
+
+  * HH-40478 add parameter add_to_finish_group to ***_url methods
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 11 Mar 2014 11:08:33 +0400
+
 frontik (2.18.16) unstable; urgency=low
 
   * HH-41098 send all exception tracebacks to graylog [maizy]
