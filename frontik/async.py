@@ -16,7 +16,7 @@ def before(before_fun):
         def new_fun(self, *args, **kw):
             def cb():
                 fun(self, *args, **kw)
-            before_fun(self, self.async_callback(cb))
+            before_fun(self, self.check_finished(cb))
         return new_fun
     return before_fun_deco
 
