@@ -1,10 +1,13 @@
+# coding=utf-8
+
 import threading
 import Queue
 import logging
 from functools import partial
 
-import tornado.ioloop
 import tornado.options
+from tornado import stack_context
+from tornado.ioloop import IOLoop
 
 jobs_log = logging.getLogger('frontik.jobs')
 __threadpool_executor = None
@@ -23,10 +26,10 @@ def queue_worker(queue):
             continue
 
         try:
-            tornado.ioloop.IOLoop.instance().add_callback(partial(cb, func()))
+            IOLoop.instance().add_callback(partial(cb, func()))
         except Exception, e:
             jobs_log.exception('Cannot perform job')
-            tornado.ioloop.IOLoop.instance().add_callback(partial(exception_cb, e))
+            IOLoop.instance().add_callback(partial(exception_cb, e))
 
 
 class IOLoopExecutor(object):
@@ -38,7 +41,7 @@ class IOLoopExecutor(object):
             except Exception, e:
                 exception_cb(e)
 
-        tornado.ioloop.IOLoop.instance().add_callback(__wrapper)
+        IOLoop.instance().add_callback(__wrapper)
 
 
 class ThreadPoolExecutor(object):
@@ -57,10 +60,10 @@ class ThreadPoolExecutor(object):
     def add_job(self, func, cb, exception_cb, prio=10):
         try:
             ThreadPoolExecutor.count += 1
-            self.events.put(((prio, ThreadPoolExecutor.count), (func, cb, exception_cb)))
+            self.events.put(((prio, ThreadPoolExecutor.count), (func, cb, stack_context.wrap(exception_cb))))
         except Exception, e:
             jobs_log.exception('Cannot put job to queue')
-            tornado.ioloop.IOLoop.instance().add_callback(partial(exception_cb, e))
+            IOLoop.instance().add_callback(partial(exception_cb, e))
 
 
 def get_threadpool_executor():
