@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+# coding=utf-8
+
 from collections import namedtuple
 import copy
 from functools import partial
@@ -7,7 +8,7 @@ import traceback
 import weakref
 import time
 import socket
-from logging.handlers import SysLogHandler
+from logging.handlers import SysLogHandler, WatchedFileHandler
 
 import tornado.options
 from tornado.escape import to_unicode
@@ -78,9 +79,9 @@ class MonikInfoLoggingFilter(logging.Filter):
         return getattr(record, '_monik', False)
 
 
-class MonikInfoLoggingHandler(logging.FileHandler):
+class MonikInfoLoggingHandler(WatchedFileHandler):
     def __init__(self):
-        logging.FileHandler.__init__(self, self.__get_logfile_name())
+        WatchedFileHandler.__init__(self, self.__get_logfile_name())
         self.setLevel(logging.INFO)
         self.addFilter(MonikInfoLoggingFilter())
         self.setFormatter(logging.Formatter(tornado.options.options.logformat))
@@ -208,10 +209,10 @@ def bootstrap_all_logging():
     if tornado.options.options.syslog:
         try:
             syslog_handler = MaxLenSysLogHandler(
-                facility=MaxLenSysLogHandler.facility_names[
-                         tornado.options.options.syslog_facility],
+                facility=MaxLenSysLogHandler.facility_names[tornado.options.options.syslog_facility],
                 address=tornado.options.options.syslog_address,
-                msg_max_length=tornado.options.options.syslog_msg_max_length)
+                msg_max_length=tornado.options.options.syslog_msg_max_length
+            )
             syslog_handler.setFormatter(logging.Formatter(tornado.options.options.logformat))
             logging.getLogger().addHandler(syslog_handler)
         except socket.error, e:
