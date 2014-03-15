@@ -203,8 +203,19 @@ class PageLogger(logging.LoggerAdapter):
         self.logger.flush(status_code=status_code, stages=self.stages, method=request_method, uri=request_uri)
 
 
-def bootstrap_all_logging():
-    server_log = logging.getLogger("frontik.server")
+def bootstrap_logging():
+    root_logger = logging.getLogger()
+    level = getattr(logging, tornado.options.options.loglevel.upper())
+
+    if tornado.options.options.logfile:
+        handler = logging.handlers.WatchedFileHandler(tornado.options.options.logfile)
+        handler.setFormatter(logging.Formatter(tornado.options.options.logformat))
+        handler.setLevel(level)
+        root_logger.setLevel(logging.NOTSET)
+        root_logger.addHandler(handler)
+    else:
+        root_logger.setLevel(level)
+        tornado.options.enable_pretty_logging()  # TODO: replace it with LogFormatter from Tornado 3
 
     if tornado.options.options.syslog:
         try:
@@ -214,12 +225,12 @@ def bootstrap_all_logging():
                 msg_max_length=tornado.options.options.syslog_msg_max_length
             )
             syslog_handler.setFormatter(logging.Formatter(tornado.options.options.logformat))
-            logging.getLogger().addHandler(syslog_handler)
-        except socket.error, e:
-            server_log.error("cannot initialize syslog: %s" % e)
+            root_logger.addHandler(syslog_handler)
+        except socket.error:
+            logging.getLogger('frontik.logging').exception('Cannot initialize syslog')
 
     if tornado.options.options.logfile is not None:
-        logging.getLogger().addHandler(MonikInfoLoggingHandler())
+        root_logger.addHandler(MonikInfoLoggingHandler())
 
     for log_channel_name in tornado.options.options.suppressed_loggers:
         logging.getLogger(log_channel_name).setLevel(logging.WARN)
