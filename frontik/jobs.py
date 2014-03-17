@@ -60,7 +60,10 @@ class ThreadPoolExecutor(object):
     def add_job(self, func, cb, exception_cb, prio=10):
         try:
             ThreadPoolExecutor.count += 1
-            self.events.put(((prio, ThreadPoolExecutor.count), (func, cb, stack_context.wrap(exception_cb))))
+            self.events.put((
+                (prio, ThreadPoolExecutor.count),
+                (func, stack_context.wrap(cb), stack_context.wrap(exception_cb))
+            ))
         except Exception, e:
             jobs_log.exception('Cannot put job to queue')
             IOLoop.instance().add_callback(partial(exception_cb, e))

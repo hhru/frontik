@@ -542,7 +542,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         try:
             self.__call_postprocessors(self._late_postprocessors[:], _finish_with_async_hook)
-        except Exception:
+        except:
             self.log.exception('Error during late postprocessing stage, finishing with an exception')
             self._status_code = 500
             _finish_with_async_hook()
