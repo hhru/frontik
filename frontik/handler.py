@@ -294,7 +294,7 @@ class PageHandler(tornado.web.RequestHandler):
     DEFAULT_REQUEST_TIMEOUT = 2
 
     def get_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                follow_redirects=True, parse_response=True, labels=None, add_to_finish_group=True):
+                follow_redirects=True, labels=None, add_to_finish_group=True, **params):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_get_request(
@@ -302,14 +302,14 @@ class PageHandler(tornado.web.RequestHandler):
             connect_timeout, request_timeout, follow_redirects)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response),
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, **params),
                            add_to_finish_group=add_to_finish_group)
 
         return placeholder
 
     def post_url(self, url, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
-                 callback=None, follow_redirects=True, content_type=None, parse_response=True, labels=None,
-                 add_to_finish_group=True):
+                 callback=None, follow_redirects=True, content_type=None, labels=None,
+                 add_to_finish_group=True, **params):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_post_request(
@@ -317,13 +317,13 @@ class PageHandler(tornado.web.RequestHandler):
             connect_timeout, request_timeout, follow_redirects, content_type)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response),
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, **params),
                            add_to_finish_group=add_to_finish_group)
 
         return placeholder
 
     def put_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                parse_response=True, labels=None, add_to_finish_group=True):
+                labels=None, add_to_finish_group=True, **params):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_put_request(
@@ -331,13 +331,13 @@ class PageHandler(tornado.web.RequestHandler):
             connect_timeout, request_timeout)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response),
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, **params),
                            add_to_finish_group=add_to_finish_group)
 
         return placeholder
 
     def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                   parse_response=True, labels=None, add_to_finish_group=True):
+                   labels=None, add_to_finish_group=True, **params):
 
         placeholder = future.Placeholder()
         request = frontik.util.make_delete_request(
@@ -345,7 +345,7 @@ class PageHandler(tornado.web.RequestHandler):
             connect_timeout, request_timeout)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, parse_response=parse_response),
+        self.fetch_request(request, partial(self._parse_response, placeholder, callback, **params),
                            add_to_finish_group=add_to_finish_group)
 
         return placeholder
@@ -416,11 +416,11 @@ class PageHandler(tornado.web.RequestHandler):
         if callable(callback):
             callback(response)
 
-    def _parse_response(self, placeholder, callback, response, parse_response=True):
+    def _parse_response(self, placeholder, callback, response, **params):
         result = None
-        if response.error:
+        if response.error and not params.get('parse_on_error', False):
             placeholder.set_data(self.show_response_error(response))
-        elif not parse_response:
+        elif not params.get('parse_response', True):
             result = response.body
         elif response.code != 204:
             content_type = response.headers.get('Content-Type', '')
