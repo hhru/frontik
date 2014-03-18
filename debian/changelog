@@ -1,3 +1,11 @@
+frontik (2.18.20) unstable; urgency=low
+
+  * HH-41537 catch all exceptions in postprocessors
+  * HH-41535 Add parameter allowing to parse xml or json in response
+    despite error
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 18 Mar 2014 11:42:06 +0400
+
 frontik (2.18.19) unstable; urgency=low
 
   * HH-41465 use WatchedFileHandler for monik log
