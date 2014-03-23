@@ -19,5 +19,6 @@ Depends: ${python:Depends}, ${misc:Depends},
   python-simplejson,
   python-tornado (>= 2.0+hh17),
 Suggests:
-  python-graypy (>= 1.0+hh3)
+  python-graypy (>= 1.0+hh3),
+  python-jinja2,
 Description: Tornado-based application server

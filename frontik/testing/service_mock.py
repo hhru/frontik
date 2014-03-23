@@ -1,5 +1,6 @@
-# -*- coding: utf-8 -*-
-''' Frontik app testing helpers. See source code for get_doc_shows_what_expected for example that doubles as test '''
+# coding=utf-8
+
+""" Frontik app testing helpers. See source code for get_doc_shows_what_expected for example that doubles as test """
 
 from tornado.httpclient import HTTPResponse, HTTPClient
 from cStringIO import StringIO
@@ -25,7 +26,7 @@ from logging import getLogger
 import tornado.options
 tornado.options.process_options_logging()
 
-import frontik.handler_whc_limit as handler_whc_limit
+from frontik import handler_active_limit
 
 def EmptyEnvironment():
     return ExpectingHandler()
@@ -144,6 +145,7 @@ class ExpectingHandler(object):
 
         self.request = tornado.httpserver.HTTPRequest('GET', '/', remote_ip="remote_ip")
         del self.request.connection
+
         def write(s, callback=None):
             if callback:
                 self._callback_heap.append((None, callback, None))
@@ -161,8 +163,8 @@ class ExpectingHandler(object):
 
         self.finish_called = False
         def handler_finish(*arg, **kwarg):
-            if hasattr(self._handler, 'whc_limit'):
-                self._handler.whc_limit.release()
+            if hasattr(self._handler, 'active_limit'):
+                self._handler.active_limit.release()
             self.finish_called = True
 
         def flush(include_footers=False, callback=None):
@@ -251,15 +253,14 @@ class ExpectingHandler(object):
         self.raise_exceptions()
         self.process_callbacks()
 
-
         if not self.finish_called:
             self._handler.finish()
-            if  hasattr(method, 'im_class'):
-                assert False, 'Handler\'s method did not call finish upon '\
-                              'completion, failing. Check for unnessesary callbacks '\
-                              'added to finish group, and hanging callbacks not called. '
+            if hasattr(method, 'im_class'):
+                assert False, ('Handler\'s method did not call finish upon '
+                               'completion, failing. Check for unnessesary callbacks '
+                               'added to finish group, and hanging callbacks not called.')
 
-        handler_whc_limit.working_handlers_count = 0 # in case of improper release of handlers
+        handler_active_limit.PageHandlerActiveLimit.working_handlers_count = 0 # in case of improper release of handlers
         self._result = result
         return self
 
@@ -272,16 +273,18 @@ class ExpectingHandler(object):
     def get_doc(self, ):
         return self._handler.doc
 
+    def get_json(self, ):
+        return self._handler.json
+
     def process_fetch(self, req, callback):
         tb = traceback.extract_stack()
         while tb and not tb.pop()[2] == 'fetch_request':
             pass
         self._callback_heap.append((req, callback, tb))
 
-#===
 
 class TestHttpClient(HTTPClient):
-    '''_callback_heap aware'''
+    """_callback_heap aware"""
     def __init__(self, callback_heap):
         self._callback_heap = callback_heap
 
@@ -290,4 +293,3 @@ class TestHttpClient(HTTPClient):
 
 if __name__ == '__main__':
     unittest.main()
-

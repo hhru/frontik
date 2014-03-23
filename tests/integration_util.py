@@ -11,12 +11,6 @@ import tornado.options
 import tornado.server.supervisor as supervisor
 
 
-def get_page(port, page, xsl=False):
-    url = 'http://localhost:{0}/{1}{2}{3}'.format(
-        port, page, '/?' if '?' not in page else '&', 'noxsl=true' if not xsl else '')
-    return urllib2.urlopen(url)
-
-
 class FrontikTestInstance(object):
     def __init__(self, cfg='./tests/projects/frontik.cfg'):
         tornado.options.parse_config_file(cfg)
@@ -59,10 +53,15 @@ class FrontikTestInstance(object):
         yield self.port
 
     @contextlib.contextmanager
-    def get_page_xml(self, page_name, xsl=True):
+    def get_page(self, page, notpl=False):
         with self.instance() as srv_port:
-            data = get_page(srv_port, page_name, xsl).read()
+            url = 'http://localhost:{0}/{1}{2}{3}'.format(
+                srv_port, page, '/?' if '?' not in page else '&', 'notpl' if notpl else '')
+            yield urllib2.urlopen(url)
 
+    @contextlib.contextmanager
+    def get_page_xml(self, page, notpl=False):
+        with self.get_page_text(page, notpl) as data:
             try:
                 res = etree.fromstring(data)
             except:
@@ -72,7 +71,6 @@ class FrontikTestInstance(object):
             yield res
 
     @contextlib.contextmanager
-    def get_page_text(self, page_name, xsl=True):
-        with self.instance() as srv_port:
-            data = get_page(srv_port, page_name, xsl).read()
-            yield data
+    def get_page_text(self, page, notpl=False):
+        with self.get_page(page, notpl) as response:
+            yield response.read()

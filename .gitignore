@@ -1,11 +1,12 @@
-*.log
 *.pyc
 *~
+*.iml
 .idea/
 .project
 .pydevproject
 .ropeproject/
 .settings/
+
 build
 debian/*.debhelper
 debian/*.substvars
@@ -15,14 +16,18 @@ debian/pycompat
 debian/python-module-stampdir/
 dist/
 frontik.egg-info/
-frontik.iml
+
 frontik_dev.cfg
+*.log
+*.pid
+
 # OS X junk
 .AppleDouble
 .DS_Store
 Icon?
 .Spotlight-V100
 .Trashes
+
 # Windows junk
 ehthumbs.db
 Thumbs.db

@@ -1,8 +1,7 @@
-import tornado.web
-
 import frontik.doc
 import frontik.handler
 import frontik.async
+
 
 class Page(frontik.handler.PageHandler):
     def get_page(self):
