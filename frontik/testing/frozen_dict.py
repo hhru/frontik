@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import collections
 
+
 class FrozenDict(collections.Mapping):
     """Frozen dict for using nested structures as keys in dicts.
     Attribute goes to Mike Graham http://stackoverflow.com/questions/2703599/what-would-be-a-frozen-dict"""
