@@ -40,7 +40,7 @@ def make_qs(query_args):
 
 
 def make_body(data):
-    return make_qs(data) if isinstance(data,dict) else data
+    return make_qs(data) if isinstance(data, dict) else data
 
 
 def make_url(base, **query_args):
@@ -97,7 +97,8 @@ def dict_concat(dict1, dict2):
 
 
 ENCODE_TEMPLATE = '--%(boundary)s\r\nContent-Disposition: form-data; name="%(name)s"\r\n\r\n%(data)s\r\n'
-ENCODE_TEMPLATE_FILE = '--%(boundary)s\r\nContent-Disposition: form-data; name="%(name)s"; filename="%(filename)s"\r\nContent-Type: %(contenttype)s\r\n\r\n%(data)s\r\n'
+ENCODE_TEMPLATE_FILE = ('--%(boundary)s\r\nContent-Disposition: form-data; name="%(name)s"; '
+                        'filename="%(filename)s"\r\nContent-Type: %(contenttype)s\r\n\r\n%(data)s\r\n')
 
 
 def get_content_type(filename):

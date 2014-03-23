@@ -1,22 +1,20 @@
 # coding=utf-8
 
-""" Frontik app testing helpers. See source code for get_doc_shows_what_expected for example that doubles as test """
+""" Frontik app testing helpers.
+See source code for get_doc_shows_what_expected for example that doubles as test
+"""
 
 from tornado.httpclient import HTTPResponse, HTTPClient
 from cStringIO import StringIO
 import tornado.httpserver
 from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
-import functools
 import tornado.web
 from urlparse import urlparse, parse_qs
 from collections import namedtuple
-from tornado.httpclient import HTTPRequest
 import frozen_dict
 import traceback
 
-import sys
-import os
 from os.path import dirname
 from urllib import unquote_plus as unquote
 
@@ -28,25 +26,29 @@ tornado.options.process_options_logging()
 
 from frontik import handler_active_limit
 
+
 def EmptyEnvironment():
     return ExpectingHandler()
+
 
 def expecting(*args, **kwargs):
     return ExpectingHandler().expect(*args, **kwargs)
 
+
 def HTTPResponseStub(request=None, code=200, headers=None, buffer=None,
-                    effective_url='stub', error=None, request_time=1,
-                    time_info=None):
-    ''' Helper HTTPResponse object with error-proof defaults '''
+                     effective_url='stub', error=None, request_time=1,
+                     time_info=None):
+    """ Helper HTTPResponse object with error-proof defaults """
     if headers is None:
         headers = {}
     if time_info is None:
         time_info = {}
-    return(HTTPResponse(request, code, headers, StringIO(buffer),
-                effective_url, error, request_time,
-                time_info))
+    return HTTPResponse(request, code, headers, StringIO(buffer),
+                        effective_url, error, request_time,
+                        time_info)
 
 raw_route = namedtuple('raw_route', 'path query cookies method headers')
+
 
 def route(url, cookies="", method='GET', headers=None):
     if headers is None:
@@ -54,21 +56,25 @@ def route(url, cookies="", method='GET', headers=None):
     parsed = urlparse(url)
     return _route(parsed.path, parsed.query, cookies, method, frozen_dict.FrozenDict(headers))
 
-def _route (path, query="", cookies="", method='GET', headers=None):
+
+def _route(path, query="", cookies="", method='GET', headers=None):
     if headers is None:
         headers = {}
     return raw_route(path, query, cookies, method, frozen_dict.FrozenDict(headers))
 
 #===
 
-def route_less_or_equal_than(a,b):
-    # ignore cookies and headers for now
-    return a.method == b.method and url_less_or_equal_than(a,b)
 
-def url_less_or_equal_than(a,b):
+def route_less_or_equal_than(a, b):
+    # ignore cookies and headers for now
+    return a.method == b.method and url_less_or_equal_than(a, b)
+
+
+def url_less_or_equal_than(a, b):
     if a.path.lstrip('/') != b.path.lstrip('/'):
         return False
     return query_less_than_or_equal(a.query, b.query)
+
 
 def query_less_than_or_equal(a, b):
     a, b = map(parse_query, (a, b))
@@ -76,15 +82,18 @@ def query_less_than_or_equal(a, b):
         bi = b.get(i)
         if bi is None:
             return False
-        if bi!= a[i]:
+        if bi != a[i]:
             return False
     return True
 
+
 def parse_query(query):
-    return dict([(k,tuple(v)) for k,v in parse_qs(query, keep_blank_values=True).iteritems()])
+    return dict([(k, tuple(v)) for k, v in parse_qs(query, keep_blank_values=True).iteritems()])
+
 
 def to_route(req):
     return route(req.url, method=req.method, headers=req.headers)
+
 
 class ServiceMock(object):
     def __init__(self, routes, strict=0):
@@ -118,22 +127,27 @@ class ServiceMock(object):
             try:
                 (code, body) = handler
             except ValueError:
-                raise ValueError("Could not unpack :" + str(handler) +
-                        " to (code, body) tuple that is a result to request " + unquote(request.url) + " "
-                        + str(request))
+                raise ValueError(
+                    'Could not unpack {0!s} to (code, body) tuple that is a result to request {1} {2!s}'.format(
+                        handler, unquote(request.url), request)
+                )
         elif isinstance(handler, HTTPResponse):
             return handler
-        else: raise ValueError("Handler " + str(handler) + "\n that matched request " + request.url + " "
-            + str(request) + "\n is neither tuple nor HTTPResponse nor basestring instance nor callable returning any of above.")
+        else:
+            raise ValueError(
+                'Handler {0!s}\n that matched request {1} {2!s}\n is neither tuple nor HTTPResponse '
+                'nor basestring instance nor callable returning any of above.'.format(handler, request.url, request)
+            )
         return HTTPResponseStub(request, buffer=body, code=code, effective_url=request.url,
-                headers=HTTPHeaders({'Content-Type': 'xml'}))
+                                headers=HTTPHeaders({'Content-Type': 'xml'}))
+
 
 class ExpectingHandler(object):
     def __init__(self, **kwarg):
         self.log = getLogger('service_mock')
         # this import is side-effecty and is used to initialize tornado options
         import frontik.options
-        assert frontik.options # silence code style checkers
+        assert frontik.options  # silence code style checkers
         # prevent log clubbering
         tornado.options.options.warn_no_jobs = False
 
@@ -162,6 +176,7 @@ class ExpectingHandler(object):
         self._handler.get_error_html = lambda *args, **kwargs: None
 
         self.finish_called = False
+
         def handler_finish(*arg, **kwarg):
             if hasattr(self._handler, 'active_limit'):
                 self._handler.active_limit.release()
@@ -259,8 +274,8 @@ class ExpectingHandler(object):
                 assert False, ('Handler\'s method did not call finish upon '
                                'completion, failing. Check for unnessesary callbacks '
                                'added to finish group, and hanging callbacks not called.')
-
-        handler_active_limit.PageHandlerActiveLimit.working_handlers_count = 0 # in case of improper release of handlers
+        # in case of improper release of handlers
+        handler_active_limit.PageHandlerActiveLimit.working_handlers_count = 0
         self._result = result
         return self
 
@@ -281,6 +296,7 @@ class ExpectingHandler(object):
         while tb and not tb.pop()[2] == 'fetch_request':
             pass
         self._callback_heap.append((req, callback, tb))
+
 
 
 class TestHttpClient(HTTPClient):

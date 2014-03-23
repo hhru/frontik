@@ -1,2 +1,1 @@
 production/frontik.cfg /etc/frontik
-frontik/debug/* /usr/lib/frontik/debug/

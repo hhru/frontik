@@ -48,7 +48,7 @@ try:
                     exception_text = '\n' + ''.join(traceback.format_exception(*record.exc_info))
                     record_for_gelf.exc_info += exception_text
                     record_for_gelf.short += exception_text
-                
+
                 record_for_gelf.message += u' {0} {1} {2} \n'.format(
                     self.format_time(record), record.levelname, message)
 
@@ -113,7 +113,7 @@ class MaxLenSysLogHandler(SysLogHandler):
         so we need to subtract it from max_length to guarantee that length of resulting message
         won't be greater than max_length
         """
-        prio_length = len('%d' % self.encodePriority(self.facility, self.mapPriority(record.levelname))) + 2 # 2 is length of angle brackets
+        prio_length = len('%d' % self.encodePriority(self.facility, self.mapPriority(record.levelname))) + 2  # 2 is length of angle brackets
         return SysLogHandler.format(self, record)[:(self.max_length - prio_length)]
 
 

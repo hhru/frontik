@@ -12,7 +12,7 @@ class Doc(object):
         self.root_node_name = root_node_name
         self.root_node = root_node
         self.data = []
-        
+
     def put(self, chunk):
         if isinstance(chunk, list):
             self.data.extend(chunk)
