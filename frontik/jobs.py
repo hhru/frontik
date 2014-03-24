@@ -74,3 +74,12 @@ def get_threadpool_executor():
     if __threadpool_executor is None:
         __threadpool_executor = ThreadPoolExecutor(tornado.options.options.executor_pool_size)
     return __threadpool_executor
+
+
+def get_executor(executor_type):
+    if executor_type == 'threaded':
+        return get_threadpool_executor()
+    elif executor_type == 'ioloop':
+        return IOLoopExecutor
+    else:
+        raise ValueError('Invalid value for executor_type: "{0}"'.format(executor_type))

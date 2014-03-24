@@ -1,12 +1,13 @@
-# -*- coding: utf-8 -*-
-from __future__ import with_statement
-import urllib
+# coding=utf-8
+
 import time
+import urllib
 import urllib2
-import lxml.etree as etree
+
+from lxml import etree
 import nose
 
-from integration_util import get_page, FrontikTestInstance
+from integration_util import FrontikTestInstance
 
 frontik_debug = FrontikTestInstance("./tests/projects/frontik.cfg")
 
@@ -50,13 +51,13 @@ def ids_rewrite_test():
     with frontik_debug.get_page_text("re_app/id/%s" % ",".join(values)) as html:
         assert(all(map(html.find, values)))
 
+
 def test_inexistent_page():
-    with frontik_debug.instance() as srv_port:
-        try:
-            with get_page(srv_port, "inexistent_page") as html:
-                assert False
-        except urllib2.HTTPError, e:
-            assert(e.code == 404)
+    try:
+        with frontik_debug.get_page('inexistent_page') as response:
+            assert False
+    except urllib2.HTTPError, e:
+        assert(e.code == 404)
 
 
 def compose_doc_test():
@@ -77,8 +78,8 @@ def xsl_transformation_test():
 
 
 def test_content_type_with_xsl():
-    with frontik_debug.instance() as srv_port:
-        assert(get_page(srv_port, "test_app/simple", xsl=True).headers["content-type"].startswith("text/html"))
+    with frontik_debug.get_page("test_app/simple") as response:
+        assert(response.headers["content-type"].startswith("text/html"))
 
 
 def test_xsl_fail():
@@ -115,8 +116,8 @@ def test_job_fail():
 
 
 def test_content_type_wo_xsl():
-    with frontik_debug.instance() as srv_port:
-        assert(get_page(srv_port, "test_app/simple", xsl=False).headers["content-type"].startswith("application/xml"))
+    with frontik_debug.get_page("test_app/simple", notpl=True) as response:
+        assert(response.headers["content-type"].startswith("application/xml"))
 
 
 def xml_include_test():
@@ -160,12 +161,6 @@ def test_timeout():
 
         assert(xml.text == "error")
 
-        time.sleep(2)
-
-def test_finishexception():
-    with frontik_debug.instance() as srv_port:
-        data = urllib2.urlopen("http://localhost:{0}/test_app/finish_page/".format(srv_port)).read()
-        assert(data == "success")
 
 def test_multi_app_simple():
     with frontik_debug.get_page_xml("test_app/use_lib") as xml:
@@ -196,41 +191,6 @@ def test_error_in_cb():
     with frontik_debug.instance() as srv_port:
         xml = etree.fromstring(urllib2.urlopen("http://localhost:{0}/test_app/bad_page/?port={0}".format(srv_port)).read())
         assert (xml.text == "4242")
-
-def test_finish_with_401():
-    '''
-    exception with handlers
-    '''
-    with frontik_debug.instance() as srv_port:
-        try:
-            answer = urllib2.urlopen("http://localhost:{0}/test_app/finish_401/".format(srv_port))
-            assert False
-        except Exception as e:
-            assert (e.msg == "Unauthorized" and e.code == 401
-                    and e.headers["WWW-Authenticate"] == 'Basic realm="Secure Area"')
-
-
-def test_exception_text():
-    '''
-    throwing exception with plaintext
-    '''
-    with frontik_debug.instance() as srv_port:
-        answer = urllib.urlopen("http://localhost:{0}/test_app/test_exception_text/?port={0}".format(srv_port))
-        code = answer.code
-        answer = answer.read()
-        assert(code == 403)
-        assert(answer == "This is just a plain text")
-
-def test_exception_xml_xsl():
-    '''
-    throwing exception with xml and xsl
-    '''
-    with frontik_debug.instance() as srv_port:
-        answer = urllib.urlopen("http://localhost:{0}/test_app/test_exception_xml_xsl".format(srv_port))
-        code = answer.code
-        answer = answer.read()
-        assert(code == 302)
-        assert (answer == "<html><body><h1>ok</h1></body></html>\n")
 
 
 def test_check_finished():

@@ -1,7 +1,9 @@
+from lxml import etree
+
 import frontik.handler
-from frontik import etree
 
 CDATA_XML = '<root><![CDATA[test<ba//d>]]></root>'
+
 
 class Page(frontik.handler.PageHandler):
     def get_page(self):

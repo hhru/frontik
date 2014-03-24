@@ -28,7 +28,7 @@ def __get_apps_versions():
     for path, app in options.urls:
         app_info = etree.Element('application', name=repr(app), path=path)
         try:
-            application = app.ph_globals.config.version
+            application = app.app_globals.config.version
             app_info.extend(list(application))
         except:
             etree.SubElement(app_info, 'version').text = 'app doesn''t support version'
@@ -50,7 +50,7 @@ def get_frontik_and_apps_versions():
 class VersionHandler(tornado.web.RequestHandler):
     def get(self):
         self.set_header('Content-Type', 'text/xml')
-        self.write(frontik.xml_util.etree_to_xml_string(get_frontik_and_apps_versions()))
+        self.write(etree.tostring(get_frontik_and_apps_versions(), encoding='utf-8', xml_declaration=True))
 
 
 class StatusHandler(tornado.web.RequestHandler):
@@ -209,7 +209,7 @@ class App(object):
             for filename in self.importer.get_probable_module_filenames('config'):
                 tornado.autoreload.watch_file(filename)
 
-            self.ph_globals = frontik.handler.PageHandlerGlobals(self.module)
+            self.app_globals = frontik.handler.ApplicationGlobals(self.module)
         except:
             # we do not want to break frontik on app initialization error,
             # so we report error and skip the app.
@@ -239,7 +239,7 @@ class App(object):
         if not self.initialized_wo_error:
             self.log.exception('application not loaded, because of fail during initialization')
             return tornado.web.ErrorHandler(application, request, status_code=404)
-        return self.module.dispatcher(application, request, ph_globals = self.ph_globals, **kwargs)
+        return self.module.dispatcher(application, request, app_globals=self.app_globals, **kwargs)
 
 
 @dispatcher
