@@ -1,3 +1,9 @@
+frontik (2.19.0) unstable; urgency=low
+
+  * HH-40214 better json support
+
+ -- Automated Build <an.sumin@hh.ru>  Mon, 24 Mar 2014 13:50:25 +0400
+
 frontik (2.18.20) unstable; urgency=low
 
   * HH-41537 catch all exceptions in postprocessors
