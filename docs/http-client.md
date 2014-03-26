@@ -16,13 +16,13 @@ def post_url(self, url, data='', headers=None, files=None, connect_timeout=None,
 
 ```python
 def put_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None,
-            callback=None, parse_response=True, labels=None,
+            callback=None, content_type=None, labels=None,
             add_to_finish_group=True, parse_response=True, parse_on_error=False):
 ```
 
 ```python
 def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None,
-               callback=None, labels=None,
+               callback=None, content_type=None, labels=None,
                add_to_finish_group=True, parse_response=True, parse_on_error=False):
 ```
 

@@ -332,12 +332,12 @@ class PageHandler(tornado.web.RequestHandler):
         return placeholder
 
     def put_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                labels=None, add_to_finish_group=True, **params):
+                content_type=None, labels=None, add_to_finish_group=True, **params):
 
         placeholder = frontik.future.Placeholder()
         request = frontik.util.make_put_request(
             url, data, {} if headers is None else headers,
-            connect_timeout, request_timeout)
+            connect_timeout, request_timeout, content_type)
 
         request._frontik_labels = labels
         self.fetch_request(request, partial(self._parse_response, placeholder, callback, **params),
@@ -346,12 +346,12 @@ class PageHandler(tornado.web.RequestHandler):
         return placeholder
 
     def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                   labels=None, add_to_finish_group=True, **params):
+                   content_type=None, labels=None, add_to_finish_group=True, **params):
 
         placeholder = frontik.future.Placeholder()
         request = frontik.util.make_delete_request(
             url, data, {} if headers is None else headers,
-            connect_timeout, request_timeout)
+            connect_timeout, request_timeout, content_type)
 
         request._frontik_labels = labels
         self.fetch_request(request, partial(self._parse_response, placeholder, callback, **params),
