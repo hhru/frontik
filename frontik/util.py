@@ -10,6 +10,7 @@ from urllib import urlencode
 from copy import copy
 
 import tornado.httpclient
+import tornado.httputil
 
 
 def list_unique(l):
@@ -168,10 +169,10 @@ def make_post_request(url, data='', headers=None, files=None,
     else:
         body = make_body(data)
 
+    headers = {} if headers is None else tornado.httputil.HTTPHeaders(headers)
     if content_type is None:
-        content_type = headers['Content-Type'] if 'Content-Type' in headers else 'application/x-www-form-urlencoded'
+        content_type = headers.get('Content-Type', 'application/x-www-form-urlencoded')
 
-    headers = {} if headers is None else headers
     headers.update({'Content-Type': content_type, 'Content-Length': str(len(body))})
 
     return tornado.httpclient.HTTPRequest(
@@ -184,7 +185,11 @@ def make_post_request(url, data='', headers=None, files=None,
         request_timeout=request_timeout)
 
 
-def make_put_request(url, data='', headers=None, connect_timeout=0.5, request_timeout=2):
+def make_put_request(url, data='', headers=None, connect_timeout=0.5, request_timeout=2, content_type=None):
+    headers = {} if headers is None else tornado.httputil.HTTPHeaders(headers)
+    if content_type is not None:
+        headers['Content-Type'] = content_type
+
     return tornado.httpclient.HTTPRequest(
         url=_encode(url),
         body=make_body(data),
@@ -194,7 +199,11 @@ def make_put_request(url, data='', headers=None, connect_timeout=0.5, request_ti
         request_timeout=request_timeout)
 
 
-def make_delete_request(url, data='', headers=None, connect_timeout=0.5, request_timeout=2):
+def make_delete_request(url, data='', headers=None, connect_timeout=0.5, request_timeout=2, content_type=None):
+    headers = {} if headers is None else tornado.httputil.HTTPHeaders(headers)
+    if content_type is not None:
+        headers['Content-Type'] = content_type
+
     return tornado.httpclient.HTTPRequest(
         url=_encode(url),
         body=make_body(data),
