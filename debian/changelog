@@ -1,3 +1,9 @@
+frontik (2.19.1) unstable; urgency=low
+
+  * HH-41776 add content_type argument to put_url
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 26 Mar 2014 17:26:15 +0400
+
 frontik (2.19.0) unstable; urgency=low
 
   * HH-40214 better json support
