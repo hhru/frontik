@@ -26,11 +26,11 @@ setup(
     packages=['frontik', 'frontik/producers', 'frontik/testing', 'frontik/testing/pages'],
     scripts=['scripts/frontik'],
     package_data={
-        'frontik': ['*.xsl'],
+        'frontik': ['debug/*.xsl'],
     },
     install_requires=[
         'nose',
-        'lxml >= 2.2.8, < 2.3a',
+        'lxml >= 2.2.8',
         'tornado'
     ],
     zip_safe=False
