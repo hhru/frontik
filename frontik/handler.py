@@ -415,7 +415,7 @@ class PageHandler(tornado.web.RequestHandler):
                 'got {code}{size} {url} in {time:.2f}ms'.format(
                     code=response.code,
                     url=response.effective_url,
-                    size=' {0:e} bytes'.format(len(response.body)) if response.body is not None else '',
+                    size=' {0} bytes'.format(len(response.body)) if response.body is not None else '',
                     time=response.request_time * 1000
                 ),
                 extra=debug_extra
