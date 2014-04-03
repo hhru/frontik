@@ -36,7 +36,6 @@ which run on one Frontik instance.
 | `debug`              | `bool`  | `False`       | Enable debug mode by default (will show debug output on every error)  |
 | `debug_login`        | `str`   | `None`        | Debug mode login for basic authentication                             |
 | `debug_password`     | `str`   | `None`        | Debug mode password for basic authentication                          |
-| `debug_xsl`          | `str`   | see code      | Debug page XSL template                                               |
 | `suppressed_loggers` | `list`  | `[]`          | List of logger names to be excluded from debug output                 |
 | `syslog`             | `bool`  | `False`       | Enables sending logs to syslog                                        |
 | `syslog_address`     | `str`   | `'/dev/log'`  | Syslog address                                                        |
