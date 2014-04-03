@@ -1,3 +1,10 @@
+frontik (2.19.3) unstable; urgency=low
+
+  * HH-41451 run PEP8 tests on build and fix some PEP8 warnings
+  * HH-41451 syntax highlighting in debug [ipetropolsky] [gkostin]
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 03 Apr 2014 12:23:39 +0400
+
 frontik (2.19.2) unstable; urgency=low
 
   * HH-41889 update executor configs
