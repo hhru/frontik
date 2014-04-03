@@ -44,7 +44,7 @@ class TestDoc(unittest.TestCase):
         p = Placeholder()
         p.set_data([etree.Comment('ccc'), etree.Element('bbb')])
         d.put(p)
-        
+
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a><!--ccc--><bbb/></a>""")
 
     def test_failed_future(self):

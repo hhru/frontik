@@ -106,7 +106,7 @@ class CountTypesHandler(tornado.web.RequestHandler):
         for o in gc.get_objects():
             counts[type(o)] += 1
 
-        for k, v in sorted(counts.items(), key=lambda x:x[0]):
+        for k, v in sorted(counts.items(), key=lambda x: x[0]):
             self.write('%s\t%s\n' % (v, k))
 
         self.finish()
@@ -230,7 +230,7 @@ class App(object):
             raise
 
         if not hasattr(self.module.config, 'urls'):
-            self.module.config.urls = [("", Map2ModuleName(self.pages_module)),]
+            self.module.config.urls = [('', Map2ModuleName(self.pages_module))]
         self.module.dispatcher = RegexpDispatcher(self.module.config.urls, self.module.__name__)
         self.module.dispatcher._initialize()
 
@@ -249,7 +249,7 @@ class RegexpDispatcher(object):
         self.log = logging.getLogger('frontik.dispatcher.{0}'.format(name))
         self.log.info('initializing...')
 
-        def parse_conf(pattern, app, parse=lambda x: [x,]):
+        def parse_conf(pattern, app, parse=lambda x: [x]):
             try:
                 app._initialize()
             except AttributeError:
