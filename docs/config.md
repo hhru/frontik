@@ -4,7 +4,7 @@ Here is the list of all options, currently supported by Frontik.
 All of them are set in config file (see [frontik_dev.cfg.ex](/frontik_dev.cfg.ex) for example),
 but you can pass them through command line as well. The exception is `config` option — it makes no sense for it to be set in config file.
 
-These options are defined in [tornado.server](https://github.com/hhru/tornado/blob/master/tornado/server/__init__.py) module
+These options are defined in [tornado_util.server](https://github.com/hhru/tornado-util/blob/master/tornado_util/server.py) module
 and are essential for running Frontik server and logging in Frontik applications.
 
 | Option name        | Type   | Default value   | Description                                              |
@@ -18,14 +18,16 @@ and are essential for running Frontik server and logging in Frontik applications
 | `loglevel`         | `str`  | `info`          | The lowest log level written to logfile                  |
 | `logformat`        | `str`  | see code        | Log entry format                                         |
 
-The following options are specific to [tornado.server.supervisor](https://github.com/hhru/tornado/blob/master/tornado/server/supervisor.py)
+The following options are specific to [tornado_util.supervisor](https://github.com/hhru/tornado-util/blob/master/tornado_util/supervisor.py)
 module, which provides convenient interface for running and controlling several Frontik instances on one machine.
 
-| Option name        | Type   | Default value   | Description                                              |
-| ------------------ | ------ | --------------- | -------------------------------------------------------- |
-| `workers_count`    | `int`  | `4`             | Number of Frontik instances to run (on ports `port`, `port + 1` ... `port + N`) |
-| `pidfile_template` | `str`  | `None`          | Pidfile template, containing `%(port)s` placeholder (passed as `--pidfile` option to separate Frontik instances) |
-| `logfile_template` | `str`  | `None`          | Logfile template, containing `%(port)s` placeholder (passed as `--logfile` option to separate Frontik instances) |
+| Option name                  | Type   | Default value   | Description                                              |
+| ---------------------------- | ------ | --------------- | -------------------------------------------------------- |
+| `workers_count`              | `int`  | `4`             | Number of Frontik instances to run (on ports `port`, `port + 1` ... `port + N`) |
+| `pidfile_template`           | `str`  | `None`          | Pidfile template, containing `%(port)s` placeholder (passed as `--pidfile` option to separate Frontik instances) |
+| `logfile_template`           | `str`  | `None`          | Logfile template, containing `%(port)s` placeholder (passed as `--logfile` option to separate Frontik instances) |
+| `supervisor_sigterm_timeout` | `int`  | `4`             | Time in seconds to wait before sending SIGKILL (after SIGTERM has been sent) |
+| `nofile_soft_limit`          | `int`  | `4096`          | The value of soft NOFILE limit                           |
 
 These options are defined in Frontik (see [options.py](/frontik/options.py)) and are common to all Frontik applications,
 which run on one Frontik instance.

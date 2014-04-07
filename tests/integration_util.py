@@ -5,10 +5,10 @@ import socket
 import time
 import urllib2
 
-import lxml.etree as etree
+from lxml import etree
 
 import tornado.options
-import tornado.server.supervisor as supervisor
+import tornado_util.supervisor as supervisor
 
 
 class FrontikTestInstance(object):
