@@ -4,19 +4,18 @@
 import logging
 import sys
 
-import tornado.server
+import tornado_util.server
 from tornado.options import options
 
 import frontik.app
 import frontik.options
-import frontik.frontik_logging as frontik_logging
+from frontik.frontik_logging import bootstrap_logging
 
 log = logging.getLogger('frontik.server')
 
 
 def main(config_file='/etc/frontik/frontik.cfg'):
-    tornado.server.bootstrap(config_file=config_file)
-    frontik_logging.bootstrap_all_logging()
+    tornado_util.server.bootstrap(config_file=config_file, options_callback=bootstrap_logging)
 
     try:
         app = frontik.app.get_app(options.urls, options.apps)
@@ -24,4 +23,4 @@ def main(config_file='/etc/frontik/frontik.cfg'):
         log.exception('failed to initialize frontik application, quitting')
         sys.exit(1)
 
-    tornado.server.main(app)
+    tornado_util.server.main(app)

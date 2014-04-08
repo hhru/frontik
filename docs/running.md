@@ -13,7 +13,7 @@ In development environment you can use [dev_run.py](/dev_run.py) — a simple la
 as a config file, which you need to create or copy from [frontik_dev.cfg.ex](/frontik_dev.cfg.ex). The sample of a
 production config can be found in [production/frontik.cfg](/production/frontik.cfg).
 
-[tornado.server](https://github.com/hhru/tornado/blob/master/tornado/server) module is used internally to run
+Custom launcher from [tornado_util](https://github.com/hhru/tornado-util) module is used internally to run
 and control Frontik servers instances.
 
 Frontik is an application server, so the next step is to learn about
