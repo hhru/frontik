@@ -89,9 +89,6 @@ class CountPageHandlerInstancesHandler(tornado.web.RequestHandler):
         hh = tuple([i for i in gc.get_objects()
                     if isinstance(i, frontik.handler.PageHandler)])
 
-        #if len(hh) > 0:
-        #    import pdb; pdb.set_trace()
-
         self.finish('{0}\n{1}'.format(len(hh), [i for i in gc.get_referrers(*hh)
                                                 if i is not hh]))
 

@@ -1,6 +1,9 @@
 # coding=utf-8
 
+import unittest
+
 import lxml.etree as etree
+
 from frontik.xml_util import xml_to_dict, dict_to_xml
 
 xml = '''
@@ -50,6 +53,8 @@ dictionary_after = {
     }
 }
 
-def test_xml_to_dict_and_back_again():
-    assert (xml_to_dict(etree.XML(xml)) == dictionary_after)
-    assert (xml_to_dict(dict_to_xml(dictionary_before, 'root')) == dictionary_after)
+
+class TestXmlUtils(unittest.TestCase):
+    def test_xml_to_dict_and_back_again(self):
+        self.assertEquals(xml_to_dict(etree.XML(xml)), dictionary_after)
+        self.assertEquals(xml_to_dict(dict_to_xml(dictionary_before, 'root')), dictionary_after)

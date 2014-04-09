@@ -248,7 +248,7 @@ class EmptyEnvironment(object):
         self.process_callbacks()
 
         frontik.handler_active_limit.PageHandlerActiveLimit.working_handlers_count = 0
-        
+
         self._result = result
         return self
 
