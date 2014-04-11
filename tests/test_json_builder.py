@@ -1,3 +1,4 @@
+import json
 import unittest
 
 import frontik.future
@@ -20,6 +21,31 @@ class TestDoc(unittest.TestCase):
         j.put({'a': 'b'})
 
         self.assertEqual(j.to_string(), """{"root": {"a": "b"}}""")
+
+    def test_list(self):
+        j = frontik.json_builder.JsonBuilder()
+        j.put({'a': {'b': [1, 2, 3]}})
+
+        self.assertEqual(j.to_string(), """{"a": {"b": [1, 2, 3]}}""")
+
+    def test_encoder(self):
+        class CustomValue(object):
+            def __iter__(self):
+                return iter((1, 2, 3))
+
+            def to_json(self):
+                return '1.2.3'
+
+        class JSONEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if hasattr(obj, 'to_json'):
+                    return obj.to_json()
+                return json.JSONEncoder.default(self, obj)
+
+        j = frontik.json_builder.JsonBuilder(json_encoder=JSONEncoder)
+        j.put({'a': CustomValue()})
+
+        self.assertEqual(j.to_string(), """{"a": "1.2.3"}""")
 
     def test_multiple_items(self):
         j = frontik.json_builder.JsonBuilder()

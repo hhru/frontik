@@ -8,6 +8,7 @@ import tornado.options
 
 import frontik.jobs
 import frontik.json_builder
+import frontik.util
 
 
 class ApplicationJsonGlobals(object):
@@ -26,12 +27,12 @@ class ApplicationJsonGlobals(object):
 
 
 class JsonProducer(object):
-    def __init__(self, handler, json_globals):
+    def __init__(self, handler, json_globals, json_encoder):
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
         self.executor = frontik.jobs.get_executor(tornado.options.options.json_executor)
 
-        self.json = frontik.json_builder.JsonBuilder()
+        self.json = frontik.json_builder.JsonBuilder(json_encoder=json_encoder)
         self.template_filename = None
         self.environment = json_globals.environment
 
