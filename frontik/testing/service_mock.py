@@ -4,48 +4,58 @@
 See source code for get_doc_shows_what_expected for example that doubles as test
 """
 
-from tornado.httpclient import HTTPResponse, HTTPClient
-from cStringIO import StringIO
-import tornado.httpserver
-from tornado.httputil import HTTPHeaders
-from tornado.ioloop import IOLoop
-import tornado.web
-from urlparse import urlparse, parse_qs
-from collections import namedtuple
 import frozen_dict
 import traceback
-
+import unittest
+from collections import namedtuple
+from cStringIO import StringIO
+from logging import getLogger
 from os.path import dirname
 from urllib import unquote_plus as unquote
+from urlparse import urlparse, parse_qs
 
-import unittest
-
-from logging import getLogger
 import tornado.options
+import tornado.web
+from tornado.httpclient import HTTPResponse
+from tornado.httputil import HTTPHeaders
+from tornado.ioloop import IOLoop
+
+import frontik.app
+import frontik.handler
+import tornado.httpserver
+import frontik.options
+import frontik.handler_active_limit
+
 tornado.options.process_options_logging()
 
-from frontik import handler_active_limit
+
+class HTTPResponseStub(HTTPResponse):
+    def __init__(self, request=None, code=200, headers=None, buffer=None,
+                 effective_url='stub', error=None, request_time=1,
+                 time_info=None):
+
+        headers = {} if headers is None else headers
+        time_info = {} if time_info is None else time_info
+
+        super(HTTPResponseStub, self).__init__(
+            request, code, headers, StringIO(buffer), effective_url, error, request_time, time_info
+        )
 
 
-def EmptyEnvironment():
-    return ExpectingHandler()
+class DummyConnection(object):
+    class DummyStream(object):
+        def set_close_callback(self, callback):
+            pass
 
+    def __init__(self):
+        self.stream = DummyConnection.DummyStream()
 
-def expecting(*args, **kwargs):
-    return ExpectingHandler().expect(*args, **kwargs)
+    def write(self, chunk):
+        pass
 
+    def finish(self):
+        pass
 
-def HTTPResponseStub(request=None, code=200, headers=None, buffer=None,
-                     effective_url='stub', error=None, request_time=1,
-                     time_info=None):
-    """ Helper HTTPResponse object with error-proof defaults """
-    if headers is None:
-        headers = {}
-    if time_info is None:
-        time_info = {}
-    return HTTPResponse(request, code, headers, StringIO(buffer),
-                        effective_url, error, request_time,
-                        time_info)
 
 raw_route = namedtuple('raw_route', 'path query cookies method headers')
 
@@ -61,8 +71,6 @@ def _route(path, query="", cookies="", method='GET', headers=None):
     if headers is None:
         headers = {}
     return raw_route(path, query, cookies, method, frozen_dict.FrozenDict(headers))
-
-#===
 
 
 def route_less_or_equal_than(a, b):
@@ -142,54 +150,26 @@ class ServiceMock(object):
                                 headers=HTTPHeaders({'Content-Type': 'xml'}))
 
 
-class ExpectingHandler(object):
+class EmptyEnvironment(object):
+
+    class LocalHandlerConfig(object):
+        pass
+
     def __init__(self, **kwarg):
         self.log = getLogger('service_mock')
-        # this import is side-effecty and is used to initialize tornado options
-        import frontik.options
-        assert frontik.options  # silence code style checkers
-        # prevent log clubbering
-        tornado.options.options.warn_no_jobs = False
 
-        # handler stuff
-        from frontik.app import App
-        relative_path_to_test_application = dirname(__file__)
-        self.app = App("", relative_path_to_test_application,)
-        self.app._initialize()
+        frontik_app = frontik.app.App('', dirname(__file__))
+        tornado_app = frontik.app.get_app([('', frontik_app)])
 
-        self.request = tornado.httpserver.HTTPRequest('GET', '/', remote_ip="remote_ip")
-        del self.request.connection
-
-        def write(s, callback=None):
-            if callback:
-                self._callback_heap.append((None, callback, None))
-
+        frontik_app.app_globals.config = EmptyEnvironment.LocalHandlerConfig()
+        frontik_app.app_globals.http_client.fetch = self.process_fetch
         IOLoop.instance().add_callback = lambda callback: self._callback_heap.append((None, callback, None))
 
-        self.request.write = write
+        self.request = tornado.httpserver.HTTPRequest('GET', '/', remote_ip='127.0.0.1')
+        self.request.connection = DummyConnection()
 
-        tornado_handler = tornado.web.RequestHandler
-        tornado_application = tornado.web.Application([(".*", tornado_handler)])
-
-        self._handler = self.app(tornado_application, self.request, )
-        self._handler.http_client = TestHttpClient(self)
-        self._handler.get_error_html = lambda *args, **kwargs: None
-
-        self.finish_called = False
-
-        def handler_finish(*arg, **kwarg):
-            if hasattr(self._handler, 'active_limit'):
-                self._handler.active_limit.release()
-            self.finish_called = True
-
-        def flush(include_footers=False, callback=None):
-            if callback:
-                self._callback_heap.append((None, callback, None))
-
-        self._handler.flush = flush
-        self._handler.finish = handler_finish
-        #init registry
         self.registry = {}
+        self._handler = tornado_app(self.request)
 
     def expect(self, **kwargs):
         for name, routes in kwargs.iteritems():
@@ -260,7 +240,6 @@ class ExpectingHandler(object):
         handler = self._handler
         handler.prepare()
         handler._finished = False
-        handler.finished = False
         handler._headers_written = False
         self._callback_heap = []
         self._exception_heap = []
@@ -268,14 +247,8 @@ class ExpectingHandler(object):
         self.raise_exceptions()
         self.process_callbacks()
 
-        if not self.finish_called:
-            self._handler.finish()
-            if hasattr(method, 'im_class'):
-                assert False, ('Handler\'s method did not call finish upon '
-                               'completion, failing. Check for unnessesary callbacks '
-                               'added to finish group, and hanging callbacks not called.')
-        # in case of improper release of handlers
-        handler_active_limit.PageHandlerActiveLimit.working_handlers_count = 0
+        frontik.handler_active_limit.PageHandlerActiveLimit.working_handlers_count = 0
+
         self._result = result
         return self
 
@@ -291,21 +264,12 @@ class ExpectingHandler(object):
     def get_json(self, ):
         return self._handler.json
 
-    def process_fetch(self, req, callback):
+    def process_fetch(self, req, callback, **kwargs):
         tb = traceback.extract_stack()
         while tb and not tb.pop()[2] == 'fetch_request':
             pass
         self._callback_heap.append((req, callback, tb))
 
-
-
-class TestHttpClient(HTTPClient):
-    """_callback_heap aware"""
-    def __init__(self, callback_heap):
-        self._callback_heap = callback_heap
-
-    def fetch(self, req, callback):
-        self._callback_heap.process_fetch(req, callback)
 
 if __name__ == '__main__':
     unittest.main()

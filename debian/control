@@ -8,6 +8,8 @@ Build-Depends:
   python-support,
   python-setuptools,
   python-nose,
+  python-tornado (>= 2.0+hh18),
+  python-tornado-util (>= 0.7.0.2),
 Standards-Version: 3.9.4
 X-Python-Version: >= 2.6
 
@@ -20,6 +22,7 @@ Depends:
   python-lxml,
   python-simplejson,
   python-tornado (>= 2.0+hh18),
+  python-tornado-util (>= 0.7.0.2),
 Suggests:
   pep8,
   python-graypy (>= 1.0+hh3),

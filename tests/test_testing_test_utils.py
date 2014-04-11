@@ -1,4 +1,4 @@
-# _*_ coding: utf-8 _*_
+# coding=utf-8
 
 import unittest
 
@@ -33,8 +33,6 @@ class TestHelpers(unittest.TestCase):
 
 class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixin):
 
-    # ----------------------------------------------------
-    # assertXmlAlmostEquals
     def test_assertXmlAlmostEquals_abs_equals(self):
         tree1_str, _, = self._get_almost_equals_xml()
         tree1 = etree.fromstring(tree1_str)
