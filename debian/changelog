@@ -1,3 +1,10 @@
+frontik (2.19.5) unstable; urgency=low
+
+  * HH-42147 fix some PEP8 issues
+  * HH-42147 improve frontik.testing internals
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 15 Apr 2014 11:09:20 +0400
+
 frontik (2.19.4) unstable; urgency=low
 
   * HH-41609 move logging configuration from tornado to frontik
