@@ -234,22 +234,31 @@ class EmptyEnvironment(object):
                     if callback:
                         callback()
 
-    def call(self, method, *arg, **kwarg):
+    def call_with_exception_handler(self, method, *args, **kwargs):
+        try:
+            self.call(method, *args, **kwargs)
+        except Exception as e:
+            self._handler._handle_request_exception(e)
+
+        return self
+
+    def call(self, method, *args, **kwargs):
         if hasattr(method, 'im_class'):
             self._handler.__class__ = type('Page', (method.im_class,) + self._handler.__class__.__bases__, {})
-        handler = self._handler
-        handler.prepare()
-        handler._finished = False
-        handler._headers_written = False
+
         self._callback_heap = []
         self._exception_heap = []
-        result = method(handler, *arg, **kwarg)
+
+        self._handler.prepare()
+        self._handler._finished = False
+        self._handler._headers_written = False
+
+        self._result = method(self._handler, *args, **kwargs)
         self.raise_exceptions()
         self.process_callbacks()
 
         frontik.handler_active_limit.PageHandlerActiveLimit.working_handlers_count = 0
 
-        self._result = result
         return self
 
     def get_handler(self,):

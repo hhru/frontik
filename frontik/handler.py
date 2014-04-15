@@ -158,7 +158,8 @@ class PageHandler(tornado.web.RequestHandler):
         self.active_limit = frontik.handler_active_limit.PageHandlerActiveLimit(self)
         self.debug = frontik.handler_debug.PageHandlerDebug(self)
 
-        self.json_producer = frontik.producers.json_producer.JsonProducer(self, self.app_globals.json)
+        self.json_producer = frontik.producers.json_producer.JsonProducer(
+            self, self.app_globals.json, getattr(self, 'json_encoder', None))
         self.json = self.json_producer.json
 
         self.xml_producer = frontik.producers.xml_producer.XmlProducer(self, self.app_globals.xml)
@@ -523,14 +524,18 @@ class PageHandler(tornado.web.RequestHandler):
             for (name, value) in headers.iteritems():
                 self.set_header(name, value)
 
+            self.json.clear()
+
             if getattr(exception, 'text', None) is not None:
+                self.doc.clear()
                 self.text = exception.text
             elif getattr(exception, 'json', None) is not None:
                 self.text = None
+                self.doc.clear()
                 self.json.put(exception.json)
             elif getattr(exception, 'xml', None) is not None:
                 self.text = None
-                self.json.clear()
+                # cannot clear self.doc due to backwards compatibility, a bug actually
                 self.doc.put(exception.xml)
                 if getattr(exception, 'xsl', None) is not None:
                     self.set_xsl(exception.xsl)

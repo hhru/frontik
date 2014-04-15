@@ -1,17 +1,17 @@
 # coding=utf-8
 
 import collections
-
-from tornado import escape
+import json
 
 import frontik.future
 
 
 class JsonBuilder(object):
-    __slots__ = ('_data', 'root_node_name')
+    __slots__ = ('_data', '_encoder', 'root_node_name')
 
-    def __init__(self, root_node_name=None):
+    def __init__(self, root_node_name=None, json_encoder=None):
         self._data = []
+        self._encoder = json_encoder
         self.root_node_name = root_node_name
 
     def put(self, *args, **kwargs):
@@ -41,9 +41,9 @@ class JsonBuilder(object):
         def _check_dict(d):
             return dict((k, self._check_value(v)) for k, v in d.iteritems())
 
-        if isinstance(v, collections.Mapping):
+        if isinstance(v, dict):
             return _check_dict(v)
-        elif hasattr(v, '__iter__'):
+        elif isinstance(v, (set, list, tuple)):
             return _check_iterable(v)
         elif isinstance(v, frontik.future.FutureVal):
             return self._check_value(v.get())
@@ -66,4 +66,6 @@ class JsonBuilder(object):
         return result
 
     def to_string(self):
-        return escape.json_encode(self.to_dict())
+        if self._encoder is not None:
+            return json.dumps(self.to_dict(), cls=self._encoder)
+        return json.dumps(self.to_dict())
