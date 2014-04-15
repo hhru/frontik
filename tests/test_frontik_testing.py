@@ -4,7 +4,7 @@ import unittest
 
 from tornado.httpclient import HTTPRequest
 
-from frontik.testing.service_mock import parse_query, route, route_less_or_equal_than, expecting
+from frontik.testing.service_mock import parse_query, route, route_less_or_equal_than, EmptyEnvironment
 
 
 class TestServiceMock(unittest.TestCase):
@@ -34,7 +34,7 @@ class TestServiceMock(unittest.TestCase):
                 '/gogogo': gogogo_handler
             }
         }
-        expecting_handler = expecting(**routes)
+        expecting_handler = EmptyEnvironment().expect(**routes)
         self.assertRaises(NotImplementedError, expecting_handler.route_request, HTTPRequest('http://asdasd.ru/nonono'))
         assert expecting_handler.route_request(HTTPRequest('http://asdasd.ru/gogogo')).body == gogogo_handler
 
@@ -48,7 +48,6 @@ class TestServiceMock(unittest.TestCase):
                 res = lxml.etree.Element("result")
                 res.text = str(handler.result)
                 handler.doc.put(res)
-                handler.finish()
 
             handler.result = 0
             ag = AsyncGroup(finished)
@@ -65,7 +64,7 @@ class TestServiceMock(unittest.TestCase):
 
         class EtalonTest(unittest.TestCase):
             def runTest(self,):
-                doc = expecting(serviceHost={
+                doc = EmptyEnvironment().expect(serviceHost={
                     '/vacancy/1234': (200, '<b><a>1</a></b>'),
                     '/employer/1234': '<b><a>2</a></b>'
                 }).call(function_under_test).get_doc().root_node
