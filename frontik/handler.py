@@ -82,7 +82,7 @@ default_request_types = {
     re.compile(".*json.?"): _parse_response_json
 }
 
-
+# Deprecated synonym
 AsyncGroup = frontik.async.AsyncGroup
 
 
