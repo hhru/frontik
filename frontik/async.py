@@ -4,7 +4,6 @@ import time
 import logging
 
 from tornado.ioloop import IOLoop
-from tornado.web import HTTPError
 
 log = logging.getLogger('frontik.async')
 
@@ -24,74 +23,74 @@ def before(before_fun):
 
 class AsyncGroup(object):
     """
-    Grouping of several async requests and final callback in such way, that final callback is invoked after the last
-     request is finished.
+    Grouping of several async requests and final callback in such way that final callback is invoked
+    after the last request is finished.
 
-    Frontik uses this class to find the right moment to finish page.
+    If any callback throws an exception, all pending callbacks would be aborted and finish_cb
+    would not be automatically called.
     """
 
     def __init__(self, finish_cb, log=log.debug, name=None):
-        self.counter = 0
-        self.finished = False
-        self.finish_cb = finish_cb
-        self.log_fun = log
-        self.name = name
+        self._counter = 0
+        self._finish_cb = finish_cb
+        self._finish_cb_called = False
+        self._aborted = False
+        self._log_fun = log
+        self._name = name
 
-        self.start_time = time.time()
-        self.finish_time = None
+        self._start_time = time.time()
 
-        if self.name is not None:
-            self.log_name = '{0} group'.format(self.name)
+        if self._name is not None:
+            self._log_name = '{0} group'.format(self._name)
         else:
-            self.log_name = 'group'
+            self._log_name = 'group'
 
-    def log(self, msg, *args, **kw):
-        self.log_fun(self.log_name + ": " + msg, *args, **kw)
+    def log(self, msg, *args, **kwargs):
+        self._log_fun(self._log_name + ': ' + msg, *args, **kwargs)
 
     def finish(self):
-        if not self.finished:
-            self.finish_time = time.time()
-            self.log('done in %.2fms', (self.finish_time - self.start_time)*1000.)
-            self.finished = True
+        if not self._finish_cb_called:
+            self.log('done in %.2fms', (time.time() - self._start_time) * 1000.)
+            self._finish_cb_called = True
 
             try:
-                self.finish_cb()
+                self._finish_cb()
             finally:
                 # prevent possible cycle references
-                self.finish_cb = None
+                self._finish_cb = None
 
     def try_finish(self):
-        if self.counter == 0:
+        if self._counter == 0:
             self.finish()
 
     def try_finish_async(self):
         """Executes finish_cb in next IOLoop iteration"""
-        if self.counter == 0:
+        if self._counter == 0:
             IOLoop.instance().add_callback(self.finish)
 
     def _inc(self):
-        assert(not self.finished)
-        self.counter += 1
+        assert not self._finish_cb_called
+        self._counter += 1
 
     def _dec(self):
-        self.counter -= 1
-        self.log('%s requests pending', self.counter)
+        self._counter -= 1
+        self.log('%s requests pending', self._counter)
 
     def add(self, intermediate_cb):
         self._inc()
 
         def new_cb(*args, **kwargs):
-            if not self.finished:
+            if not self._finish_cb_called and not self._aborted:
                 try:
                     self._dec()
                     intermediate_cb(*args, **kwargs)
-                except HTTPError:
-                    raise
                 except Exception:
-                    self.try_finish()
+                    self.log('aborting async group due to unhandled exception in callback')
+                    self.log('done in %.2fms', (time.time() - self._start_time) * 1000.)
+                    self._aborted = True
                     raise
-                else:
-                    self.try_finish()
+
+                self.try_finish()
             else:
                 self.log('Ignoring response because of already finished group')
 
