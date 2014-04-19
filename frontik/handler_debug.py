@@ -193,11 +193,11 @@ def _exception_to_xml(exc_info, log=debug_log):
 
 
 def _pretty_print_xml(node):
-    return etree.tostring(node, pretty_print=True)
+    return etree.tostring(node, pretty_print=True, encoding=unicode)
 
 
 def _pretty_print_json(node):
-    return json.dumps(node, sort_keys=True, indent=4)
+    return json.dumps(node, sort_keys=True, indent=4, ensure_ascii=False)
 
 
 class DebugLogBulkHandler(object):
