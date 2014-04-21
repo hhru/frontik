@@ -109,6 +109,8 @@
         <xsl:apply-templates select="exception/trace"/>
     </xsl:template>
 
+    <!-- Exceptions -->
+
     <xsl:template match="exception">
         <pre class="exception">
             <xsl:value-of select="text/text()"/>
@@ -164,39 +166,50 @@
         </span>
     </xsl:template>
 
+    <!-- / Exceptions -->
+
     <xsl:template match="entry[contains(@msg, 'finish group') and not(contains(/log/@mode, 'full'))]"/>
 
     <xsl:template match="entry[response]">
         <xsl:variable name="status">
             <xsl:if test="response/code &lt; 200 or response/code >= 300">error</xsl:if>
         </xsl:variable>
+
         <xsl:variable name="highlight">
             <xsl:if test="$highlight-text != '' and contains(., $highlight-text)">m-textentry__head_highlight</xsl:if>
         </xsl:variable>
 
-        <xsl:variable name="timebar-offset">
+        <xsl:variable name="timebar-offset-time">
             <xsl:value-of select="1000 * (request/meta/start_time/text() - /log/@started)"/>
         </xsl:variable>
         
-        <xsl:variable name="timebar-percent-offset">
-            <xsl:value-of select="format-number($timebar-offset div $total-time, '##.#%')"/>
+        <xsl:variable name="timebar-offset">
+            <xsl:value-of select="format-number($timebar-offset-time div $total-time, '##.#%')"/>
         </xsl:variable>
 
-        <xsl:variable name="timebar-details-percent-width">
-            <xsl:value-of select="format-number(1 - ($timebar-offset div $total-time), '##.#%')"/>
-        </xsl:variable>
-
-        <xsl:variable name="timebar-len-percent">
+        <xsl:variable name="timebar-details-len">
             <xsl:value-of select="format-number(response/request_time div $total-time, '##.#%')"/>
+        </xsl:variable>
+
+        <xsl:variable name="timebar-details-direction">
+            <xsl:choose>
+                <xsl:when test="($timebar-offset-time div $total-time) > 0.5">
+                    <xsl:text>rtl</xsl:text>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:text>ltr</xsl:text>
+                </xsl:otherwise>
+            </xsl:choose>
         </xsl:variable>
 
         <div class="textentry m-textentry__expandable">
             <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher {$status} {$highlight}">
                 <div class="timebar">
-                    <div class="timebar__line" style="left: {$timebar-percent-offset}">
-                        <strong class="timebar__head timebar__head_{$status}" style="width: {$timebar-len-percent};"></strong>
+                    <div class="timebar__line" style="left: {$timebar-offset}">
+                        <strong class="timebar__head timebar__head_{$status}" style="width: {$timebar-details-len}"></strong>
                     </div>
                 </div>
+
                 <span class="textentry__head__expandtext">
                     <span class="time">
                         <xsl:value-of select="response/request_time"/>
@@ -215,13 +228,15 @@
             <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
             <div class="details">
                 <div class="timebar-details">
-                    <div class="timebar__line" style="left: {$timebar-percent-offset}; width: {$timebar-details-percent-width}">
-                        [<xsl:value-of select="format-number($timebar-offset, '#0.##')"/>ms
+                    <div class="timebar__line" style="left: {$timebar-offset}; direction: {$timebar-details-direction}; width: {$timebar-details-len}">
+                        <xsl:value-of select="format-number($timebar-offset-time, '#0.##')"/>ms
                         <xsl:text> => </xsl:text>
-                        <xsl:value-of select="format-number($timebar-offset + response/request_time, '#0.##')"/>ms] :
-                        <xsl:value-of select="$timebar-len-percent"/>
+                        <xsl:value-of select="format-number($timebar-offset-time + response/request_time, '#0.##')"/>ms :
+                        <xsl:value-of select="$timebar-details-len"/>
                     </div>
                 </div>
+
+                <xsl:apply-templates select="request" mode="copy-as-curl"/>
                 <xsl:apply-templates select="debug"/>
                 <xsl:apply-templates select="request"/>
                 <xsl:apply-templates select="response"/>
@@ -252,16 +267,25 @@
     </xsl:template>
 
     <xsl:template match="request">
-        <div>
-            <a class="servicelink" href="{url}" target="_blank">
-                <xsl:value-of select="url"/>
-            </a>
-        </div>
         <xsl:apply-templates select="params[param]"/>
         <xsl:apply-templates select="headers[header]"/>
         <xsl:apply-templates select="cookies[cookie]"/>
         <xsl:apply-templates select="body[param]" mode="params"/>
         <xsl:apply-templates select="body[not(param)]"/>
+    </xsl:template>
+
+    <xsl:template match="request" mode="copy-as-curl">
+        <div class="params">
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode); select(this.parentNode)" class="delimeter copy-as-curl-link">
+                copy as cURL
+            </label>
+            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
+            <div>
+                <pre class="details copy-as-curl">
+                    <xsl:value-of select='curl'/>
+                </pre>
+            </div>
+        </div>
     </xsl:template>
 
     <xsl:template match="response">
@@ -362,6 +386,8 @@
         </pre>
     </xsl:template>
 
+    <!-- / Response body highlighting -->
+
     <!-- XSLT profiling -->
 
     <xsl:template match="entry[profile]">
@@ -435,5 +461,7 @@
             <xsl:value-of select="format-number(. div 100, '#.##')"/>
         </td>
     </xsl:template>
+
+    <!-- / XSLT profiling -->
 
 </xsl:stylesheet>

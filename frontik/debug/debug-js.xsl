@@ -59,6 +59,21 @@
                     tBody.appendChild(rows[i]);
                 }
             }
+
+            function select(entry) {
+                if (document.body.createTextRange) {
+                    var range = document.body.createTextRange();
+                    range.moveToElementText(entry.querySelector('.details'));
+                    range.select();
+                } else if (window.getSelection) {
+                    var selection = window.getSelection();
+                    var range = document.createRange();
+                    range.selectNode(entry.querySelector('.details'));
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
+            }
+
         ]]></script>
     </xsl:template>
 
