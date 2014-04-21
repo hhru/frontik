@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import Cookie
+import copy
 import inspect
 import logging
 import os
@@ -9,7 +10,6 @@ import time
 import traceback
 import urlparse
 import weakref
-import copy
 from datetime import datetime
 
 import simplejson as json
@@ -101,6 +101,12 @@ def request_to_xml(request):
             body.text = repr(request.body)
 
     try:
+        copy_as_curl = "curl '{url}' {headers} {data}".format(
+            url=request.url,
+            headers=' '.join("-H '{0}={1}'".format(*kv) for kv in request.headers.iteritems()),
+            data="--data '{0}'".format(request.body) if request.body else ''
+        ).strip()
+
         request = E.request(
             body,
             E.connect_timeout(str(request.connect_timeout)),
@@ -113,9 +119,9 @@ def request_to_xml(request):
             _headers_to_xml(request.headers),
             _cookies_to_xml(request.headers),
             E.meta(
-                E.start_time(
-                    str(request.start_time)
-                ))
+                E.start_time(str(request.start_time))
+            ),
+            E.curl(copy_as_curl)
         )
     except Exception:
         debug_log.exception('Cannot parse request body')
@@ -284,17 +290,12 @@ class PageHandlerDebug(object):
                 self.pass_debug = False
                 self.profile_xslt = False
 
-            self.write_debug = tornado.options.options.debug or self.enabled
-
     def __init__(self, handler):
         self.handler = weakref.proxy(handler)
         self.debug_mode = PageHandlerDebug.DebugMode(self.handler)
 
         if self.debug_mode.enabled:
             self.handler.require_debug_access()
-            self.handler.log.debug('debug mode is on')
-
-        if self.debug_mode.write_debug:
             self.debug_log_handler = DebugLogBulkHandler()
             self.handler.log.add_bulk_handler(self.debug_log_handler, auto_flush=False)
             self.handler.log.debug('using debug mode logging')
@@ -326,6 +327,7 @@ class PageHandlerDebug(object):
         ))
 
         debug_log_data.append(E.request(
+            E.method(self.handler.request.method),
             _params_to_xml(self.handler.request.uri, self.handler.log),
             _headers_to_xml(self.handler.request.headers),
             _cookies_to_xml(self.handler.request.headers)

@@ -35,9 +35,9 @@ which run on one Frontik instance.
 | Option name          | Type    | Default value | Description                                                           |
 | -------------------- | ------- | ------------  | --------------------------------------------------------------------- |
 | `autoreload`         | `bool`  | `True`        | Restart Frontik after changes in application sources or config files  |
-| `debug`              | `bool`  | `False`       | Enable debug mode by default (will show debug output on every error)  |
-| `debug_login`        | `str`   | `None`        | Debug mode login for basic authentication                             |
-| `debug_password`     | `str`   | `None`        | Debug mode password for basic authentication                          |
+| `debug`              | `bool`  | `False`       | Enable debug mode                                                     |
+| `debug_login`        | `str`   | `None`        | Debug mode login for basic authentication (when `debug=False`)        |
+| `debug_password`     | `str`   | `None`        | Debug mode password for basic authentication (when `debug=False`)     |
 | `suppressed_loggers` | `list`  | `[]`          | List of logger names to be excluded from debug output                 |
 | `syslog`             | `bool`  | `False`       | Enables sending logs to syslog                                        |
 | `syslog_address`     | `str`   | `'/dev/log'`  | Syslog address                                                        |

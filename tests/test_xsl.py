@@ -23,8 +23,10 @@ class TestXsl(unittest.TestCase):
                 urllib2.urlopen('http://localhost:{0}/test_app/xsl_fail'.format(srv_port)).info()
                 self.fail('get_page should fail with HTTPError 500')
             except urllib2.HTTPError, e:
-                self.assertTrue(any(map(lambda x: 'XSLTApplyError' in x, e.readlines())))
                 self.assertEquals(e.code, 500)
+
+        with frontik_debug.get_page_text('test_app/xsl_fail?debug') as html:
+            self.assertTrue('XSLTApplyError' in html)
 
     def test_xsl_parse_fail(self):
         with frontik_debug.instance() as srv_port:
@@ -32,8 +34,10 @@ class TestXsl(unittest.TestCase):
                 urllib2.urlopen('http://localhost:{0}/test_app/xsl_parse_fail'.format(srv_port)).info()
                 self.fail('get_page should fail with HTTPError 500')
             except urllib2.HTTPError, e:
-                self.assertTrue(any(map(lambda x: 'XSLTParseError' in x, e.readlines())))
                 self.assertEquals(e.code, 500)
+
+        with frontik_debug.get_page_text('test_app/xsl_parse_fail?debug') as html:
+            self.assertTrue('XSLTParseError' in html)
 
     def test_content_type_wo_xsl(self):
         with frontik_debug.get_page('test_app/simple', notpl=True) as response:

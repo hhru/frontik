@@ -543,10 +543,6 @@ class PageHandler(tornado.web.RequestHandler):
             self._force_finish()
             return
 
-        elif self._prepared and self.debug.debug_mode.write_debug:
-            # debug can be shown on any error if it is enabled in config
-            self.debug.debug_mode.error_debug = True
-
         return super(PageHandler, self).send_error(status_code, headers=headers, **kwargs)
 
     def finish(self, chunk=None):
