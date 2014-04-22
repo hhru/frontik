@@ -1,3 +1,9 @@
+frontik (2.19.7) unstable; urgency=low
+
+  * HH-42314 improvements for self.json
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 22 Apr 2014 16:23:18 +0400
+
 frontik (2.19.6) unstable; urgency=low
 
   * HH-42490 use unicode chars when debugging xml & json responses
