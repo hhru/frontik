@@ -1,3 +1,10 @@
+frontik (2.19.8) unstable; urgency=low
+
+  * HH-36526 add copy as CURL link to debug and remove autodebug with
+    debug=True
+
+ -- Automated Build <an.sumin@hh.ru>  Fri, 25 Apr 2014 19:36:30 +0400
+
 frontik (2.19.7) unstable; urgency=low
 
   * HH-42314 improvements for self.json
