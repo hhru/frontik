@@ -46,6 +46,7 @@
                 top: 0;
                 height: 100%;
                 width: 100%;
+                white-space: nowrap;
             }
 
             .textentry {
@@ -92,7 +93,7 @@
             }
             .details {
                 display: none;
-                padding-bottom: 2px;
+                padding-bottom: 8px;
                 position: relative;
             }
                 .m-details_visible,
@@ -100,10 +101,6 @@
                     display:block;
                 }
 
-            .servicelink {
-                color: #666;
-                font-size: .8em;
-            }
             .time {
                 display: inline-block;
                 width: 4em;
@@ -131,6 +128,7 @@
             }
             .delimeter {
                 margin-top: 10px;
+                margin-bottom: 2px;
                 font-size: .8em;
                 color: #999;
             }
@@ -227,6 +225,20 @@
                         width: 10%;
                         text-align: right;
                     }
+
+            .copy-as-curl-link {
+                display: block;
+                text-decoration: underline;
+                cursor: pointer;
+            }
+
+            .copy-as-curl {
+                max-width: 100%;
+                margin: 10px 0;
+                padding: 4px;
+                background: #fff;
+                font-family: monospace;
+            }
         </style>
     </xsl:template>
 
