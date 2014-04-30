@@ -1,3 +1,9 @@
+frontik (2.19.9) unstable; urgency=low
+
+  * HH-42767 get_to_dispatch optimization
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 30 Apr 2014 15:50:39 +0400
+
 frontik (2.19.8) unstable; urgency=low
 
   * HH-36526 add copy as CURL link to debug and remove autodebug with
