@@ -110,9 +110,7 @@ class CountTypesHandler(tornado.web.RequestHandler):
 
 
 def get_to_dispatch(request, field='path'):
-    if hasattr(request, 're_' + field):
-        return getattr(request, 're_' + field)
-    return getattr(request, field)
+    return getattr(request, 're_' + field, getattr(request, field))
 
 
 def set_to_dispatch(request, value, field='path'):
@@ -257,10 +255,11 @@ class RegexpDispatcher(object):
         self.apps = map(lambda app_conf: parse_conf(*app_conf), app_list)
 
     def __call__(self, application, request, **kwargs):
-        self.log.info('requested url: %s (%s)', get_to_dispatch(request, 'uri'), request.uri)
+        relative_url = get_to_dispatch(request, 'uri')
+        self.log.info('requested url: %s (%s)', relative_url, request.uri)
         for pattern, app, parse in self.apps:
 
-            match = pattern.match(get_to_dispatch(request, 'uri'))
+            match = pattern.match(relative_url)
             # app found
             if match:
                 self.log.debug('using %s' % app)
