@@ -549,11 +549,12 @@ class PageHandler(tornado.web.RequestHandler):
         if hasattr(self, 'finish_timeout_handle'):
             IOLoop.instance().remove_timeout(self.finish_timeout_handle)
 
-        if not self._finished:
+        def _finish_with_async_hook():
+            self.log.stage_tag('postprocess')
+
             if hasattr(self, 'active_limit'):
                 self.active_limit.release()
 
-        def _finish_with_async_hook():
             super(PageHandler, self).finish(chunk)
             IOLoop.instance().add_timeout(
                 time.time() + 0.1,
@@ -568,8 +569,8 @@ class PageHandler(tornado.web.RequestHandler):
             _finish_with_async_hook()
 
     def flush(self, include_footers=False, **kwargs):
-        self.log.stage_tag('postprocess')
-        self.log.process_stages(self._status_code)
+        self.log.stage_tag('finish')
+        self.log.log_stages()
 
         if self._prepared and (self.debug.debug_mode.enabled or self.debug.debug_mode.error_debug):
             try:
@@ -599,6 +600,11 @@ class PageHandler(tornado.web.RequestHandler):
                 self.log.exception('Cannot write debug info')
 
         tornado.web.RequestHandler.flush(self, include_footers=False, **kwargs)
+
+    def _log(self):
+        super(PageHandler, self)._log()
+        self.log.stage_tag('flush')
+        self.log.finish_stages(self._status_code)
 
     # Postprocessors and producers
 
