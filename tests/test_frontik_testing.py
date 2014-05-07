@@ -28,22 +28,23 @@ class TestServiceMock(unittest.TestCase):
                          "insufficient query parameters should not match")
 
     def test_routing_by_url(self, ):
-        gogogo_handler = '<xml></xml>'
+        test_handler = '<xml></xml>'
         routes = {
-            'asdasd.ru': {
-                '/gogogo': gogogo_handler
+            'test.ru': {
+                '/handler': test_handler
             }
         }
         expecting_handler = EmptyEnvironment().expect(**routes)
-        self.assertRaises(NotImplementedError, expecting_handler.route_request, HTTPRequest('http://asdasd.ru/nonono'))
-        assert expecting_handler.route_request(HTTPRequest('http://asdasd.ru/gogogo')).body == gogogo_handler
+        self.assertRaises(NotImplementedError, expecting_handler.route_request, HTTPRequest('http://test.ru/404'))
+        self.assertEquals(expecting_handler.route_request(HTTPRequest('http://test.ru/handler')).body, test_handler)
 
     def test_get_doc_shows_what_expected(self, ):
-        '''intergation test that shows main test path'''
+        """ intergation test that shows test usage example """
         import lxml.etree
-        from frontik.handler import HTTPError, AsyncGroup
+        from frontik.handler import HTTPError
+        from frontik.async import AsyncGroup
 
-        def function_under_test(handler, ):
+        def function_under_test(handler):
             def finished():
                 res = lxml.etree.Element("result")
                 res.text = str(handler.result)
@@ -63,19 +64,18 @@ class TestServiceMock(unittest.TestCase):
             handler.get_url(handler.config.serviceHost + 'employer/1234', callback=ag.add(accumulate))
 
         class EtalonTest(unittest.TestCase):
-            def runTest(self,):
-                doc = EmptyEnvironment().expect(serviceHost={
-                    '/vacancy/1234': (200, '<b><a>1</a></b>'),
-                    '/employer/1234': '<b><a>2</a></b>'
-                }).call(function_under_test).get_doc().root_node
+            def runTest(self):
+                doc = EmptyEnvironment().expect(
+                    serviceHost={
+                        '/vacancy/1234': (200, '<b><a>1</a></b>'),
+                        '/employer/1234': '<b><a>2</a></b>'
+                    }
+                ).call(function_under_test).get_doc().root_node
 
                 self.assertEqual(doc.findtext('result'), '3')
 
-        #test that test works (does not throw exception)
-        ts = unittest.TestSuite()
-        ts.addTest(EtalonTest())
-        tr = unittest.TextTestRunner()
-        tr.run(ts)
+        # test that test itself works (does not throw exception)
+        unittest.TextTestRunner().run(EtalonTest())
 
 if __name__ == '__main__':
     unittest.main()
