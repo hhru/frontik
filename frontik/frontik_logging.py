@@ -1,18 +1,17 @@
 # coding=utf-8
 
-from collections import namedtuple
 import copy
-from functools import partial
 import logging
 import traceback
 import weakref
 import time
 import socket
+from collections import namedtuple
+from functools import partial
 from logging.handlers import SysLogHandler, WatchedFileHandler
 
 import tornado.options
 from tornado.escape import to_unicode
-from lxml.builder import E
 
 try:
     import frontik.options
@@ -31,8 +30,8 @@ try:
                 return
 
             record_for_gelf = copy.deepcopy(first_record)
-            record_for_gelf.message = ''
-            record_for_gelf.exc_info = ''
+            record_for_gelf.message = u''
+            record_for_gelf.exc_info = None
             record_for_gelf.short = u"{0} {1} {2}".format(method, to_unicode(uri), status_code)
             record_for_gelf.levelno = logging.INFO
             record_for_gelf.name = record_for_gelf.handler
@@ -44,17 +43,20 @@ try:
                     record_for_gelf.levelno = record.levelno
                     record_for_gelf.lineno = record.lineno
                     record_for_gelf.short = message
+
+                # only the last exception will be sent in exc_info
                 if record.exc_info is not None:
-                    exception_text = '\n' + ''.join(traceback.format_exception(*record.exc_info))
-                    record_for_gelf.exc_info += exception_text
+                    exception_text = u'\n' + u''.join(map(to_unicode, traceback.format_exception(*record.exc_info)))
+                    record_for_gelf.exc_info = record.exc_info
                     record_for_gelf.short += exception_text
 
-                record_for_gelf.message += u' {0} {1} {2} \n'.format(
-                    self.format_time(record), record.levelname, message)
+                record_for_gelf.message += u' {time} {level} {msg} \n'.format(
+                    time=self.format_time(record), level=record.levelname, msg=message
+                )
 
             if stages is not None:
-                for stage_name, stage_delta in stages:
-                    setattr(record_for_gelf, stage_name + '_stage', str(int(stage_delta)))
+                for s in stages:
+                    setattr(record_for_gelf, s.name + '_stage', str(int(s.delta)))
 
             GELFHandler.handle(self, record_for_gelf)
             GELFHandler.close(self)
@@ -64,6 +66,7 @@ except ImportError:
     tornado.options.options.graylog = False
 
 log = logging.getLogger('frontik.handler')
+timings_log = logging.getLogger('frontik.timings')
 
 
 class ContextFilter(logging.Filter):
@@ -72,23 +75,19 @@ class ContextFilter(logging.Filter):
         return True
 
 log.addFilter(ContextFilter())
+timings_log.addFilter(ContextFilter())
 
 
-class MonikInfoLoggingFilter(logging.Filter):
-    def filter(self, record):
-        return getattr(record, '_monik', False)
-
-
-class MonikInfoLoggingHandler(WatchedFileHandler):
+class TimingsLoggingHandler(WatchedFileHandler):
     def __init__(self):
         WatchedFileHandler.__init__(self, self.__get_logfile_name())
         self.setLevel(logging.INFO)
-        self.addFilter(MonikInfoLoggingFilter())
         self.setFormatter(logging.Formatter(tornado.options.options.logformat))
 
-    def __get_logfile_name(self):
+    @staticmethod
+    def __get_logfile_name():
         logfile_parts = tornado.options.options.logfile.rsplit('.', 1)
-        logfile_parts.insert(1, 'monik')
+        logfile_parts.insert(1, tornado.options.options.timings_log_file_postfix)
         return '.'.join(logfile_parts)
 
 
@@ -148,17 +147,18 @@ class PerRequestLogBufferHandler(logging.Logger):
 
 class PageLogger(logging.LoggerAdapter):
 
-    Stage = namedtuple('Stage', ['name', 'delta'])
+    Stage = namedtuple('Stage', ('name', 'delta', 'start_delta'))
 
     def __init__(self, handler, logger_name, page):
-        self.handler_ref = weakref.ref(handler)
-        self.handler_started = self.handler_ref().handler_started
+        self._handler_ref = weakref.ref(handler)
+        self._handler_started = self._handler_ref().handler_started
         logging.LoggerAdapter.__init__(self, PerRequestLogBufferHandler('frontik.handler'),
-                                       dict(request_id=logger_name, page=page, handler=self.handler_ref().__module__))
+                                       dict(request_id=logger_name, page=page, handler=self._handler_ref().__module__))
 
-        self._time = self.handler_started
+        self._time = self._handler_started
+        self._page = page
         self.stages = []
-        self.page = page
+
         # backcompatibility with logger
         self.warn = self.warning
         self.addHandler = self.logger.addHandler
@@ -168,26 +168,40 @@ class PageLogger(logging.LoggerAdapter):
                                                          tornado.options.options.graylog_port, LAN_CHUNK, False))
 
     def stage_tag(self, stage_name):
-        self._stage_tag(PageLogger.Stage(stage_name, (time.time() - self._time) * 1000))
-        self._time = time.time()
-        self.debug('Stage: {stage}'.format(stage=stage_name))
+        end_time = time.time()
+        start_time = self._time
+        self._time = end_time
 
-    def _stage_tag(self, stage):
+        delta = (end_time - start_time) * 1000
+        start_delta = (start_time - self._handler_started) * 1000
+        stage = PageLogger.Stage(stage_name, delta, start_delta)
+
         self.stages.append(stage)
+        self.debug('stage "%s" completed in %.2fms', stage.name, stage.delta, extra={'_stage': stage._asdict()})
 
-    def process_stages(self, status_code):
-        self._stage_tag(PageLogger.Stage('total', (time.time() - self.handler_started) * 1000))
+    def log_stages(self):
+        """Writes available stages and total value to page logger"""
 
-        format_f = lambda x: ' '.join([x.format(name=s.name, delta=s.delta) for s in self.stages])
-        stages_format = format_f('{name}:{delta:.2f}ms')
-        stages_monik_format = format_f('{name}={delta:.2f}')
+        stages_str = ', '.join('{0}={1:.2f}'.format(s.name, s.delta) for s in self.stages)
+        current_total = sum(s.delta for s in self.stages)
 
-        self.debug('Stages for {0} : {1}'.format(self.page, stages_format))
-        self.info('Monik-stages {0!r} : {1} code={2}'.format(self.handler_ref(), stages_monik_format, status_code),
-                  extra={
-                      '_monik': True,
-                      '_stages': E.stages(*[E.stage(str(s.delta), {'name': str(s.name)}) for s in self.stages])
-                  })
+        self.info('Stages: %s, total=%.2f', stages_str, current_total, extra={
+            '_stages': [(s.name, s.delta) for s in self.stages] + [('total', current_total)]
+        })
+
+    def finish_stages(self, status_code):
+        """Writes available stages and total value to timings logger"""
+
+        stages_str = ' '.join('{s.name}={s.delta:.2f}'.format(s=s) for s in self.stages)
+        total = sum(s.delta for s in self.stages)
+
+        timings_log.info(
+            tornado.options.options.timings_log_message_format,
+            {
+                'page': repr(self._handler_ref()),
+                'stages': '{0} total={1:.2f} code={2}'.format(stages_str, total, status_code)
+            }
+        )
 
     def process(self, msg, kwargs):
         if "extra" in kwargs:
@@ -229,8 +243,11 @@ def bootstrap_logging():
         except socket.error:
             logging.getLogger('frontik.logging').exception('Cannot initialize syslog')
 
-    if tornado.options.options.logfile is not None:
-        root_logger.addHandler(MonikInfoLoggingHandler())
+    if tornado.options.options.logfile is not None and tornado.options.options.timings_log_enabled:
+        timings_log.addHandler(TimingsLoggingHandler())
+        timings_log.propagate = False
+    else:
+        timings_log.disabled = True
 
     for log_channel_name in tornado.options.options.suppressed_loggers:
         logging.getLogger(log_channel_name).setLevel(logging.WARN)

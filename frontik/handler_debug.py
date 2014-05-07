@@ -194,7 +194,7 @@ def _exception_to_xml(exc_info, log=debug_log):
     except Exception:
         log.exception('Could not add traceback lines')
 
-    exc_node.append(E.text(''.join(traceback.format_exception(*exc_info))))
+    exc_node.append(E.text(''.join(map(to_unicode, traceback.format_exception(*exc_info)))))
     return exc_node
 
 
@@ -265,8 +265,13 @@ class DebugLogBulkHandler(object):
             entry.append(E.text(record._text))
 
         self.log_data.append(entry)
+
         if getattr(record, "_stages", None) is not None:
-            self.log_data.append(record._stages)
+            self.log_data.append(
+                E.stages(
+                    *[E.stage(str(delta), {'name': str(name)}) for name, delta in record._stages]
+                )
+            )
 
 
 class PageHandlerDebug(object):
