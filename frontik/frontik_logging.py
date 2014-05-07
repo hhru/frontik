@@ -127,7 +127,6 @@ class PerRequestLogBufferHandler(logging.Logger):
         self.bulk_handlers = []
 
     def handle(self, record):
-        logging.Logger.handle(self, record)
         log.handle(record)
         if len(self.bulk_handlers) > 0:
             self.records_list.append(record)

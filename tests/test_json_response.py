@@ -3,9 +3,7 @@
 import json
 import unittest
 
-from integration_util import FrontikTestInstance
-
-frontik_debug = FrontikTestInstance('./tests/projects/frontik.cfg')
+from tests import frontik_debug
 
 
 class TestJsonResponse(unittest.TestCase):

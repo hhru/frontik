@@ -218,7 +218,7 @@ class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixi
                 </aAtrib>
             </elem>
             '''.strip()
-        #props and tags order changed
+        # properties and tags order changed
         tree2_str = '''
             <elem end="18" start="17" >
                 <aAtrib>
