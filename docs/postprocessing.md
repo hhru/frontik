@@ -32,7 +32,10 @@ __Template postprocessors__ could be used for modifying the response text after 
 The most obvious use-case is replacing translation placeholders with real localized values.
 Template postprocessor callable receives additional parameter containing the result of templating.
 
-If any postprocessor fails, the page would be finished with an error.
+Template postprocessors can be turned off for debug purposes with HTTP argument `nopost`
+(see [Debug mode](/docs/debug.md)).
+
+If any postprocessor fails, the page will be finished with an error.
 
 ```python
 def tpl_postprocessor(handler, template, callback):
@@ -46,4 +49,5 @@ Postprocessing can also be interrupted by throwing an exception or just calling 
 `self.finish()` methods, which explicitly generate the response.
 
 Postprocessors are executed one after another in the order of their addition.
-Default template postprocessor is set from the `postprocessor` variable of the application config file (see [Configuring application](/docs/config-app.md)).
+Default template postprocessor is set from the `postprocessor` variable of the application config file
+(see [Configuring application](/docs/config-app.md)).

@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import frontik.doc
 import frontik.handler
 import frontik.async
@@ -20,12 +22,12 @@ class Page(frontik.handler.PageHandler):
             grp = frontik.async.AsyncGroup(final_cb, name='acc')
 
             self.get_url(
-                'http://localhost:{0}/test_app/fib/'.format(self.get_argument('port')),
+                'http://localhost:{}/test_app/fib/'.format(self.get_argument('port')),
                 dict(port=self.get_argument('port'), n=str(n-1)),
                 callback=grp.add(intermediate_cb))
 
             self.get_url(
-                'http://localhost:{0}/test_app/fib/'.format(self.get_argument('port')),
+                'http://localhost:{}/test_app/fib/'.format(self.get_argument('port')),
                 dict(port=self.get_argument('port'), n=str(n-2)),
                 callback=grp.add(intermediate_cb))
         else:

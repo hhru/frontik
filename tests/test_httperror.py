@@ -1,36 +1,27 @@
 # coding=utf-8
 
 import unittest
-import urllib
-import urllib2
 
-from tests import frontik_debug
+from tests.instances import frontik_debug
 
 
 class TestExceptions(unittest.TestCase):
     def test_finish_with_httperror_200(self):
-        with frontik_debug.instance() as srv_port:
-            data = urllib2.urlopen('http://localhost:{0}/test_app/finish_page/'.format(srv_port)).read()
-            self.assertEqual(data, 'success')
+        content = frontik_debug.get_page_text('test_app/finish_page')
+        self.assertEqual(content, 'success')
 
     def test_finish_with_httperror_401(self):
-        with frontik_debug.instance() as srv_port:
-            try:
-                urllib2.urlopen('http://localhost:{0}/test_app/finish_401/'.format(srv_port))
-                self.fail('Page should fail with 401 error code')
-            except Exception as e:
-                self.assertEqual(e.msg, 'Unauthorized')
-                self.assertEqual(e.code, 401)
-                self.assertEqual(e.headers['WWW-Authenticate'], 'Basic realm="Secure Area"')
+        response = frontik_debug.get_page('test_app/finish_401')
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.raw.reason, 'Unauthorized')
+        self.assertEqual(response.headers['WWW-Authenticate'], 'Basic realm="Secure Area"')
 
     def test_httperror_text(self):
-        with frontik_debug.instance() as srv_port:
-            response = urllib.urlopen('http://localhost:{0}/test_app/test_exception_text/?port={0}'.format(srv_port))
-            self.assertEqual(response.code, 403)
-            self.assertEqual(response.read(), 'This is just a plain text')
+        response = frontik_debug.get_page('test_app/test_exception_text?port={port}')
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.content, 'This is just a plain text')
 
     def test_httperror_json(self):
-        with frontik_debug.instance() as srv_port:
-            response = urllib.urlopen('http://localhost:{0}/test_app/test_exception_json'.format(srv_port))
-            self.assertEqual(response.code, 400)
-            self.assertEqual(response.read(), '{"reason": "bad argument"}')
+        response = frontik_debug.get_page('test_app/test_exception_json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.content, '{"reason": "bad argument"}')

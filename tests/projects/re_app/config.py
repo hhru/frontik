@@ -18,8 +18,8 @@ frontik_import("pages.simple")
 frontik_import("pages.id_param")
 
 urls=[
-        ("/+id/+(?P<id>[^/]+)", pages.id_param.Page),
-        ("/+ids/+(?P<id>[^/]+)", pages.id_param.Page, lambda x: x.split(',')),
-        ("/+not_simple", pages.simple.Page),
+        ("/id/(?P<id>[^/]+)", pages.id_param.Page),
+        ("/ids/(?P<id>[^/]+)", pages.id_param.Page, lambda x: x.split(',')),
+        ("/not_simple", pages.simple.Page),
         ("", Map2ModuleName(pages)),
 ]
