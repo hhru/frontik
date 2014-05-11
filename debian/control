@@ -11,6 +11,7 @@ Build-Depends:
   python-tornado (>= 2.0+hh18),
   python-tornado-util (>= 0.7.0.2),
   python-jinja2,
+  python-requests,
 Standards-Version: 3.9.4
 X-Python-Version: >= 2.6
 

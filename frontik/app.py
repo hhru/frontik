@@ -7,6 +7,7 @@ import re
 import sys
 import time
 import urlparse
+from itertools import ifilter
 
 import lxml.etree as etree
 import tornado.autoreload
@@ -166,7 +167,7 @@ class FileMappingDispatcher(object):
     def __call__(self, application, request, **kwargs):
         self.log.info('requested url: %s (%s)', get_to_dispatch(request, 'uri'), request.uri)
 
-        page_module_name = 'pages.' + '.'.join(get_to_dispatch(request, 'path').strip('/').split('/'))
+        page_module_name = 'pages.' + '.'.join(ifilter(None, get_to_dispatch(request, 'path').strip('/').split('/')))
         self.log.debug('page module: %s', page_module_name)
 
         try:
