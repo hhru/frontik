@@ -4,11 +4,11 @@
 See source code for get_doc_shows_what_expected for example that doubles as test
 """
 
-import traceback
 from collections import namedtuple
 from cStringIO import StringIO
+from functools import partial
 from logging import getLogger
-from os.path import dirname
+import os.path
 from urllib import unquote_plus as unquote
 from urlparse import urlparse, parse_qs
 
@@ -141,31 +141,14 @@ class EmptyEnvironment(object):
     class LocalHandlerConfig(object):
         pass
 
-    def __init__(self, **kwarg):
+    def __init__(self):
         self.log = getLogger('service_mock')
-
         self._config = EmptyEnvironment.LocalHandlerConfig()
-        frontik_app = frontik.app.App('', dirname(__file__))
-        tornado_app = frontik.app.get_app([('', frontik_app)])
-
-        def fetch(req, callback, **kwargs):
-            tb = traceback.extract_stack()
-            while tb and not tb.pop()[2] == 'fetch_request':
-                pass
-            self._callback_heap.append((req, callback, tb))
-
-        frontik_app.app_globals.config = self._config
-        frontik_app.app_globals.http_client.fetch = fetch
-        IOLoop.instance().add_callback = lambda callback: self._callback_heap.append((None, callback, None))
 
         self._request = tornado.httpserver.HTTPRequest('GET', '/', remote_ip='127.0.0.1')
         self._request.connection = DummyConnection()
 
-        # backwards compatibility, remove after usages are gone
-        self.request = self._request
-
         self._registry = {}
-        self._handler = tornado_app(self._request)
         self._response_text = None
 
     def expect(self, **kwargs):
@@ -207,93 +190,95 @@ class EmptyEnvironment(object):
         self._request.body = body
         return self
 
-    def _raise_exceptions(self):
-        if self._exception_heap:
-            raise self._exception_heap[0][0], self._exception_heap[0][1], self._exception_heap[0][2]
-
-    def _process_callbacks(self):
-        while self._callback_heap:
-            callbacks_snapshot = self._callback_heap
-            self._callback_heap = []
-            while callbacks_snapshot:
-                request, callback, tb = callbacks_snapshot.pop(0)
-                if request:
-                    self.log.debug('trying to route ' + request.url)
-                    try:
-                        result = self.route_request(request)
-                    except NotImplementedError as e:
-                        self.log.warn("Request to missing service")
-                        if tb:
-                            self.log.info("Caller stack trace might help:\n" + ''.join(traceback.format_list(tb)))
-                        raise e
-                    callback(result)
-                    self._raise_exceptions()
-                elif callback:
-                    callback()
-
+    # deprecated, make default when raise_exceptions is removed
     def call_with_exception_handler(self, method, *args, **kwargs):
-        try:
-            self.call(method, *args, **kwargs)
-        except Exception as e:
-            self._handler._handle_request_exception(e)
-
-        return self
+        return self.call_function(method, raise_exceptions=False, *args, **kwargs)
 
     def call_get(self, page_handler):
-        return self.call(page_handler.get_page)
+        return self.call_function(page_handler.get_page)
 
     def call_post(self, page_handler):
-        return self.call(page_handler.post_page)
+        return self.call_function(page_handler.post_page)
 
     def call_put(self, page_handler):
-        return self.call(page_handler.put_page)
+        return self.call_function(page_handler.put_page)
 
     def call_delete(self, page_handler):
-        return self.call(page_handler.delete_page)
+        return self.call_function(page_handler.delete_page)
 
-    # deprecated, use call_function
-    def call(self, method, *args, **kwargs):
+    def call_function(self, method, raise_exceptions=True, *args, **kwargs):
         if hasattr(method, 'im_class'):
-            self._handler.__class__ = type('Page', (method.im_class,) + self._handler.__class__.__bases__, {})
+            handler_class = type('TestPage', (method.im_class,), {})
+        else:
+            handler_class = type('TestPage', (frontik.handler.PageHandler,), {})
 
-        self._callback_heap = []
-        self._exception_heap = []
+        # Create application with the only route — handler_class
+        self._config.urls = [('', handler_class)]
+        frontik_app = frontik.app.App('', os.path.dirname(__file__), self._config)
+        tornado_app = frontik.app.get_app([('', frontik_app)])
+        frontik_app.app_globals.config = self._config
 
-        self._handler.prepare()
-        self._handler._finished = False
-        self._handler._headers_written = False
+        # Mock methods
 
-        old_flush = self._handler.flush
+        def fetch(request, callback, **kwargs):
+            IOLoop.instance().add_callback(partial(self._fetch_mock, request, callback, **kwargs))
 
-        def flush(**kwargs):
-            self._response_text = b''.join(self._handler._write_buffer)
-            old_flush(**kwargs)
+        frontik_app.app_globals.http_client.fetch = fetch
 
-        self._handler.flush = flush
+        def wrapped_method(handler):
+            self._result = method(handler, *args, **kwargs)
 
-        # self._result is deprecated
-        self._result = method(self._handler, *args, **kwargs)
-        self._raise_exceptions()
-        self._process_callbacks()
+        handler_class.get_page = wrapped_method
 
-        frontik.handler_active_limit.PageHandlerActiveLimit.working_handlers_count = 0
+        # raise_exceptions kwarg is deprecated
+        if raise_exceptions:
+            exceptions = []
+            old_handle_request_exception = handler_class._handle_request_exception
 
-        return self
+            def handle_request_exception(handler, e):
+                old_handle_request_exception(handler, e)
+                exceptions.append(e)
 
-    call_function = call
+            handler_class._handle_request_exception = handle_request_exception
 
-    # move these methods to TestResult object
+        old_flush = handler_class.flush
+
+        def flush(handler, *args, **kwargs):
+            self._response_text = b''.join(handler._write_buffer)
+            old_flush(handler, *args, **kwargs)
+            IOLoop.instance().add_callback(IOLoop.instance().stop)
+
+        handler_class.flush = flush
+
+        self._handler = tornado_app(self._request)
+        IOLoop.instance().start()
+
+        if raise_exceptions and exceptions:
+            raise exceptions[0]
+
+        return TestResult(self._config, self._request, self._handler, self._response_text)
+
+    def _fetch_mock(self, request, callback, **kwargs):
+        self.log.debug('trying to route ' + request.url)
+
+        try:
+            result = self.route_request(request)
+        except NotImplementedError as e:
+            self.log.error('Request to missing service')
+            raise e
+
+        callback(result)
+
+
+class TestResult(object):
+    def __init__(self, config, request, handler, response_text):
+        self._config = config
+        self._request = request
+        self._handler = handler
+        self._response_text = response_text
 
     def get_config(self):
         return self._config
-
-    # deprecated
-    def get_handler(self):
-        return self._handler
-
-    # deprecated
-    def get_result(self):
-        return self._result
 
     def get_text(self):
         return self._handler.text
