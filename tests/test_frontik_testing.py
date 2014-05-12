@@ -5,6 +5,7 @@ import unittest
 from tornado.httpclient import HTTPRequest
 
 from frontik.testing.service_mock import parse_query, route, route_less_or_equal_than, EmptyEnvironment
+from frontik.testing.pages import Page
 
 
 class TestServiceMock(unittest.TestCase):
@@ -82,6 +83,9 @@ class TestServiceMock(unittest.TestCase):
                     result.get_response_text(),
                     '<?xml version=\'1.0\' encoding=\'utf-8\'?>\n<doc frontik="true"><result>3</result></doc>'
                 )
+
+                doc = EmptyEnvironment().call_get(Page).get_doc().root_node
+                self.assertEquals(doc.findtext('hello'), 'Hello testing!')
 
         # test that test itself works (does not throw exception)
         unittest.TextTestRunner().run(EtalonTest())
