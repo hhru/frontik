@@ -79,8 +79,9 @@ _parse_response_json = partial(_parse_response,
                                response_type='JSON')
 
 default_request_types = {
-    re.compile(".*xml.?"): _parse_response_xml,
-    re.compile(".*json.?"): _parse_response_json
+    re.compile('.*xml.?'): _parse_response_xml,
+    re.compile('.*json.?'): _parse_response_json,
+    re.compile('.*text/plain.?'): (lambda response, logger: (True, response.body)),
 }
 
 # Deprecated synonym
