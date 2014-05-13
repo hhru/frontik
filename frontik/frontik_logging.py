@@ -121,7 +121,7 @@ class PerRequestLogBufferHandler(logging.Logger):
     Handler for storing all LogRecords for current request in a buffer until finish
     """
     def __init__(self, name, level=logging.NOTSET):
-        logging.Logger.__init__(self, name, level)
+        super(PerRequestLogBufferHandler, self).__init__(name, level)
         self.records_list = []
         self.bulk_handlers = []
 
@@ -151,8 +151,10 @@ class PageLogger(logging.LoggerAdapter):
     def __init__(self, handler, logger_name, page):
         self._handler_ref = weakref.ref(handler)
         self._handler_started = self._handler_ref().handler_started
-        logging.LoggerAdapter.__init__(self, PerRequestLogBufferHandler('frontik.handler'),
-                                       dict(request_id=logger_name, page=page, handler=self._handler_ref().__module__))
+        super(PageLogger, self).__init__(
+            PerRequestLogBufferHandler('frontik.handler'),
+            dict(request_id=logger_name, page=page, handler=self._handler_ref().__module__)
+        )
 
         self._time = self._handler_started
         self._page = page
