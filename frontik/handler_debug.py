@@ -103,7 +103,7 @@ def request_to_xml(request):
     try:
         copy_as_curl = "curl '{url}' {headers} {data}".format(
             url=request.url,
-            headers=' '.join("-H '{0}={1}'".format(*kv) for kv in request.headers.iteritems()),
+            headers=' '.join("-H '{0}: {1}'".format(*kv) for kv in request.headers.iteritems()),
             data="--data '{0}'".format(request.body) if request.body else ''
         ).strip()
 
