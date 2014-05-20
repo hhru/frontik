@@ -16,7 +16,7 @@ import simplejson as json
 import lxml.etree as etree
 from lxml.builder import E
 from tornado.escape import to_unicode
-import tornado.options
+from tornado.httputil import HTTPHeaders
 
 import frontik.util
 import frontik.xml_util
@@ -44,7 +44,7 @@ def response_to_xml(response):
             mode = 'json'
             body = _pretty_print_json(json.loads(response.body))
         elif 'protobuf' in content_type:
-            body = response.body.encode('hex')
+            body = repr(response.body)
         elif response.body is None:
             body = ''
         elif 'xml' in content_type:
@@ -90,7 +90,7 @@ def request_to_xml(request):
             if 'json' in content_type:
                 body.text = json.dumps(json.loads(request.body), sort_keys=True, indent=4)
             elif 'protobuf' in content_type:
-                body.text = request.body.encode('hex')
+                body.text = repr(request.body)
             else:
                 body_query = urlparse.parse_qs(str(request.body), True)
                 for name, values in body_query.iteritems():
@@ -101,12 +101,6 @@ def request_to_xml(request):
             body.text = repr(request.body)
 
     try:
-        copy_as_curl = "curl '{url}' {headers} {data}".format(
-            url=request.url,
-            headers=' '.join("-H '{0}: {1}'".format(*kv) for kv in request.headers.iteritems()),
-            data="--data '{0}'".format(request.body) if request.body else ''
-        ).strip()
-
         request = E.request(
             body,
             E.connect_timeout(str(request.connect_timeout)),
@@ -121,13 +115,36 @@ def request_to_xml(request):
             E.meta(
                 E.start_time(str(request.start_time))
             ),
-            E.curl(copy_as_curl)
+            E.curl(
+                _request_to_curl_string(request, is_binary_data='protobuf' in content_type)
+            )
         )
     except Exception:
         debug_log.exception('Cannot parse request body')
         body.text = repr(request.body)
         request = E.request(body)
     return request
+
+
+def _request_to_curl_string(request, is_binary_data):
+    curl_headers = HTTPHeaders(request.headers)
+    if request.body and 'Content-Length' not in curl_headers:
+        curl_headers['Content-Length'] = len(request.body)
+
+    if request.body and is_binary_data:
+        curl_echo_data = "echo -e {0} |".format(repr(request.body))
+        curl_data_string = '--data-binary @-'
+    else:
+        curl_echo_data = ''
+        curl_data_string = "--data '{0}'".format(request.body) if request.body else ''
+
+    return "{echo} curl -X {method} '{url}' {headers} {data}".format(
+        echo=curl_echo_data,
+        method=request.method,
+        url=request.url,
+        headers=' '.join("-H '{0}: {1}'".format(*kv) for kv in curl_headers.iteritems()),
+        data=curl_data_string
+    ).strip()
 
 
 def _params_to_xml(url, logger=debug_log):
