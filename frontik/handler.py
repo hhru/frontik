@@ -228,13 +228,12 @@ class PageHandler(tornado.web.RequestHandler):
     # for backwards-compatibility
     async_callback = check_finished
 
-    @staticmethod
-    def add_callback(callback):
-        IOLoop.instance().add_callback(callback)
+    def add_callback(self, callback):
+        """Calls the given callback on the next IOLoop iteration, adding it to finish_group.
 
-    @staticmethod
-    def add_timeout(deadline, callback):
-        IOLoop.instance().add_timeout(deadline, callback)
+        Handler will not be finished until the callback executes.
+        """
+        IOLoop.instance().add_callback(self.finish_group.add(callback))
 
     # Requests handling
 
