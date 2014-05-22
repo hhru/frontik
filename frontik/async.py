@@ -3,6 +3,7 @@
 import time
 import logging
 
+from tornado.ioloop import IOLoop
 from tornado.web import HTTPError
 
 log = logging.getLogger('frontik.async')
@@ -62,6 +63,11 @@ class AsyncGroup(object):
     def try_finish(self):
         if self.counter == 0:
             self.finish()
+
+    def try_finish_async(self):
+        """Executes finish_cb in next IOLoop iteration"""
+        if self.counter == 0:
+            IOLoop.instance().add_callback(self.finish)
 
     def _inc(self):
         assert(not self.finished)
