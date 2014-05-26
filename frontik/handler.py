@@ -1,10 +1,11 @@
 # coding=utf-8
 
-from functools import partial
-from itertools import imap
+import base64
 import httplib
 import re
 import time
+from functools import partial
+from itertools import imap
 
 import simplejson as json
 import lxml.etree as etree
@@ -406,7 +407,11 @@ class PageHandler(tornado.web.RequestHandler):
                     response_info = frontik.xml_util.xml_to_dict(original_response[0])
                     debug_response.remove(original_response[0])
                     debug_extra['_debug_response'] = debug_response
-                    response = frontik.util.create_fake_response(request, response, **response_info)
+
+                    response = frontik.util.create_fake_response(
+                        request, response,
+                        response_info['headers'], response_info['code'], base64.decodestring(response_info['buffer'])
+                    )
 
             debug_extra.update({'_response': response, '_request': request})
             if getattr(request, '_frontik_labels', None) is not None:
@@ -577,7 +582,7 @@ class PageHandler(tornado.web.RequestHandler):
                 original_headers = {'Content-Length': str(self._response_size)}
                 response_headers = dict(self._headers, **original_headers)
                 original_response = {
-                    'buffer': ''.join(self._write_buffer),
+                    'buffer': base64.encodestring(''.join(self._write_buffer)),
                     'headers': response_headers,
                     'code': self._status_code
                 }

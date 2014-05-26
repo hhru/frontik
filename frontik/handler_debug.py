@@ -116,7 +116,7 @@ def request_to_xml(request):
                 E.start_time(str(request.start_time))
             ),
             E.curl(
-                _request_to_curl_string(request, is_binary_data='protobuf' in content_type)
+                _request_to_curl_string(request)
             )
         )
     except Exception:
@@ -126,12 +126,19 @@ def request_to_xml(request):
     return request
 
 
-def _request_to_curl_string(request, is_binary_data):
+def _request_to_curl_string(request):
+    try:
+        if request.body:
+            request.body.decode('ascii')
+        is_binary_data = False
+    except UnicodeError:
+        is_binary_data = True
+
     curl_headers = HTTPHeaders(request.headers)
     if request.body and 'Content-Length' not in curl_headers:
         curl_headers['Content-Length'] = len(request.body)
 
-    if request.body and is_binary_data:
+    if is_binary_data:
         curl_echo_data = "echo -e {0} |".format(repr(request.body))
         curl_data_string = '--data-binary @-'
     else:
