@@ -1,3 +1,9 @@
+frontik (2.19.14) unstable; urgency=low
+
+  * HH-43278 correct stages logging
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 27 May 2014 19:31:05 +0400
+
 frontik (2.19.13) unstable; urgency=low
 
   * HH-43355 fix binary requests and responses in debug
