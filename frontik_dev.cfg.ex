@@ -37,3 +37,7 @@ long_request_timeout = None
 kill_long_requests = False
 
 log_blocked_ioloop_timeout = 2.0
+
+timings_log_enabled = True
+timings_log_file_postfix = 'monik'
+timings_log_message_format = 'Monik-stages %(page)s : %(stages)s'
