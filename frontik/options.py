@@ -9,6 +9,10 @@ tornado.options.define('handlers_count', 100, int)
 tornado.options.define('suppressed_loggers', ['tornado.curl_httpclient'], list)
 tornado.options.define('logformat', '[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s', str)
 
+tornado.options.define('timings_log_enabled', False, bool)
+tornado.options.define('timings_log_file_postfix', 'timings', str)
+tornado.options.define('timings_log_message_format', 'Timings for %(page)s : %(stages)s', str)
+
 tornado.options.define('syslog_address', "/dev/log", str)
 tornado.options.define('syslog', False, bool)
 tornado.options.define('syslog_facility', 'user', str)
