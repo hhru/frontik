@@ -127,6 +127,9 @@ def request_to_xml(request):
 
 
 def _request_to_curl_string(request):
+    def _escape_apos(string):
+        return string.replace("'", "'\"'\"'")
+
     try:
         if request.body:
             request.body.decode('ascii')
@@ -143,13 +146,13 @@ def _request_to_curl_string(request):
         curl_data_string = '--data-binary @-'
     else:
         curl_echo_data = ''
-        curl_data_string = "--data '{0}'".format(request.body) if request.body else ''
+        curl_data_string = "--data '{0}'".format(_escape_apos(request.body)) if request.body else ''
 
     return "{echo} curl -X {method} '{url}' {headers} {data}".format(
         echo=curl_echo_data,
         method=request.method,
         url=request.url,
-        headers=' '.join("-H '{0}: {1}'".format(*kv) for kv in curl_headers.iteritems()),
+        headers=' '.join("-H '{0}: {1}'".format(k, _escape_apos(str(v))) for k, v in curl_headers.iteritems()),
         data=curl_data_string
     ).strip()
 
