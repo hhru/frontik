@@ -11,6 +11,7 @@ from copy import copy
 
 import tornado.httpclient
 import tornado.httputil
+from tornado.escape import utf8
 
 
 def list_unique(l):
@@ -228,7 +229,7 @@ def asciify_url(url):
 def create_fake_response(request, base_response, headers, code, buffer):
     return tornado.httpclient.HTTPResponse(
         request, int(code), headers=dict(base_response.headers, **headers),
-        buffer=cStringIO.StringIO(buffer),
+        buffer=cStringIO.StringIO(utf8(buffer)),
         effective_url=base_response.effective_url, request_time=base_response.request_time,
         time_info=base_response.time_info)
 
