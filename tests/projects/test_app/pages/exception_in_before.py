@@ -1,6 +1,7 @@
 import frontik.async
 import frontik.handler
 
+
 @frontik.async.before
 def fail_func(self, cb):
 

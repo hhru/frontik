@@ -76,7 +76,7 @@ class JsonProducer(object):
             self.log.error('failed applying template %s', self.template_filename)
             raise exception
 
-        self.executor.add_job(job, self.handler.async_callback(success_cb), self.handler.async_callback(exception_cb))
+        self.executor.add_job(job, self.handler.check_finished(success_cb), self.handler.check_finished(exception_cb))
 
     def _finish_with_json(self, callback):
         self.log.debug('finishing without templating')
