@@ -67,5 +67,5 @@ class JsonBuilder(object):
 
     def to_string(self):
         if self._encoder is not None:
-            return json.dumps(self.to_dict(), cls=self._encoder)
-        return json.dumps(self.to_dict())
+            return json.dumps(self.to_dict(), cls=self._encoder, ensure_ascii=False)
+        return json.dumps(self.to_dict(), ensure_ascii=False)
