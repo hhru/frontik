@@ -34,16 +34,17 @@ class FrontikTestInstance(object):
         self.wait_for(lambda: supervisor.is_running(port))
         self.port = port
 
-    def __del__(self):
-        self.supervisor.stop_worker(self.port)
-        self.wait_for(lambda: not(self.supervisor.is_running(self.port)))
-        self.supervisor.rm_pidfile(self.port)
+    def stop(self):
+        if self.port is not None:
+            self.supervisor.stop_worker(self.port)
+            self.wait_for(lambda: not(self.supervisor.is_running(self.port)))
+            self.supervisor.rm_pidfile(self.port)
 
-    def wait_for(self, fun, n=50):
+    def wait_for(self, fun, n=100):
         for i in range(n):
             if fun():
                 return
-            time.sleep(0.1)
+            time.sleep(0.01)
         assert(fun())
 
     @contextlib.contextmanager
@@ -74,3 +75,11 @@ class FrontikTestInstance(object):
     def get_page_text(self, page, notpl=False):
         with self.get_page(page, notpl) as response:
             yield response.read()
+
+frontik_debug = FrontikTestInstance('./tests/projects/frontik.cfg')
+frontik_non_debug = FrontikTestInstance('./tests/projects/frontik_non_debug_mode.cfg')
+
+
+def tearDownModule():
+    frontik_debug.stop()
+    frontik_non_debug.stop()

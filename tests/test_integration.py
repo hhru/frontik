@@ -3,11 +3,8 @@
 import urllib2
 
 from lxml import etree
-import nose
 
-from integration_util import FrontikTestInstance
-
-frontik_debug = FrontikTestInstance("./tests/projects/frontik.cfg")
+from tests import frontik_debug
 
 
 def simple_test():
@@ -168,6 +165,3 @@ def test_check_finished():
 
     with frontik_debug.get_page_text('test_app/check_finished') as text:
         assert text == ''
-
-if __name__ == "__main__":
-    nose.main()

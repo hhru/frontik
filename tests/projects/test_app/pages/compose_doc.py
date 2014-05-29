@@ -7,7 +7,7 @@ class Page(frontik.handler.PageHandler):
         a = Doc('a')
         a.put('aaa')
         self.doc.put(a)
-        
+
         b = Doc('b')
         b.put('bbb')
         self.doc.put(b)

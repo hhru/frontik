@@ -3,19 +3,18 @@ import urllib2
 
 from lxml import etree
 
-from integration_util import FrontikTestInstance
-
-frontik_debug = FrontikTestInstance('./tests/projects/frontik.cfg')
+from tests import frontik_debug
 
 
 class TestXsl(unittest.TestCase):
+
     def xsl_transformation_test(self):
         with frontik_debug.get_page_xml('test_app/simple') as html:
             self.assertEquals(etree.tostring(html), '<html><body><h1>ok</h1></body></html>')
 
     def test_content_type_with_xsl(self):
         with frontik_debug.get_page('test_app/simple') as response:
-            assert(response.headers['content-type'].startswith('text/html'))
+            self.assertTrue(response.headers['content-type'].startswith('text/html'))
 
     def test_xsl_fail(self):
         with frontik_debug.instance() as srv_port:
