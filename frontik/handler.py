@@ -89,12 +89,22 @@ AsyncGroup = frontik.async.AsyncGroup
 
 
 class HTTPError(tornado.web.HTTPError):
-    """ An exception that will turn into an HTTP error response """
-    def __init__(self, status_code, log_message=None, headers=None, *args, **kwargs):
-        tornado.web.HTTPError.__init__(self, status_code, log_message, *args)
-        self.headers = headers if headers is not None else {}
-        for data in ('text', 'xml', 'xsl', 'json'):
-            setattr(self, data, kwargs.setdefault(data, None))
+    """Extends tornado.web.HTTPError with several keyword-only arguments.
+
+    :arg dict headers: Custom HTTP headers to pass along with the error response.
+    :arg string text: Plain text override for error response.
+    :arg etree xml: XML node to be added to `self.doc`. If present, error page will be
+        produced with `application/xml` content type.
+    :arg dict json: JSON dict to be used as error response. If present, error page
+        will be produced with `application/json` content type.
+    """
+    def __init__(self, status_code, log_message=None, *args, **kwargs):
+        headers = kwargs.pop('headers', {})
+        for data in ('text', 'xml', 'json'):
+            setattr(self, data, kwargs.pop(data, None))
+
+        super(HTTPError, self).__init__(status_code, log_message, *args, **kwargs)
+        self.headers = headers
 
 
 class Stats(object):
@@ -156,6 +166,10 @@ class PageHandler(tornado.web.RequestHandler):
     def __repr__(self):
         return '.'.join([self.__module__, self.__class__.__name__])
 
+    def initialize(self, logger=None, **kwargs):
+        # Hides logger keyword argument from incompatible tornado versions
+        super(PageHandler, self).initialize(**kwargs)
+
     def prepare(self):
         self.active_limit = frontik.handler_active_limit.PageHandlerActiveLimit(self)
         self.debug = frontik.handler_debug.PageHandlerDebug(self)
@@ -200,7 +214,7 @@ class PageHandler(tornado.web.RequestHandler):
     def decode_argument(self, value, name=None):
         try:
             return super(PageHandler, self).decode_argument(value, name)
-        except UnicodeError:
+        except (UnicodeError, tornado.web.HTTPError):
             self.log.warn('Cannot decode utf-8 query parameter, trying other charsets')
 
         try:
@@ -543,8 +557,6 @@ class PageHandler(tornado.web.RequestHandler):
                 self.text = None
                 # cannot clear self.doc due to backwards compatibility, a bug actually
                 self.doc.put(exception.xml)
-                if getattr(exception, 'xsl', None) is not None:
-                    self.set_xsl(exception.xsl)
 
             self._force_finish()
             return
