@@ -5,7 +5,7 @@ import frontik.future
 import frontik.json_builder
 
 
-class TestDoc(unittest.TestCase):
+class TestJsonBuilder(unittest.TestCase):
     def test_simple(self):
         j = frontik.json_builder.JsonBuilder()
 
