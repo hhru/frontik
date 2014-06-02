@@ -6,13 +6,13 @@ Here is an example:
 ```python
 from frontik.app import App
 
-urls = (
+urls = [
     (r'/page[0-9]', App('app1', '../some/relative/path')),
     (r'/test_app', App('app2', '/absolute/path/to/application')),
-)
+]
 ```
 
-`urls` option is an iterable, containing tuples, which describe each application. The first item in a tuple is
+`urls` option is a list of tuples, which describe each application. The first item in a tuple is
 a regular expression, matching the beginning of urls, which should map to the application. The second item is a
 `frontik.app.App` instance, initialized with the name of the application and its root path (absolute or relative to
 the location of runner script).

@@ -16,7 +16,6 @@ and are essential for running Frontik server and logging in Frontik applications
 | `pidfile`          | `str`  | `None`          | Pidfile location (if `None`, pidfile won't be created)   |
 | `logfile`          | `str`  | `None`          | Logfile location (if `None`, Frontik will log to stderr) |
 | `loglevel`         | `str`  | `info`          | The lowest log level written to logfile                  |
-| `logformat`        | `str`  | see code        | Log entry format                                         |
 
 The following options are specific to [tornado_util.supervisor](https://github.com/hhru/tornado-util/blob/master/tornado_util/supervisor.py)
 module, which provides convenient interface for running and controlling several Frontik instances on one machine.
@@ -32,26 +31,30 @@ module, which provides convenient interface for running and controlling several 
 These options are defined in Frontik (see [options.py](/frontik/options.py)) and are common to all Frontik applications,
 which run on one Frontik instance.
 
-| Option name          | Type    | Default value | Description                                                           |
-| -------------------- | ------- | ------------  | --------------------------------------------------------------------- |
-| `autoreload`         | `bool`  | `True`        | Restart Frontik after changes in application sources or config files  |
-| `debug`              | `bool`  | `False`       | Enable debug mode                                                     |
-| `debug_login`        | `str`   | `None`        | Debug mode login for basic authentication (when `debug=False`)        |
-| `debug_password`     | `str`   | `None`        | Debug mode password for basic authentication (when `debug=False`)     |
-| `suppressed_loggers` | `list`  | `[]`          | List of logger names to be excluded from debug output                 |
-| `syslog`             | `bool`  | `False`       | Enables sending logs to syslog                                        |
-| `syslog_address`     | `str`   | `'/dev/log'`  | Syslog address                                                        |
-| `syslog_facility`    | `str`   | `'user'`      | Syslog facility                                                       |
-| `syslog_msg_max_length` | `int` | `2048`       | Syslog max message length                                             |
-| `graylog`            | `bool`  | `False`       | Enables sending logs to Graylog                                       |
-| `graylog_host`       | `str`   | `'localhost'` | Graylog host                                                          |
-| `graylog_port`       | `int`   | `12201`       | Graylog port                                                          |
-| `xsl_executor`       | `str`   | `'threaded'`  | Executor type for XSL templating (alternative: `'ioloop'`)            |
-| `json_executor`      | `str`   | `'ioloop'`    | Executor type for JSON templating                                     |
-| `warn_no_jobs`       | `bool`  | `True`        | Write a warning if no jobs were found in executor queue               |
-| `timeout_multiplier` | `float` | `1.0`         | Generic timeout multiplier for get_xxx calls (useful for testing)     |
-| `handlers_count`     | `int`   | `100`         | Limit for number of simultaneous requests handled by Frontik instance |
-| `urls`               | `list`  | `[]`          | List of Frontik applications (see [Frontik application structure](/docs/frontik-app.md)) |
+| Option name                  | Type    | Default value | Description                                                           |
+| ---------------------------- | ------- | ------------  | --------------------------------------------------------------------- |
+| `autoreload`                 | `bool`  | `True`        | Restart Frontik after changes in application sources or config files  |
+| `debug`                      | `bool`  | `False`       | Enable debug mode                                                     |
+| `debug_login`                | `str`   | `None`        | Debug mode login for basic authentication (when `debug=False`)        |
+| `debug_password`             | `str`   | `None`        | Debug mode password for basic authentication (when `debug=False`)     |
+| `logformat`                  | `str`   | see code      | Log entry format                                                      |
+| `suppressed_loggers`         | `list`  | `[]`          | List of logger names to be excluded from debug output                 |
+| `timings_log_enabled`        | `bool`  | `False`       | Enables writing timings information to a separate log file            |
+| `timings_log_file_postfix`   | `str`   | `timings`     | Timings log file postfix, added to main log file name                 |
+| `timings_log_message_format` | `str`   | see code      | Message format for timings log, must contain `%(page)s` and `%(stages)s` placeholders |
+| `syslog`                     | `bool`  | `False`       | Enables sending logs to syslog                                        |
+| `syslog_address`             | `str`   | `'/dev/log'`  | Syslog address                                                        |
+| `syslog_facility`            | `str`   | `'user'`      | Syslog facility                                                       |
+| `syslog_msg_max_length`      | `int`   | `2048`        | Syslog max message length                                             |
+| `graylog`                    | `bool`  | `False`       | Enables sending logs to Graylog                                       |
+| `graylog_host`               | `str`   | `'localhost'` | Graylog host                                                          |
+| `graylog_port`               | `int`   | `12201`       | Graylog port                                                          |
+| `xsl_executor`               | `str`   | `'threaded'`  | Executor type for XSL templating (alternative: `'ioloop'`)            |
+| `json_executor`              | `str`   | `'ioloop'`    | Executor type for JSON templating                                     |
+| `warn_no_jobs`               | `bool`  | `True`        | Write a warning if no jobs were found in executor queue               |
+| `timeout_multiplier`         | `float` | `1.0`         | Generic timeout multiplier for get_xxx calls (useful for testing)     |
+| `handlers_count`             | `int`   | `100`         | Limit for number of simultaneous requests handled by Frontik instance |
+| `urls`                       | `list`  | `[]`          | List of Frontik applications (see [Frontik application structure](/docs/frontik-app.md)) |
 
 There are also certain options, that are unique for each application, see
 [Configuring Frontik application](/docs/config-app.md) for more details.
