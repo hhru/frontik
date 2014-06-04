@@ -1,3 +1,11 @@
+frontik (2.19.16) unstable; urgency=low
+
+  * HH-43544 raise FailedFutureException on Placeholder.get() instead of
+    returning it
+  * HH-43544 parse text/plain
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 04 Jun 2014 14:00:23 +0400
+
 frontik (2.19.15.1) unstable; urgency=low
 
   * HH-43401 escape apos in copy as curl
