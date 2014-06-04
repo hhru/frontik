@@ -55,11 +55,11 @@ class Doc(object):
                         yield i
 
             elif isinstance(chunk, frontik.future.FutureVal):
-                for i in chunk_to_element(chunk.get()):
-                    yield i
-
-            elif isinstance(chunk, frontik.future.FailedFutureException):
-                yield self.get_error_node(chunk)
+                try:
+                    for i in chunk_to_element(chunk.get()):
+                        yield i
+                except frontik.future.FailedFutureException as e:
+                    yield self.get_error_node(e)
 
             elif isinstance(chunk, etree._Element):
                 yield chunk
