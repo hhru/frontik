@@ -24,4 +24,6 @@ class Placeholder(FutureVal):
         self.data = data
 
     def get(self):
+        if isinstance(self.data, FailedFutureException):
+            raise self.data
         return self.data

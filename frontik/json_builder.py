@@ -46,7 +46,10 @@ class JsonBuilder(object):
         elif isinstance(v, (set, list, tuple)):
             return _check_iterable(v)
         elif isinstance(v, frontik.future.FutureVal):
-            return self._check_value(v.get())
+            try:
+                return self._check_value(v.get())
+            except frontik.future.FailedFutureException as e:
+                return self._check_value(e)
         elif isinstance(v, frontik.future.FailedFutureException):
             return self.get_error_node(v)
         elif isinstance(v, JsonBuilder):
