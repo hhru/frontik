@@ -1,3 +1,10 @@
+frontik (2.19.17) unstable; urgency=low
+
+  * HH-43583 add an example and update docs
+  * HH-43583 add handler_404 parameter to FileMappingDispatcher
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 10 Jun 2014 11:08:58 +0400
+
 frontik (2.19.16) unstable; urgency=low
 
   * HH-43544 raise FailedFutureException on Placeholder.get() instead of
