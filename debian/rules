@@ -8,5 +8,5 @@ override_dh_auto_clean:
 	rm -rf build .*egg-info *.log *.pid
 
 override_dh_auto_test:
-	pep8 --statistics --max-line-length 120 frontik tests || true
+	pep8 --statistics --max-line-length 120 frontik tests examples || true
 	nosetests tests -vv || exit 1

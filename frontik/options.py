@@ -2,7 +2,6 @@
 
 import tornado.options
 
-tornado.options.define('apps', {}, dict)
 tornado.options.define('urls', [], list)
 tornado.options.define('handlers_count', 100, int)
 
