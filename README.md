@@ -18,6 +18,10 @@ Frontik was originally developed by Andrey Tatarinov at [hh.ru](http://hh.ru/) a
 * [Postprocessing](/docs/postprocessing.md)
 * [Debugging Frontik](/docs/debug.md)
 
+## Examples
+
+See [/examples](/examples) directory for simple Frontik application example.
+
 ## Usages
 
   * All pages of [hh.ru](http://hh.ru/) are served with frontik

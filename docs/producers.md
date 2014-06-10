@@ -2,9 +2,9 @@
 
 There are three ways to generate content in Frontik application:
 
-* generic ```self.text``` producer
-* ```self.doc``` for XML (+ XSLT as templating engine)
-* ```self.json``` for JSON (+ Jinja2 as templating engine)
+* generic `self.text` producer
+* `self.doc` for XML (+ XSLT as templating engine)
+* `self.json` for JSON (+ Jinja2 as templating engine)
 
 The first one is generally combined with setting response content type manually:
 

@@ -155,11 +155,12 @@ def dispatcher(cls):
 
 
 @dispatcher
-class Map2ModuleName(object):
-    def __init__(self, module):
+class FileMappingDispatcher(object):
+    def __init__(self, module, handler_404=None):
         self.module = module
         self.name = module.__name__
-        self.log = logging.getLogger('frontik.map2pages.{0}'.format(self.name))
+        self.handler_404 = handler_404
+        self.log = logging.getLogger('frontik.filemapping.{0}'.format(self.name))
         self.log.info('initializing...')
 
     def __call__(self, application, request, **kwargs):
@@ -173,6 +174,8 @@ class Map2ModuleName(object):
             self.log.debug('using %s from %s', (self.name, page_module_name), page_module.__file__)
         except ImportError:
             self.log.exception('%s module not found', (self.name, page_module_name))
+            if self.handler_404 is not None:
+                return self.handler_404
             return tornado.web.ErrorHandler(application, request, status_code=404)
         except AttributeError:
             self.log.exception('%s is not frontik application module (no "frontik_import" method)', self.name)
@@ -186,6 +189,9 @@ class Map2ModuleName(object):
             return tornado.web.ErrorHandler(application, request, status_code=404)
 
         return page_module.Page(application, request, **kwargs)
+
+# Deprecated synonym
+Map2ModuleName = FileMappingDispatcher
 
 
 @dispatcher
