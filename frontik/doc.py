@@ -9,7 +9,7 @@ class Doc(object):
     __slots__ = ('root_node_name', 'root_node', 'data')
 
     def __init__(self, root_node_name='doc', root_node=None):
-        self.root_node_name = root_node_name
+        self.root_node_name =root_node_name
         self.root_node = root_node
         self.data = []
 
