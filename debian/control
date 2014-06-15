@@ -8,6 +8,7 @@ Build-Depends:
   python-support,
   python-setuptools,
   python-nose,
+  python-simplejson,
   python-tornado (>= 2.0+hh18),
   python-tornado-util (>= 0.7.0.2),
   python-jinja2,

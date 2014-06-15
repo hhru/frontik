@@ -13,6 +13,7 @@ Frontik was originally developed by Andrey Tatarinov at [hh.ru](http://hh.ru/) a
 * [Configuring Frontik application](/docs/config-app.md)
 * [Routing — TBA](/docs/routing.md)
 * [Page generation process](/docs/page-generation.md)
+* [Preprocessors](/docs/preprocessors.md)
 * [Making HTTP requests](/docs/http-client.md)
 * [Content types and producers](/docs/producers.md)
 * [Postprocessing](/docs/postprocessing.md)
@@ -24,4 +25,4 @@ See [/examples](/examples) directory for simple Frontik application example.
 
 ## Usages
 
-  * All pages of [hh.ru](http://hh.ru/) are served with frontik
+  * All pages of [hh.ru](http://hh.ru/) are served with Frontik
