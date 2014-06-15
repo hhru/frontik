@@ -1,8 +1,11 @@
 # coding=utf-8
 
-from lxml import etree
-
 import frontik.handler
+
+
+class ContentPostprocessor(object):
+    def __call__(self, handler, tpl, callback):
+        callback(tpl.replace('%%content%%', 'CONTENT'))
 
 
 class Page(frontik.handler.PageHandler):
@@ -11,14 +14,14 @@ class Page(frontik.handler.PageHandler):
             self.add_early_postprocessor(Page._early_pp_1)
             self.add_early_postprocessor(Page._early_pp_2)
 
-        self.set_xsl('postprocess.xsl')
-        self.doc.put(etree.Element('node'))
+        self.set_template('postprocess.html')
+        self.json.put({'content': '%%content%%'})
 
         if self.get_argument('header', None) is not None:
             self.add_template_postprocessor(Page._header_pp)
 
         if self.get_argument('content', None) is not None:
-            self.add_template_postprocessor(Page._content_pp)
+            self.add_template_postprocessor(ContentPostprocessor())
 
         if self.get_argument('nocache', None) is not None:
             self.add_late_postprocessor(Page._nocache_pp)
@@ -33,10 +36,7 @@ class Page(frontik.handler.PageHandler):
         raise frontik.handler.HTTPError(500)
 
     def _header_pp(self, tpl, callback):
-        callback(tpl.replace('{{header}}', 'HEADER'))
-
-    def _content_pp(self, tpl, callback):
-        callback(tpl.replace('{{content}}', 'CONTENT'))
+        callback(tpl.replace('%%header%%', 'HEADER'))
 
     def _nocache_pp(self, callback):
         self.set_header('Cache-Control', 'no-cache')
