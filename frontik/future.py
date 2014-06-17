@@ -1,29 +1,33 @@
 # coding=utf-8
 
 
-class FailedFutureException(Exception):
-    def __init__(self, **kwargs):
-        for k, v in kwargs.iteritems():
-            setattr(self, k, v)
+class FutureStateException(Exception):
+    pass
 
 
-class FutureVal(object):
-    __slots__ = ()
-
-    def get(self):
-        pass
-
-
-class Placeholder(FutureVal):
-    __slots__ = ('data',)
+class Placeholder(object):
+    __slots__ = ('_data', '_finished', '_callbacks')
 
     def __init__(self):
-        self.data = None
+        self._data = None
+        self._finished = False
+        self._callbacks = []
 
     def set_data(self, data):
-        self.data = data
+        if self._finished:
+            raise FutureStateException('Data has already been set')
+
+        self._finished = True
+        self._data = data
+
+        for callback in self._callbacks:
+            callback(self._data)
 
     def get(self):
-        if isinstance(self.data, FailedFutureException):
-            raise self.data
-        return self.data
+        return self._data
+
+    def add_data_callback(self, callback):
+        if not self._finished:
+            self._callbacks.append(callback)
+        else:
+            callback(self._data)

@@ -7,7 +7,6 @@ import time
 from functools import partial
 from itertools import imap
 
-import simplejson as json
 import lxml.etree as etree
 import tornado.curl_httpclient
 import tornado.httpclient
@@ -27,6 +26,7 @@ import frontik.util
 import frontik.xml_util
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
+from frontik.responses import default_request_types, FailedRequestException, RequestResult
 
 
 # this function replaces __repr__ function for tornado's HTTPRequest
@@ -51,38 +51,6 @@ def context_based_repr(self):
 
 HTTPRequest.__repr__ = context_based_repr
 
-
-def _parse_response(response, logger=frontik_logging.log, parser=None, response_type=None):
-    try:
-        data = parser(response.body)
-    except:
-        _preview_len = 100
-
-        if len(response.body) > _preview_len:
-            body_preview = '{0}...'.format(response.body[:_preview_len])
-        else:
-            body_preview = response.body
-
-        logger.exception('failed to parse {0} response from {1}, bad data: "{2}"'.format(
-            response_type, response.effective_url, body_preview))
-        return False, etree.Element('error', url=response.effective_url, reason='invalid {0}'.format(response_type))
-
-    return True, data
-
-_xml_parser = etree.XMLParser(strip_cdata=False)
-_parse_response_xml = partial(_parse_response,
-                              parser=lambda x: etree.fromstring(x, parser=_xml_parser),
-                              response_type='XML')
-
-_parse_response_json = partial(_parse_response,
-                               parser=json.loads,
-                               response_type='JSON')
-
-default_request_types = {
-    re.compile('.*xml.?'): _parse_response_xml,
-    re.compile('.*json.?'): _parse_response_json,
-    re.compile('.*text/plain.?'): (lambda response, logger: (True, response.body)),
-}
 
 # Deprecated synonym
 AsyncGroup = frontik.async.AsyncGroup
@@ -452,33 +420,32 @@ class PageHandler(tornado.web.RequestHandler):
     def _parse_response(self, placeholder, callback, response, **params):
         result = None
         if response.error and not params.get('parse_on_error', False):
-            self._set_response_error(placeholder, response)
+            result = self._set_response_error(response)
         elif not params.get('parse_response', True):
             result = response.body
         elif response.code != 204:
             content_type = response.headers.get('Content-Type', '')
             for k, v in default_request_types.iteritems():
                 if k.search(content_type):
-                    good_result, data = v(response, logger=self.log)
-                    result = data if good_result else None
-                    placeholder.set_data(data)
+                    result = v(response, logger=self.log)
                     break
 
         if callable(callback):
-            callback(result, response)
+            def callback_wrapper(data):
+                res = data.data if not isinstance(data.data, FailedRequestException) else None
+                callback(res, data.response)
 
-    def _set_response_error(self, placeholder, response):
+            placeholder.add_data_callback(callback_wrapper)
+
+        placeholder.set_data(RequestResult(result, response))
+
+    def _set_response_error(self, response):
         log_func = self.log.error if response.code >= 500 else self.log.warn
         log_func('{code} failed {url} ({reason!s})'.format(
             code=response.code, url=response.effective_url, reason=response.error)
         )
 
-        try:
-            placeholder.set_data(frontik.future.FailedFutureException(
-                **dict((k, getattr(response, k, None)) for k in ('code', 'error', 'body'))
-            ))
-        except Exception:
-            self.log.warn('Cannot add error node to response placeholder')
+        return FailedRequestException(**dict((k, getattr(response, k, None)) for k in ('code', 'error', 'body')))
 
     # Finish page
 

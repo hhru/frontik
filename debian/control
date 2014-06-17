@@ -14,7 +14,7 @@ Build-Depends:
   python-jinja2,
   python-requests,
 Standards-Version: 3.9.4
-X-Python-Version: >= 2.6
+X-Python-Version: >= 2.7
 
 Package: frontik
 Architecture: all

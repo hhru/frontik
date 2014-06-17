@@ -2,7 +2,8 @@
 
 import lxml.etree as etree
 
-import frontik.future
+from frontik.future import Placeholder
+from frontik.responses import FailedRequestException, RequestResult
 
 
 class Doc(object):
@@ -54,12 +55,16 @@ class Doc(object):
                     for i in chunk_to_element(chunk_i):
                         yield i
 
-            elif isinstance(chunk, frontik.future.FutureVal):
-                try:
-                    for i in chunk_to_element(chunk.get()):
-                        yield i
-                except frontik.future.FailedFutureException as e:
-                    yield self.get_error_node(e)
+            elif isinstance(chunk, RequestResult):
+                for i in chunk_to_element(chunk.data):
+                    yield i
+
+            elif isinstance(chunk, Placeholder):
+                for i in chunk_to_element(chunk.get()):
+                    yield i
+
+            elif isinstance(chunk, FailedRequestException):
+                yield self.get_error_node(chunk)
 
             elif isinstance(chunk, etree._Element):
                 yield chunk
