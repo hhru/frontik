@@ -1,3 +1,10 @@
+frontik (2.19.18) unstable; urgency=low
+
+  * HH-43534 remove apps option
+  * HH-43534 changes for tornado3 upgrade
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 18 Jun 2014 19:14:27 +0400
+
 frontik (2.19.17) unstable; urgency=low
 
   * HH-43583 add an example and update docs
