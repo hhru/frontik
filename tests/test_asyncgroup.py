@@ -3,6 +3,7 @@ from functools import partial
 
 from frontik.async import AsyncGroup
 from frontik.future import Placeholder
+from tests import frontik_debug
 
 
 class TestAsyncGroup(unittest.TestCase):
@@ -123,3 +124,12 @@ class TestAsyncGroup(unittest.TestCase):
         self.assertRaises(Exception, ag.try_finish)
         self.assertEquals(ag._finish_cb_called, True)
         self.assertEquals(ag._aborted, False)
+
+    def test_handler_async_group(self):
+        exp = '{"1": {"1": "yay"}, "3": {"error": {"reason": "HTTP 400: Bad Request", "code": 400}}, "2": {"2": "yay"}}'
+        response = frontik_debug.get_page('test_app/async_group')
+        self.assertEquals(response.content, exp)
+
+    def test_handler_async_group_fail(self):
+        response = frontik_debug.get_page('test_app/async_group?fail=true')
+        self.assertEquals(response.status_code, 500)

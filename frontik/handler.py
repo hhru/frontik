@@ -289,6 +289,26 @@ class PageHandler(tornado.web.RequestHandler):
     DEFAULT_CONNECT_TIMEOUT = 0.5
     DEFAULT_REQUEST_TIMEOUT = 2
 
+    def group(self, futures, callback=None, name=None):
+        if callable(callback):
+            results_holder = {}
+            group_callback = self.finish_group.add(partial(callback, results_holder))
+
+            def delay_cb():
+                IOLoop.instance().add_callback(self.check_finished(group_callback))
+
+            async_group = AsyncGroup(delay_cb, log=self.log.debug, name=name)
+
+            def callback(future_name, data):
+                results_holder[future_name] = data.get_params()
+
+            for name, future in futures.iteritems():
+                future.add_data_callback(async_group.add(partial(callback, name)))
+
+            async_group.try_finish()
+
+        return futures
+
     def get_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None, callback=None,
                 follow_redirects=True, labels=None, add_to_finish_group=True, **params):
 
@@ -432,8 +452,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         if callable(callback):
             def callback_wrapper(data):
-                res = data.data if not isinstance(data.data, FailedRequestException) else None
-                callback(res, data.response)
+                callback(*data.get_params())
 
             placeholder.add_data_callback(callback_wrapper)
 

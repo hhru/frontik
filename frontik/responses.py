@@ -21,6 +21,9 @@ class RequestResult(object):
         self.data = data
         self.response = response
 
+    def get_params(self):
+        return self.data if not isinstance(self.data, FailedRequestException) else None, self.response
+
 
 def _parse_response(response, logger=frontik_logging.log, parser=None, response_type=None):
     try:
