@@ -2,12 +2,19 @@
 
 import tornado.options
 
-tornado.options.define('apps', {}, dict)
 tornado.options.define('urls', [], list)
 tornado.options.define('handlers_count', 100, int)
 
 tornado.options.define('suppressed_loggers', ['tornado.curl_httpclient'], list)
 tornado.options.define('logformat', '[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s', str)
+
+# Remove if clause after tornado is released
+if 'logfile' not in tornado.options.options:
+    tornado.options.define('logfile', default=None, help='log file name')
+
+# Remove if clause after tornado is released
+if 'loglevel' not in tornado.options.options:
+    tornado.options.define('loglevel', default='info', help='log level')
 
 tornado.options.define('timings_log_enabled', False, bool)
 tornado.options.define('timings_log_file_postfix', 'timings', str)

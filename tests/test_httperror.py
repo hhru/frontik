@@ -29,12 +29,6 @@ class TestExceptions(unittest.TestCase):
             self.assertEqual(response.code, 403)
             self.assertEqual(response.read(), 'This is just a plain text')
 
-    def test_httperror_xml_xsl(self):
-        with frontik_debug.instance() as srv_port:
-            response = urllib.urlopen('http://localhost:{0}/test_app/test_exception_xml_xsl'.format(srv_port))
-            self.assertEqual(response.code, 302)
-            self.assertEqual(response.read(), '<html><body>\n<h1>ok</h1>\n<h1>not ok</h1>\n</body></html>\n')
-
     def test_httperror_json(self):
         with frontik_debug.instance() as srv_port:
             response = urllib.urlopen('http://localhost:{0}/test_app/test_exception_json'.format(srv_port))
