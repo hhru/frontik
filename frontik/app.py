@@ -283,12 +283,8 @@ class RegexpDispatcher(object):
         return tornado.web.ErrorHandler(application, request, status_code=404)
 
 
-def get_app(app_urls, app_dict=None):
-    app_roots = []
-    if app_dict is not None:
-        app_roots.extend([('/' + prefix.lstrip('/'), App(prefix.strip('/'), path)) for prefix, path in app_dict.iteritems()])
-    app_roots.extend(app_urls)
-    dispatcher = RegexpDispatcher(app_roots, 'root')
+def get_app(app_urls):
+    dispatcher = RegexpDispatcher(app_urls, 'root')
     dispatcher._initialize()
 
     return tornado.web.Application([

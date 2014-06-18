@@ -18,7 +18,7 @@ def main(config_file='/etc/frontik/frontik.cfg'):
     tornado_util.server.bootstrap(config_file=config_file, options_callback=bootstrap_logging)
 
     try:
-        app = frontik.app.get_app(options.urls, options.apps)
+        app = frontik.app.get_app(options.urls)
     except:
         log.exception('failed to initialize frontik application, quitting')
         sys.exit(1)
