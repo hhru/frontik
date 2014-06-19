@@ -134,6 +134,8 @@ class ApplicationGlobals(object):
 
 class PageHandler(tornado.web.RequestHandler):
 
+    preprocessors = ()
+
     # to restore tornado.web.RequestHandler compatibility
     def __init__(self, application, request, app_globals=None, **kwargs):
         self.handler_started = time.time()
@@ -258,36 +260,36 @@ class PageHandler(tornado.web.RequestHandler):
     def post(self, *args, **kw):
         self.log.stage_tag('prepare')
         if not self._finished:
-            self.post_page()
-            self.finish_page()
+            self._call_preprocessors(self.preprocessors, self.post_page)
+            self._finish_page()
 
     @tornado.web.asynchronous
     def get(self, *args, **kw):
         self.log.stage_tag('prepare')
         if not self._finished:
-            self.get_page()
-            self.finish_page()
+            self._call_preprocessors(self.preprocessors, self.get_page)
+            self._finish_page()
 
     @tornado.web.asynchronous
     def head(self, *args, **kwargs):
         self.log.stage_tag('prepare')
         if not self._finished:
-            self.get_page()
-            self.finish_page()
+            self._call_preprocessors(self.preprocessors, self.get_page)
+            self._finish_page()
 
     @tornado.web.asynchronous
     def delete(self, *args, **kwargs):
         self.log.stage_tag('prepare')
         if not self._finished:
-            self.delete_page()
-            self.finish_page()
+            self._call_preprocessors(self.preprocessors, self.delete_page)
+            self._finish_page()
 
     @tornado.web.asynchronous
     def put(self, *args, **kwargs):
         self.log.stage_tag('prepare')
         if not self._finished:
-            self.put_page()
-            self.finish_page()
+            self._call_preprocessors(self.preprocessors, self.put_page)
+            self._finish_page()
 
     def options(self, *args, **kwargs):
         raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
@@ -404,7 +406,7 @@ class PageHandler(tornado.web.RequestHandler):
 
             return self.http_client.fetch(request, req_callback)
 
-        self.log.warn('attempted to make http request to {0} when page is already finished, ignoring'.format(request.url))
+        self.log.warn('attempted to make http request to {0} when page is finished, ignoring'.format(request.url))
 
     def _log_response(self, request, callback, response):
         try:
@@ -480,7 +482,7 @@ class PageHandler(tornado.web.RequestHandler):
 
     # Finish page
 
-    def finish_page(self):
+    def _finish_page(self):
         self.finish_group.try_finish()
 
     def _force_finish(self):
@@ -501,11 +503,11 @@ class PageHandler(tornado.web.RequestHandler):
                 self.log.debug('Using {0} producer'.format(producer))
 
                 if self.apply_postprocessor:
-                    producer(partial(self.__call_postprocessors, self._template_postprocessors[:], self.finish))
+                    producer(partial(self._call_postprocessors, self._template_postprocessors, self.finish))
                 else:
                     producer(self.finish)
 
-            self.__call_postprocessors(self._early_postprocessors[:], __callback)
+            self._call_postprocessors(self._early_postprocessors, __callback)
         else:
             self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 
@@ -513,22 +515,6 @@ class PageHandler(tornado.web.RequestHandler):
         self.log.warning("long request detected (uri: {0})".format(self.request.uri))
         if tornado.options.options.kill_long_requests:
             self.send_error()
-
-    def __call_postprocessors(self, postprocessors, callback, *args):
-        def __chain_postprocessor(postprocessors, start_time, *args):
-            if start_time is not None:
-                time_delta = (time.time() - start_time) * 1000
-                self.log.debug('Finished postprocessor "{0!r}" in {1:.2f}ms'.format(postprocessors.pop(0), time_delta))
-
-            if postprocessors:
-                postprocessor = postprocessors[0]
-                self.log.debug('Started postprocessor "{0!r}"'.format(postprocessor))
-                postprocessor_callback = partial(__chain_postprocessor, postprocessors, time.time())
-                postprocessor(self, *(args + (postprocessor_callback,)))
-            else:
-                callback(*args)
-
-        __chain_postprocessor(postprocessors[:], None, *args)
 
     def send_error(self, status_code=500, headers=None, **kwargs):
         headers = {} if headers is None else headers
@@ -580,7 +566,7 @@ class PageHandler(tornado.web.RequestHandler):
             )
 
         try:
-            self.__call_postprocessors(self._late_postprocessors[:], _finish_with_async_hook)
+            self._call_postprocessors(self._late_postprocessors, _finish_with_async_hook)
         except:
             self.log.exception('Error during late postprocessing stage, finishing with an exception')
             self._status_code = 500
@@ -624,7 +610,36 @@ class PageHandler(tornado.web.RequestHandler):
         self.log.stage_tag('flush')
         self.log.finish_stages(self._status_code)
 
-    # Postprocessors and producers
+    # Preprocessors and postprocessors
+
+    def _call_preprocessors(self, preprocessors, callback):
+        self._chain_functions(list(preprocessors), callback)
+
+    def _call_postprocessors(self, postprocessors, callback, *args):
+        self._chain_functions(list(postprocessors), callback, *args)
+
+    def _chain_functions(self, functions, callback, *args):
+        if functions:
+            func = functions.pop(0)
+            self.log.debug('Started "%r"', func)
+            start_time = time.time()
+
+            def _callback(*args):
+                time_delta = (time.time() - start_time) * 1000
+                self.log.debug('Finished "%r" in %.2fms', func, time_delta)
+                self._chain_functions(functions, callback, *args)
+
+            func(self, *(args + (_callback,)))
+        else:
+            callback(*args)
+
+    @staticmethod
+    def add_preprocessor(*preprocessors_list):
+        def _method_wrapper(fn):
+            def _method(self, *args, **kwargs):
+                self._call_preprocessors(preprocessors_list, partial(fn, self, *args, **kwargs))
+            return _method
+        return _method_wrapper
 
     def add_template_postprocessor(self, postprocessor):
         self._template_postprocessors.append(postprocessor)
@@ -634,6 +649,8 @@ class PageHandler(tornado.web.RequestHandler):
 
     def add_late_postprocessor(self, postprocessor):
         self._late_postprocessors.append(postprocessor)
+
+    # Producers
 
     def _generic_producer(self, callback):
         self.log.debug('finishing plaintext')

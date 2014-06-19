@@ -19,23 +19,21 @@ def postprocessor(handler, callback):
 
 There are three types of postprocessors in Frontik:
 
+![Postprocessing](/docs/postprocessing.png)
+
 __Early postprocessors__ are called just after all requests are done (the main AsyncGroup is finished). They are ideal
-for general checks that can immediately interrupt request handling (for example make redirect or throw HTTPError) — in
-such case no time would be wasted on templating and producing the response. Note that early postprocessing will be
-skipped if any unhandled error occurs earlier.
+for general checks that can immediately interrupt request handling (for example make redirect or throw HTTPError).
 
 __Late postprocessors__ are guaranteed to run at the very end of request handling (just before flushing the result).
 You could use them in order to make last-minute amends to the response (for example, add headers or write something
-useful to the log).
+useful to the log). They are executed even if there was an unhandled exception while executing main handler code.
 
 __Template postprocessors__ could be used for modifying the response text after the actual templating.
-The most obvious use-case is replacing translation placeholders with real localized values.
+One of the possible use-cases is replacing translation placeholders with real localized values.
 Template postprocessor callable receives additional parameter containing the result of templating.
 
 Template postprocessors can be turned off for debug purposes with HTTP argument `nopost`
 (see [Debug mode](/docs/debug.md)).
-
-If any postprocessor fails, the page will be finished with an error.
 
 ```python
 def tpl_postprocessor(handler, template, callback):
@@ -44,10 +42,16 @@ def tpl_postprocessor(handler, template, callback):
 self.add_template_postprocessor(postprocessor)
 ```
 
-`callback` must be called when the work is done, with the result of postprocessing as an only argument.
-Postprocessing can also be interrupted by throwing an exception or just calling `self.redirect` or
-`self.finish()` methods, which explicitly generate the response.
+`callback` for template postprocessor must be called with the result of postprocessing as an only argument
+(callbacks for early and late postprocessors have no arguments).
 
-Postprocessors are executed one after another in the order of their addition.
 Default template postprocessor is set from the `postprocessor` variable of the application config file
 (see [Configuring application](/docs/config-app.md)).
+
+Postprocessors are executed one after another in the order of their addition.
+If any postprocessor throws an exception, the page would be finished with an error.
+Postprocessing can also be interrupted by calling `self.redirect` or `self.finish`
+methods, which explicitly generate the response.
+
+If a postprocessor is not interrupted and does not call its callback either, the page will not be finished
+and will freeze indefinitely.
