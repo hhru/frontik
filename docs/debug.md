@@ -25,3 +25,7 @@ As well as `debug` parameter, there are also parameters, that can disable templa
 
 * `notpl` — disables templating (XSLT or Jinja2)
 * `noxsl` — old synonym, that works only for XSLT
+
+and template postprocessing:
+
+* `nopost` — disables template postprocessors.

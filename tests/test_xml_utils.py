@@ -2,7 +2,7 @@
 
 import unittest
 
-import lxml.etree as etree
+from lxml import etree
 
 from frontik.xml_util import xml_to_dict, dict_to_xml
 

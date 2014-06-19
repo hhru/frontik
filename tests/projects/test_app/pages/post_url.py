@@ -1,5 +1,8 @@
-import frontik.handler
+# coding=utf-8
+
 import re
+
+import frontik.handler
 
 FIELDS = {
     'fielda': 'hello',
@@ -26,7 +29,7 @@ class Page(frontik.handler.PageHandler):
         def callback_post(element, response):
             self.doc.put(element.text)
 
-        self.post_url('http://localhost:{0}/test_app/post_url'.format(self.get_argument('port')),
+        self.post_url('http://localhost:{}/test_app/post_url'.format(self.get_argument('port')),
                       data=FIELDS, files=FILES, callback=callback_post)
 
     def post_page(self):
