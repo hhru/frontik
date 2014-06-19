@@ -31,7 +31,10 @@ setup(
     install_requires=[
         'nose',
         'lxml >= 2.2.8',
-        'tornado'
+        'simplejson',
+        'tornado',
+        'pycurl',
+        'jinja2',
     ],
     zip_safe=False
 )
