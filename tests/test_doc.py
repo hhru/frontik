@@ -1,12 +1,11 @@
 # coding=utf-8
 
 from lxml import etree
-from lxml.builder import E
 import unittest
-from functools import partial
 
 import frontik.doc
 from frontik.future import Placeholder
+from tests.instances import frontik_debug
 
 
 class TestDoc(unittest.TestCase):
@@ -80,5 +79,14 @@ class TestDoc(unittest.TestCase):
 
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<doc><test1/></doc>""")
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_doc_page(self):
+        xml = frontik_debug.get_page_xml('test_app/compose_doc')
+
+        self.assertIsNotNone(xml.find('a'))
+        self.assertEqual(xml.findtext('a'), 'aaa')
+
+        self.assertIsNotNone(xml.find('b'))
+        self.assertEqual(xml.findtext('b'), 'bbb')
+
+        self.assertIsNotNone(xml.find('c'))
+        self.assertIn(xml.findtext('c'), (None, ''))

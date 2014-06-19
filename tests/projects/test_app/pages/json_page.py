@@ -1,9 +1,11 @@
+# coding=utf-8
+
 import frontik.handler
 
 
 class Page(frontik.handler.PageHandler):
     def get_page(self):
-        self_uri = '{0}://{1}{2}'.format(self.request.protocol, self.request.host, self.request.uri)
+        self_uri = self.request.host + self.request.uri
 
         self.set_template('jinja.html')
         self.json.put({

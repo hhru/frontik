@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import frontik.handler
 
 
@@ -7,8 +9,8 @@ class Page(frontik.handler.PageHandler):
         def callback_post(element, response):
             self.doc.put(element.text)
 
-        self.post_url("http://localhost:{0}/test_app/post_simple/".format(self.get_argument('port')),
+        self.post_url('http://localhost:{}/test_app/post_simple'.format(self.get_argument('port')),
                       callback=callback_post)
 
     def post_page(self):
-        self.doc.put("42")
+        self.doc.put('42')

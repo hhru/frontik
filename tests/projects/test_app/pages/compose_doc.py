@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import frontik.handler
 from frontik import Doc
 

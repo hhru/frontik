@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import frontik.handler
 
 
@@ -6,13 +8,13 @@ class Page(frontik.handler.PageHandler):
 
         def callback_error(element, response):
             if element is None:
-                self.doc.put("42")
+                self.doc.put('42')
             else:
-                self.doc.put("it's cant be")
+                self.doc.put('it can''t be')
 
-        self.post_url("http://localhost:{0}/test_app/bad_page/?mode=xml".format(self.get_argument('port')),
+        self.post_url('http://localhost:{}/test_app/bad_page/?mode=xml'.format(self.get_argument('port')),
                       callback=callback_error)
-        self.post_url("http://localhost:{0}/test_app/bad_page/?mode=json".format(self.get_argument('port')),
+        self.post_url('http://localhost:{}/test_app/bad_page/?mode=json'.format(self.get_argument('port')),
                       callback=callback_error)
 
     def post_page(self):
