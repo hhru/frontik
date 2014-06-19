@@ -1,3 +1,11 @@
+frontik (2.20.0) unstable; urgency=low
+
+  * HH-40165 update docs and misc
+  * HH-40165 add preprocessors
+  * HH-43961 improve tests
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 19 Jun 2014 20:29:39 +0400
+
 frontik (2.19.18) unstable; urgency=low
 
   * HH-43534 remove apps option
