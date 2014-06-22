@@ -6,7 +6,7 @@ import frontik.handler
 class Page(frontik.handler.PageHandler):
     def get_page(self):
 
-        end = self.finish_group.add(lambda : None)
+        end = self.finish_group.add(lambda: None)
 
         def job():
             self.get_argument('nofail')

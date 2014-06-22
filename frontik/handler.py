@@ -7,7 +7,7 @@ import time
 from functools import partial
 from itertools import imap
 
-import lxml.etree as etree
+from lxml import etree
 import tornado.curl_httpclient
 import tornado.httpclient
 import tornado.options
@@ -272,10 +272,7 @@ class PageHandler(tornado.web.RequestHandler):
         raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
 
     def __get_allowed_methods(self):
-        return filter(
-            lambda name: '{0}_page'.format(name.lower()) in vars(self.__class__),
-            ('GET', 'POST', 'PUT', 'DELETE')
-        )
+        return [name for name in ('get', 'post', 'put', 'delete') if '{0}_page'.format(name) in vars(self.__class__)]
 
     # HTTP client methods
 
@@ -471,7 +468,7 @@ class PageHandler(tornado.web.RequestHandler):
         if not self._finished:
             self.log.stage_tag('page')
 
-            def __callback():
+            def _callback():
                 if self.text is not None:
                     producer = self._generic_producer
                 elif not self.json.is_empty():
@@ -486,7 +483,7 @@ class PageHandler(tornado.web.RequestHandler):
                 else:
                     producer(self.finish)
 
-            self._call_postprocessors(self._early_postprocessors, __callback)
+            self._call_postprocessors(self._early_postprocessors, _callback)
         else:
             self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
 

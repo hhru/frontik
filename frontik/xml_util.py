@@ -2,7 +2,6 @@
 
 import logging
 import os.path
-import urlparse
 
 from lxml import etree
 
