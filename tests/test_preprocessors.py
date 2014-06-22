@@ -1,7 +1,6 @@
 # coding=utf-8
 
 import unittest
-import urllib2
 
 from tests import frontik_debug
 

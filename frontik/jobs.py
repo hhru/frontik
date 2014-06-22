@@ -27,7 +27,7 @@ def queue_worker(queue):
 
         try:
             IOLoop.instance().add_callback(partial(cb, func()))
-        except Exception, e:
+        except Exception as e:
             jobs_log.exception('Cannot perform job')
             IOLoop.instance().add_callback(partial(exception_cb, e))
 
@@ -35,13 +35,13 @@ def queue_worker(queue):
 class IOLoopExecutor(object):
     @staticmethod
     def add_job(func, cb, exception_cb, prio=None):
-        def __wrapper():
+        def _wrapper():
             try:
                 cb(func())
-            except Exception, e:
+            except Exception as e:
                 exception_cb(e)
 
-        IOLoop.instance().add_callback(__wrapper)
+        IOLoop.instance().add_callback(_wrapper)
 
 
 class ThreadPoolExecutor(object):
@@ -64,7 +64,7 @@ class ThreadPoolExecutor(object):
                 (prio, ThreadPoolExecutor.count),
                 (func, stack_context.wrap(cb), stack_context.wrap(exception_cb))
             ))
-        except Exception, e:
+        except Exception as e:
             jobs_log.exception('Cannot put job to queue')
             IOLoop.instance().add_callback(partial(exception_cb, e))
 

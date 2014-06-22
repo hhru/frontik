@@ -1,7 +1,7 @@
 # coding=utf-8
 
 import frontik.handler
-from frontik import Doc
+from frontik.doc import Doc
 
 
 class Page(frontik.handler.PageHandler):

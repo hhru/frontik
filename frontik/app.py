@@ -9,7 +9,7 @@ import time
 import urlparse
 from itertools import ifilter
 
-import lxml.etree as etree
+from lxml import etree
 import tornado.autoreload
 import tornado.web
 import tornado.ioloop
@@ -23,7 +23,7 @@ import frontik.xml_util
 log = logging.getLogger('frontik.server')
 
 
-def __get_apps_versions():
+def _get_apps_versions():
     app_versions = etree.Element('applications')
 
     for path, app in options.urls:
@@ -41,10 +41,10 @@ def __get_apps_versions():
 
 
 def get_frontik_and_apps_versions():
-    from version import version
+    from frontik.version import version
     versions = etree.Element('versions')
     etree.SubElement(versions, 'frontik').text = version
-    versions.append(__get_apps_versions())
+    versions.append(_get_apps_versions())
     return versions
 
 
@@ -227,8 +227,8 @@ class App(object):
 
         try:
             self.module.config = self.importer.imp_app_module('config')
-        except Exception, e:
-            self.log.error('failed to load config: %s', e)
+        except Exception:
+            self.log.exception('failed to load config: %s')
             raise
 
         if not hasattr(self.module.config, 'urls'):
@@ -259,7 +259,7 @@ class RegexpDispatcher(object):
                 pass
             return re.compile(pattern), app, parse
 
-        self.apps = map(lambda app_conf: parse_conf(*app_conf), app_list)
+        self.apps = [parse_conf(*app_conf) for app_conf in app_list]
 
     def __call__(self, application, request, **kwargs):
         relative_url = get_to_dispatch(request, 'uri')
@@ -273,10 +273,10 @@ class RegexpDispatcher(object):
                 augment_request(request, match, parse)
                 try:
                     return app(application, request, **kwargs)
-                except tornado.web.HTTPError, e:
+                except tornado.web.HTTPError as e:
                     log.exception('%s. Tornado error, %s', app, e)
                     return tornado.web.ErrorHandler(application, request, e.status_code)
-                except Exception, e:
+                except Exception as e:
                     log.exception('%s. Internal server error, %s', app, e)
                 return tornado.web.ErrorHandler(application, request, status_code=500)
 

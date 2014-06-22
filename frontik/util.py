@@ -97,6 +97,7 @@ def dict_concat(dict1, dict2):
     return dict3
 
 
+BOUNDARY = mimetools.choose_boundary()
 ENCODE_TEMPLATE = '--%(boundary)s\r\nContent-Disposition: form-data; name="%(name)s"\r\n\r\n%(data)s\r\n'
 ENCODE_TEMPLATE_FILE = ('--%(boundary)s\r\nContent-Disposition: form-data; name="%(name)s"; '
                         'filename="%(filename)s"\r\nContent-Type: %(contenttype)s\r\n\r\n%(data)s\r\n')
@@ -114,7 +115,6 @@ def make_mfd(fields, files):
     files :: { field_name: [{ "filename" : fn, "body" : bytes }]}
     """
 
-    BOUNDARY = mimetools.choose_boundary()
     body = ""
 
     for name, data in fields.iteritems():

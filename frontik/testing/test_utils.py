@@ -1,19 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import StringIO
 import itertools
 
-import lxml
 from lxml import etree
 
-
-def pretty_print_xml(xml):
-    parser = lxml.etree.XMLParser(remove_blank_text=True)
-    tree = lxml.etree.parse(StringIO.StringIO(lxml.etree.tostring(xml)), parser)
-    print lxml.etree.tostring(tree, pretty_print=True)
-
-
-# ----------------------------------------------------
 # XML comparing helpers
 
 
@@ -59,13 +49,13 @@ def _xml_compare_tag_attribs_text(xml1, xml2, reporter, compare_xml2_attribs=Tru
         reporter('Tags do not match: {tag1} and {tag2} (path: {path})'
                  .format(tag1=xml1.tag, tag2=xml2.tag, path=_describe_element(xml1)))
         return False
-    for attrib, value in xml1.attrib.items():
+    for attrib, value in xml1.attrib.iteritems():
         if xml2.attrib.get(attrib) != value:
             reporter('Attributes do not match: {attr}={v1!r}, {attr}={v2!r} (path: {path})'
                      .format(attr=attrib, v1=value, v2=xml2.attrib.get(attrib), path=_describe_element(xml1)))
             return False
     if compare_xml2_attribs:
-        for attrib in xml2.attrib.keys():
+        for attrib in xml2.attrib:
             if attrib not in xml1.attrib:
                 reporter('xml2 has an attribute xml1 is missing: {attrib} (path: {path})'
                          .format(attrib=attrib, path=_describe_element(xml2)))
