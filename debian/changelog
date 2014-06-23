@@ -1,3 +1,9 @@
+frontik (2.20.1) unstable; urgency=low
+
+  * HH-43666 log HTTPRequest body only in debug mode
+
+ -- Automated Build <an.sumin@hh.ru>  Mon, 23 Jun 2014 15:10:10 +0400
+
 frontik (2.20.0) unstable; urgency=low
 
   * HH-40165 update docs and misc
