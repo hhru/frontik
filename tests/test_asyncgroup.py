@@ -7,17 +7,17 @@ from frontik.future import Placeholder
 
 class TestAsyncGroup(unittest.TestCase):
     def test_callbacks(self):
-        p = Placeholder()
+        data = []
 
         def callback2():
-            p.set_data(p.get() + [2])
+            data.append(2)
 
         def finish_callback():
-            self.assertEquals(p.get(), [1, 2])
-            p.set_data(p.get() + [3])
+            self.assertEquals(data, [1, 2])
+            data.append(3)
 
         ag = AsyncGroup(finish_callback)
-        cb1 = ag.add(partial(p.set_data, [1]))
+        cb1 = ag.add(partial(data.append, 1))
         cb2 = ag.add(callback2)
 
         self.assertEquals(ag._finish_cb_called, False)
@@ -34,7 +34,7 @@ class TestAsyncGroup(unittest.TestCase):
 
         self.assertEquals(ag._finish_cb_called, True)
         self.assertEquals(ag._aborted, False)
-        self.assertEquals(p.get(), [1, 2, 3])
+        self.assertEquals(data, [1, 2, 3])
 
     def test_notifications(self):
         p = Placeholder()

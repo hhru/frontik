@@ -3,6 +3,7 @@ import unittest
 
 import frontik.future
 import frontik.json_builder
+from frontik.responses import FailedRequestException
 
 
 class TestJsonBuilder(unittest.TestCase):
@@ -10,6 +11,10 @@ class TestJsonBuilder(unittest.TestCase):
         j = frontik.json_builder.JsonBuilder()
 
         self.assertTrue(j.is_empty())
+
+        j.put({})
+        self.assertFalse(j.is_empty())
+        self.assertEqual(j.to_string(), '{}')
 
         j.put({'a': 'b'})
 
@@ -78,7 +83,7 @@ class TestJsonBuilder(unittest.TestCase):
     def test_failed_future(self):
         j = frontik.json_builder.JsonBuilder()
         p = frontik.future.Placeholder()
-        p.set_data(frontik.future.FailedFutureException(error='error', code='code', body='body'))
+        p.set_data(FailedRequestException(error='error', code='code', body='body'))
         j.put(p)
 
         self.assertEqual(j.to_string(), """{"error": {"reason": "error", "code": "code"}}""")
@@ -99,8 +104,18 @@ class TestJsonBuilder(unittest.TestCase):
 
         self.assertEqual(j.to_string(), """{"nested": {"a": ["b", "c"]}}""")
 
+    def test_nested_future_error_node(self):
+        j = frontik.json_builder.JsonBuilder()
+        p1 = frontik.future.Placeholder()
+        p2 = frontik.future.Placeholder()
+
+        p1.set_data({'nested': p2})
+        j.put(p1)
+
+        self.assertEqual(j.to_string(), """{"nested": null}""")
+
         p2.set_data(
-            {'a': frontik.future.FailedFutureException(error='error', code='code', body='body')}
+            {'a': FailedRequestException(error='error', code='code', body='body')}
         )
 
         self.assertEqual(
