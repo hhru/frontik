@@ -1,9 +1,9 @@
 # coding=utf-8
 
-import collections
 import json
 
-import frontik.future
+from frontik.future import Placeholder
+from frontik.responses import FailedRequestException, RequestResult
 
 
 class JsonBuilder(object):
@@ -45,12 +45,11 @@ class JsonBuilder(object):
             return _check_dict(v)
         elif isinstance(v, (set, list, tuple)):
             return _check_iterable(v)
-        elif isinstance(v, frontik.future.FutureVal):
-            try:
-                return self._check_value(v.get())
-            except frontik.future.FailedFutureException as e:
-                return self._check_value(e)
-        elif isinstance(v, frontik.future.FailedFutureException):
+        elif isinstance(v, RequestResult):
+            return self._check_value(v.data)
+        elif isinstance(v, Placeholder):
+            return self._check_value(v.get())
+        elif isinstance(v, FailedRequestException):
             return self.get_error_node(v)
         elif isinstance(v, JsonBuilder):
             return _check_dict(v.to_dict())
