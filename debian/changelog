@@ -1,3 +1,10 @@
+frontik (2.20.2) unstable; urgency=low
+
+  * HH-43705 Add self.group method
+  * HH-43929 Add async data provider
+
+ -- Automated Build <n.miroshnichenko@hh.ru>  Tue, 24 Jun 2014 18:59:04 +0400
+
 frontik (2.20.1) unstable; urgency=low
 
   * HH-43666 log HTTPRequest body only in debug mode
