@@ -296,7 +296,7 @@ class PageHandler(tornado.web.RequestHandler):
                 results_holder[future_name] = data.get_params()
 
             for name, future in futures.iteritems():
-                future.add_data_callback(async_group.add(partial(callback, name)))
+                future.add_done_callback(async_group.add(partial(callback, name)))
 
             async_group.try_finish()
 
@@ -305,7 +305,7 @@ class PageHandler(tornado.web.RequestHandler):
     def get_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None, callback=None,
                 follow_redirects=True, labels=None, add_to_finish_group=True, **params):
 
-        placeholder = frontik.future.Placeholder()
+        placeholder = frontik.future.Future()
         request = frontik.util.make_get_request(
             url, {} if data is None else data, {} if headers is None else headers,
             connect_timeout, request_timeout, follow_redirects)
@@ -320,7 +320,7 @@ class PageHandler(tornado.web.RequestHandler):
                  callback=None, follow_redirects=True, content_type=None, labels=None,
                  add_to_finish_group=True, **params):
 
-        placeholder = frontik.future.Placeholder()
+        placeholder = frontik.future.Future()
         request = frontik.util.make_post_request(
             url, data, {} if headers is None else headers, {} if files is None else files,
             connect_timeout, request_timeout, follow_redirects, content_type)
@@ -334,7 +334,7 @@ class PageHandler(tornado.web.RequestHandler):
     def put_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
                 content_type=None, labels=None, add_to_finish_group=True, **params):
 
-        placeholder = frontik.future.Placeholder()
+        placeholder = frontik.future.Future()
         request = frontik.util.make_put_request(
             url, data, {} if headers is None else headers,
             connect_timeout, request_timeout, content_type)
@@ -348,7 +348,7 @@ class PageHandler(tornado.web.RequestHandler):
     def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
                    content_type=None, labels=None, add_to_finish_group=True, **params):
 
-        placeholder = frontik.future.Placeholder()
+        placeholder = frontik.future.Future()
         request = frontik.util.make_delete_request(
             url, data, {} if headers is None else headers,
             connect_timeout, request_timeout, content_type)
@@ -447,9 +447,9 @@ class PageHandler(tornado.web.RequestHandler):
             def callback_wrapper(data):
                 callback(*data.get_params())
 
-            placeholder.add_data_callback(callback_wrapper)
+            placeholder.add_done_callback(callback_wrapper)
 
-        placeholder.set_data(RequestResult(result, response))
+        placeholder.set_result(RequestResult(result, response))
 
     def _set_response_error(self, response):
         log_func = self.log.error if response.code >= 500 else self.log.warn

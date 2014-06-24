@@ -2,7 +2,7 @@
 
 import lxml.etree as etree
 
-from frontik.future import Placeholder
+from frontik.future import Future
 from frontik.responses import FailedRequestException, RequestResult
 
 
@@ -59,7 +59,7 @@ class Doc(object):
                 for i in chunk_to_element(chunk.data):
                     yield i
 
-            elif isinstance(chunk, Placeholder):
+            elif isinstance(chunk, Future):
                 for i in chunk_to_element(chunk.get()):
                     yield i
 
