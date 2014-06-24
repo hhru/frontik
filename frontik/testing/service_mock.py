@@ -4,7 +4,6 @@
 See source code for get_doc_shows_what_expected for example that doubles as test
 """
 
-import frozen_dict
 import traceback
 import unittest
 from collections import namedtuple
@@ -57,20 +56,12 @@ class DummyConnection(object):
         pass
 
 
-raw_route = namedtuple('raw_route', 'path query cookies method headers')
+raw_route = namedtuple('raw_route', 'path query cookies method')
 
 
-def route(url, cookies="", method='GET', headers=None):
-    if headers is None:
-        headers = {}
-    parsed = urlparse(url)
-    return _route(parsed.path, parsed.query, cookies, method, frozen_dict.FrozenDict(headers))
-
-
-def _route(path, query="", cookies="", method='GET', headers=None):
-    if headers is None:
-        headers = {}
-    return raw_route(path, query, cookies, method, frozen_dict.FrozenDict(headers))
+def route(url, cookies='', method='GET'):
+    parsed_url = urlparse(url)
+    return raw_route(parsed_url.path, parsed_url.query, cookies, method)
 
 
 def route_less_or_equal_than(a, b):
@@ -99,17 +90,13 @@ def parse_query(query):
     return dict([(k, tuple(v)) for k, v in parse_qs(query, keep_blank_values=True).iteritems()])
 
 
-def to_route(req):
-    return route(req.url, method=req.method, headers=req.headers)
-
-
 class ServiceMock(object):
     def __init__(self, routes, strict=0):
         self.routes = routes
         self.strict = strict
 
     def fetch_request(self, req):
-        route_of_incoming_request = to_route(req)
+        route_of_incoming_request = route(req.url, method=req.method)
         for r in self.routes:
             destination_route = r if isinstance(r, raw_route) else route(r)
             if route_less_or_equal_than(destination_route, route_of_incoming_request):
