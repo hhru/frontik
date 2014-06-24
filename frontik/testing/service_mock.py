@@ -148,8 +148,14 @@ class EmptyEnvironment(object):
         frontik_app = frontik.app.App('', dirname(__file__))
         tornado_app = frontik.app.get_app([('', frontik_app)])
 
+        def fetch(req, callback, **kwargs):
+            tb = traceback.extract_stack()
+            while tb and not tb.pop()[2] == 'fetch_request':
+                pass
+            self._callback_heap.append((req, callback, tb))
+
         frontik_app.app_globals.config = self._config
-        frontik_app.app_globals.http_client.fetch = self.process_fetch
+        frontik_app.app_globals.http_client.fetch = fetch
         IOLoop.instance().add_callback = lambda callback: self._callback_heap.append((None, callback, None))
 
         self._request = tornado.httpserver.HTTPRequest('GET', '/', remote_ip='127.0.0.1')
@@ -160,6 +166,7 @@ class EmptyEnvironment(object):
 
         self._registry = {}
         self._handler = tornado_app(self._request)
+        self._response_text = None
 
     def expect(self, **kwargs):
         for name, routes in kwargs.iteritems():
@@ -192,6 +199,9 @@ class EmptyEnvironment(object):
         for key, val in arguments.iteritems():
             self._request.arguments[key] = [val] if isinstance(val, basestring) else val
         return self
+
+    def get_arguments(self, name):
+        return self._request.arguments.get(name, [])
 
     def add_request_body(self, body):
         self._request.body = body
@@ -240,6 +250,15 @@ class EmptyEnvironment(object):
         self._handler._finished = False
         self._handler._headers_written = False
 
+        old_flush = self._handler.flush
+
+        def flush(**kwargs):
+            self._response_text = b''.join(self._handler._write_buffer)
+            old_flush(**kwargs)
+
+        self._handler.flush = flush
+
+        # self._result is deprecated
         self._result = method(self._handler, *args, **kwargs)
         self._raise_exceptions()
         self._process_callbacks()
@@ -248,15 +267,16 @@ class EmptyEnvironment(object):
 
         return self
 
+    # move these methods to TestResult object
+
     def get_config(self):
         return self._config
 
+    # deprecated
     def get_handler(self):
         return self._handler
 
-    def get_arguments(self, name):
-        return self._request.arguments.get(name, [])
-
+    # deprecated
     def get_result(self):
         return self._result
 
@@ -269,8 +289,11 @@ class EmptyEnvironment(object):
     def get_json(self):
         return self._handler.json
 
-    def process_fetch(self, req, callback, **kwargs):
-        tb = traceback.extract_stack()
-        while tb and not tb.pop()[2] == 'fetch_request':
-            pass
-        self._callback_heap.append((req, callback, tb))
+    def get_response_text(self):
+        return self._response_text
+
+    def get_headers(self):
+        return self._handler._headers
+
+    def get_status(self):
+        return self._handler.get_status()

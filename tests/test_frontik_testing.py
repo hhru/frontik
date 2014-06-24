@@ -49,6 +49,8 @@ class TestServiceMock(unittest.TestCase):
                 res = lxml.etree.Element("result")
                 res.text = str(handler.result)
                 handler.doc.put(res)
+                handler.set_header('X-Foo', 'Bar')
+                handler.set_status(400)
 
             handler.result = 0
             ag = AsyncGroup(finished)
@@ -65,14 +67,21 @@ class TestServiceMock(unittest.TestCase):
 
         class EtalonTest(unittest.TestCase):
             def runTest(self):
-                doc = EmptyEnvironment().expect(
+                result = EmptyEnvironment().expect(
                     serviceHost={
                         '/vacancy/1234': (200, '<b><a>1</a></b>'),
                         '/employer/1234': '<b><a>2</a></b>'
                     }
-                ).call(function_under_test).get_doc().root_node
+                ).call(function_under_test)
 
-                self.assertEqual(doc.findtext('result'), '3')
+                self.assertEqual(result.get_doc().root_node.findtext('result'), '3')
+
+                self.assertEqual(result.get_status(), 400)
+                self.assertEqual(result.get_headers().get('X-Foo'), 'Bar')
+                self.assertEqual(
+                    result.get_response_text(),
+                    '<?xml version=\'1.0\' encoding=\'utf-8\'?>\n<doc frontik="true"><result>3</result></doc>'
+                )
 
         # test that test itself works (does not throw exception)
         unittest.TextTestRunner().run(EtalonTest())
