@@ -18,13 +18,13 @@ class Page(frontik.handler.PageHandler):
 
         def additional_callback(data):
             self.json.put({'cb': 'yes'})
-            request_future.add_data_callback(second_additional_callback)
+            request_future.add_done_callback(second_additional_callback)
             assert state['marker_second_callback_is_sync']
 
             self.json.put(self.post_url(url + '?data=2'))
 
         request_future = self.post_url(url + '?data=1', callback=main_callback)
-        request_future.add_data_callback(additional_callback)
+        request_future.add_done_callback(additional_callback)
 
     def post_page(self):
         self.json.put({

@@ -1,14 +1,14 @@
 import json
 import unittest
 
-import frontik.future
-import frontik.json_builder
+from frontik.future import Future
+from frontik.json_builder import JsonBuilder
 from frontik.responses import FailedRequestException
 
 
 class TestJsonBuilder(unittest.TestCase):
     def test_simple(self):
-        j = frontik.json_builder.JsonBuilder()
+        j = JsonBuilder()
 
         self.assertTrue(j.is_empty())
 
@@ -22,13 +22,13 @@ class TestJsonBuilder(unittest.TestCase):
         self.assertEqual(j.to_string(), """{"a": "b"}""")
 
     def test_root_node_name(self):
-        j = frontik.json_builder.JsonBuilder(root_node_name='root')
+        j = JsonBuilder(root_node_name='root')
         j.put({'a': 'b'})
 
         self.assertEqual(j.to_string(), """{"root": {"a": "b"}}""")
 
     def test_list(self):
-        j = frontik.json_builder.JsonBuilder()
+        j = JsonBuilder()
         j.put({'a': {'b': [1, 2, 3]}})
 
         self.assertEqual(j.to_string(), """{"a": {"b": [1, 2, 3]}}""")
@@ -47,13 +47,13 @@ class TestJsonBuilder(unittest.TestCase):
                     return obj.to_json()
                 return json.JSONEncoder.default(self, obj)
 
-        j = frontik.json_builder.JsonBuilder(json_encoder=JSONEncoder)
+        j = JsonBuilder(json_encoder=JSONEncoder)
         j.put({'a': CustomValue()})
 
         self.assertEqual(j.to_string(), """{"a": "1.2.3"}""")
 
     def test_multiple_items(self):
-        j = frontik.json_builder.JsonBuilder()
+        j = JsonBuilder()
         j.put({'a': 'b'})
         j.put({'c': 'd'})
 
@@ -68,53 +68,53 @@ class TestJsonBuilder(unittest.TestCase):
         self.assertEqual(j.to_string(), """{"a": "x", "c": "d", "e": "x"}""")
 
     def test_placeholder(self):
-        j = frontik.json_builder.JsonBuilder()
-        p = frontik.future.Placeholder()
-        j.put(p)
+        j = JsonBuilder()
+        f = Future()
+        j.put(f)
 
         self.assertFalse(j.is_empty())
         self.assertEqual(j.to_string(), """{}""")
 
-        p.set_data({'a': 'b'})
+        f.set_result({'a': 'b'})
 
         self.assertEqual(j.to_dict()['a'], 'b')
         self.assertEqual(j.to_string(), """{"a": "b"}""")
 
     def test_failed_future(self):
-        j = frontik.json_builder.JsonBuilder()
-        p = frontik.future.Placeholder()
-        p.set_data(FailedRequestException(error='error', code='code', body='body'))
-        j.put(p)
+        j = JsonBuilder()
+        f = Future()
+        f.set_result(FailedRequestException(error='error', code='code', body='body'))
+        j.put(f)
 
         self.assertEqual(j.to_string(), """{"error": {"reason": "error", "code": "code"}}""")
 
     def test_nested_future(self):
-        j = frontik.json_builder.JsonBuilder()
-        p1 = frontik.future.Placeholder()
-        p2 = frontik.future.Placeholder()
-        p3 = frontik.future.Placeholder()
+        j = JsonBuilder()
+        f1 = Future()
+        f2 = Future()
+        f3 = Future()
 
-        p1.set_data({'nested': p2})
-        j.put(p1)
+        f1.set_result({'nested': f2})
+        j.put(f1)
 
         self.assertEqual(j.to_string(), """{"nested": null}""")
 
-        p2.set_data({'a': p3})
-        p3.set_data(['b', 'c'])
+        f2.set_result({'a': f3})
+        f3.set_result(['b', 'c'])
 
         self.assertEqual(j.to_string(), """{"nested": {"a": ["b", "c"]}}""")
 
     def test_nested_future_error_node(self):
-        j = frontik.json_builder.JsonBuilder()
-        p1 = frontik.future.Placeholder()
-        p2 = frontik.future.Placeholder()
+        j = JsonBuilder()
+        f1 = Future()
+        f2 = Future()
 
-        p1.set_data({'nested': p2})
-        j.put(p1)
+        f1.set_result({'nested': f2})
+        j.put(f1)
 
         self.assertEqual(j.to_string(), """{"nested": null}""")
 
-        p2.set_data(
+        f2.set_result(
             {'a': FailedRequestException(error='error', code='code', body='body')}
         )
 
@@ -123,10 +123,10 @@ class TestJsonBuilder(unittest.TestCase):
         )
 
     def test_nested_json_builder(self):
-        j1 = frontik.json_builder.JsonBuilder()
+        j1 = JsonBuilder()
         j1.put(k1='v1')
 
-        j2 = frontik.json_builder.JsonBuilder()
+        j2 = JsonBuilder()
         j2.put(k2='v2')
 
         j1.put(j2)
@@ -136,7 +136,7 @@ class TestJsonBuilder(unittest.TestCase):
         )
 
     def test_dict_put_invalid(self):
-        j = frontik.json_builder.JsonBuilder()
+        j = JsonBuilder()
         j.put({'a': 'b'})
         j.put(['c'])
 
