@@ -4,9 +4,7 @@
 See source code for get_doc_shows_what_expected for example that doubles as test
 """
 
-import frozen_dict
 import traceback
-import unittest
 from collections import namedtuple
 from cStringIO import StringIO
 from logging import getLogger
@@ -57,20 +55,12 @@ class DummyConnection(object):
         pass
 
 
-raw_route = namedtuple('raw_route', 'path query cookies method headers')
+raw_route = namedtuple('raw_route', 'path query cookies method')
 
 
-def route(url, cookies="", method='GET', headers=None):
-    if headers is None:
-        headers = {}
-    parsed = urlparse(url)
-    return _route(parsed.path, parsed.query, cookies, method, frozen_dict.FrozenDict(headers))
-
-
-def _route(path, query="", cookies="", method='GET', headers=None):
-    if headers is None:
-        headers = {}
-    return raw_route(path, query, cookies, method, frozen_dict.FrozenDict(headers))
+def route(url, cookies='', method='GET'):
+    parsed_url = urlparse(url)
+    return raw_route(parsed_url.path, parsed_url.query, cookies, method)
 
 
 def route_less_or_equal_than(a, b):
@@ -99,17 +89,13 @@ def parse_query(query):
     return dict([(k, tuple(v)) for k, v in parse_qs(query, keep_blank_values=True).iteritems()])
 
 
-def to_route(req):
-    return route(req.url, method=req.method, headers=req.headers)
-
-
 class ServiceMock(object):
     def __init__(self, routes, strict=0):
         self.routes = routes
         self.strict = strict
 
     def fetch_request(self, req):
-        route_of_incoming_request = to_route(req)
+        route_of_incoming_request = route(req.url, method=req.method)
         for r in self.routes:
             destination_route = r if isinstance(r, raw_route) else route(r)
             if route_less_or_equal_than(destination_route, route_of_incoming_request):
@@ -158,62 +144,74 @@ class EmptyEnvironment(object):
     def __init__(self, **kwarg):
         self.log = getLogger('service_mock')
 
+        self._config = EmptyEnvironment.LocalHandlerConfig()
         frontik_app = frontik.app.App('', dirname(__file__))
         tornado_app = frontik.app.get_app([('', frontik_app)])
 
-        frontik_app.app_globals.config = EmptyEnvironment.LocalHandlerConfig()
-        frontik_app.app_globals.http_client.fetch = self.process_fetch
+        def fetch(req, callback, **kwargs):
+            tb = traceback.extract_stack()
+            while tb and not tb.pop()[2] == 'fetch_request':
+                pass
+            self._callback_heap.append((req, callback, tb))
+
+        frontik_app.app_globals.config = self._config
+        frontik_app.app_globals.http_client.fetch = fetch
         IOLoop.instance().add_callback = lambda callback: self._callback_heap.append((None, callback, None))
 
-        self.request = tornado.httpserver.HTTPRequest('GET', '/', remote_ip='127.0.0.1')
-        self.request.connection = DummyConnection()
+        self._request = tornado.httpserver.HTTPRequest('GET', '/', remote_ip='127.0.0.1')
+        self._request.connection = DummyConnection()
 
-        self.registry = {}
-        self._handler = tornado_app(self.request)
+        # backwards compatibility, remove after usages are gone
+        self.request = self._request
+
+        self._registry = {}
+        self._handler = tornado_app(self._request)
+        self._response_text = None
 
     def expect(self, **kwargs):
         for name, routes in kwargs.iteritems():
-            service = self.registry.setdefault(name, ServiceMock({}))
+            service = self._registry.setdefault(name, ServiceMock({}))
             service.routes.update(routes)
-            setattr(self._handler.config, name, 'http://' + name + '/')
+            setattr(self._config, name, 'http://' + name + '/')
 
         return self
-
-    def do(self, handler_processor):
-        handler_processor(self._handler)
-        return self
-
-    def get_candidate_service(self, url):
-        return self.registry[urlparse(url).netloc]
 
     def route_request(self, request):
-        url = request.url
-        service = self.get_candidate_service(url)
+        service = self._get_candidate_service(request.url)
         if service:
             return service.fetch_request(request)
         else:
             return False
 
+    def _get_candidate_service(self, url):
+        return self._registry[urlparse(url).netloc]
+
     def configure(self, **kwargs):
-        config = self._handler.config
-        for name in kwargs:
-            setattr(config, name, kwargs[name])
+        for name, val in kwargs.iteritems():
+            setattr(self._config, name, val)
         return self
 
     def add_headers(self, headers):
-        self._handler.request.headers.update(headers)
+        self._request.headers.update(headers)
         return self
 
     def add_arguments(self, arguments):
         for key, val in arguments.iteritems():
-            self._handler.request.arguments[key] = [val] if isinstance(val, basestring) else val
+            self._request.arguments[key] = [val] if isinstance(val, basestring) else val
         return self
 
-    def raise_exceptions(self):
+    def get_arguments(self, name):
+        return self._request.arguments.get(name, [])
+
+    def add_request_body(self, body):
+        self._request.body = body
+        return self
+
+    def _raise_exceptions(self):
         if self._exception_heap:
             raise self._exception_heap[0][0], self._exception_heap[0][1], self._exception_heap[0][2]
 
-    def process_callbacks(self):
+    def _process_callbacks(self):
         while self._callback_heap:
             callbacks_snapshot = self._callback_heap
             self._callback_heap = []
@@ -229,10 +227,9 @@ class EmptyEnvironment(object):
                             self.log.info("Caller stack trace might help:\n" + ''.join(traceback.format_list(tb)))
                         raise e
                     callback(result)
-                    self.raise_exceptions()
-                else:
-                    if callback:
-                        callback()
+                    self._raise_exceptions()
+                elif callback:
+                    callback()
 
     def call_with_exception_handler(self, method, *args, **kwargs):
         try:
@@ -242,6 +239,19 @@ class EmptyEnvironment(object):
 
         return self
 
+    def call_get(self, page_handler):
+        return self.call(page_handler.get_page)
+
+    def call_post(self, page_handler):
+        return self.call(page_handler.post_page)
+
+    def call_put(self, page_handler):
+        return self.call(page_handler.put_page)
+
+    def call_delete(self, page_handler):
+        return self.call(page_handler.delete_page)
+
+    # deprecated, use call_function
     def call(self, method, *args, **kwargs):
         if hasattr(method, 'im_class'):
             self._handler.__class__ = type('Page', (method.im_class,) + self._handler.__class__.__bases__, {})
@@ -253,32 +263,52 @@ class EmptyEnvironment(object):
         self._handler._finished = False
         self._handler._headers_written = False
 
+        old_flush = self._handler.flush
+
+        def flush(**kwargs):
+            self._response_text = b''.join(self._handler._write_buffer)
+            old_flush(**kwargs)
+
+        self._handler.flush = flush
+
+        # self._result is deprecated
         self._result = method(self._handler, *args, **kwargs)
-        self.raise_exceptions()
-        self.process_callbacks()
+        self._raise_exceptions()
+        self._process_callbacks()
 
         frontik.handler_active_limit.PageHandlerActiveLimit.working_handlers_count = 0
 
         return self
 
-    def get_handler(self,):
+    call_function = call
+
+    # move these methods to TestResult object
+
+    def get_config(self):
+        return self._config
+
+    # deprecated
+    def get_handler(self):
         return self._handler
 
-    def get_result(self,):
+    # deprecated
+    def get_result(self):
         return self._result
 
-    def get_doc(self, ):
+    def get_text(self):
+        return self._handler.text
+
+    def get_doc(self):
         return self._handler.doc
 
-    def get_json(self, ):
+    def get_json(self):
         return self._handler.json
 
-    def process_fetch(self, req, callback, **kwargs):
-        tb = traceback.extract_stack()
-        while tb and not tb.pop()[2] == 'fetch_request':
-            pass
-        self._callback_heap.append((req, callback, tb))
+    def get_response_text(self):
+        return self._response_text
 
+    def get_headers(self):
+        return self._handler._headers
 
-if __name__ == '__main__':
-    unittest.main()
+    def get_status(self):
+        return self._handler.get_status()
