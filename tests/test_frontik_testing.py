@@ -72,7 +72,7 @@ class TestServiceMock(unittest.TestCase):
                         '/vacancy/1234': (200, '<b><a>1</a></b>'),
                         '/employer/1234': '<b><a>2</a></b>'
                     }
-                ).call(function_under_test)
+                ).call_function(function_under_test)
 
                 self.assertEqual(result.get_doc().root_node.findtext('result'), '3')
 
