@@ -4,7 +4,7 @@ from lxml import etree
 import unittest
 
 import frontik.doc
-from frontik.future import Placeholder
+from frontik.future import Future
 from tests.instances import frontik_debug
 from frontik.responses import FailedRequestException
 
@@ -20,41 +20,41 @@ class TestDoc(unittest.TestCase):
         self.assertFalse(d.is_empty())
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
 
-    def test_placeholder_simple(self):
+    def test_future_simple(self):
         d = frontik.doc.Doc('a')
-        p = Placeholder()
-        d.put(p)
+        f = Future()
+        d.put(f)
 
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a/>""")
 
-        p.set_data('test')
+        f.set_result('test')
 
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
 
-    def test_placeholder_etree_element(self):
+    def test_future_etree_element(self):
         d = frontik.doc.Doc('a')
-        p = Placeholder()
-        p.set_data(etree.Element('b'))
-        d.put(p)
+        f = Future()
+        f.set_result(etree.Element('b'))
+        d.put(f)
 
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a><b/></a>""")
 
-    def test_placeholder_list(self):
+    def test_future_list(self):
         d = frontik.doc.Doc('a')
-        p = Placeholder()
-        p.set_data([etree.Comment('ccc'), etree.Element('bbb')])
-        d.put(p)
+        f = Future()
+        f.set_result([etree.Comment('ccc'), etree.Element('bbb')])
+        d.put(f)
 
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a><!--ccc--><bbb/></a>""")
 
     def test_failed_future(self):
         d = frontik.doc.Doc('a')
-        p = Placeholder()
-        p.set_data(FailedRequestException(effective_url='url', error='error', code='code', body='body'))
-        d.put(p)
+        f = Future()
+        f.set_result(FailedRequestException(reason='error', code='code'))
+        d.put(f)
 
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n"""
-                                        """<a><error reason="error" code="code"><!--body--></error></a>""")
+                                        """<a><error reason="error" code="code"/></a>""")
 
     def test_doc_nested(self):
         a = frontik.doc.Doc('a')
@@ -86,8 +86,13 @@ class TestDoc(unittest.TestCase):
         self.assertIsNotNone(xml.find('a'))
         self.assertEqual(xml.findtext('a'), 'aaa')
 
-        self.assertIsNotNone(xml.find('b'))
-        self.assertEqual(xml.findtext('b'), 'bbb')
+        self.assertIsNotNone(xml.find('bbb'))
 
         self.assertIsNotNone(xml.find('c'))
         self.assertIn(xml.findtext('c'), (None, ''))
+
+    def test_doc_invalid_xml(self):
+        xml = frontik_debug.get_page_xml('test_app/compose_doc?invalid=true')
+
+        self.assertIsNotNone(xml.find('error'))
+        self.assertEqual(xml.find('error').get('reason'), 'invalid XML')

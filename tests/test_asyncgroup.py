@@ -2,7 +2,7 @@ import unittest
 from functools import partial
 
 from frontik.async import AsyncGroup
-from frontik.future import Placeholder
+from frontik.future import Future
 from tests import frontik_debug
 
 
@@ -38,8 +38,8 @@ class TestAsyncGroup(unittest.TestCase):
         self.assertEquals(data, [1, 2, 3])
 
     def test_notifications(self):
-        p = Placeholder()
-        ag = AsyncGroup(partial(p.set_data, True))
+        f = Future()
+        ag = AsyncGroup(partial(f.set_result, True))
         not1 = ag.add_notification()
         not2 = ag.add_notification()
 
@@ -53,11 +53,11 @@ class TestAsyncGroup(unittest.TestCase):
 
         self.assertEquals(ag._finish_cb_called, True)
         self.assertEquals(ag._aborted, False)
-        self.assertEquals(p.get(), True)
+        self.assertEquals(f.get(), True)
 
     def test_finish(self):
-        p = Placeholder()
-        ag = AsyncGroup(partial(p.set_data, True))
+        f = Future()
+        ag = AsyncGroup(partial(f.set_result, True))
 
         self.assertEquals(ag._finish_cb_called, False)
 
@@ -66,7 +66,7 @@ class TestAsyncGroup(unittest.TestCase):
 
         self.assertEquals(ag._finish_cb_called, True)
         self.assertEquals(ag._aborted, False)
-        self.assertEquals(p.get(), True)
+        self.assertEquals(f.get(), True)
 
     def test_exception_in_first(self):
         log = []

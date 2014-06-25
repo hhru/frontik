@@ -2,7 +2,7 @@
 
 import json
 
-from frontik.future import Placeholder
+from frontik.future import Future
 from frontik.responses import FailedRequestException, RequestResult
 
 
@@ -26,12 +26,9 @@ class JsonBuilder(object):
         self._data = []
 
     @staticmethod
-    def get_error_node(response):
+    def get_error_node(exception):
         return {
-            'error': {
-                'reason': str(response.error),
-                'code': response.code
-            }
+            'error': {k: v for k, v in exception.attrs.iteritems()}
         }
 
     def _check_value(self, v):
@@ -47,7 +44,7 @@ class JsonBuilder(object):
             return _check_iterable(v)
         elif isinstance(v, RequestResult):
             return self._check_value(v.data)
-        elif isinstance(v, Placeholder):
+        elif isinstance(v, Future):
             return self._check_value(v.get())
         elif isinstance(v, FailedRequestException):
             return self.get_error_node(v)
