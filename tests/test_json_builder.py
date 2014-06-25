@@ -83,7 +83,7 @@ class TestJsonBuilder(unittest.TestCase):
     def test_failed_future(self):
         j = JsonBuilder()
         f = Future()
-        f.set_result(FailedRequestException(error='error', code='code', body='body'))
+        f.set_result(FailedRequestException(reason='error', code='code'))
         j.put(f)
 
         self.assertEqual(j.to_string(), """{"error": {"reason": "error", "code": "code"}}""")
@@ -115,7 +115,7 @@ class TestJsonBuilder(unittest.TestCase):
         self.assertEqual(j.to_string(), """{"nested": null}""")
 
         f2.set_result(
-            {'a': FailedRequestException(error='error', code='code', body='body')}
+            {'a': FailedRequestException(reason='error', code='code')}
         )
 
         self.assertEqual(

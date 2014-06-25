@@ -50,11 +50,11 @@ class TestDoc(unittest.TestCase):
     def test_failed_future(self):
         d = frontik.doc.Doc('a')
         f = Future()
-        f.set_result(FailedRequestException(effective_url='url', error='error', code='code', body='body'))
+        f.set_result(FailedRequestException(reason='error', code='code'))
         d.put(f)
 
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n"""
-                                        """<a><error reason="error" code="code"><!--body--></error></a>""")
+                                        """<a><error reason="error" code="code"/></a>""")
 
     def test_doc_nested(self):
         a = frontik.doc.Doc('a')
@@ -86,8 +86,13 @@ class TestDoc(unittest.TestCase):
         self.assertIsNotNone(xml.find('a'))
         self.assertEqual(xml.findtext('a'), 'aaa')
 
-        self.assertIsNotNone(xml.find('b'))
-        self.assertEqual(xml.findtext('b'), 'bbb')
+        self.assertIsNotNone(xml.find('bbb'))
 
         self.assertIsNotNone(xml.find('c'))
         self.assertIn(xml.findtext('c'), (None, ''))
+
+    def test_doc_invalid_xml(self):
+        xml = frontik_debug.get_page_xml('test_app/compose_doc?invalid=true')
+
+        self.assertIsNotNone(xml.find('error'))
+        self.assertEqual(xml.find('error').get('reason'), 'invalid XML')

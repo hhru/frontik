@@ -457,7 +457,7 @@ class PageHandler(tornado.web.RequestHandler):
             code=response.code, url=response.effective_url, reason=response.error)
         )
 
-        return FailedRequestException(**dict((k, getattr(response, k, None)) for k in ('code', 'error', 'body')))
+        return FailedRequestException(reason=str(response.error), code=response.code)
 
     # Finish page
 

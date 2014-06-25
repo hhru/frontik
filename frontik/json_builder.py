@@ -26,12 +26,9 @@ class JsonBuilder(object):
         self._data = []
 
     @staticmethod
-    def get_error_node(response):
+    def get_error_node(exception):
         return {
-            'error': {
-                'reason': str(response.error),
-                'code': response.code
-            }
+            'error': {k: v for k, v in exception.attrs.iteritems()}
         }
 
     def _check_value(self, v):
