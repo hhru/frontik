@@ -67,7 +67,7 @@ class TestJsonBuilder(unittest.TestCase):
 
         self.assertEqual(j.to_string(), """{"a": "x", "c": "d", "e": "x"}""")
 
-    def test_placeholder(self):
+    def test_future(self):
         j = JsonBuilder()
         f = Future()
         j.put(f)

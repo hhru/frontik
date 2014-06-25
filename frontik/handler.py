@@ -18,7 +18,7 @@ from tornado.httpserver import HTTPRequest
 import frontik.async
 import frontik.auth
 import frontik.frontik_logging as frontik_logging
-import frontik.future
+from frontik.future import Future
 import frontik.handler_active_limit
 import frontik.handler_debug
 import frontik.jobs
@@ -305,59 +305,59 @@ class PageHandler(tornado.web.RequestHandler):
     def get_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None, callback=None,
                 follow_redirects=True, labels=None, add_to_finish_group=True, **params):
 
-        placeholder = frontik.future.Future()
+        future = Future()
         request = frontik.util.make_get_request(
             url, {} if data is None else data, {} if headers is None else headers,
             connect_timeout, request_timeout, follow_redirects)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, **params),
+        self.fetch_request(request, partial(self._parse_response, future, callback, **params),
                            add_to_finish_group=add_to_finish_group)
 
-        return placeholder
+        return future
 
     def post_url(self, url, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
                  callback=None, follow_redirects=True, content_type=None, labels=None,
                  add_to_finish_group=True, **params):
 
-        placeholder = frontik.future.Future()
+        future = Future()
         request = frontik.util.make_post_request(
             url, data, {} if headers is None else headers, {} if files is None else files,
             connect_timeout, request_timeout, follow_redirects, content_type)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, **params),
+        self.fetch_request(request, partial(self._parse_response, future, callback, **params),
                            add_to_finish_group=add_to_finish_group)
 
-        return placeholder
+        return future
 
     def put_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
                 content_type=None, labels=None, add_to_finish_group=True, **params):
 
-        placeholder = frontik.future.Future()
+        future = Future()
         request = frontik.util.make_put_request(
             url, data, {} if headers is None else headers,
             connect_timeout, request_timeout, content_type)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, **params),
+        self.fetch_request(request, partial(self._parse_response, future, callback, **params),
                            add_to_finish_group=add_to_finish_group)
 
-        return placeholder
+        return future
 
     def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
                    content_type=None, labels=None, add_to_finish_group=True, **params):
 
-        placeholder = frontik.future.Future()
+        future = Future()
         request = frontik.util.make_delete_request(
             url, data, {} if headers is None else headers,
             connect_timeout, request_timeout, content_type)
 
         request._frontik_labels = labels
-        self.fetch_request(request, partial(self._parse_response, placeholder, callback, **params),
+        self.fetch_request(request, partial(self._parse_response, future, callback, **params),
                            add_to_finish_group=add_to_finish_group)
 
-        return placeholder
+        return future
 
     def fetch_request(self, request, callback, add_to_finish_group=True):
         """ Tornado HTTP client compatible method """
@@ -430,7 +430,7 @@ class PageHandler(tornado.web.RequestHandler):
         if callable(callback):
             callback(response)
 
-    def _parse_response(self, placeholder, callback, response, **params):
+    def _parse_response(self, future, callback, response, **params):
         result = None
         if response.error and not params.get('parse_on_error', False):
             result = self._set_response_error(response)
@@ -447,9 +447,9 @@ class PageHandler(tornado.web.RequestHandler):
             def callback_wrapper(data):
                 callback(*data.get_params())
 
-            placeholder.add_done_callback(callback_wrapper)
+            future.add_done_callback(callback_wrapper)
 
-        placeholder.set_result(RequestResult(result, response))
+        future.set_result(RequestResult(result, response))
 
     def _set_response_error(self, response):
         log_func = self.log.error if response.code >= 500 else self.log.warn
