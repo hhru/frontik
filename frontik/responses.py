@@ -10,8 +10,7 @@ import frontik.frontik_logging as frontik_logging
 
 class FailedRequestException(Exception):
     def __init__(self, **kwargs):
-        for k, v in kwargs.iteritems():
-            setattr(self, k, v)
+        self.attrs = kwargs
 
 
 class RequestResult(object):
@@ -39,8 +38,7 @@ def _parse_response(response, logger=frontik_logging.log, parser=None, response_
         logger.exception('failed to parse {0} response from {1}, bad data: "{2}"'.format(
             response_type, response.effective_url, body_preview))
 
-        return FailedRequestException(url=response.effective_url,
-                                      reason='invalid {0}'.format(response_type))
+        return FailedRequestException(url=response.effective_url, reason='invalid {0}'.format(response_type))
 
 
 _xml_parser = etree.XMLParser(strip_cdata=False)

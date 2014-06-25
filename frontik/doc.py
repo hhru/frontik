@@ -29,14 +29,8 @@ class Doc(object):
         self.data = []
 
     @staticmethod
-    def get_error_node(response):
-        data = etree.Element('error', reason=str(response.error), code=str(response.code))
-        if response.body:
-            try:
-                data.append(etree.Comment(response.body.replace('--', '%2D%2D')))
-            except ValueError:
-                pass
-        return data
+    def get_error_node(exception):
+        return etree.Element('error', **{k: str(v) for k, v in exception.attrs.iteritems()})
 
     def to_etree_element(self):
         if self.root_node is not None:
