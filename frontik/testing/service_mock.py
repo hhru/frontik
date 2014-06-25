@@ -239,6 +239,19 @@ class EmptyEnvironment(object):
 
         return self
 
+    def call_get(self, page_handler):
+        return self.call(page_handler.get_page)
+
+    def call_post(self, page_handler):
+        return self.call(page_handler.post_page)
+
+    def call_put(self, page_handler):
+        return self.call(page_handler.put_page)
+
+    def call_delete(self, page_handler):
+        return self.call(page_handler.delete_page)
+
+    # deprecated, use call_function
     def call(self, method, *args, **kwargs):
         if hasattr(method, 'im_class'):
             self._handler.__class__ = type('Page', (method.im_class,) + self._handler.__class__.__bases__, {})
@@ -266,6 +279,8 @@ class EmptyEnvironment(object):
         frontik.handler_active_limit.PageHandlerActiveLimit.working_handlers_count = 0
 
         return self
+
+    call_function = call
 
     # move these methods to TestResult object
 
