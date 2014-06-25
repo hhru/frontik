@@ -54,10 +54,10 @@ class TestPlaceholder(unittest.TestCase):
         self.assertTrue(state['callback2'])
         self.assertTrue(state['callback3'])
 
-    def test_placeholder_with_main_asyncgroup(self):
-        response = frontik_debug.get_page('test_app/placeholder')
+    def test_future_with_main_asyncgroup(self):
+        response = frontik_debug.get_page('test_app/future')
         self.assertEquals(response.content, '{"1": "yay", "cb": "yes", "2": "yay"}')
 
-    def test_placeholder_group_with_single_request_failed(self):
-        response = frontik_debug.get_page('test_app/placeholder_single_failed')
+    def test_group_with_single_request_failed(self):
+        response = frontik_debug.get_page('test_app/group')
         self.assertEquals(response.status_code, 500)

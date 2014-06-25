@@ -20,7 +20,7 @@ class TestDoc(unittest.TestCase):
         self.assertFalse(d.is_empty())
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
 
-    def test_placeholder_simple(self):
+    def test_future_simple(self):
         d = frontik.doc.Doc('a')
         f = Future()
         d.put(f)
@@ -31,7 +31,7 @@ class TestDoc(unittest.TestCase):
 
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
 
-    def test_placeholder_etree_element(self):
+    def test_future_etree_element(self):
         d = frontik.doc.Doc('a')
         f = Future()
         f.set_result(etree.Element('b'))
@@ -39,7 +39,7 @@ class TestDoc(unittest.TestCase):
 
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a><b/></a>""")
 
-    def test_placeholder_list(self):
+    def test_future_list(self):
         d = frontik.doc.Doc('a')
         f = Future()
         f.set_result([etree.Comment('ccc'), etree.Element('bbb')])
