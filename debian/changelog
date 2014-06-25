@@ -1,3 +1,16 @@
+frontik (2.20.3) unstable; urgency=low
+
+  * HH-44174 more naming fixes
+  * HH-44174 fix errors on unparsable content
+  * HH-44174 rename Future._finished to _done
+  * HH-44124 introduce call_* methods
+  * HH-44174 make frontik Future compatible with tornado Future
+  * HH-44124 add get_headers and get_response_text methods
+  * HH-44124 remove unused Environment methods and add new
+  * HH-44124 remove headers from route
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 25 Jun 2014 20:38:43 +0400
+
 frontik (2.20.2) unstable; urgency=low
 
   * HH-43705 Add self.group method
