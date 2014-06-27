@@ -201,7 +201,7 @@ def _exception_to_xml(exc_info, log=debug_log):
 
             try:
                 lines, starting_line = inspect.getsourcelines(frame)
-            except IOError, e:
+            except IOError:
                 lines, starting_line = [], None
 
             for i, l in enumerate(lines):

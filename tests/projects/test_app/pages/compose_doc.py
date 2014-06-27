@@ -3,7 +3,7 @@
 from lxml import etree
 
 import frontik.handler
-from frontik import Doc
+from frontik.doc import Doc
 
 
 class Page(frontik.handler.PageHandler):
