@@ -40,14 +40,14 @@ class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixi
         try:
             self.assertXmlAlmostEquals(tree1_str, tree1_str)
             self.assertXmlAlmostEquals(tree1, tree1_2)
-        except self.failureException, e:
+        except self.failureException as e:
             self.fail('XML should be absolute equals (Reported error: "{0!s}")'.format(e))
 
     def test_assertXmlAlmostEquals_with_strings(self):
         tree1_str, tree2_str = self._get_almost_equals_xml()
         try:
             self.assertXmlAlmostEquals(tree1_str, tree2_str)
-        except self.failureException, e:
+        except self.failureException as e:
             self.fail('XML should be almost equals (Reported error: "{0!s}")'.format(e))
 
     def test_assertXmlAlmostEquals_with_tree(self):
@@ -56,7 +56,7 @@ class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixi
         tree2 = etree.fromstring(tree2_str)
         try:
             self.assertXmlAlmostEquals(tree1, tree2)
-        except self.failureException, e:
+        except self.failureException as e:
             self.fail('XML should be almost equals (Reported error: "{0!s}")'.format(e))
 
     def test_assertXmlAlmostEquals_same_tags_order(self):
@@ -91,7 +91,7 @@ class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixi
             '''.strip()
         try:
             self.assertXmlAlmostEquals(x1_str, x2_str)
-        except self.failureException, e:
+        except self.failureException as e:
             self.fail('XML should be almost equals (Reported error: "{0!s}")'.format(e))
 
     # ----------------------------------------------------
@@ -100,7 +100,7 @@ class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixi
         tree1_str, _ = self._get_almost_equals_xml()
         try:
             self.assertXmlCompatible(tree1_str, tree1_str)
-        except self.failureException, e:
+        except self.failureException as e:
             self.fail('XML should be absolute equals (Reported error: "{0!s}")'.format(e))
 
     def test_assertXmlCompatible_with_extra_property(self):
@@ -118,7 +118,7 @@ class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixi
             '''.strip()
         try:
             self.assertXmlCompatible(old, new)
-        except self.failureException, e:
+        except self.failureException as e:
             self.fail('XML should be compatible (Reported error: "{0!s}")'.format(e))
 
     def test_assertXmlCompatible_with_extra_tags(self):
@@ -160,7 +160,7 @@ class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixi
             '''.strip()
         try:
             self.assertXmlCompatible(old, new)
-        except self.failureException, e:
+        except self.failureException as e:
             self.fail('XML should be compatible (Reported error: "{0!s}")'.format(e))
 
     def test_assertXmlCompatible_incompatible_property(self):
@@ -203,7 +203,7 @@ class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixi
             '''.strip()
         try:
             self.assertXmlCompatible(old, new)
-        except self.failureException, e:
+        except self.failureException as e:
             self.assertTrue('Children length differs' in str(e))
 
     # ----------------------------------------------------

@@ -76,7 +76,7 @@ class Doc(object):
         for chunk_element in chunk_to_element(self.data):
 
             if isinstance(chunk_element, basestring):
-                if not last_element is None:
+                if last_element is not None:
                     if last_element.tail:
                         last_element.tail += chunk_element
                     else:
