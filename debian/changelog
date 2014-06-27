@@ -1,3 +1,10 @@
+frontik (2.20.4) unstable; urgency=low
+
+  * HH-44215 remove __init__.py side effects
+  * HH-44215 pep8 and compatibility fixes
+
+ -- Automated Build <an.sumin@hh.ru>  Fri, 27 Jun 2014 13:33:49 +0400
+
 frontik (2.20.3) unstable; urgency=low
 
   * HH-44174 more naming fixes
