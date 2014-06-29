@@ -2,7 +2,7 @@
 
 import unittest
 
-from tests import frontik_debug
+from .instances import frontik_debug
 
 
 class TestPreprocessors(unittest.TestCase):
