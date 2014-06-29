@@ -3,7 +3,7 @@ from functools import partial
 
 from frontik.async import AsyncGroup
 from frontik.future import Future
-from tests import frontik_debug
+from .instances import frontik_debug
 
 
 class TestAsyncGroup(unittest.TestCase):

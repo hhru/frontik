@@ -5,8 +5,8 @@ import unittest
 
 import frontik.doc
 from frontik.future import Future
-from tests.instances import frontik_debug
 from frontik.responses import RequestResult, FailedRequestException
+from .instances import frontik_debug
 
 
 class TestDoc(unittest.TestCase):
