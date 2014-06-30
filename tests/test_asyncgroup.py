@@ -53,7 +53,7 @@ class TestAsyncGroup(unittest.TestCase):
 
         self.assertEquals(ag._finish_cb_called, True)
         self.assertEquals(ag._aborted, False)
-        self.assertEquals(f.get(), True)
+        self.assertEquals(f.result(), True)
 
     def test_finish(self):
         f = Future()
@@ -66,7 +66,7 @@ class TestAsyncGroup(unittest.TestCase):
 
         self.assertEquals(ag._finish_cb_called, True)
         self.assertEquals(ag._aborted, False)
-        self.assertEquals(f.get(), True)
+        self.assertEquals(f.result(), True)
 
     def test_exception_in_first(self):
         log = []

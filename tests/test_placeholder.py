@@ -23,17 +23,17 @@ class TestPlaceholder(unittest.TestCase):
             'callback3': False,
         }
 
-        def callback1(data):
+        def callback1(future):
             state['callback1'] = True
-            self.assertEqual(data, result)
+            self.assertEqual(future.result(), result)
 
-        def callback2(data):
+        def callback2(future):
             state['callback2'] = True
-            self.assertEqual(data, result)
+            self.assertEqual(future.result(), result)
 
-        def callback3(data):
+        def callback3(future):
             state['callback3'] = True
-            self.assertEqual(data, result)
+            self.assertEqual(future.result(), result)
 
         f.add_done_callback(callback1)
         f.add_done_callback(callback2)

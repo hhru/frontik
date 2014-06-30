@@ -33,12 +33,12 @@ class Future(object):
         if not self._done:
             self._callbacks.append(callback)
         else:
-            callback(self._result)
+            callback(self)
 
     def _set_done(self):
         self._done = True
         for callback in self._callbacks:
-            callback(self._result)  # Tornado Future does callback(self)
+            callback(self)
         self._callbacks = None
 
 # deprecated synonym
