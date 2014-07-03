@@ -6,7 +6,7 @@ import unittest
 import frontik.doc
 from frontik.future import Future
 from tests.instances import frontik_debug
-from frontik.responses import FailedRequestException
+from frontik.responses import RequestResult, FailedRequestException
 
 
 class TestDoc(unittest.TestCase):
@@ -50,7 +50,9 @@ class TestDoc(unittest.TestCase):
     def test_failed_future(self):
         d = frontik.doc.Doc('a')
         f = Future()
-        f.set_result(FailedRequestException(reason='error', code='code'))
+        result = RequestResult()
+        result.set_exception(FailedRequestException(reason='error', code='code'))
+        f.set_result(result)
         d.put(f)
 
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n"""

@@ -13,10 +13,10 @@ class Page(frontik.handler.PageHandler):
         def main_callback(json, response):
             self.json.put(json)
 
-        def second_additional_callback(data):
+        def second_additional_callback(future):
             state['marker_second_callback_is_sync'] = True
 
-        def additional_callback(data):
+        def additional_callback(future):
             self.json.put({'cb': 'yes'})
             request_future.add_done_callback(second_additional_callback)
             assert state['marker_second_callback_is_sync']
