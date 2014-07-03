@@ -1,3 +1,9 @@
+frontik (2.20.5) unstable; urgency=low
+
+  * HH-44204 Handle request exceptions in result object
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 03 Jul 2014 13:12:31 +0400
+
 frontik (2.20.4) unstable; urgency=low
 
   * HH-44215 remove __init__.py side effects
