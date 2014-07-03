@@ -28,6 +28,5 @@ Depends:
   python-tornado-util (>= 0.7.0.2),
   python-jinja2,
 Suggests:
-  pep8,
   python-graypy (>= 1.0+hh3),
 Description: Tornado-based application server

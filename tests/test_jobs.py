@@ -2,10 +2,10 @@
 
 import unittest
 
-from tests.instances import frontik_debug
+from .instances import frontik_debug
 
 
-class TestXsl(unittest.TestCase):
+class TestJobs(unittest.TestCase):
     def test_job_fail(self):
         response = frontik_debug.get_page('test_app/job_fail')
         self.assertEquals(response.status_code, 400)

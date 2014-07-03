@@ -3,6 +3,7 @@
 import tornado.options
 
 tornado.options.define('urls', [], list)
+tornado.options.define('app', None, str)
 tornado.options.define('handlers_count', 100, int)
 
 tornado.options.define('suppressed_loggers', ['tornado.curl_httpclient'], list)

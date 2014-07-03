@@ -2,7 +2,7 @@
 
 import unittest
 
-from tests.instances import frontik_debug
+from .instances import frontik_debug
 
 
 class TestRouting(unittest.TestCase):

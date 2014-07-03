@@ -4,7 +4,7 @@ import unittest
 
 from lxml import etree
 
-from tests.instances import frontik_debug
+from .instances import frontik_debug
 
 
 class TestXsl(unittest.TestCase):
