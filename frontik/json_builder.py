@@ -43,11 +43,11 @@ class JsonBuilder(object):
         elif isinstance(v, (set, list, tuple)):
             return _check_iterable(v)
         elif isinstance(v, RequestResult):
+            if v.exception is not None:
+                return self.get_error_node(v.exception)
             return self._check_value(v.data)
         elif isinstance(v, Future):
-            return self._check_value(v.get())
-        elif isinstance(v, FailedRequestException):
-            return self.get_error_node(v)
+            return self._check_value(v.result())
         elif isinstance(v, JsonBuilder):
             return _check_dict(v.to_dict())
 

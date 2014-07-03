@@ -289,8 +289,8 @@ class PageHandler(tornado.web.RequestHandler):
 
             async_group = AsyncGroup(delay_cb, log=self.log.debug, name=name)
 
-            def callback(future_name, data):
-                results_holder[future_name] = data.get_params()
+            def callback(future_name, future):
+                results_holder[future_name] = future.result().get_params()
 
             for name, future in futures.iteritems():
                 future.add_done_callback(async_group.add(partial(callback, name)))
@@ -428,25 +428,32 @@ class PageHandler(tornado.web.RequestHandler):
             callback(response)
 
     def _parse_response(self, future, callback, response, **params):
-        result = None
-        if response.error and not params.get('parse_on_error', False):
-            result = self._set_response_error(response)
-        elif not params.get('parse_response', True):
-            result = response.body
-        elif response.code != 204:
-            content_type = response.headers.get('Content-Type', '')
-            for k, v in default_request_types.iteritems():
-                if k.search(content_type):
-                    result = v(response, logger=self.log)
-                    break
+        data = None
+        result = RequestResult()
+
+        try:
+            if response.error and not params.get('parse_on_error', False):
+                self._set_response_error(response)
+            elif not params.get('parse_response', True):
+                data = response.body
+            elif response.code != 204:
+                content_type = response.headers.get('Content-Type', '')
+                for k, v in default_request_types.iteritems():
+                    if k.search(content_type):
+                        data = v(response, logger=self.log)
+                        break
+        except FailedRequestException as ex:
+            result.set_exception(ex)
+
+        result.set_params(data, response)
 
         if callable(callback):
-            def callback_wrapper(data):
-                callback(*data.get_params())
+            def callback_wrapper(future):
+                callback(*future.result().get_params())
 
             future.add_done_callback(callback_wrapper)
 
-        future.set_result(RequestResult(result, response))
+        future.set_result(result)
 
     def _set_response_error(self, response):
         log_func = self.log.error if response.code >= 500 else self.log.warn
@@ -454,7 +461,7 @@ class PageHandler(tornado.web.RequestHandler):
             code=response.code, url=response.effective_url, reason=response.error)
         )
 
-        return FailedRequestException(reason=str(response.error), code=response.code)
+        raise FailedRequestException(reason=str(response.error), code=response.code)
 
     # Finish page
 

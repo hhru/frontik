@@ -3,7 +3,7 @@ import unittest
 
 from frontik.future import Future
 from frontik.json_builder import JsonBuilder
-from frontik.responses import FailedRequestException
+from frontik.responses import RequestResult, FailedRequestException
 
 
 class TestJsonBuilder(unittest.TestCase):
@@ -83,7 +83,9 @@ class TestJsonBuilder(unittest.TestCase):
     def test_failed_future(self):
         j = JsonBuilder()
         f = Future()
-        f.set_result(FailedRequestException(reason='error', code='code'))
+        result = RequestResult()
+        result.set_exception(FailedRequestException(reason='error', code='code'))
+        f.set_result(result)
         j.put(f)
 
         self.assertEqual(j.to_string(), """{"error": {"reason": "error", "code": "code"}}""")
@@ -113,9 +115,11 @@ class TestJsonBuilder(unittest.TestCase):
         j.put(f1)
 
         self.assertEqual(j.to_string(), """{"nested": null}""")
+        result = RequestResult()
+        result.set_exception(FailedRequestException(reason='error', code='code'))
 
         f2.set_result(
-            {'a': FailedRequestException(reason='error', code='code')}
+            {'a': result}
         )
 
         self.assertEqual(

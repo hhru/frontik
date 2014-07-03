@@ -50,15 +50,15 @@ class Doc(object):
                         yield i
 
             elif isinstance(chunk, RequestResult):
-                for i in chunk_to_element(chunk.data):
-                    yield i
+                if chunk.exception is not None:
+                    yield self.get_error_node(chunk.exception)
+                else:
+                    for i in chunk_to_element(chunk.data):
+                        yield i
 
             elif isinstance(chunk, Future):
-                for i in chunk_to_element(chunk.get()):
+                for i in chunk_to_element(chunk.result()):
                     yield i
-
-            elif isinstance(chunk, FailedRequestException):
-                yield self.get_error_node(chunk)
 
             elif isinstance(chunk, etree._Element):
                 yield chunk

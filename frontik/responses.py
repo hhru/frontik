@@ -14,14 +14,22 @@ class FailedRequestException(Exception):
 
 
 class RequestResult(object):
-    __slots__ = ('data', 'response')
+    __slots__ = ('data', 'response', 'exception')
 
-    def __init__(self, data, response):
+    def __init__(self):
+        self.data = None
+        self.response = None
+        self.exception = None
+
+    def set_params(self, data, response):
         self.data = data
         self.response = response
 
     def get_params(self):
-        return self.data if not isinstance(self.data, FailedRequestException) else None, self.response
+        return self.data, self.response
+
+    def set_exception(self, exception):
+        self.exception = exception
 
 
 def _parse_response(response, logger=frontik_logging.log, parser=None, response_type=None):
@@ -38,7 +46,7 @@ def _parse_response(response, logger=frontik_logging.log, parser=None, response_
         logger.exception('failed to parse {0} response from {1}, bad data: "{2}"'.format(
             response_type, response.effective_url, body_preview))
 
-        return FailedRequestException(url=response.effective_url, reason='invalid {0}'.format(response_type))
+        raise FailedRequestException(url=response.effective_url, reason='invalid {0}'.format(response_type))
 
 
 _xml_parser = etree.XMLParser(strip_cdata=False)
