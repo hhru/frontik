@@ -1,3 +1,10 @@
+frontik (2.20.6) unstable; urgency=low
+
+  * HH-44122 add pep8 test and fix others
+  * HH-44247 add --app parameter to frontik script
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 03 Jul 2014 14:35:23 +0400
+
 frontik (2.20.5) unstable; urgency=low
 
   * HH-44204 Handle request exceptions in result object
