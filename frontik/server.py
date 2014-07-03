@@ -2,6 +2,7 @@
 # coding=utf-8
 
 import logging
+import os
 import sys
 
 import tornado_util.server
@@ -14,13 +15,25 @@ from frontik.frontik_logging import bootstrap_logging
 log = logging.getLogger('frontik.server')
 
 
-def main(config_file='/etc/frontik/frontik.cfg'):
+def main(config_file='/etc/frontik/frontik.cfg', app=None):
     tornado_util.server.bootstrap(config_file=config_file, options_callback=bootstrap_logging)
 
     try:
-        app = frontik.app.get_app(options.urls)
+        urls = []
+
+        if options.app is not None:
+            app = options.app
+
+        if app is not None:
+            app_name = os.path.basename(app)
+            urls.append(('', frontik.app.App(app_name, app)))
+
+        if options.urls:
+            urls.extend(options.urls)
+
+        tornado_app = frontik.app.get_app(urls)
     except:
         log.exception('failed to initialize frontik application, quitting')
         sys.exit(1)
 
-    tornado_util.server.main(app)
+    tornado_util.server.main(tornado_app)

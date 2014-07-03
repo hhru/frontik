@@ -2,7 +2,6 @@
 
 import base64
 import httplib
-import re
 import time
 from functools import partial
 from itertools import imap

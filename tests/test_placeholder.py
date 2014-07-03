@@ -4,7 +4,7 @@ import unittest
 
 from frontik.future import Future, FutureStateException
 
-from tests import frontik_debug
+from .instances import frontik_debug
 
 
 class TestPlaceholder(unittest.TestCase):

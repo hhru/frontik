@@ -2,7 +2,7 @@
 
 import base64
 
-from tests.instances import frontik_non_debug
+from .instances import frontik_non_debug
 
 
 def test_simple():
