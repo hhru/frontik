@@ -197,7 +197,10 @@ Map2ModuleName = FileMappingDispatcher
 
 @dispatcher
 class App(object):
-    def __init__(self, name, root):
+    class DefaultConfig(object):
+        pass
+
+    def __init__(self, name, root, config=None):
         self.log = logging.getLogger('frontik.application.{0}'.format(name))
         self.name = name
         self.initialized_wo_error = True
@@ -205,12 +208,7 @@ class App(object):
         self.log.info('initializing...')
         try:
             self.importer = frontik.magic_imp.FrontikAppImporter(name, root)
-            self.init_app_package(name)
-
-            # track all possible filenames for each app's config module to reload in case of change
-            for filename in self.importer.get_probable_module_filenames('config'):
-                tornado.autoreload.watch_file(filename)
-
+            self.init_app_package(name, config)
             self.app_globals = frontik.handler.ApplicationGlobals(self.module)
         except:
             # we do not want to break frontik on app initialization error,
@@ -218,21 +216,28 @@ class App(object):
             self.log.exception('failed to initialize, skipping from configuration')
             self.initialized_wo_error = False
 
-    def init_app_package(self, name):
+    def init_app_package(self, name, config=None):
         self.module = imp.new_module(frontik.magic_imp.gen_module_name(name))
         sys.modules[self.module.__name__] = self.module
 
         self.pages_module = self.importer.imp_app_module('pages')
         sys.modules[self.pages_module.__name__] = self.pages_module
 
-        try:
-            self.module.config = self.importer.imp_app_module('config')
-        except Exception:
-            self.log.exception('failed to load config: %s')
-            raise
+        if config is not None:
+            self.module.config = config
+        else:
+            try:
+                self.module.config = self.importer.imp_app_module('config')
+                # track all possible filenames for each app's config module to reload in case of change
+                for filename in self.importer.get_probable_module_filenames('config'):
+                    tornado.autoreload.watch_file(filename)
+            except ImportError:
+                self.module.config = App.DefaultConfig()
+                self.log.warn('no config.py file, using empty default')
 
         if not hasattr(self.module.config, 'urls'):
             self.module.config.urls = [('', Map2ModuleName(self.pages_module))]
+
         self.module.dispatcher = RegexpDispatcher(self.module.config.urls, self.module.__name__)
         self.module.dispatcher._initialize()
 
