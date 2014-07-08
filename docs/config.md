@@ -2,20 +2,19 @@
 
 Here is the list of all options, currently supported by Frontik.
 All of them are set in config file (see [frontik_dev.cfg.ex](/frontik_dev.cfg.ex) for example),
-but you can pass them through command line as well. The exception is `config` option — it makes no sense for it to be set in config file.
+but you can pass them through command line as well. The exception is `config` option — it makes sense to pass it only through command line.
 
 These options are defined in [tornado_util.server](https://github.com/hhru/tornado-util/blob/master/tornado_util/server.py) module
 and are essential for running Frontik server and logging in Frontik applications.
 
-| Option name        | Type   | Default value   | Description                                              |
-| ------------------ | ------ | --------------- | -------------------------------------------------------- |
-| `host`             | `str`  | `'0.0.0.0'`     | Host value for incoming connections                      |
-| `port`             | `int`  | `8000`          | Port to listen to                                        |
-| `config`           | `str`  | `None`          | Path to config file                                      |
-| `daemonize`        | `bool` | `False`         | Start Frontik as daemon                                  |
-| `pidfile`          | `str`  | `None`          | Pidfile location (if `None`, pidfile won't be created)   |
-| `logfile`          | `str`  | `None`          | Logfile location (if `None`, Frontik will log to stderr) |
-| `loglevel`         | `str`  | `info`          | The lowest log level written to logfile                  |
+| Option name                  | Type    | Default value   | Description                                              |
+| ---------------------------- | ------- | --------------- | -------------------------------------------------------- |
+| `host`                       | `str`   | `'0.0.0.0'`     | Host value for incoming connections                      |
+| `port`                       | `int`   | `8000`          | Port to listen to                                        |
+| `config`                     | `str`   | `None`          | Path to config file                                      |
+| `daemonize`                  | `bool`  | `False`         | Start Frontik as daemon                                  |
+| `pidfile`                    | `str`   | `None`          | Pidfile location (if `None`, pidfile won't be created)   |
+| `log_blocked_ioloop_timeout` | `float` | `0`             | Enables logging of long-running IOLoop iterations        |
 
 The following options are specific to [tornado_util.supervisor](https://github.com/hhru/tornado-util/blob/master/tornado_util/supervisor.py)
 module, which provides convenient interface for running and controlling several Frontik instances on one machine.
@@ -37,6 +36,8 @@ which run on one Frontik instance.
 | `debug`                      | `bool`  | `False`       | Enable debug mode                                                     |
 | `debug_login`                | `str`   | `None`        | Debug mode login for basic authentication (when `debug=False`)        |
 | `debug_password`             | `str`   | `None`        | Debug mode password for basic authentication (when `debug=False`)     |
+| `logfile`                    | `str`   | `None`        | Logfile location (if `None`, Frontik will log to stderr)              |
+| `loglevel`                   | `str`   | `info`        | The lowest log level written to logfile                               |
 | `logformat`                  | `str`   | see code      | Log entry format                                                      |
 | `suppressed_loggers`         | `list`  | `[]`          | List of logger names to be excluded from debug output                 |
 | `timings_log_enabled`        | `bool`  | `False`       | Enables writing timings information to a separate log file            |
