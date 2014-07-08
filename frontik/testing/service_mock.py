@@ -7,11 +7,13 @@ See source code for get_doc_shows_what_expected for example that doubles as test
 from collections import namedtuple
 from cStringIO import StringIO
 from functools import partial
+import json
 from logging import getLogger
 import os.path
 from urllib import unquote_plus as unquote
 from urlparse import urlparse, parse_qs
 
+from lxml import etree
 import tornado.options
 import tornado.web
 from tornado.httpclient import HTTPResponse
@@ -226,7 +228,7 @@ class EmptyEnvironment(object):
         frontik_app.app_globals.http_client.fetch = fetch
 
         def wrapped_method(handler):
-            self._result = method(handler, *args, **kwargs)
+            method(handler, *args, **kwargs)
 
         handler_class.get_page = wrapped_method
 
@@ -280,16 +282,25 @@ class TestResult(object):
     def get_config(self):
         return self._config
 
+    # deprecated, use get_text_response
     def get_text(self):
         return self._handler.text
 
+    # deprecated, use get_xml_response
     def get_doc(self):
         return self._handler.doc
 
+    # deprecated, use get_json_response
     def get_json(self):
         return self._handler.json
 
-    def get_response_text(self):
+    def get_xml_response(self):
+        return etree.fromstring(self.get_text_response())
+
+    def get_json_response(self):
+        return json.loads(self.get_text_response())
+
+    def get_text_response(self):
         return self._response_text
 
     def get_headers(self):
