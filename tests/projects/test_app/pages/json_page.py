@@ -8,11 +8,16 @@ class Page(frontik.handler.PageHandler):
         self_uri = self.request.host + self.request.path
         invalid_json = self.get_argument('invalid', 'false')
 
-        self.set_template('jinja.html')
-        self.json.put({
+        data = {
             'req1': self.post_url(self_uri, data={'param': 1}),
             'req2': self.post_url(self_uri, data={'param': 2, 'invalid': invalid_json})
-        })
+        }
+
+        if self.get_argument('break', 'false') == 'true':
+            del data['req1']
+
+        self.set_template(self.get_argument('template', 'jinja.html'))
+        self.json.put(data)
 
     def post_page(self):
         invalid_json = self.get_argument('invalid', 'false') == 'true'
