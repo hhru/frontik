@@ -9,8 +9,8 @@ Build-Depends:
   python-setuptools,
   python-nose,
   python-simplejson,
-  python-tornado (>= 2.0+hh18),
-  python-tornado-util (>= 0.7.0.2),
+  python-tornado (>= 2.0+hh19),
+  python-tornado-util (>= 0.7.3),
   python-jinja2,
   python-requests,
 Standards-Version: 3.9.4
@@ -24,9 +24,9 @@ Depends:
   python, 
   python-lxml,
   python-simplejson,
-  python-tornado (>= 2.0+hh18),
-  python-tornado-util (>= 0.7.0.2),
+  python-tornado (>= 2.0+hh19),
+  python-tornado-util (>= 0.7.3),
   python-jinja2,
 Suggests:
-  python-graypy (>= 1.0+hh3),
+  python-graypy (>= 1:0.2.9+hh2),
 Description: Tornado-based application server
