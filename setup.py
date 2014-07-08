@@ -44,6 +44,7 @@ setup(
         'simplejson',
         'tornado',
         'pycurl',
+        'requests',
         'jinja2',
     ],
     zip_safe=False
