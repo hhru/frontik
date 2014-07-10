@@ -14,10 +14,10 @@ class Page(frontik.handler.PageHandler):
             assert ensure_callback_is_async
 
         def _final_callback(results):
-            assert results['1'][0] == {'1': 'yay'}
-            assert results['2'][0] == {'2': 'yay'}
-            assert results['3'][0] is None
-            assert results['3'][1].error
+            assert results['1'].data == {'1': 'yay'}
+            assert results['2'].data == {'2': 'yay'}
+            assert results['3'].data is None
+            assert results['3'].response.error
 
         def _maybe_failing_callback(text, response):
             if fail:
