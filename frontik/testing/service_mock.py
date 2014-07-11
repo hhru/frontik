@@ -279,21 +279,6 @@ class TestResult(object):
         self._handler = handler
         self._response_text = response_text
 
-    def get_config(self):
-        return self._config
-
-    # deprecated, use get_text_response
-    def get_text(self):
-        return self._handler.text
-
-    # deprecated, use get_xml_response
-    def get_doc(self):
-        return self._handler.doc
-
-    # deprecated, use get_json_response
-    def get_json(self):
-        return self._handler.json
-
     def get_xml_response(self):
         return etree.fromstring(self.get_text_response())
 
