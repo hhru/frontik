@@ -9,6 +9,12 @@ from lxml import etree
 import tornado.options
 import tornado_util.supervisor as supervisor
 
+try:
+    import coverage
+    USE_COVERAGE = True
+except ImportError:
+    USE_COVERAGE = False
+
 
 class FrontikTestInstance(object):
     def __init__(self, cfg='./tests/projects/frontik.cfg'):
@@ -29,7 +35,11 @@ class FrontikTestInstance(object):
         else:
             raise AssertionError('No empty port in range 9000..10000 for frontik test instance')
 
-        supervisor.start_worker('./dev_run.py', self.cfg, port)
+        if USE_COVERAGE:
+            supervisor.start_worker('coverage run -p --source=frontik dev_run.py', self.cfg, port)
+        else:
+            supervisor.start_worker('./dev_run.py', self.cfg, port)
+
         self.wait_for(lambda: supervisor.is_running(port))
         self.port = port
 

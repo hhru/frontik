@@ -13,3 +13,6 @@ def post(self, data, cb):
     cb(data)
 
 postprocessor = post
+
+from lxml import etree
+version = [etree.Element('app-version', number='last version')]

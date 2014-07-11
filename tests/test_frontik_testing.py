@@ -81,7 +81,7 @@ class TestServiceMock(unittest.TestCase):
         )
 
     def test_call_get(self):
-        result = EmptyEnvironment().call_get(Page)
+        result = EmptyEnvironment().add_arguments({'param': 'world'}).call_get(Page)
         self.assertEqual(result.get_json_response()['Hello'], 'world')
 
 

@@ -56,19 +56,25 @@ class VersionHandler(tornado.web.RequestHandler):
 
 class StatusHandler(tornado.web.RequestHandler):
     def get(self):
-        self.set_header('Content-Type', 'text/plain; charset=UTF-8')
-        self.write('pages served: %s\n' % (handler.stats.page_count,))
-        self.write('http reqs made: %s\n' % (handler.stats.http_reqs_count,))
-        self.write('http reqs got: %s bytes\n' % (handler.stats.http_reqs_size_sum,))
+        self.set_header('Content-Type', 'application/json; charset=UTF-8')
+
+        result = {
+            'pages served': handler.stats.page_count,
+            'http requests made': handler.stats.http_reqs_count,
+            'bytes from http requests': handler.stats.http_reqs_size_sum,
+        }
+
         cur_uptime = time.time() - handler.stats.start_time
         if cur_uptime < 60:
-            res = 'uptime for : %d seconds\n' % cur_uptime
+            uptime_value = '{:.2f} seconds'.format(cur_uptime)
         elif cur_uptime < 3600:
-            res = 'uptime for : %d minutes\n' % ((cur_uptime/60),)
+            uptime_value = '{:.2f} minutes'.format(cur_uptime / 60)
         else:
-            res = 'uptime for : %d hours and %d minutes \n' % (cur_uptime/3600, (cur_uptime % 3600)/60)
+            uptime_value = '{:.2f} hours and {:.2f} minutes'.format(cur_uptime / 3600, (cur_uptime % 3600) / 60)
 
-        self.write(res)
+        result['uptime'] = uptime_value
+
+        self.write(result)
 
 
 class StopHandler(tornado.web.RequestHandler):
@@ -294,11 +300,11 @@ def get_app(app_urls):
     dispatcher._initialize()
 
     return tornado.web.Application([
-        (r'/version/', VersionHandler),
-        (r'/status/', StatusHandler),
-        (r'/stop/', StopHandler),
-        (r'/types_count/', CountTypesHandler),
-        (r'/pdb/', PdbHandler),
-        (r'/ph_count/', CountPageHandlerInstancesHandler),
+        (r'/version/?', VersionHandler),
+        (r'/status/?', StatusHandler),
+        (r'/stop/?', StopHandler),
+        (r'/types_count/?', CountTypesHandler),
+        (r'/pdb/?', PdbHandler),
+        (r'/ph_count/?', CountPageHandlerInstancesHandler),
         (r'/.*', dispatcher),
     ])
