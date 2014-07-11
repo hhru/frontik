@@ -1,3 +1,13 @@
+frontik (2.20.10) unstable; urgency=low
+
+  * HH-44603 add tests for default urls
+  * HH-44603 add coverage
+  * HH-44603 drop python 2.6
+  * HH-44603 add new tests
+  * HH-44624 remove deprecated service_mock methods
+
+ -- Automated Build <an.sumin@hh.ru>  Fri, 11 Jul 2014 15:44:34 +0400
+
 frontik (2.20.9) unstable; urgency=low
 
   * HH-44523 introduce new methods for testing response
