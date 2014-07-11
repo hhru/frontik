@@ -109,7 +109,7 @@ class PageHandler(tornado.web.RequestHandler):
         logger_name = '.'.join(filter(None, [self.request_id, getattr(app_globals.config, 'app_name', None)]))
         self.log = frontik_logging.PageLogger(self, logger_name, request.path or request.uri)
 
-        tornado.web.RequestHandler.__init__(self, application, request, logger=self.log, **kwargs)
+        super(PageHandler, self).__init__(application, request, logger=self.log, **kwargs)
 
         self.app_globals = app_globals
         self.config = self.app_globals.config
@@ -255,19 +255,19 @@ class PageHandler(tornado.web.RequestHandler):
         raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
 
     def get_page(self):
-        """ This method should be implemented in the subclass """
+        """ This method can be implemented in the subclass """
         raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
 
     def post_page(self):
-        """ This method should be implemented in the subclass """
+        """ This method can be implemented in the subclass """
         raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
 
     def put_page(self):
-        """ This method should be implemented in the subclass """
+        """ This method can be implemented in the subclass """
         raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
 
     def delete_page(self):
-        """ This method should be implemented in the subclass """
+        """ This method can be implemented in the subclass """
         raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
 
     def __get_allowed_methods(self):
@@ -585,7 +585,7 @@ class PageHandler(tornado.web.RequestHandler):
             except Exception:
                 self.log.exception('Cannot write debug info')
 
-        tornado.web.RequestHandler.flush(self, include_footers=False, **kwargs)
+        super(PageHandler, self).flush(include_footers=False, **kwargs)
 
     def _log(self):
         super(PageHandler, self)._log()
