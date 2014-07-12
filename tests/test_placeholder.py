@@ -4,7 +4,7 @@ import unittest
 
 from frontik.future import Future, FutureStateException
 
-from .instances import frontik_debug
+from .instances import frontik_test_app
 
 
 class TestPlaceholder(unittest.TestCase):
@@ -55,9 +55,9 @@ class TestPlaceholder(unittest.TestCase):
         self.assertTrue(state['callback3'])
 
     def test_future_with_main_asyncgroup(self):
-        response = frontik_debug.get_page('test_app/future')
-        self.assertEquals(response.content, '{"1": "yay", "cb": "yes", "2": "yay"}')
+        response = frontik_test_app.get_page('future')
+        self.assertEqual(response.content, '{"1": "yay", "cb": "yes", "2": "yay"}')
 
     def test_group_with_single_request_failed(self):
-        response = frontik_debug.get_page('test_app/group')
-        self.assertEquals(response.status_code, 500)
+        response = frontik_test_app.get_page('group')
+        self.assertEqual(response.status_code, 500)

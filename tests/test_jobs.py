@@ -2,13 +2,13 @@
 
 import unittest
 
-from .instances import frontik_debug
+from .instances import frontik_test_app
 
 
 class TestJobs(unittest.TestCase):
     def test_job_fail(self):
-        response = frontik_debug.get_page('test_app/job_fail')
-        self.assertEquals(response.status_code, 400)
+        response = frontik_test_app.get_page('job_fail')
+        self.assertEqual(response.status_code, 400)
 
-        html = frontik_debug.get_page_text('test_app/job_fail?nofail=True')
+        html = frontik_test_app.get_page_text('job_fail?nofail=True')
         self.assertIsNotNone(html.find('ok'))
