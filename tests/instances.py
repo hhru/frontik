@@ -1,5 +1,7 @@
 # coding=utf-8
 
+from functools import partial
+import os
 import socket
 import time
 
@@ -17,9 +19,10 @@ except ImportError:
 
 
 class FrontikTestInstance(object):
-    def __init__(self, cfg='./tests/projects/frontik.cfg'):
-        tornado.options.parse_config_file(cfg)
-        self.cfg = cfg
+    def __init__(self, app, config):
+        tornado.options.parse_config_file(config)
+        self.app = app
+        self.config = config
         self.port = None
         self.supervisor = supervisor
 
@@ -36,10 +39,11 @@ class FrontikTestInstance(object):
             raise AssertionError('No empty port in range 9000..10000 for frontik test instance')
 
         if USE_COVERAGE:
-            supervisor.start_worker('coverage run -p --source=frontik dev_run.py', self.cfg, port)
+            script = 'coverage run -p --source=frontik dev_run.py'
         else:
-            supervisor.start_worker('./dev_run.py', self.cfg, port)
+            script = './dev_run.py'
 
+        supervisor.start_worker(script, app=self.app, config=self.config, port=port)
         self.wait_for(lambda: supervisor.is_running(port))
         self.port = port
 
@@ -86,5 +90,9 @@ class FrontikTestInstance(object):
     def get_page_text(self, page, notpl=False):
         return self.get_page(page, notpl).content
 
-frontik_debug = FrontikTestInstance('./tests/projects/frontik.cfg')
-frontik_non_debug = FrontikTestInstance('./tests/projects/frontik_non_debug_mode.cfg')
+join_projects_dir = partial(os.path.join, os.path.dirname(__file__), 'projects')
+
+frontik_broken = FrontikTestInstance(join_projects_dir('broken_app'), join_projects_dir('frontik_debug.cfg'))
+frontik_test_app = FrontikTestInstance(join_projects_dir('test_app'), join_projects_dir('frontik_debug.cfg'))
+frontik_re_app = FrontikTestInstance(join_projects_dir('re_app'), join_projects_dir('frontik_debug.cfg'))
+frontik_non_debug = FrontikTestInstance(join_projects_dir('test_app'), join_projects_dir('frontik_non_debug.cfg'))

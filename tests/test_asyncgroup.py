@@ -3,7 +3,7 @@ from functools import partial
 
 from frontik.async import AsyncGroup
 from frontik.future import Future
-from .instances import frontik_debug
+from .instances import frontik_test_app
 
 
 class TestAsyncGroup(unittest.TestCase):
@@ -14,28 +14,28 @@ class TestAsyncGroup(unittest.TestCase):
             data.append(2)
 
         def finish_callback():
-            self.assertEquals(data, [1, 2])
+            self.assertEqual(data, [1, 2])
             data.append(3)
 
         ag = AsyncGroup(finish_callback)
         cb1 = ag.add(partial(data.append, 1))
         cb2 = ag.add(callback2)
 
-        self.assertEquals(ag._finish_cb_called, False)
+        self.assertEqual(ag._finish_cb_called, False)
 
         ag.try_finish()
 
-        self.assertEquals(ag._finish_cb_called, False)
+        self.assertEqual(ag._finish_cb_called, False)
 
         cb1()
 
-        self.assertEquals(ag._finish_cb_called, False)
+        self.assertEqual(ag._finish_cb_called, False)
 
         cb2()
 
-        self.assertEquals(ag._finish_cb_called, True)
-        self.assertEquals(ag._aborted, False)
-        self.assertEquals(data, [1, 2, 3])
+        self.assertEqual(ag._finish_cb_called, True)
+        self.assertEqual(ag._aborted, False)
+        self.assertEqual(data, [1, 2, 3])
 
     def test_notifications(self):
         f = Future()
@@ -43,30 +43,30 @@ class TestAsyncGroup(unittest.TestCase):
         not1 = ag.add_notification()
         not2 = ag.add_notification()
 
-        self.assertEquals(ag._finish_cb_called, False)
+        self.assertEqual(ag._finish_cb_called, False)
 
         not1()
 
-        self.assertEquals(ag._finish_cb_called, False)
+        self.assertEqual(ag._finish_cb_called, False)
 
         not2('params', are='ignored')
 
-        self.assertEquals(ag._finish_cb_called, True)
-        self.assertEquals(ag._aborted, False)
-        self.assertEquals(f.result(), True)
+        self.assertEqual(ag._finish_cb_called, True)
+        self.assertEqual(ag._aborted, False)
+        self.assertEqual(f.result(), True)
 
     def test_finish(self):
         f = Future()
         ag = AsyncGroup(partial(f.set_result, True))
 
-        self.assertEquals(ag._finish_cb_called, False)
+        self.assertEqual(ag._finish_cb_called, False)
 
         ag.add_notification()
         ag.finish()
 
-        self.assertEquals(ag._finish_cb_called, True)
-        self.assertEquals(ag._aborted, False)
-        self.assertEquals(f.result(), True)
+        self.assertEqual(ag._finish_cb_called, True)
+        self.assertEqual(ag._aborted, False)
+        self.assertEqual(f.result(), True)
 
     def test_exception_in_first(self):
         log = []
@@ -85,14 +85,14 @@ class TestAsyncGroup(unittest.TestCase):
         cb2 = ag.add(callback2)
 
         self.assertRaises(Exception, cb1)
-        self.assertEquals(ag._finish_cb_called, False)
-        self.assertEquals(ag._aborted, True)
+        self.assertEqual(ag._finish_cb_called, False)
+        self.assertEqual(ag._aborted, True)
 
         cb2()
 
-        self.assertEquals(log[-1], 'test_group group: Ignoring response because of already finished group')
-        self.assertEquals(ag._finish_cb_called, False)
-        self.assertEquals(ag._aborted, True)
+        self.assertEqual(log[-1], 'test_group group: Ignoring response because of already finished group')
+        self.assertEqual(ag._finish_cb_called, False)
+        self.assertEqual(ag._aborted, True)
 
     def test_exception_in_last(self):
         log = []
@@ -111,9 +111,9 @@ class TestAsyncGroup(unittest.TestCase):
 
         self.assertRaises(Exception, cb2)
 
-        self.assertEquals(log[-2], 'test_group group: aborting async group due to unhandled exception in callback')
-        self.assertEquals(ag._finish_cb_called, False)
-        self.assertEquals(ag._aborted, True)
+        self.assertEqual(log[-2], 'test_group group: aborting async group due to unhandled exception in callback')
+        self.assertEqual(ag._finish_cb_called, False)
+        self.assertEqual(ag._aborted, True)
 
     def test_exception_in_final(self):
         def finish_callback():
@@ -122,14 +122,14 @@ class TestAsyncGroup(unittest.TestCase):
         ag = AsyncGroup(finish_callback)
 
         self.assertRaises(Exception, ag.try_finish)
-        self.assertEquals(ag._finish_cb_called, True)
-        self.assertEquals(ag._aborted, False)
+        self.assertEqual(ag._finish_cb_called, True)
+        self.assertEqual(ag._aborted, False)
 
     def test_handler_async_group(self):
         exp = '{"1": {"1": "yay"}, "3": {"error": {"reason": "HTTP 400: Bad Request", "code": 400}}, "2": {"2": "yay"}}'
-        response = frontik_debug.get_page('test_app/async_group')
-        self.assertEquals(response.content, exp)
+        response = frontik_test_app.get_page('async_group')
+        self.assertEqual(response.content, exp)
 
     def test_handler_async_group_fail(self):
-        response = frontik_debug.get_page('test_app/async_group?fail=true')
-        self.assertEquals(response.status_code, 500)
+        response = frontik_test_app.get_page('async_group?fail=true')
+        self.assertEqual(response.status_code, 500)
