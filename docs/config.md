@@ -55,7 +55,7 @@ which run on one Frontik instance.
 | `warn_no_jobs`               | `bool`  | `True`        | Write a warning if no jobs were found in executor queue               |
 | `timeout_multiplier`         | `float` | `1.0`         | Generic timeout multiplier for get_xxx calls (useful for testing)     |
 | `handlers_count`             | `int`   | `100`         | Limit for number of simultaneous requests handled by Frontik instance |
-| `urls`                       | `list`  | `[]`          | List of Frontik applications (see [Frontik application structure](/docs/frontik-app.md)) |
+| `app`                        | `str`   | `None`        | Directory from which to load an application (see [Frontik application structure](/docs/frontik-app.md)) |
 
 There are also certain options, that are unique for each application, see
 [Configuring Frontik application](/docs/config-app.md) for more details.
