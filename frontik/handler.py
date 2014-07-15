@@ -14,7 +14,7 @@ import tornado.web
 from tornado.ioloop import IOLoop
 from tornado.httpserver import HTTPRequest
 
-import frontik.async
+from frontik.async import AsyncGroup
 import frontik.auth
 import frontik.frontik_logging as frontik_logging
 from frontik.future import Future
@@ -42,10 +42,6 @@ def context_based_repr(self):
 
 
 HTTPRequest.__repr__ = context_based_repr
-
-
-# Deprecated synonym
-AsyncGroup = frontik.async.AsyncGroup
 
 
 class HTTPError(tornado.web.HTTPError):
@@ -159,8 +155,7 @@ class PageHandler(tornado.web.RequestHandler):
             self.finish_timeout_handle = IOLoop.instance().add_timeout(
                 time.time() + tornado.options.options.long_request_timeout, self.__handle_long_request)
 
-        self.finish_group = frontik.async.AsyncGroup(self.check_finished(self._finish_page_cb),
-                                                     name='finish', log=self.log.debug)
+        self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish', log=self.log.debug)
         self._prepared = True
 
     def require_debug_access(self, login=None, passwd=None):
@@ -222,37 +217,32 @@ class PageHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     def post(self, *args, **kw):
         self.log.stage_tag('prepare')
-        if not self._finished:
-            self._call_preprocessors(self.preprocessors, self.post_page)
-            self._finish_page()
+        self._call_preprocessors(self.preprocessors, self.post_page)
+        self._finish_page()
 
     @tornado.web.asynchronous
     def get(self, *args, **kw):
         self.log.stage_tag('prepare')
-        if not self._finished:
-            self._call_preprocessors(self.preprocessors, self.get_page)
-            self._finish_page()
+        self._call_preprocessors(self.preprocessors, self.get_page)
+        self._finish_page()
 
     @tornado.web.asynchronous
     def head(self, *args, **kwargs):
         self.log.stage_tag('prepare')
-        if not self._finished:
-            self._call_preprocessors(self.preprocessors, self.get_page)
-            self._finish_page()
+        self._call_preprocessors(self.preprocessors, self.get_page)
+        self._finish_page()
 
     @tornado.web.asynchronous
     def delete(self, *args, **kwargs):
         self.log.stage_tag('prepare')
-        if not self._finished:
-            self._call_preprocessors(self.preprocessors, self.delete_page)
-            self._finish_page()
+        self._call_preprocessors(self.preprocessors, self.delete_page)
+        self._finish_page()
 
     @tornado.web.asynchronous
     def put(self, *args, **kwargs):
         self.log.stage_tag('prepare')
-        if not self._finished:
-            self._call_preprocessors(self.preprocessors, self.put_page)
-            self._finish_page()
+        self._call_preprocessors(self.preprocessors, self.put_page)
+        self._finish_page()
 
     def options(self, *args, **kwargs):
         raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
