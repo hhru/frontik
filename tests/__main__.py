@@ -10,4 +10,6 @@
 
 if __name__ == '__main__':
     import nose
+    import logging
+    logging.disable(logging.WARNING)
     nose.main(argv=['nosetests', 'tests/', '-v'])
