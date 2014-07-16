@@ -58,7 +58,7 @@ def make_url(base, **query_args):
         return base
 
 
-def decode_string_from_charset(string, charsets=('cp1251', 'koi8_r')):
+def decode_string_from_charset(string, charsets=('cp1251',)):
     if isinstance(string, unicode):
         return string
 

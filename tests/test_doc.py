@@ -6,7 +6,7 @@ import unittest
 import frontik.doc
 from frontik.future import Future
 from frontik.responses import RequestResult, FailedRequestException
-from .instances import frontik_debug
+from .instances import frontik_test_app
 
 
 class TestDoc(unittest.TestCase):
@@ -83,7 +83,7 @@ class TestDoc(unittest.TestCase):
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<doc><test1/></doc>""")
 
     def test_doc_page(self):
-        xml = frontik_debug.get_page_xml('test_app/compose_doc')
+        xml = frontik_test_app.get_page_xml('compose_doc')
 
         self.assertIsNotNone(xml.find('a'))
         self.assertEqual(xml.findtext('a'), 'aaa')
@@ -94,7 +94,7 @@ class TestDoc(unittest.TestCase):
         self.assertIn(xml.findtext('c'), (None, ''))
 
     def test_doc_invalid_xml(self):
-        xml = frontik_debug.get_page_xml('test_app/compose_doc?invalid=true')
+        xml = frontik_test_app.get_page_xml('compose_doc?invalid=true')
 
         self.assertIsNotNone(xml.find('error'))
         self.assertEqual(xml.find('error').get('reason'), 'invalid XML')

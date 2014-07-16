@@ -23,6 +23,8 @@ class TestHook(test):
         test.run(self)
 
         import nose
+        import logging
+        logging.disable(logging.WARNING)
         nose.main(argv=['nosetests', 'tests/', '-v'])
 
 setup(

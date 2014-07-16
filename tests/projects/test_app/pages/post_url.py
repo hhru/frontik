@@ -29,8 +29,8 @@ class Page(frontik.handler.PageHandler):
         def callback_post(element, response):
             self.doc.put(element.text)
 
-        self.post_url('http://localhost:{}/test_app/post_url'.format(self.get_argument('port')),
-                      data=FIELDS, files=FILES, callback=callback_post)
+        self_uri = self.request.host + self.request.path
+        self.post_url(self_uri, data=FIELDS, files=FILES, callback=callback_post)
 
     def post_page(self):
         body_parts = self.request.body.split('\r\n--')
