@@ -1,3 +1,14 @@
+frontik (2.20.11) unstable; urgency=low
+
+  * HH-44762 fix unicode test
+  * HH-44762 update docs
+  * HH-44762 singleapp in example_app
+  * HH-44762 fix singleapp test configs
+  * HH-44762 remove some unneccessary stuff
+  * HH-44762 add tests for singleapp mode
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 16 Jul 2014 11:58:15 +0400
+
 frontik (2.20.10) unstable; urgency=low
 
   * HH-44603 add tests for default urls
