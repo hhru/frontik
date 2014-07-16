@@ -22,13 +22,13 @@ class TestHelpers(unittest.TestCase):
         xpath1 = 'removeMe[@ppp="mmm"]'
         xpath2 = 'level2/removeMe2'
 
-        self.assertTrue(len(root.xpath(xpath1)) == 1)
-        self.assertTrue(len(root.xpath(xpath2)) == 2)
+        self.assertEqual(len(root.xpath(xpath1)), 1)
+        self.assertEqual(len(root.xpath(xpath2)), 2)
 
         test_utils.remove_xpaths(root, [xpath1, xpath2])
 
-        self.assertTrue(len(root.xpath(xpath1)) == 0)
-        self.assertTrue(len(root.xpath(xpath2)) == 0)
+        self.assertEqual(len(root.xpath(xpath1)), 0)
+        self.assertEqual(len(root.xpath(xpath2)), 0)
 
 
 class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixin):
@@ -204,7 +204,7 @@ class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixi
         try:
             self.assertXmlCompatible(old, new)
         except self.failureException as e:
-            self.assertTrue('Children length differs' in str(e))
+            self.assertIn('Children length differs', str(e))
 
     # ----------------------------------------------------
     # helpers

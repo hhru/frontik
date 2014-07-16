@@ -1,19 +1,19 @@
 import json
 import unittest
 
-from .instances import frontik_debug
+from .instances import frontik_test_app
 
 
 class TestDefaultUrls(unittest.TestCase):
     def test_versions(self):
-        xml = frontik_debug.get_page_xml('version')
-        test_app_version = xml.xpath('applications/application[@path="/+test_app"]/app-version/@number')
+        xml = frontik_test_app.get_page_xml('version')
+        test_app_version = xml.xpath('applications/application[@name="frontik.app.App: test_app"]/app-version/@number')
 
         self.assertEqual(xml.tag, 'versions')
         self.assertIn('last version', test_app_version)
 
     def test_status(self):
-        response = frontik_debug.get_page('status')
+        response = frontik_test_app.get_page('status')
 
         self.assertEqual(response.headers['Content-Type'], 'application/json; charset=UTF-8')
 

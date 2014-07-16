@@ -3,4 +3,4 @@
 from frontik.server import main
 
 if __name__ == '__main__':
-    main('./frontik_cfg.py')
+    main(app='./example_app', config_file='./frontik.cfg')
