@@ -1,9 +1,11 @@
 # coding=utf-8
 
+from collections import namedtuple
+from functools import partial
 import re
+
 import lxml.etree as etree
 import simplejson as json
-from functools import partial
 
 import frontik.frontik_logging as frontik_logging
 
@@ -16,17 +18,19 @@ class FailedRequestException(Exception):
 class RequestResult(object):
     __slots__ = ('data', 'response', 'exception')
 
+    ResponseData = namedtuple('ResponseData', ('data', 'response'))
+
     def __init__(self):
         self.data = None
         self.response = None
         self.exception = None
 
-    def set_params(self, data, response):
+    def set(self, data, response):
         self.data = data
         self.response = response
 
-    def get_params(self):
-        return self.data, self.response
+    def get(self):
+        return RequestResult.ResponseData(self.data, self.response)
 
     def set_exception(self, exception):
         self.exception = exception
@@ -58,7 +62,7 @@ _parse_response_json = partial(_parse_response,
                                parser=json.loads,
                                response_type='JSON')
 
-default_request_types = {
+DEFAULT_REQUEST_TYPES = {
     re.compile('.*xml.?'): _parse_response_xml,
     re.compile('.*json.?'): _parse_response_json,
     re.compile('.*text/plain.?'): (lambda response, logger: response.body),

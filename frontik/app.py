@@ -16,11 +16,24 @@ import tornado.ioloop
 from tornado.options import options
 
 import frontik.doc
-import frontik.handler as handler
 import frontik.magic_imp
 import frontik.xml_util
 
 log = logging.getLogger('frontik.server')
+
+
+class Stats(object):
+    def __init__(self):
+        self.page_count = 0
+        self.http_reqs_count = 0
+        self.http_reqs_size_sum = 0
+        self.start_time = time.time()
+
+    def next_request_id(self):
+        self.page_count += 1
+        return self.page_count
+
+global_stats = Stats()
 
 
 def _get_apps_versions():
@@ -59,12 +72,12 @@ class StatusHandler(tornado.web.RequestHandler):
         self.set_header('Content-Type', 'application/json; charset=UTF-8')
 
         result = {
-            'pages served': handler.stats.page_count,
-            'http requests made': handler.stats.http_reqs_count,
-            'bytes from http requests': handler.stats.http_reqs_size_sum,
+            'pages served': global_stats.page_count,
+            'http requests made': global_stats.http_reqs_count,
+            'bytes from http requests': global_stats.http_reqs_size_sum,
         }
 
-        cur_uptime = time.time() - handler.stats.start_time
+        cur_uptime = time.time() - global_stats.start_time
         if cur_uptime < 60:
             uptime_value = '{:.2f} seconds'.format(cur_uptime)
         elif cur_uptime < 3600:
@@ -213,6 +226,7 @@ class App(object):
 
         self.log.info('initializing...')
         try:
+            import frontik.handler
             self.importer = frontik.magic_imp.FrontikAppImporter(name, root)
             self.init_app_package(name, config)
             self.app_globals = frontik.handler.ApplicationGlobals(self.module)

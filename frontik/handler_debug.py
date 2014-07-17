@@ -1,7 +1,9 @@
 # coding=utf-8
 
+import base64
 import Cookie
 import copy
+import cStringIO
 import inspect
 import logging
 import os
@@ -15,7 +17,8 @@ from datetime import datetime
 import simplejson as json
 import lxml.etree as etree
 from lxml.builder import E
-from tornado.escape import to_unicode
+from tornado.escape import to_unicode, utf8
+from tornado.httpclient import HTTPResponse
 from tornado.httputil import HTTPHeaders
 
 import frontik.util
@@ -124,6 +127,27 @@ def request_to_xml(request):
         body.text = repr(request.body)
         request = E.request(body)
     return request
+
+
+def response_from_debug(request, response):
+    debug_response = etree.XML(response.body)
+    original_response = debug_response.xpath('//original-response')
+    if original_response:
+        response_info = frontik.xml_util.xml_to_dict(original_response[0])
+        debug_response.remove(original_response[0])
+
+        original_buffer = base64.decodestring(response_info['buffer'])
+
+        fake_response = HTTPResponse(
+            request, int(response_info['code']), headers=dict(response.headers, **response_info['headers']),
+            buffer=cStringIO.StringIO(utf8(original_buffer)),
+            effective_url=response.effective_url, request_time=response.request_time,
+            time_info=response.time_info
+        )
+
+        return debug_response, fake_response
+
+    return None
 
 
 def request_to_curl_string(request):
