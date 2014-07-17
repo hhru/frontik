@@ -1,5 +1,7 @@
 # coding=utf-8
 
+import sys
+import traceback
 import unittest
 
 import lxml.etree
@@ -84,6 +86,20 @@ class TestServiceMock(unittest.TestCase):
         result = EmptyEnvironment().add_arguments({'param': 'world'}).call_get(Page)
         self.assertEqual(result.get_json_response()['Hello'], 'world')
 
+    def test_exception(self):
+        def _test_function(handler):
+            def _inner():
+                raise HTTPError(500, 'fail')
+            _inner()
+
+        try:
+            EmptyEnvironment().call_function(_test_function)
+        except Exception as e:
+            self.assertEqual(e.status_code, 500)
+            self.assertEqual(e.log_message, 'fail')
+
+            tb = ''.join(traceback.format_tb(sys.exc_traceback))
+            self.assertIn('_inner()', tb)
 
 if __name__ == '__main__':
     unittest.main()
