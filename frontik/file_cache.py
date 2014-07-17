@@ -55,12 +55,10 @@ class FileCache(object):
 
         real_filename = os.path.normpath(os.path.join(self.root_dir, filename))
         log.debug('reading %s file from %s', filename, real_filename)
-        ok, ret = self.load_fn(real_filename, log=log)
+        result = self.load_fn(real_filename, log=log)
+        self.cache[filename] = result
 
-        if ok:
-            self.cache[filename] = ret
-
-        return ret
+        return result
 
 
 class InvalidOptionCache(object):
