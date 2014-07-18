@@ -1,16 +1,37 @@
 # coding=utf-8
 
 import copy
-import weakref
 import time
+import weakref
 
 from lxml import etree
 import tornado.options
 
 import frontik.doc
-import frontik.handler
+import frontik.file_cache
 import frontik.jobs
 import frontik.util
+from frontik.xml_util import xml_from_file, xsl_from_file
+
+
+class ApplicationXMLGlobals(object):
+    def __init__(self, config):
+        self.xml_cache = frontik.file_cache.make_file_cache(
+            'XML', 'XML_root',
+            getattr(config, 'XML_root', None),
+            xml_from_file,
+            getattr(config, 'XML_cache_limit', None),
+            getattr(config, 'XML_cache_step', None),
+            deepcopy=True
+        )
+
+        self.xsl_cache = frontik.file_cache.make_file_cache(
+            'XSL', 'XSL_root',
+            getattr(config, 'XSL_root', None),
+            xsl_from_file,
+            getattr(config, 'XSL_cache_limit', None),
+            getattr(config, 'XSL_cache_step', None)
+        )
 
 
 class XmlProducer(object):
@@ -38,16 +59,16 @@ class XmlProducer(object):
             return
 
         try:
-            self.transform = self.xsl_cache.load(self.transform_filename, log=self.log)
+            self.transform = self.xsl_cache.load(self.transform_filename, self.log)
         except etree.XMLSyntaxError:
             self.log.exception('failed parsing XSL file {0} (XML syntax)'.format(self.transform_filename))
-            raise frontik.handler.HTTPError(500)
+            raise
         except etree.XSLTParseError:
             self.log.exception('failed parsing XSL file {0} (XSL parse error)'.format(self.transform_filename))
-            raise frontik.handler.HTTPError(500)
+            raise
         except:
             self.log.exception('failed loading XSL file {0}'.format(self.transform_filename))
-            raise frontik.handler.HTTPError(500)
+            raise
 
         self._finish_with_xslt(callback)
 
@@ -96,3 +117,6 @@ class XmlProducer(object):
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', 'application/xml; charset=utf-8')
         callback(self.doc.to_string())
+
+    def xml_from_file(self, filename):
+        return self.xml_cache.load(filename, self.log)

@@ -1,39 +1,15 @@
 # coding=utf-8
 
-import logging
 import os.path
 
 from lxml import etree
 
 import frontik.util
-import frontik.file_cache
 
-
-log_xml_util = logging.getLogger('frontik.xml_util')
 parser = etree.XMLParser()
 
 
-class ApplicationXMLGlobals(object):
-    def __init__(self, config):
-        self.xml_cache = frontik.file_cache.make_file_cache(
-            'XML', 'XML_root',
-            getattr(config, 'XML_root', None),
-            xml_from_file,
-            getattr(config, 'XML_cache_limit', None),
-            getattr(config, 'XML_cache_step', None),
-            deepcopy=True
-        )
-
-        self.xsl_cache = frontik.file_cache.make_file_cache(
-            'XSL', 'XSL_root',
-            getattr(config, 'XSL_root', None),
-            xsl_from_file,
-            getattr(config, 'XSL_cache_limit', None),
-            getattr(config, 'XSL_cache_step', None)
-        )
-
-
-def xml_from_file(filename, log=log_xml_util):
+def xml_from_file(filename, log):
     def _source_comment(src):
         return etree.Comment('Source: {0}'.format(frontik.util.asciify_url(src).replace('--', '%2D%2D')))
 
@@ -49,7 +25,7 @@ def xml_from_file(filename, log=log_xml_util):
         raise Exception('tried to load non-existent xml file')
 
 
-def xsl_from_file(filename, log=log_xml_util):
+def xsl_from_file(filename, log):
     log.debug('read file %s', filename)
     return etree.XSLT(etree.parse(filename, parser))
 

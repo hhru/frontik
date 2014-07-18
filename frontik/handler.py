@@ -4,27 +4,20 @@ import base64
 import httplib
 import time
 from functools import partial
-from itertools import imap
 
-from lxml import etree
-import tornado.curl_httpclient
-import tornado.httpclient
 import tornado.options
 import tornado.web
 from tornado.ioloop import IOLoop
 from tornado.httpserver import HTTPRequest
 
-from frontik.app import global_stats
 from frontik.async import AsyncGroup
 import frontik.auth
-from frontik import frontik_logging
+from frontik.frontik_logging import PageLogger
 from frontik.future import Future
+from frontik.globals import global_stats
 import frontik.handler_active_limit
-import frontik.handler_debug
-from frontik.handler_debug import PageHandlerDebug
-import frontik.jobs
+from frontik.handler_debug import PageHandlerDebug, response_from_debug
 import frontik.util
-import frontik.xml_util
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
 from frontik.responses import DEFAULT_REQUEST_TYPES, FailedRequestException, RequestResult
@@ -68,17 +61,6 @@ class HTTPError(tornado.web.HTTPError):
         self.headers = headers
 
 
-class ApplicationGlobals(object):
-    """ Global settings for Frontik instance """
-    def __init__(self, app_package):
-        self.config = app_package.config
-
-        self.xml = frontik.xml_util.ApplicationXMLGlobals(app_package.config)
-        self.json = frontik.producers.json_producer.ApplicationJsonGlobals(app_package.config)
-
-        self.http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(max_clients=200)
-
-
 class PageHandler(tornado.web.RequestHandler):
 
     preprocessors = ()
@@ -94,7 +76,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.name = self.__class__.__name__
         self.request_id = request.headers.get('X-Request-Id', str(global_stats.next_request_id()))
         logger_name = '.'.join(filter(None, [self.request_id, getattr(app_globals.config, 'app_name', None)]))
-        self.log = frontik_logging.PageLogger(self, logger_name, request.path or request.uri)
+        self.log = PageLogger(self, logger_name, request.path or request.uri)
 
         super(PageHandler, self).__init__(application, request, logger=self.log, **kwargs)
 
@@ -374,7 +356,7 @@ class PageHandler(tornado.web.RequestHandler):
         try:
             debug_extra = {}
             if response.headers.get(PageHandlerDebug.DEBUG_HEADER_NAME):
-                debug_response = frontik.handler_debug.response_from_debug(request, response)
+                debug_response = response_from_debug(request, response)
                 if debug_response is not None:
                     debug_xml, response = debug_response
                     debug_extra['_debug_response'] = debug_xml
@@ -532,7 +514,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         if self._prepared and (self.debug.debug_mode.enabled or self.debug.debug_mode.error_debug):
             try:
-                self._response_size = sum(imap(len, self._write_buffer))
+                self._response_size = sum(map(len, self._write_buffer))
                 original_headers = {'Content-Length': str(self._response_size)}
                 response_headers = dict(self._headers, **original_headers)
                 original_response = {
@@ -614,7 +596,7 @@ class PageHandler(tornado.web.RequestHandler):
         self.text = text
 
     def xml_from_file(self, filename):
-        return self.app_globals.xml.xml_cache.load(filename, log=self.log)
+        return self.xml_producer.xml_from_file(filename)
 
     def set_xsl(self, filename):
         return self.xml_producer.set_xsl(filename)
