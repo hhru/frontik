@@ -89,7 +89,7 @@ def query_less_than_or_equal(a, b):
 
 
 def parse_query(query):
-    return dict([(k, tuple(v)) for k, v in parse_qs(query, keep_blank_values=True).iteritems()])
+    return {k: tuple(v) for k, v in parse_qs(query, keep_blank_values=True).iteritems()}
 
 
 class ServiceMock(object):
