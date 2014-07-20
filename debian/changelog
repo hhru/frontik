@@ -1,3 +1,10 @@
+frontik (2.20.12) unstable; urgency=low
+
+  * HH-44881 add copy as curl tests
+  * HH-44881 raise exception with original traceback in service_mock
+
+ -- Automated Build <an.sumin@hh.ru>  Sun, 20 Jul 2014 22:40:07 +0400
+
 frontik (2.20.11) unstable; urgency=low
 
   * HH-44762 fix unicode test
