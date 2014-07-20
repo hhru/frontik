@@ -116,7 +116,7 @@ def request_to_xml(request):
                 E.start_time(str(request.start_time))
             ),
             E.curl(
-                _request_to_curl_string(request)
+                request_to_curl_string(request)
             )
         )
     except Exception:
@@ -126,7 +126,7 @@ def request_to_xml(request):
     return request
 
 
-def _request_to_curl_string(request):
+def request_to_curl_string(request):
     def _escape_apos(string):
         return string.replace("'", "'\"'\"'")
 
