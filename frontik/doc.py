@@ -3,7 +3,7 @@
 import lxml.etree as etree
 
 from frontik.future import Future
-from frontik.responses import FailedRequestException, RequestResult
+from frontik.responses import RequestResult
 
 
 class Doc(object):
@@ -35,10 +35,12 @@ class Doc(object):
     def to_etree_element(self):
         if self.root_node is not None:
             if isinstance(self.root_node, etree._Element):
+                # TODO: PIs, comments and entities are also _Elements
                 res = self.root_node
             elif isinstance(self.root_node, Doc):
                 res = self.root_node.to_etree_element()
             else:
+                # TODO: maybe better to fail fast in __init__
                 raise ValueError('Cannot set {0} as Doc root node'.format(self.root_node))
         else:
             res = etree.Element(self.root_node_name)
