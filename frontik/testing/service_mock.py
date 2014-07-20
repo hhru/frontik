@@ -10,6 +10,7 @@ from functools import partial
 import json
 from logging import getLogger
 import os.path
+import sys
 from urllib import unquote_plus as unquote
 from urlparse import urlparse, parse_qs
 
@@ -239,7 +240,7 @@ class EmptyEnvironment(object):
 
             def handle_request_exception(handler, e):
                 old_handle_request_exception(handler, e)
-                exceptions.append(e)
+                exceptions.append(sys.exc_info())
 
             handler_class._handle_request_exception = handle_request_exception
 
@@ -256,7 +257,8 @@ class EmptyEnvironment(object):
         IOLoop.instance().start()
 
         if raise_exceptions and exceptions:
-            raise exceptions[0]
+            last_exception = exceptions[0]
+            raise last_exception[0], last_exception[1], last_exception[2]
 
         return TestResult(self._config, self._request, self._handler, self._response_text)
 
