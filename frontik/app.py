@@ -291,9 +291,12 @@ class RegexpDispatcher(object):
         return tornado.web.ErrorHandler(application, request, status_code=404)
 
 
-def get_app(app_urls):
+def get_app(app_urls, tornado_settings=None):
     dispatcher = RegexpDispatcher(app_urls, 'root')
     dispatcher._initialize()
+
+    if tornado_settings is None:
+        tornado_settings = {}
 
     return tornado.web.Application([
         (r'/version/?', VersionHandler),
@@ -303,4 +306,4 @@ def get_app(app_urls):
         (r'/pdb/?', PdbHandler),
         (r'/ph_count/?', CountPageHandlerInstancesHandler),
         (r'/.*', dispatcher),
-    ])
+    ], **tornado_settings)
