@@ -4,6 +4,7 @@ import tornado.options
 
 tornado.options.define('urls', [], list)
 tornado.options.define('app', None, str)
+tornado.options.define('tornado_settings', None, dict)
 tornado.options.define('handlers_count', 100, int)
 
 tornado.options.define('logfile', default=None, help='log file name')

@@ -26,7 +26,7 @@ def main(config_file='/etc/frontik/frontik.cfg', app=None):
             app_name = os.path.basename(os.path.normpath(app))
             options.urls.append(('', frontik.app.App(app_name, app)))
 
-        tornado_app = frontik.app.get_app(options.urls)
+        tornado_app = frontik.app.get_app(options.urls, options.tornado_settings)
     except:
         log.exception('failed to initialize frontik application, quitting')
         sys.exit(1)
