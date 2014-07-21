@@ -11,5 +11,5 @@
 if __name__ == '__main__':
     import nose
     import logging
-    logging.disable(logging.WARNING)
-    nose.main(argv=['tests/', '-v'])
+    logging.disable(logging.CRITICAL)
+    nose.main(argv=['tests', '-v'])
