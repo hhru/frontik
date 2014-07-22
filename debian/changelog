@@ -1,3 +1,10 @@
+frontik (2.20.13) unstable; urgency=low
+
+  * HH-44849 move globals into frontik.globals module
+  * HH-44849 things for micro handler
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 22 Jul 2014 17:29:03 +0400
+
 frontik (2.20.12) unstable; urgency=low
 
   * HH-44881 add copy as curl tests
