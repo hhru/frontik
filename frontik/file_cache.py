@@ -1,10 +1,7 @@
 import copy
-import logging
 import os
 
 import tornado.options
-
-log_file_cache = logging.getLogger('frontik.file_cache')
 
 
 class LimitedDict(dict):
@@ -48,19 +45,17 @@ class FileCache(object):
         self.load_fn = load_fn
         self.cache = LimitedDict(max_len, step, deepcopy)
 
-    def load(self, filename, log=log_file_cache):
+    def load(self, filename, log):
         if filename in self.cache:
             log.debug('got %s file from cache (%s cache size: %s)', filename, self.cache_name, len(self.cache))
             return self.cache[filename]
 
         real_filename = os.path.normpath(os.path.join(self.root_dir, filename))
         log.debug('reading %s file from %s', filename, real_filename)
-        ok, ret = self.load_fn(real_filename, log=log)
+        result = self.load_fn(real_filename, log)
+        self.cache[filename] = result
 
-        if ok:
-            self.cache[filename] = ret
-
-        return ret
+        return result
 
 
 class InvalidOptionCache(object):

@@ -186,7 +186,7 @@ class PageLogger(logging.LoggerAdapter):
         stages_str = ', '.join('{0}={1:.2f}'.format(s.name, s.delta) for s in self.stages)
         current_total = sum(s.delta for s in self.stages)
 
-        self.info('Stages: %s, total=%.2f', stages_str, current_total, extra={
+        self.info('Stages for %r: %s, total=%.2f', self._handler_ref(), stages_str, current_total, extra={
             '_stages': [(s.name, s.delta) for s in self.stages] + [('total', current_total)]
         })
 
