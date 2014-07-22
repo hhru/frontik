@@ -603,3 +603,8 @@ class PageHandler(tornado.web.RequestHandler):
 
     def set_template(self, filename):
         return self.json_producer.set_template(filename)
+
+    # TODO: Will be removed
+
+    def check_xsrf_cookie(self):
+        pass
