@@ -12,8 +12,9 @@ import tornado.options
 import tornado_util.supervisor as supervisor
 
 try:
+    import sys
     import coverage
-    USE_COVERAGE = True
+    USE_COVERAGE = '--with-coverage' in sys.argv
 except ImportError:
     USE_COVERAGE = False
 
