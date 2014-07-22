@@ -1,6 +1,5 @@
 # coding=utf-8
 
-import cStringIO
 import os
 import mimetools
 import mimetypes
@@ -9,9 +8,8 @@ import urlparse
 from urllib import urlencode
 from copy import copy
 
-import tornado.httpclient
-import tornado.httputil
-from tornado.escape import utf8
+from tornado.httpclient import HTTPRequest
+from tornado.httputil import HTTPHeaders
 
 
 def list_unique(l):
@@ -153,66 +151,71 @@ def make_mfd(fields, files):
     return body, content_type
 
 
-def make_get_request(url, data=None, headers=None, connect_timeout=0.5, request_timeout=2, follow_redirects=True):
+def make_get_request(url, data=None, headers=None, connect_timeout=None, request_timeout=None, follow_redirects=True):
     data = {} if data is None else data
-    return tornado.httpclient.HTTPRequest(
+    headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
+
+    return HTTPRequest(
         url=_encode(make_url(url, **data)),
         follow_redirects=follow_redirects,
-        headers={} if headers is None else headers,
+        headers=headers,
         connect_timeout=connect_timeout,
-        request_timeout=request_timeout)
+        request_timeout=request_timeout
+    )
 
 
-def make_post_request(url, data='', headers=None, files=None,
-                      connect_timeout=0.5, request_timeout=2, follow_redirects=True, content_type=None):
-
+def make_post_request(url, data='', headers=None, files=None, content_type=None,
+                      connect_timeout=None, request_timeout=None, follow_redirects=True):
     if files:
         body, content_type = make_mfd(data, files)
     else:
         body = make_body(data)
 
-    headers = {} if headers is None else tornado.httputil.HTTPHeaders(headers)
+    headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
     if content_type is None:
         content_type = headers.get('Content-Type', 'application/x-www-form-urlencoded')
 
     headers.update({'Content-Type': content_type, 'Content-Length': str(len(body))})
 
-    return tornado.httpclient.HTTPRequest(
+    return HTTPRequest(
         url=_encode(url),
         body=body,
         method='POST',
         headers=headers,
         follow_redirects=follow_redirects,
         connect_timeout=connect_timeout,
-        request_timeout=request_timeout)
+        request_timeout=request_timeout
+    )
 
 
-def make_put_request(url, data='', headers=None, connect_timeout=0.5, request_timeout=2, content_type=None):
-    headers = {} if headers is None else tornado.httputil.HTTPHeaders(headers)
+def make_put_request(url, data='', headers=None, content_type=None, connect_timeout=None, request_timeout=None):
+    headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
     if content_type is not None:
         headers['Content-Type'] = content_type
 
-    return tornado.httpclient.HTTPRequest(
+    return HTTPRequest(
         url=_encode(url),
         body=make_body(data),
         method='PUT',
-        headers={} if headers is None else headers,
+        headers=headers,
         connect_timeout=connect_timeout,
-        request_timeout=request_timeout)
+        request_timeout=request_timeout
+    )
 
 
-def make_delete_request(url, data='', headers=None, connect_timeout=0.5, request_timeout=2, content_type=None):
-    headers = {} if headers is None else tornado.httputil.HTTPHeaders(headers)
+def make_delete_request(url, data='', headers=None, content_type=None, connect_timeout=None, request_timeout=None):
+    headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
     if content_type is not None:
         headers['Content-Type'] = content_type
 
-    return tornado.httpclient.HTTPRequest(
+    return HTTPRequest(
         url=_encode(url),
         body=make_body(data),
         method='DELETE',
-        headers={} if headers is None else headers,
+        headers=headers,
         connect_timeout=connect_timeout,
-        request_timeout=request_timeout)
+        request_timeout=request_timeout
+    )
 
 
 def _asciify_url_char(c):
@@ -224,14 +227,6 @@ def _asciify_url_char(c):
 
 def asciify_url(url):
     return ''.join(map(_asciify_url_char, url))
-
-
-def create_fake_response(request, base_response, headers, code, buffer):
-    return tornado.httpclient.HTTPResponse(
-        request, int(code), headers=dict(base_response.headers, **headers),
-        buffer=cStringIO.StringIO(utf8(buffer)),
-        effective_url=base_response.effective_url, request_time=base_response.request_time,
-        time_info=base_response.time_info)
 
 
 def get_cookie_or_url_param_value(handler, param_name):

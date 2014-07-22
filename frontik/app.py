@@ -7,7 +7,6 @@ import re
 import sys
 import time
 import urlparse
-from itertools import ifilter
 
 from lxml import etree
 import tornado.autoreload
@@ -15,8 +14,8 @@ import tornado.web
 import tornado.ioloop
 from tornado.options import options
 
-import frontik.doc
-import frontik.handler as handler
+from frontik.globals import ApplicationGlobals, global_stats
+from frontik.handler import PageHandler
 import frontik.magic_imp
 import frontik.xml_util
 
@@ -59,12 +58,12 @@ class StatusHandler(tornado.web.RequestHandler):
         self.set_header('Content-Type', 'application/json; charset=UTF-8')
 
         result = {
-            'pages served': handler.stats.page_count,
-            'http requests made': handler.stats.http_reqs_count,
-            'bytes from http requests': handler.stats.http_reqs_size_sum,
+            'pages served': global_stats.page_count,
+            'http requests made': global_stats.http_reqs_count,
+            'bytes from http requests': global_stats.http_reqs_size_sum,
         }
 
-        cur_uptime = time.time() - handler.stats.start_time
+        cur_uptime = time.time() - global_stats.start_time
         if cur_uptime < 60:
             uptime_value = '{:.2f} seconds'.format(cur_uptime)
         elif cur_uptime < 3600:
@@ -92,12 +91,9 @@ class PdbHandler(tornado.web.RequestHandler):
 class CountPageHandlerInstancesHandler(tornado.web.RequestHandler):
     def get(self):
         import gc
-        import frontik.handler
-        hh = tuple([i for i in gc.get_objects()
-                    if isinstance(i, frontik.handler.PageHandler)])
+        hh = tuple([i for i in gc.get_objects() if isinstance(i, PageHandler)])
 
-        self.finish('{0}\n{1}'.format(len(hh), [i for i in gc.get_referrers(*hh)
-                                                if i is not hh]))
+        self.finish('{0}\n{1}'.format(len(hh), [i for i in gc.get_referrers(*hh) if i is not hh]))
 
 
 class CountTypesHandler(tornado.web.RequestHandler):
@@ -173,7 +169,7 @@ class FileMappingDispatcher(object):
     def __call__(self, application, request, **kwargs):
         self.log.info('requested url: %s (%s)', get_to_dispatch(request, 'uri'), request.uri)
 
-        page_module_name = 'pages.' + '.'.join(ifilter(None, get_to_dispatch(request, 'path').strip('/').split('/')))
+        page_module_name = 'pages.' + '.'.join(filter(None, get_to_dispatch(request, 'path').strip('/').split('/')))
         self.log.debug('page module: %s', page_module_name)
 
         try:
@@ -215,7 +211,7 @@ class App(object):
         try:
             self.importer = frontik.magic_imp.FrontikAppImporter(name, root)
             self.init_app_package(name, config)
-            self.app_globals = frontik.handler.ApplicationGlobals(self.module)
+            self.app_globals = ApplicationGlobals(self.module)
         except:
             # we do not want to break frontik on app initialization error,
             # so we report error and skip the app.
