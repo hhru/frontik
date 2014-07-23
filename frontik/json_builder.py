@@ -40,7 +40,7 @@ class JsonBuilder(object):
 
         if isinstance(v, dict):
             return _check_dict(v)
-        elif isinstance(v, (set, list, tuple)):
+        elif isinstance(v, (set, frozenset, list, tuple)):
             return _check_iterable(v)
         elif isinstance(v, RequestResult):
             if v.exception is not None:

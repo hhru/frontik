@@ -27,7 +27,7 @@ def make_qs(query_args):
     kv_pairs = []
     for (key, val) in query_args.iteritems():
         if val is not None:
-            if isinstance(val, list):
+            if isinstance(val, (set, frozenset, list, tuple)):
                 for v in val:
                     kv_pairs.append((key, _encode(v)))
             else:
