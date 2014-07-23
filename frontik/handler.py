@@ -56,8 +56,9 @@ class HTTPError(tornado.web.HTTPError):
     """
     def __init__(self, status_code, log_message=None, *args, **kwargs):
         headers = kwargs.pop('headers', {})
-        for data in ('text', 'xml', 'json'):
-            setattr(self, data, kwargs.pop(data, None))
+        for attr in ('text', 'xml', 'json'):
+            if attr in kwargs:
+                setattr(self, attr, kwargs.pop(attr))
 
         if status_code not in httplib.responses:
             status_code = 503
