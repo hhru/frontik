@@ -1,3 +1,10 @@
+frontik (2.20.14) unstable; urgency=low
+
+  * HH-44999 add parse_qs tests
+  * HH-44999 do not use coverage on any tests run
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 23 Jul 2014 13:07:59 +0400
+
 frontik (2.20.13) unstable; urgency=low
 
   * HH-44849 move globals into frontik.globals module
