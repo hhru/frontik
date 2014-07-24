@@ -24,8 +24,8 @@ class TestHook(test):
 
         import nose
         import logging
-        logging.disable(logging.WARNING)
-        nose.main(argv=['tests', '-v', '--nocapture'])
+        logging.disable(logging.CRITICAL)
+        nose.main(argv=['tests', '-v'])
 
 setup(
     name='frontik',

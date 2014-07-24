@@ -3,7 +3,7 @@
 from lxml import etree
 import unittest
 
-import frontik.doc
+from frontik.doc import Doc
 from frontik.future import Future
 from frontik.responses import RequestResult, FailedRequestException
 from .instances import frontik_test_app
@@ -11,7 +11,7 @@ from .instances import frontik_test_app
 
 class TestDoc(unittest.TestCase):
     def test_simple(self):
-        d = frontik.doc.Doc('a')
+        d = Doc('a')
 
         self.assertTrue(d.is_empty())
 
@@ -21,7 +21,7 @@ class TestDoc(unittest.TestCase):
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
 
     def test_future_simple(self):
-        d = frontik.doc.Doc('a')
+        d = Doc('a')
         f = Future()
         d.put(f)
 
@@ -32,7 +32,7 @@ class TestDoc(unittest.TestCase):
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
 
     def test_future_etree_element(self):
-        d = frontik.doc.Doc('a')
+        d = Doc('a')
         f = Future()
         f.set_result(etree.Element('b'))
         d.put(f)
@@ -40,7 +40,7 @@ class TestDoc(unittest.TestCase):
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a><b/></a>""")
 
     def test_future_list(self):
-        d = frontik.doc.Doc('a')
+        d = Doc('a')
         f = Future()
         f.set_result([etree.Comment('ccc'), etree.Element('bbb')])
         d.put(f)
@@ -48,7 +48,7 @@ class TestDoc(unittest.TestCase):
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a><!--ccc--><bbb/></a>""")
 
     def test_failed_future(self):
-        d = frontik.doc.Doc('a')
+        d = Doc('a')
         f = Future()
         result = RequestResult()
         result.set_exception(FailedRequestException(reason='error', code='code'))
@@ -59,28 +59,43 @@ class TestDoc(unittest.TestCase):
                                         """<a><error reason="error" code="code"/></a>""")
 
     def test_doc_nested(self):
-        a = frontik.doc.Doc('a')
-        b = frontik.doc.Doc('b')
+        a = Doc('a')
+        b = Doc('b')
         b.put('test')
         a.put(b)
 
         self.assertEqual(a.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a><b>test</b></a>""")
 
     def test_nodes_and_text(self):
-        a = frontik.doc.Doc('a')
+        a = Doc('a')
         a.put('1')
-        a.put(frontik.doc.Doc('b'))
+        a.put(Doc('b'))
         a.put('2')
-        a.put(frontik.doc.Doc('c'))
+        a.put(Doc('c'))
         a.put('3')
 
         self.assertEqual(a.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a>1<b/>2<c/>3</a>""")
 
     def test_root_node(self):
-        d = frontik.doc.Doc(root_node=etree.Element('doc'))
+        d = Doc(root_node=etree.Element('doc'))
         d.put(etree.Element('test1'))
 
         self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<doc><test1/></doc>""")
+
+    def test_root_node_doc(self):
+        d1 = Doc('a')
+        d1.put(etree.Comment('1'))
+
+        d2 = Doc(root_node=d1)
+        d2.put(etree.Comment('2'))
+
+        self.assertEqual(d2.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a><!--1--><!--2--></a>""")
+
+    def test_root_node_invalid(self):
+        d = Doc(root_node='a')
+        d.put(etree.Element('a'))
+
+        self.assertRaises(ValueError, d.to_etree_element)
 
     def test_doc_page(self):
         xml = frontik_test_app.get_page_xml('compose_doc')
