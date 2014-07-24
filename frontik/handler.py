@@ -172,9 +172,6 @@ class PageHandler(tornado.web.RequestHandler):
             status_code = 503
         super(PageHandler, self).set_status(status_code)
 
-    # for backwards-compatibility
-    async_callback = check_finished
-
     @staticmethod
     def add_callback(callback):
         IOLoop.instance().add_callback(callback)
@@ -453,15 +450,22 @@ class PageHandler(tornado.web.RequestHandler):
             self.send_error()
 
     def send_error(self, status_code=500, headers=None, **kwargs):
-        headers = {} if headers is None else headers
         exception = kwargs.get('exception', None)
+
+        # headers argument is deprecated
+        if headers is None:
+            headers = getattr(exception, 'headers', None)
+
+        if headers is None:
+            headers = {}
+
         override_content = any(getattr(exception, x, None) is not None for x in ('text', 'xml', 'json'))
         finish_with_exception = exception is not None and (
             199 < status_code < 400 or  # raise HTTPError(200) to finish page immediately
             override_content
         )
 
-        if finish_with_exception:
+        if finish_with_exception or headers:
             self.set_status(status_code)
             for (name, value) in headers.iteritems():
                 self.set_header(name, value)
@@ -483,7 +487,7 @@ class PageHandler(tornado.web.RequestHandler):
             self._force_finish()
             return
 
-        return super(PageHandler, self).send_error(status_code, headers=headers, **kwargs)
+        return super(PageHandler, self).send_error(status_code, **kwargs)
 
     def finish(self, chunk=None):
         if hasattr(self, 'finish_timeout_handle'):

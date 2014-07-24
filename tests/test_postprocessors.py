@@ -27,10 +27,15 @@ class TestPostprocessors(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, '<html><h1>HEADER</h1>CONTENT</html>')
 
-    def test_template_postprocessors_nopost(self):
+    def test_template_postprocessors_disabled(self):
         response = frontik_test_app.get_page(POSTPROCESS_URL.format('nopost'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, '<html><h1>%%header%%</h1>%%content%%</html>')
+
+    def test_template_postprocessors_with_json(self):
+        response = frontik_test_app.get_page(POSTPROCESS_URL.format('content&notpl'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, '{"content": "CONTENT"}')
 
     def test_late_postprocessors(self):
         response = frontik_test_app.get_page(POSTPROCESS_URL.format('nocache&addserver'))
