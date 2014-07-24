@@ -1,3 +1,12 @@
+frontik (2.20.15) unstable; urgency=low
+
+  * HH-44962 use kwargs in frontik.options
+  * HH-44962 disable all logging in tests
+  * HH-44962 add frontik.doc tests
+  * HH-44962 add tornado_settings option
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 24 Jul 2014 09:14:46 +0400
+
 frontik (2.20.14) unstable; urgency=low
 
   * HH-44999 add parse_qs tests
