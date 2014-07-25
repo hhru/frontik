@@ -1,3 +1,9 @@
+frontik (2.20.16) unstable; urgency=low
+
+  * HH-45022 override check_xsrf_cookie method of PageHandler
+
+ -- Automated Build <a.inozemtsev@hh.ru>  Fri, 25 Jul 2014 11:24:49 +0400
+
 frontik (2.20.15) unstable; urgency=low
 
   * HH-44962 use kwargs in frontik.options
