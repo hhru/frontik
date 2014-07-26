@@ -3,7 +3,6 @@
 import copy
 import logging
 import traceback
-import weakref
 import time
 import socket
 from collections import namedtuple
@@ -34,10 +33,13 @@ try:
             record_for_gelf.exc_info = None
             record_for_gelf.short = u"{0} {1} {2}".format(method, to_unicode(uri), status_code)
             record_for_gelf.levelno = logging.INFO
-            record_for_gelf.name = record_for_gelf.handler
+            record_for_gelf.name = None
             record_for_gelf.code = status_code
 
             for record in records_list:
+                if record_for_gelf.name is None and hasattr(record, 'handler'):
+                    record_for_gelf.name = repr(record.handler)
+
                 message = to_unicode(record.getMessage())
                 if record.levelno > record_for_gelf.levelno:
                     record_for_gelf.levelno = record.levelno
@@ -144,20 +146,17 @@ class PerRequestLogBufferHandler(logging.Logger):
                 self.flush_bulk_handler(handler, **kwargs)
 
 
-class PageLogger(logging.LoggerAdapter):
+class RequestLogger(logging.LoggerAdapter):
 
     Stage = namedtuple('Stage', ('name', 'delta', 'start_delta'))
 
-    def __init__(self, handler, logger_name, page):
-        self._handler_ref = weakref.ref(handler)
-        self._handler_started = self._handler_ref().handler_started
-        super(PageLogger, self).__init__(
-            PerRequestLogBufferHandler('frontik.handler'),
-            dict(request_id=logger_name, page=page, handler=self._handler_ref().__module__)
-        )
+    def __init__(self, request, request_id):
+        self._handler = None
+        self._last_stage_time = self._start_time = request._start_time
 
-        self._time = self._handler_started
-        self._page = page
+        super(RequestLogger, self).__init__(PerRequestLogBufferHandler('frontik.handler'), {'request_id': request_id})
+
+        self.page = request.path or request.uri
         self.stages = []
 
         # backcompatibility with logger
@@ -168,14 +167,18 @@ class PageLogger(logging.LoggerAdapter):
             self.logger.add_bulk_handler(BulkGELFHandler(tornado.options.options.graylog_host,
                                                          tornado.options.options.graylog_port, LAN_CHUNK, False))
 
-    def stage_tag(self, stage_name):
-        end_time = time.time()
-        start_time = self._time
-        self._time = end_time
+    def register_handler(self, handler):
+        self._handler = handler
+        self.extra['handler'] = handler
 
-        delta = (end_time - start_time) * 1000
-        start_delta = (start_time - self._handler_started) * 1000
-        stage = PageLogger.Stage(stage_name, delta, start_delta)
+    def stage_tag(self, stage_name):
+        stage_end_time = time.time()
+        stage_start_time = self._last_stage_time
+        self._last_stage_time = stage_end_time
+
+        delta = (stage_end_time - stage_start_time) * 1000
+        start_delta = (stage_start_time - self._start_time) * 1000
+        stage = RequestLogger.Stage(stage_name, delta, start_delta)
 
         self.stages.append(stage)
         self.debug('stage "%s" completed in %.2fms', stage.name, stage.delta, extra={'_stage': stage._asdict()})
@@ -186,7 +189,7 @@ class PageLogger(logging.LoggerAdapter):
         stages_str = ', '.join('{0}={1:.2f}'.format(s.name, s.delta) for s in self.stages)
         current_total = sum(s.delta for s in self.stages)
 
-        self.info('Stages for %r: %s, total=%.2f', self._handler_ref(), stages_str, current_total, extra={
+        self.info('Stages for %r: %s, total=%.2f', self._handler, stages_str, current_total, extra={
             '_stages': [(s.name, s.delta) for s in self.stages] + [('total', current_total)]
         })
 
@@ -199,7 +202,7 @@ class PageLogger(logging.LoggerAdapter):
         timings_log.info(
             tornado.options.options.timings_log_message_format,
             {
-                'page': repr(self._handler_ref()),
+                'page': repr(self._handler),
                 'stages': '{0} total={1:.2f} code={2}'.format(stages_str, total, status_code)
             }
         )
