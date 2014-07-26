@@ -168,7 +168,7 @@ class FileMappingDispatcher(object):
         return page_module.Page(application, request, logger=logger, **kwargs)
 
     def __repr__(self):
-        return 'FileMappingDispatcher({}, handler_404={})'.format(self.name, self.handler_404)
+        return '{}.{}(<{}, handler_404={}>)'.format(__package__, self.__class__.__name__, self.name, self.handler_404)
 
 # Deprecated synonym
 Map2ModuleName = FileMappingDispatcher
@@ -206,7 +206,7 @@ class App(object):
                     tornado.autoreload.watch_file(filename)
             except ImportError:
                 self.module.config = App.DefaultConfig()
-                app_logger.warn('no config.py file, using empty default')
+                app_logger.warning('no config.py file, using empty default')
 
         if not hasattr(self.module.config, 'urls'):
             self.module.config.urls = [('', Map2ModuleName(self.pages_module))]
@@ -214,11 +214,10 @@ class App(object):
         self.dispatcher = RegexpDispatcher(self.module.config.urls, self.module.__name__)
 
     def __call__(self, application, request, logger, **kwargs):
-        logger.info('requested app url: %s (%s)', get_to_dispatch(request, 'uri'), request.uri)
         return self.dispatcher(application, request, logger=logger, app_globals=self.app_globals, **kwargs)
 
     def __repr__(self):
-        return 'App({})'.format(self.name)
+        return '{}.{}(<{}>)'.format(__package__, self.__class__.__name__, self.name)
 
 
 class RegexpDispatcher(object):
@@ -246,17 +245,17 @@ class RegexpDispatcher(object):
                 try:
                     return app(application, request, logger, **kwargs)
                 except tornado.web.HTTPError as e:
-                    logger.exception('Tornado error: %s in %r', e, app)
+                    logger.exception('tornado error: %s in %r', e, app)
                     return tornado.web.ErrorHandler(application, request, status_code=e.status_code, logger=logger)
                 except Exception as e:
-                    logger.exception('Internal server error: %s in %r', e, app)
+                    logger.exception('internal server error: %s in %r', e, app)
                 return tornado.web.ErrorHandler(application, request, status_code=500, logger=logger)
 
         logger.error('match for request url "%s" not found', request.uri)
         return tornado.web.ErrorHandler(application, request, status_code=404, logger=logger)
 
     def __repr__(self):
-        return 'RegexpDispatcher({} routes)'.format(len(self.apps))
+        return '{}.{}(<{} routes>)'.format(__package__, self.__class__.__name__, len(self.apps))
 
 
 def get_app(app_urls, tornado_settings=None):

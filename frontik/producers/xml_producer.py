@@ -61,13 +61,13 @@ class XmlProducer(object):
         try:
             self.transform = self.xsl_cache.load(self.transform_filename, self.log)
         except etree.XMLSyntaxError:
-            self.log.exception('failed parsing XSL file {0} (XML syntax)'.format(self.transform_filename))
+            self.log.exception('failed parsing XSL file %s (XML syntax)', self.transform_filename)
             raise
         except etree.XSLTParseError:
-            self.log.exception('failed parsing XSL file {0} (XSL parse error)'.format(self.transform_filename))
+            self.log.exception('failed parsing XSL file %s (XSL parse error)', self.transform_filename)
             raise
         except:
-            self.log.exception('failed loading XSL file {0}'.format(self.transform_filename))
+            self.log.exception('failed loading XSL file %s', self.transform_filename)
             raise
 
         self._finish_with_xslt(callback)
@@ -90,15 +90,15 @@ class XmlProducer(object):
         def success_cb(result):
             start_time, xml_result, xslt_profile = result
 
-            self.log.stage_tag('xsl')
-            self.log.debug('applied XSL {0} in {1:.2f}ms'.format(
-                self.transform_filename, (time.time() - start_time) * 1000))
+            self.log.info('applied XSL %s in %.2fms', self.transform_filename, (time.time() - start_time) * 1000)
 
             if xslt_profile is not None:
                 self.log.debug('XSLT profiling results', extra={'_xslt_profile': xslt_profile.getroot()})
-            if len(self.transform.error_log):
-                self.log.info(get_xsl_log())
 
+            if len(self.transform.error_log):
+                self.log.warning(get_xsl_log())
+
+            self.log.stage_tag('xsl')
             callback(xml_result)
 
         def exception_cb(exception):
@@ -120,3 +120,6 @@ class XmlProducer(object):
 
     def xml_from_file(self, filename):
         return self.xml_cache.load(filename, self.log)
+
+    def __repr__(self):
+        return '{}.{}'.format(__package__, self.__class__.__name__)

@@ -58,14 +58,14 @@ def response_to_xml(response):
                 mode = 'javascript'
             body = frontik.util.decode_string_from_charset(response.body, try_charsets)
     except Exception:
-        debug_log.exception('Cannot parse response body')
+        debug_log.exception('cannot parse response body')
         body = repr(response.body)
 
     try:
         for name, value in response.time_info.iteritems():
             time_info.append(E.time(str(value), name=name))
     except Exception:
-        debug_log.exception('Cannot append time info')
+        debug_log.exception('cannot append time info')
 
     try:
         response = E.response(
@@ -79,7 +79,7 @@ def response_to_xml(response):
             time_info,
         )
     except Exception:
-        debug_log.exception('Cannot log response info')
+        debug_log.exception('cannot log response info')
         response = E.response(E.body('Cannot log response info'))
     return response
 
@@ -100,7 +100,7 @@ def request_to_xml(request):
                     for value in values:
                         body.append(E.param(to_unicode(value), name=to_unicode(name)))
         except Exception:
-            debug_log.exception('Cannot parse request body')
+            debug_log.exception('cannot parse request body')
             body.text = repr(request.body)
 
     try:
@@ -123,7 +123,7 @@ def request_to_xml(request):
             )
         )
     except Exception:
-        debug_log.exception('Cannot parse request body')
+        debug_log.exception('cannot parse request body')
         body.text = repr(request.body)
         request = E.request(body)
     return request
@@ -189,7 +189,7 @@ def _params_to_xml(url, logger=debug_log):
             try:
                 params.append(E.param(to_unicode(value), name=to_unicode(name)))
             except UnicodeDecodeError:
-                logger.exception('Cannot decode parameter name or value')
+                logger.exception('cannot decode parameter name or value')
                 params.append(E.param(repr(value), name=repr(name)))
     return params
 
@@ -243,7 +243,7 @@ def _exception_to_xml(exc_info, log=debug_log):
             trace = trace.tb_next
         exc_node.append(trace_node)
     except Exception:
-        log.exception('Could not add traceback lines')
+        log.exception('cannot add traceback lines')
 
     exc_node.append(E.text(''.join(map(to_unicode, traceback.format_exception(*exc_info)))))
     return exc_node
@@ -280,7 +280,7 @@ class DebugLogBulkHandler(object):
         try:
             entry = etree.Element("entry", **entry_attrs)
         except ValueError:
-            debug_log.exception('Error creating log entry with attrs: {0}'.format(entry_attrs))
+            debug_log.exception('error creating log entry with attrs: %s', entry_attrs)
             entry = etree.Element("entry")
 
         entry.set("asctime", str(datetime.fromtimestamp(record.created)))
@@ -354,13 +354,13 @@ class PageHandlerDebug(object):
             self.handler.require_debug_access()
             self.debug_log_handler = DebugLogBulkHandler()
             self.handler.log.add_bulk_handler(self.debug_log_handler, auto_flush=False)
-            self.handler.log.debug('using debug mode logging')
+            self.handler.log.debug('debug mode is ON')
 
         if self.debug_mode.inherited:
-            self.handler.log.debug('debug mode is inherited due to {0} request header'.format(self.DEBUG_HEADER_NAME))
+            self.handler.log.debug('debug mode is inherited due to %s request header', self.DEBUG_HEADER_NAME)
 
         if self.debug_mode.pass_debug:
-            self.handler.log.debug('{0} header will be passed to all requests'.format(self.DEBUG_HEADER_NAME))
+            self.handler.log.debug('%s header will be passed to all requests', self.DEBUG_HEADER_NAME)
 
     def get_debug_page(self, status_code, response_headers, original_response=None):
 
