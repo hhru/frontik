@@ -13,7 +13,6 @@ import tornado.web
 
 from frontik.async import AsyncGroup
 import frontik.auth
-from frontik.frontik_logging import PageLogger
 from frontik.globals import global_stats
 import frontik.handler_active_limit
 from frontik.handler_debug import PageHandlerDebug
@@ -74,17 +73,20 @@ class PageHandler(tornado.web.RequestHandler):
     preprocessors = ()
 
     # to restore tornado.web.RequestHandler compatibility
-    def __init__(self, application, request, app_globals=None, **kwargs):
+    def __init__(self, application, request, logger, request_id=None, app_globals=None, **kwargs):
         self.handler_started = time.time()
         self._prepared = False
+
+        if request_id is None:
+            raise Exception('no request_id for {} provided'.format(PageHandler))
 
         if app_globals is None:
             raise Exception('{0} need to have app_globals'.format(PageHandler))
 
         self.name = self.__class__.__name__
-        self.request_id = request.headers.get('X-Request-Id', str(global_stats.next_request_id()))
-        logger_name = '.'.join(filter(None, [self.request_id, getattr(app_globals.config, 'app_name', None)]))
-        self.log = PageLogger(self, logger_name, request.path or request.uri)
+        self.request_id = request_id
+        self.log = logger
+        self.log.register_handler(self)
         self.config = app_globals.config
 
         super(PageHandler, self).__init__(application, request, logger=self.log, **kwargs)
