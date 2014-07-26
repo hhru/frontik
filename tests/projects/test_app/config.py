@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import os
 
 XSL_root = os.path.normpath(os.path.join(os.path.dirname(__file__), 'xsl'))
@@ -16,3 +18,8 @@ postprocessor = post
 
 from lxml import etree
 version = [etree.Element('app-version', number='last version')]
+
+debug_labels = {
+    'test': '#f88',
+    u'ТЕСТ': '#88f'
+}

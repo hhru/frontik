@@ -3,7 +3,7 @@
 
     <xsl:template name="debug-css">
         <style>
-            body { margin: 0 10px; }
+            body { margin: 0; }
             body, pre {
                 font-family: sans-serif;
             }
@@ -49,45 +49,58 @@
                 white-space: nowrap;
             }
 
-            .textentry {
+            .entry {
                 padding-left: 20px;
                 padding-right: 20px;
                 margin-bottom: 4px;
                 word-break: break-all;
                 position: relative;
             }
-                .m-textentry__expandable {
+                .entry_expandable {
                     background: #fffccf;
                 }
-                .m-textentry_title {
-                    font-size: 1.3em;
-                    margin-bottom: .5em;
+                    .entry.entry_expandable:before {
+                        float: left;
+                        width: 20px;
+                        margin-left: -20px;
+                        padding: 3px 0;
+                        content: "▹";
+                        text-align: center;
+                        font-size: 0.8em;
+                    }
+                .entry_title {
+                    font-size: 1.2em;
+                    margin: 0.5em 0;
                 }
-                .textentry__head {
+                .entry__head {
                     display: block;
                 }
-                    .m-textentry__head_highlight {
+                    .entry__head_highlight {
                         font-weight: bold;
                     }
-                    .textentry__head__expandtext {
-                        border-bottom: 1px dotted #666;
+                    .entry__head__expandtext {
                         display: inline-block;
                         position: relative;
+                        padding: 3px 0;
                         vertical-align: bottom;
-                        line-height: 1.4em;
-                        margin-top: -1px;
                     }
-                    .textentry__head__message {
+                    .entry__head__level {
+                        font-family: monospace;
+                        vertical-align: super;
+                    }
+                    .entry__head__message {
                         white-space: pre-wrap;
                     }
-                .textentry__switcher {
+                .entry__switcher {
                     overflow: hidden;
                     white-space: nowrap;
                     text-overflow: ellipsis;
                     cursor: pointer;
                 }
+
             .headers{
             }
+
             .details-expander {
                 display: none;
             }
@@ -188,13 +201,10 @@
                 border: 1px solid #ccc;
                 margin-top: 5px;
                 box-shadow: 1px 1px 8px #aaacca;
-                -moz-box-shadow: 1px 1px 8px #aaacca;
-                -webkit-box-shadow: 1px 1px 8px #aaacca;
             }
 
             .debug-inherited {
                 margin: 10px 0;
-                padding: 10px;
                 border: 1px solid #ccc;
                 background: #fff;
             }
@@ -227,7 +237,6 @@
                     }
 
             .copy-as-curl-link {
-                display: block;
                 text-decoration: underline;
                 cursor: pointer;
             }

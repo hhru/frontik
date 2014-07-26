@@ -313,7 +313,7 @@ class DebugLogBulkHandler(object):
             entry.append(E.text(record._protobuf))
 
         if getattr(record, "_text", None) is not None:
-            entry.append(E.text(record._text))
+            entry.append(E.text(to_unicode(record._text)))
 
         self.log_data.append(entry)
 
