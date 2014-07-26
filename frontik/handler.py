@@ -163,12 +163,12 @@ class PageHandler(tornado.web.RequestHandler):
         try:
             return super(PageHandler, self).decode_argument(value, name)
         except (UnicodeError, tornado.web.HTTPError):
-            self.log.warn('Cannot decode utf-8 query parameter, trying other charsets')
+            self.log.warning('cannot decode utf-8 query parameter, trying other charsets')
 
         try:
             return frontik.util.decode_string_from_charset(value)
         except UnicodeError:
-            self.log.exception('Cannot decode argument, ignoring invalid chars')
+            self.log.exception('cannot decode argument, ignoring invalid chars')
             return value.decode('utf-8', 'ignore')
 
     def check_finished(self, callback, *args, **kwargs):
@@ -178,7 +178,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         def wrapper(*args, **kwargs):
             if self._finished:
-                self.log.warn('Page was already finished, {0} ignored'.format(original_callback))
+                self.log.warning('page was already finished, {0} ignored'.format(original_callback))
             else:
                 callback(*args, **kwargs)
 
@@ -318,7 +318,7 @@ class PageHandler(tornado.web.RequestHandler):
                 else:
                     producer = self.xml_producer
 
-                self.log.debug('Using {0} producer'.format(producer))
+                self.log.info('using %s producer', producer)
 
                 if self.apply_postprocessor:
                     producer(partial(self._call_postprocessors, self._template_postprocessors, self.finish))
@@ -327,7 +327,7 @@ class PageHandler(tornado.web.RequestHandler):
 
             self._call_postprocessors(self._early_postprocessors, _callback)
         else:
-            self.log.warn('trying to finish already finished page, probably bug in a workflow, ignoring')
+            self.log.warning('trying to finish already finished page, probably bug in a workflow, ignoring')
 
     def __handle_long_request(self):
         self.log.warning("long request detected (uri: {0})".format(self.request.uri))
@@ -345,7 +345,7 @@ class PageHandler(tornado.web.RequestHandler):
         try:
             self.write_error(status_code, **kwargs)
         except Exception:
-            self._logger.error("Uncaught exception in write_error", exc_info=True)
+            self.log.error("Uncaught exception in write_error", exc_info=True)
 
     def write_error(self, status_code=500, **kwargs):
         # write_error in Frontik must be asynchronous when handling custom errors (due to XSLT)
@@ -409,7 +409,7 @@ class PageHandler(tornado.web.RequestHandler):
         try:
             self._call_postprocessors(self._late_postprocessors, _finish_with_async_hook)
         except:
-            self.log.exception('Error during late postprocessing stage, finishing with an exception')
+            self.log.exception('error during late postprocessing stage, finishing with an exception')
             self._status_code = 500
             _finish_with_async_hook()
 
@@ -442,7 +442,7 @@ class PageHandler(tornado.web.RequestHandler):
                 self._write_buffer = [res]
 
             except Exception:
-                self.log.exception('Cannot write debug info')
+                self.log.exception('cannot write debug info')
 
         super(PageHandler, self).flush(include_footers=False, **kwargs)
 
@@ -462,12 +462,11 @@ class PageHandler(tornado.web.RequestHandler):
     def _chain_functions(self, functions, callback, *args):
         if functions:
             func = functions.pop(0)
-            self.log.debug('Started "%r"', func)
             start_time = time.time()
 
             def _callback(*args):
                 time_delta = (time.time() - start_time) * 1000
-                self.log.debug('Finished "%r" in %.2fms', func, time_delta)
+                self.log.info('finished postprocessor "%r" in %.2fms', func, time_delta)
                 self._chain_functions(functions, callback, *args)
 
             func(self, *(args + (_callback,)))

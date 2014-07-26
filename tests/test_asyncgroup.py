@@ -90,7 +90,7 @@ class TestAsyncGroup(unittest.TestCase):
 
         cb2()
 
-        self.assertEqual(log[-1], 'test_group group: Ignoring response because of already finished group')
+        self.assertEqual(log[-1], 'test_group group: ignoring response because of already finished group')
         self.assertEqual(ag._finish_cb_called, False)
         self.assertEqual(ag._aborted, True)
 

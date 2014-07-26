@@ -14,7 +14,7 @@ tornado.options.define('suppressed_loggers', default=['tornado.curl_httpclient']
 
 tornado.options.define('timings_log_enabled', default=False, type=bool)
 tornado.options.define('timings_log_file_postfix', default='timings', type=str)
-tornado.options.define('timings_log_message_format', default='Timings for %(page)s : %(stages)s', type=str)
+tornado.options.define('timings_log_message_format', default='timings for %(page)s : %(stages)s', type=str)
 
 tornado.options.define('syslog_address', default='/dev/log', type=str)
 tornado.options.define('syslog', default=False, type=bool)

@@ -67,8 +67,7 @@ class JsonProducer(object):
             start_time, result = result
 
             self.log.stage_tag('tpl')
-            self.log.debug('applied template {0} in {1:.2f}ms'.format(
-                self.template_filename, (time.time() - start_time) * 1000))
+            self.log.info('applied template %s in %.2fms', self.template_filename, (time.time() - start_time) * 1000)
 
             callback(result)
 
@@ -83,3 +82,6 @@ class JsonProducer(object):
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', 'application/json; charset=utf-8')
         callback(self.json.to_string())
+
+    def __repr__(self):
+        return '{}.{}'.format(__package__, self.__class__.__name__)
