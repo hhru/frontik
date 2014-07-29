@@ -15,6 +15,7 @@ from urllib import unquote_plus as unquote
 from urlparse import urlparse, parse_qs
 
 from lxml import etree
+import tornado.httpserver
 import tornado.options
 import tornado.web
 from tornado.httpclient import HTTPResponse
@@ -23,7 +24,7 @@ from tornado.ioloop import IOLoop
 
 import frontik.app
 import frontik.handler
-import tornado.httpserver
+import frontik.http_client
 import frontik.options
 import frontik.handler_active_limit
 
@@ -226,7 +227,7 @@ class EmptyEnvironment(object):
         def fetch(request, callback, **kwargs):
             IOLoop.instance().add_callback(partial(self._fetch_mock, request, callback, **kwargs))
 
-        frontik_app.app_globals.http_client.fetch = fetch
+        frontik_app.app_globals.curl_http_client.fetch = fetch
 
         def wrapped_method(handler):
             method(handler, *args, **kwargs)
