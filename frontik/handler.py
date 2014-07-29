@@ -470,6 +470,10 @@ class PageHandler(tornado.web.RequestHandler):
             for (name, value) in headers.iteritems():
                 self.set_header(name, value)
 
+            if not self._prepared:
+                self.finish()
+                return
+
             self.json.clear()
 
             if getattr(exception, 'text', None) is not None:
