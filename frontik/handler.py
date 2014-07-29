@@ -6,27 +6,25 @@ import time
 from functools import partial
 
 import tornado.curl_httpclient
-import tornado.options
-import tornado.web
 from tornado.ioloop import IOLoop
 from tornado.httpserver import HTTPRequest
+import tornado.options
+import tornado.web
 
 from frontik.async import AsyncGroup
 import frontik.auth
 from frontik.frontik_logging import PageLogger
-from frontik.future import Future
 from frontik.globals import global_stats
 import frontik.handler_active_limit
-from frontik.handler_debug import PageHandlerDebug, response_from_debug
+from frontik.handler_debug import PageHandlerDebug
+from frontik.http_client import HttpClient
 import frontik.util
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
-from frontik.http_client import DEFAULT_REQUEST_TYPES, FailedRequestException, RequestResult
 
 
 # this function replaces __repr__ function for tornado's HTTPRequest
-# the difference is in handling body attribute: values of various `password` fields in POST requests
-# are replaced with '***' to secure them from showing up in the logs
+# HTTPRequest.body is printed only in debug mode
 def context_based_repr(self):
     attrs = ("protocol", "host", "method", "uri", "version", "remote_ip")
     if tornado.options.options.debug:
@@ -66,11 +64,9 @@ class ApplicationGlobals(object):
     """ Global settings for Frontik instance """
     def __init__(self, app_package):
         self.config = app_package.config
-
         self.xml = frontik.producers.xml_producer.ApplicationXMLGlobals(app_package.config)
         self.json = frontik.producers.json_producer.ApplicationJsonGlobals(app_package.config)
-
-        self.http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(max_clients=200)
+        self.curl_http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(max_clients=200)
 
 
 class PageHandler(tornado.web.RequestHandler):
@@ -89,13 +85,20 @@ class PageHandler(tornado.web.RequestHandler):
         self.request_id = request.headers.get('X-Request-Id', str(global_stats.next_request_id()))
         logger_name = '.'.join(filter(None, [self.request_id, getattr(app_globals.config, 'app_name', None)]))
         self.log = PageLogger(self, logger_name, request.path or request.uri)
+        self.config = app_globals.config
 
         super(PageHandler, self).__init__(application, request, logger=self.log, **kwargs)
 
-        self.app_globals = app_globals
-        self.config = self.app_globals.config
-        self.http_client = self.app_globals.http_client
+        self._app_globals = app_globals
         self._debug_access = None
+
+        # This wrapper is needed in case someone replaces self.fetch_request in runtime,
+        # as happens in client legacy code.
+
+        def fetch_request_wrapper(*args, **kwargs):
+            return self.fetch_request(*args, **kwargs)
+
+        self._http_client = HttpClient(self, app_globals.curl_http_client, fetch_request_wrapper)
 
         self._template_postprocessors = []
         self._early_postprocessors = []
@@ -119,10 +122,10 @@ class PageHandler(tornado.web.RequestHandler):
         self.debug = PageHandlerDebug(self)
 
         self.json_producer = frontik.producers.json_producer.JsonProducer(
-            self, self.app_globals.json, getattr(self, 'json_encoder', None))
+            self, self._app_globals.json, getattr(self, 'json_encoder', None))
         self.json = self.json_producer.json
 
-        self.xml_producer = frontik.producers.xml_producer.XmlProducer(self, self.app_globals.xml)
+        self.xml_producer = frontik.producers.xml_producer.XmlProducer(self, self._app_globals.xml)
         self.xml = self.xml_producer  # deprecated synonym
         self.doc = self.xml_producer.doc
 
@@ -251,192 +254,45 @@ class PageHandler(tornado.web.RequestHandler):
 
     # HTTP client methods
 
-    DEFAULT_CONNECT_TIMEOUT = 0.2
-    DEFAULT_REQUEST_TIMEOUT = 2
-
     def group(self, futures, callback=None, name=None):
-        if callable(callback):
-            results_holder = {}
-            group_callback = self.finish_group.add(partial(callback, results_holder))
-
-            def delay_cb():
-                IOLoop.instance().add_callback(self.check_finished(group_callback))
-
-            async_group = AsyncGroup(delay_cb, log=self.log.debug, name=name)
-
-            def callback(future_name, future):
-                results_holder[future_name] = future.result().get()
-
-            for name, future in futures.iteritems():
-                future.add_done_callback(async_group.add(partial(callback, name)))
-
-            async_group.try_finish()
-
-        return futures
+        return self._http_client.group(futures, callback, name)
 
     def get_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None, callback=None,
                 follow_redirects=True, labels=None, add_to_finish_group=True,
                 parse_response=True, parse_on_error=False):
 
-        future = Future()
-        request = frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout, follow_redirects)
-        request._frontik_labels = labels
-
-        self.fetch_request(
-            request,
-            partial(self._parse_response, future, callback, parse_response, parse_on_error),
-            add_to_finish_group=add_to_finish_group
+        return self._http_client.get_url(
+            url, data, headers, connect_timeout, request_timeout, callback, follow_redirects,
+            labels, add_to_finish_group, parse_response, parse_on_error
         )
-
-        return future
 
     def post_url(self, url, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
                  callback=None, follow_redirects=True, content_type=None, labels=None,
                  add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
-        future = Future()
-        request = frontik.util.make_post_request(
-            url, data, headers, files, content_type, connect_timeout, request_timeout, follow_redirects
+        return self._http_client.post_url(
+            url, data, headers, files, connect_timeout, request_timeout, callback, follow_redirects, content_type,
+            labels, add_to_finish_group, parse_response, parse_on_error
         )
-        request._frontik_labels = labels
-
-        self.fetch_request(
-            request,
-            partial(self._parse_response, future, callback, parse_response, parse_on_error),
-            add_to_finish_group=add_to_finish_group
-        )
-
-        return future
 
     def put_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
                 content_type=None, labels=None, add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
-        future = Future()
-        request = frontik.util.make_put_request(url, data, headers, content_type, connect_timeout, request_timeout)
-        request._frontik_labels = labels
-
-        self.fetch_request(
-            request,
-            partial(self._parse_response, future, callback, parse_response, parse_on_error),
-            add_to_finish_group=add_to_finish_group
+        return self._http_client.put_url(
+            url, data, headers, connect_timeout, request_timeout, callback, content_type,
+            labels, add_to_finish_group, parse_response, parse_on_error
         )
-
-        return future
 
     def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
                    content_type=None, labels=None, add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
-        future = Future()
-        request = frontik.util.make_delete_request(url, data, headers, content_type, connect_timeout, request_timeout)
-        request._frontik_labels = labels
-
-        self.fetch_request(
-            request,
-            partial(self._parse_response, future, callback, parse_response, parse_on_error),
-            add_to_finish_group=add_to_finish_group
+        return self._http_client.delete_url(
+            url, data, headers, connect_timeout, request_timeout, callback, content_type,
+            labels, add_to_finish_group, parse_response, parse_on_error
         )
-
-        return future
 
     def fetch_request(self, request, callback, add_to_finish_group=True):
-        """ Tornado HTTP client compatible method """
-        if not self._finished:
-            global_stats.http_reqs_count += 1
-
-            if self._prepared and self.debug.debug_mode.pass_debug:
-                authorization = self.request.headers.get('Authorization')
-                request.headers[PageHandlerDebug.DEBUG_HEADER_NAME] = True
-                if authorization is not None:
-                    request.headers['Authorization'] = authorization
-
-            request.headers['X-Request-Id'] = self.request_id
-
-            if request.connect_timeout is None:
-                request.connect_timeout = self.DEFAULT_CONNECT_TIMEOUT
-            if request.request_timeout is None:
-                request.request_timeout = self.DEFAULT_REQUEST_TIMEOUT
-
-            request.connect_timeout *= tornado.options.options.timeout_multiplier
-            request.request_timeout *= tornado.options.options.timeout_multiplier
-
-            if add_to_finish_group:
-                req_callback = self.finish_group.add(self.check_finished(self._log_response, request, callback))
-            else:
-                req_callback = partial(self._log_response, request, callback)
-
-            return self.http_client.fetch(request, req_callback)
-
-        self.log.warn('attempted to make http request to {0} when page is finished, ignoring'.format(request.url))
-
-    def _log_response(self, request, callback, response):
-        try:
-            if response.body is not None:
-                global_stats.http_reqs_size_sum += len(response.body)
-        except TypeError:
-            self.log.warn('got strange response.body of type %s', type(response.body))
-
-        try:
-            debug_extra = {}
-            if response.headers.get(PageHandlerDebug.DEBUG_HEADER_NAME):
-                debug_response = response_from_debug(request, response)
-                if debug_response is not None:
-                    debug_xml, response = debug_response
-                    debug_extra['_debug_response'] = debug_xml
-
-            debug_extra.update({'_response': response, '_request': request})
-            if getattr(request, '_frontik_labels', None) is not None:
-                debug_extra['_labels'] = request._frontik_labels
-
-            self.log.debug(
-                'got {code}{size} {url} in {time:.2f}ms'.format(
-                    code=response.code,
-                    url=response.effective_url,
-                    size=' {0} bytes'.format(len(response.body)) if response.body is not None else '',
-                    time=response.request_time * 1000
-                ),
-                extra=debug_extra
-            )
-        except Exception:
-            self.log.exception('Cannot log response info')
-
-        if callable(callback):
-            callback(response)
-
-    def _parse_response(self, future, callback, parse_response, parse_on_error, response):
-        data = None
-        result = RequestResult()
-
-        try:
-            if response.error and not parse_on_error:
-                self._set_response_error(response)
-            elif not parse_response:
-                data = response.body
-            elif response.code != 204:
-                content_type = response.headers.get('Content-Type', '')
-                for k, v in DEFAULT_REQUEST_TYPES.iteritems():
-                    if k.search(content_type):
-                        data = v(response, logger=self.log)
-                        break
-        except FailedRequestException as ex:
-            result.set_exception(ex)
-
-        result.set(data, response)
-
-        if callable(callback):
-            def callback_wrapper(future):
-                callback(*future.result().get())
-
-            future.add_done_callback(callback_wrapper)
-
-        future.set_result(result)
-
-    def _set_response_error(self, response):
-        log_func = self.log.error if response.code >= 500 else self.log.warn
-        log_func('{code} failed {url} ({reason!s})'.format(
-            code=response.code, url=response.effective_url, reason=response.error)
-        )
-
-        raise FailedRequestException(reason=str(response.error), code=response.code)
+        return self._http_client.fetch_request(request, callback, add_to_finish_group)
 
     # Finish page
 
