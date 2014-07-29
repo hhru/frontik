@@ -1,6 +1,7 @@
 # coding=utf-8
 
 from functools import partial
+import json
 import os
 import socket
 import time
@@ -87,6 +88,14 @@ class FrontikTestInstance(object):
             return etree.fromstring(content.encode('utf-8'))
         except Exception as e:
             raise Exception('failed to parse xml ({}): "{}"'.format(e, content))
+
+    def get_page_json(self, page, notpl=False):
+        content = self.get_page_text(page, notpl)
+
+        try:
+            return json.loads(content.encode('utf-8'))
+        except Exception as e:
+            raise Exception('failed to parse json ({}): "{}"'.format(e, content))
 
     def get_page_text(self, page, notpl=False):
         return self.get_page(page, notpl).content
