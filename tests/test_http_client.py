@@ -7,7 +7,7 @@ from .instances import frontik_test_app
 
 class TestHttpClient(unittest.TestCase):
     def test_post_url_simple(self):
-        xml = frontik_test_app.get_page_xml('post_simple/?port={port}')
+        xml = frontik_test_app.get_page_xml('post_simple')
         self.assertEqual(xml.text, '42')
 
     def test_post_url_mfd(self):
@@ -27,14 +27,14 @@ class TestHttpClient(unittest.TestCase):
         self.assertEqual(xml.text, '13')
 
     def test_timeout(self):
-        xml = frontik_test_app.get_page_xml('long_page_request/?port={port}')
+        xml = frontik_test_app.get_page_xml('long_page_request')
         self.assertEqual(xml.text, 'error')
 
     def test_error_in_cb(self):
         """
         when json or xml parsing error ocuurs, we must send None into callback
         """
-        xml = frontik_test_app.get_page_xml('bad_page/?port={port}')
+        xml = frontik_test_app.get_page_xml('bad_page')
         self.assertEqual(xml.text, '4242')
 
     def test_check_finished(self):
