@@ -5,6 +5,7 @@ import httplib
 import time
 from functools import partial
 
+import tornado.curl_httpclient
 import tornado.options
 import tornado.web
 from tornado.ioloop import IOLoop
@@ -59,6 +60,17 @@ class HTTPError(tornado.web.HTTPError):
 
         super(HTTPError, self).__init__(status_code, log_message, *args, **kwargs)
         self.headers = headers
+
+
+class ApplicationGlobals(object):
+    """ Global settings for Frontik instance """
+    def __init__(self, app_package):
+        self.config = app_package.config
+
+        self.xml = frontik.producers.xml_producer.ApplicationXMLGlobals(app_package.config)
+        self.json = frontik.producers.json_producer.ApplicationJsonGlobals(app_package.config)
+
+        self.http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(max_clients=200)
 
 
 class PageHandler(tornado.web.RequestHandler):
