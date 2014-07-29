@@ -34,3 +34,8 @@ class TestHttpError(unittest.TestCase):
         response = frontik_test_app.get_page('test_exception_json')
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.content, '{"reason": "bad argument"}')
+
+    def test_http_error_in_prepare(self):
+        response = frontik_test_app.get_page('http_error_in_prepare')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.headers['X-Foo'], 'Bar')
