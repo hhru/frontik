@@ -14,7 +14,7 @@ class Page(frontik.handler.PageHandler):
             assert len(xpath) == 1
             assert etree.tostring(xpath[0]) == CDATA_XML
 
-        self.post_url('http://localhost:{}/test_app/cdata'.format(self.get_argument('port')), callback=_cb)
+        self.post_url(self.request.host + self.request.path, callback=_cb)
 
     def post_page(self):
         parser = etree.XMLParser(strip_cdata=False)

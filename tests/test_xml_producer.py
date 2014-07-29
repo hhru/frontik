@@ -37,7 +37,7 @@ class TestXsl(unittest.TestCase):
         self.assertTrue(response.headers['content-type'].startswith('application/xml'))
 
     def test_cdata(self):
-        html = frontik_test_app.get_page_text('cdata/?port={port}')
+        html = frontik_test_app.get_page_text('cdata')
         self.assertIsNotNone(html.find('test'))
         self.assertIsNotNone(html.find('CDATA'))
 
