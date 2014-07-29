@@ -5,7 +5,7 @@ import unittest
 
 from frontik.doc import Doc
 from frontik.future import Future
-from frontik.responses import RequestResult, FailedRequestException
+from frontik.http_client import RequestResult, FailedRequestException
 from .instances import frontik_test_app
 
 

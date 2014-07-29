@@ -21,7 +21,7 @@ from frontik.handler_debug import PageHandlerDebug, response_from_debug
 import frontik.util
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
-from frontik.responses import DEFAULT_REQUEST_TYPES, FailedRequestException, RequestResult
+from frontik.http_client import DEFAULT_REQUEST_TYPES, FailedRequestException, RequestResult
 
 
 # this function replaces __repr__ function for tornado's HTTPRequest

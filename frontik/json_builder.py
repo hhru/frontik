@@ -3,7 +3,7 @@
 import json
 
 from frontik.future import Future
-from frontik.responses import FailedRequestException, RequestResult
+from frontik.http_client import FailedRequestException, RequestResult
 
 
 class JsonBuilder(object):
