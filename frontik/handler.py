@@ -449,15 +449,9 @@ class PageHandler(tornado.web.RequestHandler):
         if tornado.options.options.kill_long_requests:
             self.send_error()
 
-    def send_error(self, status_code=500, headers=None, **kwargs):
+    def write_error(self, status_code=500, **kwargs):
         exception = kwargs.get('exception', None)
-
-        # headers argument is deprecated
-        if headers is None:
-            headers = getattr(exception, 'headers', None)
-
-        if headers is None:
-            headers = {}
+        headers = getattr(exception, 'headers', None)
 
         override_content = any(getattr(exception, x, None) is not None for x in ('text', 'xml', 'json'))
         finish_with_exception = exception is not None and (
@@ -465,15 +459,11 @@ class PageHandler(tornado.web.RequestHandler):
             override_content
         )
 
-        if finish_with_exception or headers:
-            self.set_status(status_code)
+        if headers:
             for (name, value) in headers.iteritems():
                 self.set_header(name, value)
 
-            if not self._prepared:
-                self.finish()
-                return
-
+        if finish_with_exception:
             self.json.clear()
 
             if getattr(exception, 'text', None) is not None:
@@ -489,9 +479,8 @@ class PageHandler(tornado.web.RequestHandler):
                 self.doc.put(exception.xml)
 
             self._force_finish()
-            return
 
-        return super(PageHandler, self).send_error(status_code, **kwargs)
+        return super(PageHandler, self).write_error(status_code, **kwargs)
 
     def finish(self, chunk=None):
         if hasattr(self, 'finish_timeout_handle'):
