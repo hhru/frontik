@@ -421,6 +421,8 @@ class PageHandler(tornado.web.RequestHandler):
     def _force_finish(self):
         self.finish_group.finish()
 
+    finish_with_postprocessors = _force_finish  # this is the official way now, use it instead of _force_finish
+
     def _finish_page_cb(self):
         if not self._finished:
             self.log.stage_tag('page')
@@ -449,15 +451,31 @@ class PageHandler(tornado.web.RequestHandler):
         if tornado.options.options.kill_long_requests:
             self.send_error()
 
+    # headers kwarg is deprecated, remove after all usages are gone
     def send_error(self, status_code=500, headers=None, **kwargs):
+        if self._headers_written:
+            super(PageHandler, self).send_error(status_code, **kwargs)
+
+        self.clear()
+        self.set_status(status_code)
+
+        try:
+            self.write_error(status_code, **kwargs)
+        except Exception:
+            self._logger.error("Uncaught exception in write_error", exc_info=True)
+
+    def write_error(self, status_code=500, **kwargs):
+        # write_error in Frontik must be asynchronous when handling custom errors (due to XSLT)
+        # e.g. raise HTTPError(503) is syncronous and generates a standard Tornado error page,
+        # whereas raise HTTPError(503, xml=...) will call finish_with_postprocessors()
+
+        # the solution is to move self.finish() from send_error to write_error
+        # so any write_error override must call either finish() or finish_with_postprocessors() in the end
+
+        # in Tornado 3 it may be better to rewrite this mechanism with futures
+
         exception = kwargs.get('exception', None)
-
-        # headers argument is deprecated
-        if headers is None:
-            headers = getattr(exception, 'headers', None)
-
-        if headers is None:
-            headers = {}
+        headers = getattr(exception, 'headers', None)
 
         override_content = any(getattr(exception, x, None) is not None for x in ('text', 'xml', 'json'))
         finish_with_exception = exception is not None and (
@@ -465,15 +483,11 @@ class PageHandler(tornado.web.RequestHandler):
             override_content
         )
 
-        if finish_with_exception or headers:
-            self.set_status(status_code)
+        if headers:
             for (name, value) in headers.iteritems():
                 self.set_header(name, value)
 
-            if not self._prepared:
-                self.finish()
-                return
-
+        if finish_with_exception:
             self.json.clear()
 
             if getattr(exception, 'text', None) is not None:
@@ -488,10 +502,10 @@ class PageHandler(tornado.web.RequestHandler):
                 # cannot clear self.doc due to backwards compatibility, a bug actually
                 self.doc.put(exception.xml)
 
-            self._force_finish()
+            self.finish_with_postprocessors()
             return
 
-        return super(PageHandler, self).send_error(status_code, **kwargs)
+        return super(PageHandler, self).write_error(status_code, **kwargs)
 
     def finish(self, chunk=None):
         if hasattr(self, 'finish_timeout_handle'):

@@ -11,6 +11,16 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, 'success')
 
+    def test_raise_401(self):
+        response = frontik_test_app.get_page('http_error?code=401')
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.raw.reason, 'Unauthorized')
+        self.assertEqual(response.headers['X-Foo'], 'Bar')
+        self.assertEqual(
+            response.content,
+            '<html><title>401: Unauthorized</title><body>401: Unauthorized</body></html>'
+        )
+
     def test_raise_with_unknown_code(self):
         response = frontik_test_app.get_page('http_error?code=599')
         self.assertEqual(response.status_code, 503)
@@ -19,11 +29,10 @@ class TestHttpError(unittest.TestCase):
         response = frontik_test_app.get_page('http_error?code=599&throw=false')
         self.assertEqual(response.status_code, 503)
 
-    def test_raise_401(self):
-        response = frontik_test_app.get_page('finish_401')
-        self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.raw.reason, 'Unauthorized')
-        self.assertEqual(response.headers['WWW-Authenticate'], 'Basic realm="Secure Area"')
+    def test_http_error_xml(self):
+        response = frontik_test_app.get_page('xsl_simple?raise=true')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.content, '<html><body>\n<h1>ok</h1>\n<h1>not ok</h1>\n</body></html>\n')
 
     def test_http_error_text(self):
         response = frontik_test_app.get_page('test_exception_text?port={port}')
