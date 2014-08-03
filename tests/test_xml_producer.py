@@ -7,7 +7,7 @@ from .instances import frontik_test_app
 
 class TestXsl(unittest.TestCase):
     def test_xsl_transformation(self):
-        response = frontik_test_app.get_page('simple')
+        response = frontik_test_app.get_page('xsl_simple')
         self.assertTrue(response.headers['content-type'].startswith('text/html'))
         self.assertEqual(response.content, '<html><body><h1>ok</h1></body></html>\n')
 
@@ -26,14 +26,14 @@ class TestXsl(unittest.TestCase):
         self.assertIn('XSLTParseError', html)
 
     def test_no_xsl_template(self):
-        response = frontik_test_app.get_page('simple?template=no.xsl')
+        response = frontik_test_app.get_page('xsl_simple?template=no.xsl')
         self.assertEqual(response.status_code, 500)
 
-        html = frontik_test_app.get_page_text('simple?template=no.xsl&debug')
+        html = frontik_test_app.get_page_text('xsl_simple?template=no.xsl&debug')
         self.assertIn('IOError: Error reading file', html)
 
     def test_no_xsl_mode(self):
-        response = frontik_test_app.get_page('simple', notpl=True)
+        response = frontik_test_app.get_page('xsl_simple', notpl=True)
         self.assertTrue(response.headers['content-type'].startswith('application/xml'))
 
     def test_cdata(self):

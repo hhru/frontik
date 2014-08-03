@@ -9,6 +9,6 @@ class Page(frontik.handler.PageHandler):
         self.text = 'success'
 
         if throw_error:
-            raise frontik.handler.HTTPError(code)
+            raise frontik.handler.HTTPError(code, headers={'X-Foo': 'Bar'})
         else:
             self.set_status(code)
