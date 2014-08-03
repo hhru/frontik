@@ -1,3 +1,10 @@
+frontik (2.20.19) unstable; urgency=low
+
+  * HH-45307 add send_error implementation for backwards compatibility
+  * HH-45307 fix calling template_postprocessor after HTTPError
+
+ -- Automated Build <an.sumin@hh.ru>  Mon, 04 Aug 2014 00:20:41 +0400
+
 frontik (2.20.18) unstable; urgency=low
 
   * HH-45117 fix HTTPError in prepare method
