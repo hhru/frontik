@@ -1,3 +1,15 @@
+frontik (2.20.20) unstable; urgency=low
+
+  * HH-45231 update docs
+  * HH-45231 add more http client tests
+  * HH-45231 move all http-client methods to http_client module
+  * HH-45231 add explicit parse_on_error and parse_response options
+  * HH-45231 introduce http_client module
+  * HH-45231 remove port argument usages in tests
+  * HH-45231 move ApplicationGlobals back to handler
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 12 Aug 2014 22:00:59 +0400
+
 frontik (2.20.19) unstable; urgency=low
 
   * HH-45307 add send_error implementation for backwards compatibility
