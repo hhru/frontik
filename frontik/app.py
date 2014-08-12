@@ -14,8 +14,8 @@ import tornado.web
 import tornado.ioloop
 from tornado.options import options
 
-from frontik.globals import ApplicationGlobals, global_stats
-from frontik.handler import PageHandler
+from frontik.globals import global_stats
+from frontik.handler import ApplicationGlobals, PageHandler
 import frontik.magic_imp
 import frontik.xml_util
 

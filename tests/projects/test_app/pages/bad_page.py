@@ -12,10 +12,9 @@ class Page(frontik.handler.PageHandler):
             else:
                 self.doc.put('it can''t be')
 
-        self.post_url('http://localhost:{}/test_app/bad_page/?mode=xml'.format(self.get_argument('port')),
-                      callback=callback_error)
-        self.post_url('http://localhost:{}/test_app/bad_page/?mode=json'.format(self.get_argument('port')),
-                      callback=callback_error)
+        self_uri = self.request.host + self.request.path
+        self.post_url(self_uri + '?mode=xml', callback=callback_error)
+        self.post_url(self_uri + '?mode=json', callback=callback_error)
 
     def post_page(self):
         if self.get_argument('mode') == "xml":

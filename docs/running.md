@@ -12,7 +12,7 @@ or
 /usr/bin/frontik --app=/path/to/application --config=/path/to/config.file
 ```
 
-if Frontik is installed as a debian package.
+if Frontik was installed as a debian package.
 
 All customization is made through the configuration file. In the simplest case, you could leave it empty — there are sensible
 default values for all options. For description of all available config options see [Configuring Frontik](/docs/config.md)
@@ -22,3 +22,5 @@ It uses [examples/frontik.cfg](/examples/frontik.cfg) config file to launch a si
 
 Custom launcher from [tornado_util](https://github.com/hhru/tornado-util) module is used internally to run
 and control Frontik servers instances.
+
+For information about Frontik applications, refer to [Frontik application structure](/docs/frontik-app.md).

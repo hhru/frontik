@@ -3,7 +3,7 @@ import unittest
 
 from frontik.future import Future
 from frontik.json_builder import JsonBuilder
-from frontik.responses import RequestResult, FailedRequestException
+from frontik.http_client import RequestResult, FailedRequestException
 
 
 class TestJsonBuilder(unittest.TestCase):

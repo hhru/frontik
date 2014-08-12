@@ -3,7 +3,7 @@
 import lxml.etree as etree
 
 from frontik.future import Future
-from frontik.responses import RequestResult
+from frontik.http_client import RequestResult
 
 
 class Doc(object):
