@@ -13,3 +13,15 @@ root directory of the application (see [Frontik application structure](/docs/fro
 | `XML_cache_step`       | `int`  | `None`        | Increase in weight for XML cache entry after each get |
 | `template_root`        | `str`  | `None`        | Root directory for Jinja templates                    |
 | `template_cache_limit` | `int`  | `50`          | Upper limit for Jinja templates cache                 |
+| `debug_labels`         | `dict` | `None`        | Debug labels for rich debug page, a dict of `label: color` values |
+
+`debug_labels` option could contain something like this:
+
+```python
+debug_labels = {
+    'READONLY': '#afa',
+    'MASTER': '#ccf',
+}
+```
+
+At the moment you can use these labels to annotate http requests (see [Making HTTP requests](/docs/http-client.md)).

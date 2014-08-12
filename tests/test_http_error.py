@@ -35,7 +35,7 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.content, '<html><body>\n<h1>ok</h1>\n<h1>not ok</h1>\n</body></html>\n')
 
     def test_http_error_text(self):
-        response = frontik_test_app.get_page('test_exception_text?port={port}')
+        response = frontik_test_app.get_page('test_exception_text')
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.content, 'This is just a plain text')
 
