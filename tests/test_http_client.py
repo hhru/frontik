@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import unittest
+from lxml import etree
 
 from .instances import frontik_test_app
 
@@ -11,8 +12,9 @@ class TestHttpClient(unittest.TestCase):
         self.assertEqual(xml.text, '42')
 
     def test_post_url_mfd(self):
-        xml = frontik_test_app.get_page_xml('http_client/post_url')
-        self.assertIsNone(xml.text)
+        response = frontik_test_app.get_page('http_client/post_url')
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(etree.fromstring(response.content).text)
 
     def test_fib0(self):
         xml = frontik_test_app.get_page_xml('http_client/fibonacci?n=0')
