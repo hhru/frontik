@@ -6,7 +6,6 @@ import re
 
 from lxml import etree
 import simplejson as json
-import tornado.curl_httpclient
 from tornado.ioloop import IOLoop
 from tornado.options import options
 
@@ -19,8 +18,8 @@ import frontik.util
 
 
 class HttpClient(object):
-    DEFAULT_CONNECT_TIMEOUT = 0.2
-    DEFAULT_REQUEST_TIMEOUT = 2
+    DEFAULT_CONNECT_TIMEOUT = options.http_client_default_connect_timeout
+    DEFAULT_REQUEST_TIMEOUT = options.http_client_default_request_timeout
 
     def __init__(self, handler, http_client_impl, fetcher_wrapper):
         self.handler = handler
