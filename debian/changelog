@@ -1,3 +1,9 @@
+frontik (2.20.23) unstable; urgency=low
+
+  * HH-45830 fix default http client timeouts
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 21 Aug 2014 11:57:20 +0400
+
 frontik (2.20.22) unstable; urgency=low
 
   * HH-45830 load http client default timeouts from options
