@@ -18,9 +18,6 @@ import frontik.util
 
 
 class HttpClient(object):
-    DEFAULT_CONNECT_TIMEOUT = options.http_client_default_connect_timeout
-    DEFAULT_REQUEST_TIMEOUT = options.http_client_default_request_timeout
-
     def __init__(self, handler, http_client_impl, fetcher_wrapper):
         self.handler = handler
         self.fetcher_wrapper = fetcher_wrapper
@@ -124,9 +121,9 @@ class HttpClient(object):
             request.headers['X-Request-Id'] = self.handler.request_id
 
             if request.connect_timeout is None:
-                request.connect_timeout = self.DEFAULT_CONNECT_TIMEOUT
+                request.connect_timeout = options.http_client_default_connect_timeout
             if request.request_timeout is None:
-                request.request_timeout = self.DEFAULT_REQUEST_TIMEOUT
+                request.request_timeout = options.http_client_default_request_timeout
 
             request.connect_timeout *= options.timeout_multiplier
             request.request_timeout *= options.timeout_multiplier
