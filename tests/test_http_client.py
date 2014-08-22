@@ -14,7 +14,7 @@ class TestHttpClient(unittest.TestCase):
     def test_post_url_mfd(self):
         response = frontik_test_app.get_page('http_client/post_url')
         self.assertEqual(response.status_code, 200)
-        self.assertIsNone(etree.fromstring(response.content).text)
+        self.assertIsNone(etree.fromstring(response.content.encode('utf-8')).text)
 
     def test_fib0(self):
         xml = frontik_test_app.get_page_xml('http_client/fibonacci?n=0')
