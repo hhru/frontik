@@ -2,6 +2,7 @@
 
 import re
 
+from tornado.escape import utf8
 import frontik.handler
 
 FIELDS = {
@@ -18,7 +19,8 @@ FILES = {
     'field9': [{'filename': 'file0', 'body': bytes([10, 20, 30])}],
     'field10': [
         {'filename': 'file1', 'body': bytes([1, 2, 3])},
-        {'filename': 'file2', 'body': bytes([4, 5, 6])}
+        {'filename': 'file2', 'body': bytes([4, 5, 6])},
+        {'filename': u'файл 01-12_25.abc', 'body': u'Ёконтент 123 !"№;%:?*()_+={}[]'}
     ]
 }
 
@@ -50,7 +52,7 @@ class Page(frontik.handler.PageHandler):
                 name = meaning_files.group('name')
                 filename = meaning_files.group('filename')
                 for file in FILES[name]:
-                    if file['filename'] == filename and file['body'] != val:
+                    if utf8(file['filename']) == filename and utf8(file['body']) != val:
                         self.doc.put('BAD')
 
             elif re.search('name=', part):
