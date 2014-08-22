@@ -1,3 +1,12 @@
+frontik (2.20.24) unstable; urgency=low
+
+  * HH-45766 Fix encoding in test
+  * HH-45766 Add test for unicode filename and content [SuminAndrew]
+  * HH-45766 Use format() instead of % in request body constructor
+    [SuminAndrew]
+
+ -- Automated Build <i.petropolsky@hh.ru>  Fri, 22 Aug 2014 11:37:11 +0400
+
 frontik (2.20.23) unstable; urgency=low
 
   * HH-45830 fix default http client timeouts
