@@ -24,7 +24,7 @@ def main(config_file='/etc/frontik/frontik.cfg', app=None):
 
         if app is not None:
             app_name = os.path.basename(os.path.normpath(app))
-            options.urls.append(('', frontik.app.App(app_name, app)))
+            options.urls.append((options.app_root_url, frontik.app.App(app_name, app)))
 
         tornado_app = frontik.app.get_app(options.urls, options.tornado_settings)
     except:
