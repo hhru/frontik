@@ -85,10 +85,12 @@
                         vertical-align: bottom;
                     }
                     .entry__head__level {
+                        font-size: 14px;
                         font-family: monospace;
-                        vertical-align: super;
                     }
                     .entry__head__message {
+                        display: inline-block;
+                        padding: 2px 0;
                         white-space: pre-wrap;
                     }
                 .entry__switcher {
