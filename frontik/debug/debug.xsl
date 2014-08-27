@@ -100,10 +100,6 @@
             
         <div class="entry">
             <div class="entry__head {$highlight} {$loglevel}">
-                <span class="entry__head__level">
-                    <xsl:value-of select="substring($loglevel, 1, 1)"/>
-                </span>
-                <xsl:text>&#160;</xsl:text>
                 <span class="entry__head__message">
                     <xsl:value-of select="@msg"/>
                 </span>

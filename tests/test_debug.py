@@ -63,7 +63,7 @@ class TestDebug(unittest.TestCase):
             'warning: testing simple inherited debug',
             'error: testing failing urls',
             'info: testing responses',
-            '<span class="entry__head__message">debug mode is ON</span>',
+            'debug mode is ON',
             '<span class="entry__head__expandtext">XSLT profiling results</span>',
         )
 
