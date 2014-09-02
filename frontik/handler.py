@@ -5,6 +5,7 @@ import httplib
 import time
 from functools import partial
 
+from tornado import escape
 import tornado.curl_httpclient
 from tornado.ioloop import IOLoop
 from tornado.httpserver import HTTPRequest
@@ -112,6 +113,18 @@ class PageHandler(tornado.web.RequestHandler):
 
     def __repr__(self):
         return '.'.join([self.__module__, self.__class__.__name__])
+
+    @property
+    def cookies(self):
+        """
+        Due the bug in Cookie module (http://bugs.python.org/issue2193) we do not want to miss all the cookies
+        if one of them has invalid key or value.
+        """
+        if not hasattr(self, '_cookies'):
+            self._cookies = frontik.util.SilentCookie()
+            if 'Cookie' in self.request.headers:
+                self._cookies.load(escape.native_str(self.request.headers['Cookie']), ignore_parse_errors=True)
+        return self._cookies
 
     def initialize(self, logger=None, **kwargs):
         # Hides logger keyword argument from incompatible tornado versions
