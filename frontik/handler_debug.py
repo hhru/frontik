@@ -1,7 +1,6 @@
 # coding=utf-8
 
 import base64
-import Cookie
 import copy
 import cStringIO
 import inspect
@@ -23,6 +22,7 @@ from tornado.httputil import HTTPHeaders
 
 import frontik.util
 import frontik.xml_util
+from frontik.util import SilentCookie
 
 debug_log = logging.getLogger('frontik.debug')
 
@@ -206,7 +206,8 @@ def _headers_to_xml(request_or_response_headers):
 def _cookies_to_xml(request_headers):
     cookies = etree.Element('cookies')
     if 'Cookie' in request_headers:
-        _cookies = Cookie.SimpleCookie(request_headers['Cookie'])
+        _cookies = SilentCookie()
+        _cookies.load(request_headers['Cookie'], ignore_parse_errors=True)
         for cookie in _cookies:
             cookies.append(E.cookie(_cookies[cookie].value, name=cookie))
     return cookies

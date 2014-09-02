@@ -1,5 +1,6 @@
 # coding=utf-8
 
+from Cookie import BaseCookie, CookieError
 import os
 import mimetools
 import mimetypes
@@ -231,3 +232,24 @@ def asciify_url(url):
 
 def get_cookie_or_url_param_value(handler, param_name):
     return handler.get_argument(param_name, handler.get_cookie(param_name, None))
+
+
+class SilentCookie(BaseCookie):
+    def load(self, rawdata, ignore_parse_errors=False):
+        if ignore_parse_errors:
+            self.bad_cookies = []
+            self._BaseCookie__set = self._loose_set
+        BaseCookie.load(self, rawdata)
+        if ignore_parse_errors:
+            self._BaseCookie__set = self._strict_set
+            for key in self.bad_cookies:
+                del self[key]
+
+    _strict_set = BaseCookie._BaseCookie__set
+
+    def _loose_set(self, key, real_value, coded_value):
+        try:
+            self._strict_set(key, real_value, coded_value)
+        except CookieError:
+            self.bad_cookies.append(key)
+            dict.__setitem__(self, key, None)
