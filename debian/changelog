@@ -1,3 +1,9 @@
+frontik (2.20.26) unstable; urgency=low
+
+  * HH-46151 handle invalid cookie name of value
+
+ -- Automated Build <n.miroshnichenko@hh.ru>  Thu, 04 Sep 2014 13:09:48 +0400
+
 frontik (2.20.25) unstable; urgency=low
 
   * HH-45977 add app_root_url option
