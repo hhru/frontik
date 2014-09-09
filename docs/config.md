@@ -33,7 +33,8 @@ which run on one Frontik instance.
 | Option name                  | Type    | Default value | Description                                                           |
 | ---------------------------- | ------- | ------------  | --------------------------------------------------------------------- |
 | `app`                        | `str`   | `None`        | Directory from which to load an application (see [Frontik application structure](/docs/frontik-app.md)) |
-| `tornado_settings`           | `dict`  | `None`        | tornado.web.Application settings                                          |
+| `app_root_url`               | `str`   | `''`          | Root url for the application                                          |
+| `tornado_settings`           | `dict`  | `None`        | tornado.web.Application settings                                      |
 | `autoreload`                 | `bool`  | `True`        | Restart Frontik after changes in application sources or config files  |
 | `debug`                      | `bool`  | `False`       | Enable debug mode                                                     |
 | `debug_login`                | `str`   | `None`        | Debug mode login for basic authentication (when `debug=False`)        |
