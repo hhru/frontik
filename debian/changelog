@@ -1,3 +1,13 @@
+frontik (2.21.0) unstable; urgency=low
+
+  * HH-45000 fix debug page styles
+  * HH-45000 update debug page and add debug page tests
+  * HH-45000 make logging more consistent
+  * HH-45000 initialize logger as soon as possible
+  * HH-45000 remove @dispatcher
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 09 Sep 2014 15:51:09 +0400
+
 frontik (2.20.26) unstable; urgency=low
 
   * HH-46151 handle invalid cookie name of value
