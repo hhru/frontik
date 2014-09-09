@@ -19,16 +19,16 @@ def queue_worker(queue):
             (prio, (func, cb, exception_cb)) = queue.get(timeout=10)
         except Queue.Empty:
             if tornado.options.options.warn_no_jobs:
-                jobs_log.warn('No job in 10 secs')
+                jobs_log.warning('no job in 10 secs')
             continue
         except Exception:
-            jobs_log.exception('Cannot get new job')
+            jobs_log.exception('cannot get new job')
             continue
 
         try:
             IOLoop.instance().add_callback(partial(cb, func()))
         except Exception as e:
-            jobs_log.exception('Cannot perform job')
+            jobs_log.exception('cannot perform job')
             IOLoop.instance().add_callback(partial(exception_cb, e))
 
 
@@ -65,7 +65,7 @@ class ThreadPoolExecutor(object):
                 (func, stack_context.wrap(cb), stack_context.wrap(exception_cb))
             ))
         except Exception as e:
-            jobs_log.exception('Cannot put job to queue')
+            jobs_log.exception('cannot put job to queue')
             IOLoop.instance().add_callback(partial(exception_cb, e))
 
 

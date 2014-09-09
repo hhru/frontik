@@ -38,7 +38,7 @@
     </xsl:template>
 
     <xsl:template match="log" mode="debug-log">
-        <div class="textentry m-textentry_title">
+        <div class="entry entry_title">
             requestid: <xsl:value-of select="@request-id"/>,
             status: <xsl:value-of select="@code"/>,
             requests: <xsl:value-of select="count(entry/response)"/>,
@@ -56,9 +56,9 @@
     <xsl:template match="entry[contains(@msg, 'finish group') and not(contains(/log/@mode, 'full'))]"/>
 
     <xsl:template match="log" mode="versions-info">
-        <div class="textentry m-textentry__expandable">
-            <label for="details_{generate-id(versions)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
-                <span class="textentry__head__expandtext">
+        <div class="entry entry_expandable">
+            <label for="details_{generate-id(versions)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+                <span class="entry__head__expandtext">
                     Version info
                 </span>
             </label>
@@ -72,9 +72,9 @@
     </xsl:template>
 
     <xsl:template match="log" mode="general-info">
-        <div class="textentry m-textentry__expandable">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
-                <span class="textentry__head__expandtext">
+        <div class="entry entry_expandable">
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+                <span class="entry__head__expandtext">
                     General request/response info
                 </span>
             </label>
@@ -91,17 +91,17 @@
     <xsl:template match="entry">
 
         <xsl:variable name="highlight">
-            <xsl:if test="$highlight-text != '' and contains(@msg, $highlight-text)">m-textentry__head_highlight</xsl:if>
+            <xsl:if test="$highlight-text != '' and contains(@msg, $highlight-text)">entry__head_highlight</xsl:if>
         </xsl:variable>
 
         <xsl:variable name="loglevel">
             <xsl:value-of select="@levelname"/>
         </xsl:variable>
             
-        <div class="textentry">
-            <div class="textentry__head {$highlight} {$loglevel}">
-                <span class="textentry__head__message">
-                    <xsl:value-of select="concat($loglevel,' ',@msg)"/>
+        <div class="entry">
+            <div class="entry__head {$highlight} {$loglevel}">
+                <span class="entry__head__message">
+                    <xsl:value-of select="@msg"/>
                 </span>
             </div>
             <xsl:apply-templates select="exception"/>
@@ -118,9 +118,9 @@
     </xsl:template>
 
     <xsl:template match="exception/trace">
-        <div class="textentry m-textentry__expandable">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
-                <span class="textentry__head__expandtext">Exception traceback</span>
+        <div class="entry entry_expandable">
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+                <span class="entry__head__expandtext">Exception traceback</span>
             </label>
             <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
             <div class="details">
@@ -133,9 +133,9 @@
         <pre class="trace-file">
             <xsl:value-of select="file"/>
         </pre>
-        <div class="textentry m-textentry__expandable trace-locals">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
-                <span class="trace-locals__caption">Show/hide locals</span>
+        <div class="entry entry_expandable trace-locals">
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+                <span class="entry__head__expandtext trace-locals__caption">Show/hide locals</span>
             </label>
             <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
             <div class="details">
@@ -176,7 +176,7 @@
         </xsl:variable>
 
         <xsl:variable name="highlight">
-            <xsl:if test="$highlight-text != '' and contains(., $highlight-text)">m-textentry__head_highlight</xsl:if>
+            <xsl:if test="$highlight-text != '' and contains(., $highlight-text)">entry__head_highlight</xsl:if>
         </xsl:variable>
 
         <xsl:variable name="timebar-offset-time">
@@ -202,15 +202,15 @@
             </xsl:choose>
         </xsl:variable>
 
-        <div class="textentry m-textentry__expandable">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher {$status} {$highlight}">
+        <div class="entry entry_expandable">
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher {$status} {$highlight}">
                 <div class="timebar">
                     <div class="timebar__line" style="left: {$timebar-offset}">
                         <strong class="timebar__head timebar__head_{$status}" style="width: {$timebar-details-len}"></strong>
                     </div>
                 </div>
 
-                <span class="textentry__head__expandtext">
+                <span class="entry__head__expandtext">
                     <span class="time">
                         <xsl:value-of select="response/request_time"/>
                         <xsl:text>ms </xsl:text>
@@ -251,9 +251,9 @@
     </xsl:template>
 
     <xsl:template match="entry[text]">
-        <div class="textentry m-textentry__expandable">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
-                <span class="textentry__head__expandtext">
+        <div class="entry entry_expandable">
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+                <span class="entry__head__expandtext">
                     <xsl:value-of select="@msg"/>
                 </span>
             </label>
@@ -391,9 +391,9 @@
     <!-- XSLT profiling -->
 
     <xsl:template match="entry[profile]">
-        <div class="textentry m-textentry__expandable">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="textentry__head textentry__switcher">
-                <span class="textentry__head__expandtext">XSLT profiling results</span>
+        <div class="entry entry_expandable">
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+                <span class="entry__head__expandtext">XSLT profiling results</span>
             </label>
             <input type="checkbox" class="details-expander" id="details_{generate-id(.)}" checked="checked"/>
             <div class="details m-details_visible">

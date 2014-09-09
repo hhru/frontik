@@ -1,6 +1,5 @@
 # coding=utf-8
 
-import functools
 import imp
 import logging
 import re
@@ -14,12 +13,13 @@ import tornado.web
 import tornado.ioloop
 from tornado.options import options
 
+from frontik import frontik_logging
 from frontik.globals import global_stats
 from frontik.handler import ApplicationGlobals, PageHandler
 import frontik.magic_imp
 import frontik.xml_util
 
-log = logging.getLogger('frontik.server')
+app_logger = logging.getLogger('frontik.app')
 
 
 def _get_apps_versions():
@@ -33,7 +33,6 @@ def _get_apps_versions():
         except:
             etree.SubElement(app_info, 'version').text = 'app doesn''t support version'
 
-        etree.SubElement(app_info, 'initialized_wo_error').text = str(app.initialized_wo_error)
         app_versions.append(app_info)
 
     return app_versions
@@ -78,7 +77,7 @@ class StatusHandler(tornado.web.RequestHandler):
 
 class StopHandler(tornado.web.RequestHandler):
     def get(self):
-        log.info('requested shutdown')
+        app_logger.info('requested shutdown')
         tornado.ioloop.IOLoop.instance().stop()
 
 
@@ -136,87 +135,59 @@ def augment_request(request, match, parse):
             request.arguments.setdefault(name, []).extend(parse(value))
 
 
-def dispatcher(cls):
-    """makes on demand initializing class"""
-    old_init = cls.__init__
-
-    def __init__(self, *args, **kwargs):
-        self._init_partial = functools.partial(old_init, self, *args, **kwargs)
-        self._inited = False
-
-    def __repr__(self):
-        return '{0}.{1}: {2}'.format(cls.__module__, cls.__name__, self.name)
-
-    def _initialize(self):
-        if not self._inited:
-            self._init_partial()
-            self._inited = True
-        return self._inited
-
-    on_demand = type(cls.__name__, (cls,), dict(__init__=__init__, _initialize=_initialize, __repr__=__repr__))
-    return on_demand
-
-
-@dispatcher
 class FileMappingDispatcher(object):
     def __init__(self, module, handler_404=None):
         self.module = module
         self.name = module.__name__
         self.handler_404 = handler_404
-        self.log = logging.getLogger('frontik.filemapping.{0}'.format(self.name))
-        self.log.info('initializing...')
+        app_logger.info('initialized %r', self)
 
-    def __call__(self, application, request, **kwargs):
-        self.log.info('requested url: %s (%s)', get_to_dispatch(request, 'uri'), request.uri)
-
+    def __call__(self, application, request, logger, **kwargs):
         page_module_name = 'pages.' + '.'.join(filter(None, get_to_dispatch(request, 'path').strip('/').split('/')))
-        self.log.debug('page module: %s', page_module_name)
+        logger.debug('page module: %s', page_module_name)
 
         try:
             page_module = self.module.frontik_import(page_module_name)
-            self.log.debug('using %s from %s', (self.name, page_module_name), page_module.__file__)
+            logger.debug('using %s from %s', (self.name, page_module_name), page_module.__file__)
         except ImportError:
-            self.log.exception('%s module not found', (self.name, page_module_name))
+            logger.exception('%s module not found', (self.name, page_module_name))
             if self.handler_404 is not None:
                 return self.handler_404
-            return tornado.web.ErrorHandler(application, request, status_code=404)
+            return tornado.web.ErrorHandler(application, request, status_code=404, logger=logger)
         except AttributeError:
-            self.log.exception('%s is not frontik application module (no "frontik_import" method)', self.name)
-            return tornado.web.ErrorHandler(application, request, status_code=500)
+            logger.exception('%s is not frontik application module (no "frontik_import" method)', self.name)
+            return tornado.web.ErrorHandler(application, request, status_code=500, logger=logger)
         except:
-            self.log.exception('error while importing %s module', (self.name, page_module_name))
-            return tornado.web.ErrorHandler(application, request, status_code=500)
+            logger.exception('error while importing %s module', (self.name, page_module_name))
+            return tornado.web.ErrorHandler(application, request, status_code=500, logger=logger)
 
         if not hasattr(page_module, 'Page'):
-            log.error('%s. Page class not found', page_module_name)
-            return tornado.web.ErrorHandler(application, request, status_code=404)
+            logger.error('%s. Page class not found', page_module_name)
+            return tornado.web.ErrorHandler(application, request, status_code=404, logger=logger)
 
-        return page_module.Page(application, request, **kwargs)
+        return page_module.Page(application, request, logger=logger, **kwargs)
+
+    def __repr__(self):
+        return '{}.{}(<{}, handler_404={}>)'.format(__package__, self.__class__.__name__, self.name, self.handler_404)
 
 # Deprecated synonym
 Map2ModuleName = FileMappingDispatcher
 
 
-@dispatcher
 class App(object):
     class DefaultConfig(object):
         pass
 
     def __init__(self, name, root, config=None):
-        self.log = logging.getLogger('frontik.application.{0}'.format(name))
         self.name = name
-        self.initialized_wo_error = True
+        self.root = root
+        self.config = config
 
-        self.log.info('initializing...')
-        try:
-            self.importer = frontik.magic_imp.FrontikAppImporter(name, root)
-            self.init_app_package(name, config)
-            self.app_globals = ApplicationGlobals(self.module)
-        except:
-            # we do not want to break frontik on app initialization error,
-            # so we report error and skip the app.
-            self.log.exception('failed to initialize, skipping from configuration')
-            self.initialized_wo_error = False
+    def initialize_app(self):
+        app_logger.info('initializing %r', self)
+        self.importer = frontik.magic_imp.FrontikAppImporter(self.name, self.root)
+        self.init_app_package(self.name, self.config)
+        self.app_globals = ApplicationGlobals(self.module)
 
     def init_app_package(self, name, config=None):
         self.module = imp.new_module(frontik.magic_imp.gen_module_name(name))
@@ -235,65 +206,65 @@ class App(object):
                     tornado.autoreload.watch_file(filename)
             except ImportError:
                 self.module.config = App.DefaultConfig()
-                self.log.warn('no config.py file, using empty default')
+                app_logger.warning('no config.py file, using empty default')
 
         if not hasattr(self.module.config, 'urls'):
             self.module.config.urls = [('', Map2ModuleName(self.pages_module))]
 
-        self.module.dispatcher = RegexpDispatcher(self.module.config.urls, self.module.__name__)
-        self.module.dispatcher._initialize()
+        self.dispatcher = RegexpDispatcher(self.module.config.urls, self.module.__name__)
 
-    def __call__(self, application, request, **kwargs):
-        self.log.info('requested url: %s (%s)', get_to_dispatch(request, 'uri'), request.uri)
-        if not self.initialized_wo_error:
-            self.log.exception('application not loaded, because of fail during initialization')
-            return tornado.web.ErrorHandler(application, request, status_code=404)
-        return self.module.dispatcher(application, request, app_globals=self.app_globals, **kwargs)
+    def __call__(self, application, request, logger, **kwargs):
+        return self.dispatcher(application, request, logger=logger, app_globals=self.app_globals, **kwargs)
+
+    def __repr__(self):
+        return '{}.{}(<{}>)'.format(__package__, self.__class__.__name__, self.name)
 
 
-@dispatcher
 class RegexpDispatcher(object):
     def __init__(self, app_list, name='RegexpDispatcher'):
         self.name = name
-        self.log = logging.getLogger('frontik.dispatcher.{0}'.format(name))
-        self.log.info('initializing...')
 
         def parse_conf(pattern, app, parse=lambda x: [x]):
-            try:
-                app._initialize()
-            except AttributeError:
-                # it means that app is not dispatcher -> nothing to _initialize
-                pass
+            if hasattr(app, 'initialize_app'):
+                app.initialize_app()
             return re.compile(pattern), app, parse
 
         self.apps = [parse_conf(*app_conf) for app_conf in app_list]
+        app_logger.info('initialized %r', self)
 
-    def __call__(self, application, request, **kwargs):
+    def __call__(self, application, request, logger, **kwargs):
         relative_url = get_to_dispatch(request, 'uri')
-        self.log.info('requested url: %s (%s)', relative_url, request.uri)
+        logger.info('requested url: %s (%s)', relative_url, request.uri)
         for pattern, app, parse in self.apps:
 
             match = pattern.match(relative_url)
             # app found
             if match:
-                self.log.debug('using %s' % app)
+                logger.debug('using %r', app)
                 augment_request(request, match, parse)
                 try:
-                    return app(application, request, **kwargs)
+                    return app(application, request, logger, **kwargs)
                 except tornado.web.HTTPError as e:
-                    log.exception('%s. Tornado error, %s', app, e)
-                    return tornado.web.ErrorHandler(application, request, e.status_code)
+                    logger.exception('tornado error: %s in %r', e, app)
+                    return tornado.web.ErrorHandler(application, request, status_code=e.status_code, logger=logger)
                 except Exception as e:
-                    log.exception('%s. Internal server error, %s', app, e)
-                return tornado.web.ErrorHandler(application, request, status_code=500)
+                    logger.exception('internal server error: %s in %r', e, app)
+                return tornado.web.ErrorHandler(application, request, status_code=500, logger=logger)
 
-        self.log.error('match for request url "%s" not found', request.uri)
-        return tornado.web.ErrorHandler(application, request, status_code=404)
+        logger.error('match for request url "%s" not found', request.uri)
+        return tornado.web.ErrorHandler(application, request, status_code=404, logger=logger)
+
+    def __repr__(self):
+        return '{}.{}(<{} routes>)'.format(__package__, self.__class__.__name__, len(self.apps))
 
 
 def get_app(app_urls, tornado_settings=None):
     dispatcher = RegexpDispatcher(app_urls, 'root')
-    dispatcher._initialize()
+
+    def root_dipatcher(app, request, **kwargs):
+        request_id = request.headers.get('X-Request-Id', str(global_stats.next_request_id()))
+        request_logger = frontik_logging.RequestLogger(request, request_id)
+        return dispatcher(app, request, logger=request_logger, request_id=request_id, **kwargs)
 
     if tornado_settings is None:
         tornado_settings = {}
@@ -305,5 +276,5 @@ def get_app(app_urls, tornado_settings=None):
         (r'/types_count/?', CountTypesHandler),
         (r'/pdb/?', PdbHandler),
         (r'/ph_count/?', CountPageHandlerInstancesHandler),
-        (r'/.*', dispatcher),
+        (r'/.*', root_dipatcher),
     ], **tornado_settings)
