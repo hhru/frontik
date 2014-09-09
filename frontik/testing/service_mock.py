@@ -269,7 +269,7 @@ class EmptyEnvironment(object):
         try:
             result = self.route_request(request)
         except NotImplementedError as e:
-            self.log.error('Request to missing service')
+            self.log.error('request to missing service')
             raise e
 
         callback(result)

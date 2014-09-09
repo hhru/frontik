@@ -15,16 +15,14 @@ class PageHandlerActiveLimit(object):
         self.acquired = False
 
         if PageHandlerActiveLimit.working_handlers_count <= tornado.options.options.handlers_count:
-            self.handler.log.debug(
-                'started {0} {1} (handlers_count = {2})'.format(
-                    self.handler.request.method, self.handler.request.uri, PageHandlerActiveLimit.working_handlers_count
-                )
+            self.handler.log.info(
+                'started %s %s (handlers count = %d)',
+                self.handler.request.method, self.handler.request.uri, PageHandlerActiveLimit.working_handlers_count
             )
         else:
-            self.handler.log.warn(
-                'dropping {0} {1}: too many handlers ({2})'.format(
-                    self.handler.request.method, self.handler.request.uri, PageHandlerActiveLimit.working_handlers_count
-                )
+            self.handler.log.warning(
+                'dropping %s %s: too many handlers (%d)',
+                self.handler.request.method, self.handler.request.uri, PageHandlerActiveLimit.working_handlers_count
             )
 
             raise frontik.handler.HTTPError(503)
@@ -35,10 +33,10 @@ class PageHandlerActiveLimit(object):
         if not self.acquired:
             PageHandlerActiveLimit.working_handlers_count += 1
             self.acquired = True
-            self.handler.log.debug('workers count+1 = {0}'.format(PageHandlerActiveLimit.working_handlers_count))
+            self.handler.log.debug('handlers count + 1 = %d', PageHandlerActiveLimit.working_handlers_count)
 
     def release(self):
         if self.acquired:
             PageHandlerActiveLimit.working_handlers_count -= 1
             self.acquired = False
-            self.handler.log.debug('workers count-1 = {0}'.format(PageHandlerActiveLimit.working_handlers_count))
+            self.handler.log.debug('handlers count - 1 = %d', PageHandlerActiveLimit.working_handlers_count)

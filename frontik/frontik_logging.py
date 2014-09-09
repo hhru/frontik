@@ -3,7 +3,6 @@
 import copy
 import logging
 import traceback
-import weakref
 import time
 import socket
 from collections import namedtuple
@@ -11,6 +10,7 @@ from functools import partial
 from logging.handlers import SysLogHandler, WatchedFileHandler
 
 import tornado.options
+from tornado.options import options
 from tornado.escape import to_unicode
 
 try:
@@ -34,10 +34,13 @@ try:
             record_for_gelf.exc_info = None
             record_for_gelf.short = u"{0} {1} {2}".format(method, to_unicode(uri), status_code)
             record_for_gelf.levelno = logging.INFO
-            record_for_gelf.name = record_for_gelf.handler
+            record_for_gelf.name = None
             record_for_gelf.code = status_code
 
             for record in records_list:
+                if record_for_gelf.name is None and hasattr(record, 'handler'):
+                    record_for_gelf.name = repr(record.handler)
+
                 message = to_unicode(record.getMessage())
                 if record.levelno > record_for_gelf.levelno:
                     record_for_gelf.levelno = record.levelno
@@ -63,7 +66,7 @@ try:
 
 except ImportError:
     import frontik.options
-    tornado.options.options.graylog = False
+    options.graylog = False
 
 log = logging.getLogger('frontik.handler')
 timings_log = logging.getLogger('frontik.timings')
@@ -82,12 +85,12 @@ class TimingsLoggingHandler(WatchedFileHandler):
     def __init__(self):
         WatchedFileHandler.__init__(self, self.__get_logfile_name())
         self.setLevel(logging.INFO)
-        self.setFormatter(logging.Formatter(tornado.options.options.logformat))
+        self.setFormatter(logging.Formatter(options.logformat))
 
     @staticmethod
     def __get_logfile_name():
-        logfile_parts = tornado.options.options.logfile.rsplit('.', 1)
-        logfile_parts.insert(1, tornado.options.options.timings_log_file_postfix)
+        logfile_parts = options.logfile.rsplit('.', 1)
+        logfile_parts.insert(1, options.timings_log_file_postfix)
         return '.'.join(logfile_parts)
 
 
@@ -144,38 +147,40 @@ class PerRequestLogBufferHandler(logging.Logger):
                 self.flush_bulk_handler(handler, **kwargs)
 
 
-class PageLogger(logging.LoggerAdapter):
+class RequestLogger(logging.LoggerAdapter):
 
     Stage = namedtuple('Stage', ('name', 'delta', 'start_delta'))
 
-    def __init__(self, handler, logger_name, page):
-        self._handler_ref = weakref.ref(handler)
-        self._handler_started = self._handler_ref().handler_started
-        super(PageLogger, self).__init__(
-            PerRequestLogBufferHandler('frontik.handler'),
-            dict(request_id=logger_name, page=page, handler=self._handler_ref().__module__)
-        )
+    def __init__(self, request, request_id):
+        self._handler = None
+        self._last_stage_time = self._start_time = request._start_time
 
-        self._time = self._handler_started
-        self._page = page
+        super(RequestLogger, self).__init__(PerRequestLogBufferHandler('frontik.handler'), {'request_id': request_id})
+
+        self.page = request.path or request.uri
         self.stages = []
 
         # backcompatibility with logger
         self.warn = self.warning
         self.addHandler = self.logger.addHandler
 
-        if tornado.options.options.graylog:
-            self.logger.add_bulk_handler(BulkGELFHandler(tornado.options.options.graylog_host,
-                                                         tornado.options.options.graylog_port, LAN_CHUNK, False))
+        if options.graylog:
+            self.logger.add_bulk_handler(
+                BulkGELFHandler(options.graylog_host, options.graylog_port, LAN_CHUNK, False)
+            )
+
+    def register_handler(self, handler):
+        self._handler = handler
+        self.extra['handler'] = handler
 
     def stage_tag(self, stage_name):
-        end_time = time.time()
-        start_time = self._time
-        self._time = end_time
+        stage_end_time = time.time()
+        stage_start_time = self._last_stage_time
+        self._last_stage_time = stage_end_time
 
-        delta = (end_time - start_time) * 1000
-        start_delta = (start_time - self._handler_started) * 1000
-        stage = PageLogger.Stage(stage_name, delta, start_delta)
+        delta = (stage_end_time - stage_start_time) * 1000
+        start_delta = (stage_start_time - self._start_time) * 1000
+        stage = RequestLogger.Stage(stage_name, delta, start_delta)
 
         self.stages.append(stage)
         self.debug('stage "%s" completed in %.2fms', stage.name, stage.delta, extra={'_stage': stage._asdict()})
@@ -186,7 +191,7 @@ class PageLogger(logging.LoggerAdapter):
         stages_str = ', '.join('{0}={1:.2f}'.format(s.name, s.delta) for s in self.stages)
         current_total = sum(s.delta for s in self.stages)
 
-        self.info('Stages for %r: %s, total=%.2f', self._handler_ref(), stages_str, current_total, extra={
+        self.info('stages for %r: %s, total=%.2f', self._handler, stages_str, current_total, extra={
             '_stages': [(s.name, s.delta) for s in self.stages] + [('total', current_total)]
         })
 
@@ -197,11 +202,12 @@ class PageLogger(logging.LoggerAdapter):
         total = sum(s.delta for s in self.stages)
 
         timings_log.info(
-            tornado.options.options.timings_log_message_format,
+            options.timings_log_message_format,
             {
-                'page': repr(self._handler_ref()),
+                'page': repr(self._handler),
                 'stages': '{0} total={1:.2f} code={2}'.format(stages_str, total, status_code)
-            }
+            },
+            extra=self.extra
         )
 
     def process(self, msg, kwargs):
@@ -220,35 +226,34 @@ class PageLogger(logging.LoggerAdapter):
 
 def bootstrap_logging():
     root_logger = logging.getLogger()
-    level = getattr(logging, tornado.options.options.loglevel.upper())
+    level = getattr(logging, options.loglevel.upper())
+    root_logger.setLevel(logging.NOTSET)
 
-    if tornado.options.options.logfile:
-        handler = logging.handlers.WatchedFileHandler(tornado.options.options.logfile)
-        handler.setFormatter(logging.Formatter(tornado.options.options.logformat))
+    if options.logfile:
+        handler = logging.handlers.WatchedFileHandler(options.logfile)
+        handler.setFormatter(logging.Formatter(options.logformat))
         handler.setLevel(level)
-        root_logger.setLevel(logging.NOTSET)
         root_logger.addHandler(handler)
     else:
-        root_logger.setLevel(level)
-        tornado.options.enable_pretty_logging()  # TODO: replace it with LogFormatter from Tornado 3
+        tornado.options.enable_pretty_logging(level)  # TODO: replace it with LogFormatter from Tornado 3
 
-    if tornado.options.options.syslog:
+    if options.syslog:
         try:
             syslog_handler = MaxLenSysLogHandler(
-                facility=MaxLenSysLogHandler.facility_names[tornado.options.options.syslog_facility],
-                address=tornado.options.options.syslog_address,
-                msg_max_length=tornado.options.options.syslog_msg_max_length
+                facility=MaxLenSysLogHandler.facility_names[options.syslog_facility],
+                address=options.syslog_address,
+                msg_max_length=options.syslog_msg_max_length
             )
-            syslog_handler.setFormatter(logging.Formatter(tornado.options.options.logformat))
+            syslog_handler.setFormatter(logging.Formatter(options.logformat))
             root_logger.addHandler(syslog_handler)
         except socket.error:
-            logging.getLogger('frontik.logging').exception('Cannot initialize syslog')
+            logging.getLogger('frontik.logging').exception('cannot initialize syslog')
 
-    if tornado.options.options.logfile is not None and tornado.options.options.timings_log_enabled:
+    if options.logfile is not None and options.timings_log_enabled:
         timings_log.addHandler(TimingsLoggingHandler())
         timings_log.propagate = False
     else:
         timings_log.disabled = True
 
-    for log_channel_name in tornado.options.options.suppressed_loggers:
+    for log_channel_name in options.suppressed_loggers:
         logging.getLogger(log_channel_name).setLevel(logging.WARN)

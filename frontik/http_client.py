@@ -137,14 +137,14 @@ class HttpClient(object):
 
             return self.http_client_impl.fetch(request, req_callback)
 
-        self.handler.log.warn('attempted to make http request to %s when page is finished, ignoring', request.url)
+        self.handler.log.warning('attempted to make http request to %s when page is finished, ignoring', request.url)
 
     def _log_response(self, request, callback, response):
         try:
             if response.body is not None:
                 global_stats.http_reqs_size_sum += len(response.body)
         except TypeError:
-            self.handler.log.warn('got strange response.body of type %s', type(response.body))
+            self.handler.log.warning('got strange response.body of type %s', type(response.body))
 
         try:
             debug_extra = {}
@@ -202,7 +202,7 @@ class HttpClient(object):
         future.set_result(result)
 
     def _set_response_error(self, response):
-        log_func = self.handler.log.error if response.code >= 500 else self.handler.log.warn
+        log_func = self.handler.log.error if response.code >= 500 else self.handler.log.warning
         log_func('{code} failed {url} ({reason!s})'.format(
             code=response.code, url=response.effective_url, reason=response.error)
         )
