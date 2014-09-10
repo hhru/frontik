@@ -41,9 +41,9 @@ class FrontikTestInstance(object):
             raise AssertionError('No empty port in range 9000..10000 for frontik test instance')
 
         if USE_COVERAGE:
-            script = 'coverage run -p --source=frontik dev_run.py'
+            script = 'coverage run -p --source=frontik ./scripts/frontik'
         else:
-            script = './dev_run.py'
+            script = './scripts/frontik'
 
         supervisor.start_worker(script, app=self.app, config=self.config, port=port)
         self.wait_for(lambda: supervisor.is_running(port))
