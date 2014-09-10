@@ -9,8 +9,8 @@ Build-Depends:
   python-setuptools,
   python-nose,
   python-simplejson,
-  python-tornado (>= 2.0+hh20),
-  python-tornado-util (>= 0.7.3),
+  python-tornado (>= 2.0+hh22),
+  python-tornado-util (>= 0.7.6),
   python-jinja2,
 Standards-Version: 3.9.3
 X-Python-Version: >= 2.7
@@ -23,8 +23,8 @@ Depends:
   python, 
   python-lxml,
   python-simplejson,
-  python-tornado (>= 2.0+hh20),
-  python-tornado-util (>= 0.7.3),
+  python-tornado (>= 2.0+hh22),
+  python-tornado-util (>= 0.7.6),
   python-jinja2,
 Suggests:
   python-graypy (>= 1:0.2.9+hh2),
