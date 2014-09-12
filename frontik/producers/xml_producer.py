@@ -1,6 +1,5 @@
 # coding=utf-8
 
-import copy
 import time
 import weakref
 
@@ -83,7 +82,7 @@ class XmlProducer(object):
 
         def job():
             start_time = time.time()
-            result = self.transform(copy.deepcopy(self.doc.to_etree_element()),
+            result = self.transform(self.doc.to_etree_element(),
                                     profile_run=self.handler.debug.debug_mode.profile_xslt)
             return start_time, str(result), result.xslt_profile
 
