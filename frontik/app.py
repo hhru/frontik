@@ -2,10 +2,10 @@
 
 import imp
 import logging
+import os
 import re
 import sys
 import time
-import urlparse
 
 from lxml import etree
 import tornado.autoreload
@@ -23,19 +23,16 @@ app_logger = logging.getLogger('frontik.app')
 
 
 def _get_apps_versions():
-    app_versions = etree.Element('applications')
+    app_name = os.path.basename(os.path.normpath(options.app))
+    app_version = etree.Element('application', name=app_name, path=options.app_root_url)
 
-    for path, app in options.urls:
-        app_info = etree.Element('application', name=repr(app), path=path)
-        try:
-            application = app.app_globals.config.version
-            app_info.extend(list(application))
-        except:
-            etree.SubElement(app_info, 'version').text = 'app doesn''t support version'
+    try:
+        app_config = frontik.magic_imp.FrontikAppImporter(app_name, options.app_root_url).imp_app_module('config')
+        app_version.extend(list(app_config.version))
+    except:
+        etree.SubElement(app_version, 'version').text = 'app doesn''t support version'
 
-        app_versions.append(app_info)
-
-    return app_versions
+    return app_version
 
 
 def get_frontik_and_apps_versions():
@@ -111,28 +108,26 @@ class CountTypesHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-def get_to_dispatch(request, field='path'):
+def get_rewritten_request_attribute(request, field):
     return getattr(request, 're_' + field, getattr(request, field))
 
 
-def set_to_dispatch(request, value, field='path'):
+def set_rewritten_request_attribute(request, field, value):
     setattr(request, 're_' + field, value)
 
 
-def augment_request(request, match, parse):
-    uri = get_to_dispatch(request, 'uri')
+get_to_dispatch = get_rewritten_request_attribute  # Old aliases
 
-    new_uri = (uri[:match.start()] + uri[match.end():])
-    split = urlparse.urlsplit(new_uri[:1] + new_uri[1:].strip('/'))
 
-    set_to_dispatch(request, new_uri, 'uri')
-    set_to_dispatch(request, split.path, 'path')
-    set_to_dispatch(request, split.query, 'query')
+def set_to_dispatch(request, value, field='path'):
+    set_rewritten_request_attribute(request, field, value)
 
+
+def extend_request_arguments(request, match, parse_function):
     arguments = match.groupdict()
     for name, value in arguments.iteritems():
         if value:
-            request.arguments.setdefault(name, []).extend(parse(value))
+            request.arguments.setdefault(name, []).extend(parse_function(value))
 
 
 class FileMappingDispatcher(object):
@@ -143,7 +138,8 @@ class FileMappingDispatcher(object):
         app_logger.info('initialized %r', self)
 
     def __call__(self, application, request, logger, **kwargs):
-        page_module_name = 'pages.' + '.'.join(filter(None, get_to_dispatch(request, 'path').strip('/').split('/')))
+        url_parts = get_rewritten_request_attribute(request, 'path').strip('/').split('/')
+        page_module_name = 'pages.' + '.'.join(filter(None, url_parts))
         logger.debug('page module: %s', page_module_name)
 
         try:
@@ -217,7 +213,7 @@ class App(object):
         return self.dispatcher(application, request, logger=logger, app_globals=self.app_globals, **kwargs)
 
     def __repr__(self):
-        return '{}.{}(<{}>)'.format(__package__, self.__class__.__name__, self.name)
+        return '{}.{}({})'.format(__package__, self.__class__.__name__, self.name)
 
 
 class RegexpDispatcher(object):
@@ -233,15 +229,14 @@ class RegexpDispatcher(object):
         app_logger.info('initialized %r', self)
 
     def __call__(self, application, request, logger, **kwargs):
-        relative_url = get_to_dispatch(request, 'uri')
+        relative_url = get_rewritten_request_attribute(request, 'uri')
         logger.info('requested url: %s (%s)', relative_url, request.uri)
-        for pattern, app, parse in self.apps:
 
+        for pattern, app, parse in self.apps:
             match = pattern.match(relative_url)
-            # app found
             if match:
                 logger.debug('using %r', app)
-                augment_request(request, match, parse)
+                extend_request_arguments(request, match, parse)
                 try:
                     return app(application, request, logger, **kwargs)
                 except tornado.web.HTTPError as e:
@@ -258,13 +253,21 @@ class RegexpDispatcher(object):
         return '{}.{}(<{} routes>)'.format(__package__, self.__class__.__name__, len(self.apps))
 
 
-def get_app(app_urls, tornado_settings=None):
-    dispatcher = RegexpDispatcher(app_urls, 'root')
+def get_tornado_app(app_root_url, frontik_app, tornado_settings=None):
+    frontik_app.initialize_app()
 
-    def root_dipatcher(app, request, **kwargs):
+    def app_dispatcher(tornado_app, request, **kwargs):
         request_id = request.headers.get('X-Request-Id', str(global_stats.next_request_id()))
         request_logger = frontik_logging.RequestLogger(request, request_id)
-        return dispatcher(app, request, logger=request_logger, request_id=request_id, **kwargs)
+
+        def add_leading_slash(value):
+            return value if value.startswith('/') else '/' + value
+
+        app_root_url_len = len(options.app_root_url)
+        set_rewritten_request_attribute(request, 'uri', add_leading_slash(request.uri[app_root_url_len:]))
+        set_rewritten_request_attribute(request, 'path', add_leading_slash(request.path[app_root_url_len:]))
+
+        return frontik_app(tornado_app, request, logger=request_logger, request_id=request_id, **kwargs)
 
     if tornado_settings is None:
         tornado_settings = {}
@@ -276,5 +279,5 @@ def get_app(app_urls, tornado_settings=None):
         (r'/types_count/?', CountTypesHandler),
         (r'/pdb/?', PdbHandler),
         (r'/ph_count/?', CountPageHandlerInstancesHandler),
-        (r'/.*', root_dipatcher),
+        (r'{}.*'.format(app_root_url), app_dispatcher),
     ], **tornado_settings)

@@ -19,12 +19,15 @@ def main(config_file='/etc/frontik/frontik.cfg'):
     tornado_util.server.bootstrap(config_file=config_file, options_callback=bootstrap_logging)
 
     try:
-        app = options.app
-        if app is not None:
-            app_name = os.path.basename(os.path.normpath(app))
-            options.urls.append((options.app_root_url, frontik.app.App(app_name, app)))
+        if options.app is None:
+            log.exception('no frontik application present (`app` option is not specified)')
+            sys.exit(1)
 
-        tornado_app = frontik.app.get_app(options.urls, options.tornado_settings)
+        app_name = os.path.basename(os.path.normpath(options.app))
+        tornado_app = frontik.app.get_tornado_app(
+            options.app_root_url, frontik.app.App(app_name, options.app),
+            options.tornado_settings
+        )
     except:
         log.exception('failed to initialize frontik application, quitting')
         sys.exit(1)
