@@ -15,13 +15,11 @@ from frontik.frontik_logging import bootstrap_logging
 log = logging.getLogger('frontik.server')
 
 
-def main(config_file='/etc/frontik/frontik.cfg', app=None):
+def main(config_file='/etc/frontik/frontik.cfg'):
     tornado_util.server.bootstrap(config_file=config_file, options_callback=bootstrap_logging)
 
     try:
-        if app is None:
-            app = options.app
-
+        app = options.app
         if app is not None:
             app_name = os.path.basename(os.path.normpath(app))
             options.urls.append((options.app_root_url, frontik.app.App(app_name, app)))
