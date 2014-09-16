@@ -1,3 +1,9 @@
+frontik (2.21.1) unstable; urgency=low
+
+  * HH-46351 remove server.main app parameter
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 16 Sep 2014 12:55:07 +0400
+
 frontik (2.21.0) unstable; urgency=low
 
   * HH-45000 fix debug page styles
