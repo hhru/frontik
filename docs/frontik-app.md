@@ -15,8 +15,8 @@ Frontik application is a set of files, organized in the following structure
   |-- config.py
 ```
 
-Frontik application can contain a (possibly empty) `config.py` file. It will be executed once at the start of
-Frontik server and can contain custom application initialization code.
+Frontik application can contain a file named `config.py`. It is executed once at application startup
+and can contain custom application initialization code.
 
 Global variables from `config.py` are accessible from `PageHandler` instances via `self.config` attribute.
 
