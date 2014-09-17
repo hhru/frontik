@@ -1,52 +1,67 @@
+from collections import namedtuple
+
 from frontik.handler import BaseHandler
 from frontik.http_client import HttpClient
 
 
 class MicroHandler(BaseHandler):
 
-    class _Request(object):
-        def __init__(self, host, uri, **kwargs):
-            self.url = host + (uri if uri.startswith('/') else '/' + uri)
-            self.kwargs = kwargs
+    _Request = namedtuple('_Request', ('host', 'uri', 'kwargs'))
 
     class GET(_Request):
-        def __init__(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None,
-                     follow_redirects=True, labels=None):
-            super(MicroHandler.GET, self).__init__(
-                host, uri, data=data, headers=headers,
-                connect_timeout=connect_timeout, request_timeout=request_timeout,
-                follow_redirects=follow_redirects, labels=labels,
-                parse_on_error=True
+        __slots__ = ()
+
+        def __new__(cls, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None,
+                    follow_redirects=True, labels=None):
+            return super(MicroHandler.GET, cls).__new__(
+                cls, host, uri, dict(
+                    data=data, headers=headers,
+                    connect_timeout=connect_timeout, request_timeout=request_timeout,
+                    follow_redirects=follow_redirects, labels=labels,
+                    parse_on_error=True
+                )
             )
 
     class POST(_Request):
-        def __init__(self, host, uri, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
-                     follow_redirects=True, content_type=None, labels=None):
-            super(MicroHandler.POST, self).__init__(
-                host, uri, data=data, headers=headers, files=files,
-                connect_timeout=connect_timeout, request_timeout=request_timeout,
-                follow_redirects=follow_redirects, content_type=content_type, labels=labels,
-                parse_on_error=True
+        __slots__ = ()
+
+        def __new__(cls, host, uri, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
+                    follow_redirects=True, content_type=None, labels=None):
+            return super(MicroHandler.POST, cls).__new__(
+                cls, host, uri, dict(
+                    data=data, headers=headers, files=files,
+                    connect_timeout=connect_timeout, request_timeout=request_timeout,
+                    follow_redirects=follow_redirects, content_type=content_type, labels=labels,
+                    parse_on_error=True
+                )
             )
 
     class PUT(_Request):
-        def __init__(self, host, uri, data='', headers=None, connect_timeout=None, request_timeout=None,
-                     content_type=None, labels=None):
-            super(MicroHandler.PUT, self).__init__(
-                host, uri, data=data, headers=headers,
-                connect_timeout=connect_timeout, request_timeout=request_timeout,
-                content_type=content_type, labels=labels,
-                parse_on_error=True
+        __slots__ = ()
+
+        def __new__(cls, host, uri, data='', headers=None, connect_timeout=None, request_timeout=None,
+                    content_type=None, labels=None):
+            return super(MicroHandler.PUT, cls).__new__(
+                cls, host, uri, dict(
+                    data=data, headers=headers,
+                    connect_timeout=connect_timeout, request_timeout=request_timeout,
+                    content_type=content_type, labels=labels,
+                    parse_on_error=True
+                )
             )
 
     class DELETE(_Request):
-        def __init__(self, host, uri, data='', headers=None, connect_timeout=None, request_timeout=None,
-                     content_type=None, labels=None):
-            super(MicroHandler.DELETE, self).__init__(
-                host, uri, data=data, headers=headers,
-                connect_timeout=connect_timeout, request_timeout=request_timeout,
-                content_type=content_type, labels=labels,
-                parse_on_error=True
+        __slots__ = ()
+
+        def __new__(cls, host, uri, data='', headers=None, connect_timeout=None, request_timeout=None,
+                    content_type=None, labels=None):
+            return super(MicroHandler.DELETE, cls).__new__(
+                cls, host, uri, dict(
+                    data=data, headers=headers,
+                    connect_timeout=connect_timeout, request_timeout=request_timeout,
+                    content_type=content_type, labels=labels,
+                    parse_on_error=True
+                )
             )
 
     def __init__(self, application, request, logger, request_id=None, app_globals=None, **kwargs):
@@ -81,7 +96,8 @@ class MicroHandler(BaseHandler):
                         raise Exception('Unexpected HTTP method of type {}'.format(req_type))
 
                     method = self._METHODS_MAPPING[req_type]
-                    futures[name] = method(req.url, **req.kwargs)
+                    url = req.host + (req.uri if req.uri.startswith('/') else '/' + req.uri)
+                    futures[name] = method(url, **req.kwargs)
 
                 self._http_client.group(futures, _callback)
 
