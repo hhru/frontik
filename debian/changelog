@@ -1,3 +1,9 @@
+frontik (2.21.2) unstable; urgency=low
+
+  * HH-44167 remove init.d script
+
+ -- Automated Build <an.sumin@hh.ru>  Fri, 19 Sep 2014 12:43:34 +0400
+
 frontik (2.21.1) unstable; urgency=low
 
   * HH-46351 remove server.main app parameter
