@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # coding=utf-8
 
+# imports frontik from checkout
 from frontik.server import main
 
 if __name__ == '__main__':
