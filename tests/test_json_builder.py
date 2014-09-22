@@ -153,7 +153,3 @@ class TestJsonBuilder(unittest.TestCase):
         j.put(['c'])
 
         self.assertRaises(ValueError, j.to_dict)
-
-
-if __name__ == '__main__':
-    unittest.main()
