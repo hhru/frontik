@@ -1,3 +1,11 @@
+frontik (2.21.4) unstable; urgency=low
+
+  * HH-44646 fix import frontik in tests
+  * HH-44646 use namedtuple as _Request base
+  * HH-44646 add MicroHandler implementation
+
+ -- Automated Build <an.sumin@hh.ru>  Mon, 22 Sep 2014 12:11:50 +0400
+
 frontik (2.21.2) unstable; urgency=low
 
   * HH-44167 remove init.d script
