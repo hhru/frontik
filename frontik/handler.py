@@ -78,10 +78,10 @@ class BaseHandler(tornado.web.RequestHandler):
         self._prepared = False
 
         if request_id is None:
-            raise Exception('no request_id for {} provided'.format(PageHandler))
+            raise Exception('no request_id for {} provided'.format(self.__class__))
 
         if app_globals is None:
-            raise Exception('{0} need to have app_globals'.format(PageHandler))
+            raise Exception('{} need to have app_globals'.format(self.__class__))
 
         self.name = self.__class__.__name__
         self.request_id = request_id
@@ -285,7 +285,7 @@ class BaseHandler(tornado.web.RequestHandler):
     # headers kwarg is deprecated, remove after all usages are gone
     def send_error(self, status_code=500, headers=None, **kwargs):
         if self._headers_written:
-            super(PageHandler, self).send_error(status_code, **kwargs)
+            super(BaseHandler, self).send_error(status_code, **kwargs)
 
         self.clear()
         self.set_status(status_code)
