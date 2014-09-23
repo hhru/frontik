@@ -16,6 +16,7 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.raw.reason, 'Unauthorized')
         self.assertEqual(response.headers['X-Foo'], 'Bar')
+        self.assertEqual(response.headers['Content-Type'], 'text/html; charset=UTF-8')
         self.assertEqual(
             response.content,
             '<html><title>401: Unauthorized</title><body>401: Unauthorized</body></html>'
