@@ -282,8 +282,9 @@ class BaseHandler(tornado.web.RequestHandler):
         if tornado.options.options.kill_long_requests:
             self.send_error()
 
-    # headers kwarg is deprecated, remove after all usages are gone
-    def send_error(self, status_code=500, headers=None, **kwargs):
+    def send_error(self, status_code=500, **kwargs):
+        self.log.stage_tag('page')
+
         if self._headers_written:
             super(PageHandler, self).send_error(status_code, **kwargs)
 
