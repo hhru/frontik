@@ -23,12 +23,14 @@ from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
 
 import frontik.app
+import frontik.frontik_logging
 import frontik.handler
 import frontik.http_client
 import frontik.options
 import frontik.handler_active_limit
 
-tornado.options.process_options_logging()
+tornado.options.options.loglevel = 'debug'
+frontik.frontik_logging.bootstrap_logging()
 
 
 class HTTPResponseStub(HTTPResponse):
@@ -51,11 +53,15 @@ class DummyConnection(object):
 
     def __init__(self):
         self.stream = DummyConnection.DummyStream()
+        self.no_keep_alive = True
 
-    def write(self, chunk):
+    def write(self, chunk, callback=None):
         pass
 
     def finish(self):
+        pass
+
+    def set_close_callback(self, callback):
         pass
 
 
