@@ -1,3 +1,11 @@
+frontik (2.21.5) unstable; urgency=low
+
+  * HH-41231 add travis config
+  * HH-41231 tornado-3 support
+  * HH-45839 log page stage when unhandled exception was raised
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 23 Sep 2014 11:59:47 +0400
+
 frontik (2.21.4) unstable; urgency=low
 
   * HH-44646 fix import frontik in tests
