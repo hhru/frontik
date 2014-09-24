@@ -100,6 +100,7 @@ class BaseHandler(tornado.web.RequestHandler):
         self._template_postprocessors = []
         self._early_postprocessors = []
         self._late_postprocessors = []
+        self._returned_methods = set()
 
         # this is deprecated
         if hasattr(self.config, 'postprocessor'):
@@ -190,38 +191,47 @@ class BaseHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     def get(self, *args, **kwargs):
         self.log.stage_tag('prepare')
-        self._call_preprocessors(self.preprocessors, self._wrap_method(self.get_page))
+        self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.get_page))
         self._finish_page()
 
     @tornado.web.asynchronous
     def post(self, *args, **kwargs):
         self.log.stage_tag('prepare')
-        self._call_preprocessors(self.preprocessors, self._wrap_method(self.post_page))
+        self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.post_page))
         self._finish_page()
 
     @tornado.web.asynchronous
     def head(self, *args, **kwargs):
         self.log.stage_tag('prepare')
-        self._call_preprocessors(self.preprocessors, self._wrap_method(self.get_page))
+        self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.get_page))
         self._finish_page()
 
     @tornado.web.asynchronous
     def delete(self, *args, **kwargs):
         self.log.stage_tag('prepare')
-        self._call_preprocessors(self.preprocessors, self._wrap_method(self.delete_page))
+        self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.delete_page))
         self._finish_page()
 
     @tornado.web.asynchronous
     def put(self, *args, **kwargs):
         self.log.stage_tag('prepare')
-        self._call_preprocessors(self.preprocessors, self._wrap_method(self.put_page))
+        self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.put_page))
         self._finish_page()
 
     def options(self, *args, **kwargs):
         raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
 
-    def _wrap_method(self, handler_method):
-        return handler_method
+    def _save_return_value(self, handler_method, *args, **kwargs):
+        def is_handler_method(function_name):
+            return function_name in {'get_page', 'post_page', 'put_page', 'delete_page'}
+
+        return_value = handler_method(*args, **kwargs)
+
+        if hasattr(self, 'handle_return_value'):
+            method_name = handler_method.__name__
+            if is_handler_method(method_name) and method_name not in self._returned_methods:
+                self._returned_methods.add(method_name)
+                self.handle_return_value(method_name, return_value)
 
     def get_page(self):
         """ This method can be implemented in the subclass """
@@ -426,14 +436,14 @@ class BaseHandler(tornado.web.RequestHandler):
     # Preprocessors and postprocessors
 
     def _call_preprocessors(self, preprocessors, callback):
-        self._chain_functions(list(preprocessors), callback)
+        self._chain_functions(iter(preprocessors), callback)
 
     def _call_postprocessors(self, postprocessors, callback, *args):
-        self._chain_functions(list(postprocessors), callback, *args)
+        self._chain_functions(iter(postprocessors), callback, *args)
 
     def _chain_functions(self, functions, callback, *args):
-        if functions:
-            func = functions.pop(0)
+        try:
+            func = next(functions)
             start_time = time.time()
 
             def _callback(*args):
@@ -442,14 +452,15 @@ class BaseHandler(tornado.web.RequestHandler):
                 self._chain_functions(functions, callback, *args)
 
             func(self, *(args + (_callback,)))
-        else:
+        except StopIteration:
             callback(*args)
 
     @staticmethod
     def add_preprocessor(*preprocessors_list):
         def _method_wrapper(fn):
             def _method(self, *args, **kwargs):
-                self._call_preprocessors(preprocessors_list, partial(fn, self, *args, **kwargs))
+                callback = partial(self._save_return_value, fn, self, *args, **kwargs)
+                return self._call_preprocessors(preprocessors_list, callback)
             return _method
         return _method_wrapper
 
@@ -487,11 +498,17 @@ class PageHandler(BaseHandler):
 
         # This wrapper is needed in case someone replaces self.fetch_request in runtime,
         # as happens in client legacy code.
+        # Remove it in HH-46704
 
         def fetch_request_wrapper(*args, **kwargs):
             return self.fetch_request(*args, **kwargs)
 
-        self._http_client = HttpClient(self, self._app_globals.curl_http_client, fetch_request_wrapper)
+        self._http_client = HttpClient(
+            self, self._app_globals.curl_http_client, fetch_request_wrapper, self.modify_http_client_request
+        )
+
+    def modify_http_client_request(self, request):
+        return request
 
     def group(self, futures, callback=None, name=None):
         return self._http_client.group(futures, callback, name)
@@ -501,8 +518,9 @@ class PageHandler(BaseHandler):
                 parse_response=True, parse_on_error=False):
 
         return self._http_client.get_url(
-            url, data, headers, connect_timeout, request_timeout, callback, follow_redirects,
-            labels, add_to_finish_group, parse_response, parse_on_error
+            url, data=data, headers=headers, connect_timeout=connect_timeout, request_timeout=request_timeout,
+            callback=callback, follow_redirects=follow_redirects, labels=labels,
+            add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
 
     def post_url(self, url, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
@@ -510,25 +528,30 @@ class PageHandler(BaseHandler):
                  add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
         return self._http_client.post_url(
-            url, data, headers, files, connect_timeout, request_timeout, callback, follow_redirects, content_type,
-            labels, add_to_finish_group, parse_response, parse_on_error
+            url, data=data, headers=headers, files=files,
+            connect_timeout=connect_timeout, request_timeout=request_timeout,
+            callback=callback, follow_redirects=follow_redirects, content_type=content_type, labels=labels,
+            add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
 
     def put_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
                 content_type=None, labels=None, add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
         return self._http_client.put_url(
-            url, data, headers, connect_timeout, request_timeout, callback, content_type,
-            labels, add_to_finish_group, parse_response, parse_on_error
+            url, data=data, headers=headers, connect_timeout=connect_timeout, request_timeout=request_timeout,
+            callback=callback, content_type=content_type, labels=labels,
+            add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
 
     def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
                    content_type=None, labels=None, add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
         return self._http_client.delete_url(
-            url, data, headers, connect_timeout, request_timeout, callback, content_type,
-            labels, add_to_finish_group, parse_response, parse_on_error
+            url, data=data, headers=headers, connect_timeout=connect_timeout, request_timeout=request_timeout,
+            callback=callback, content_type=content_type, labels=labels,
+            add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
 
+    # Deprecated, use PageHandler._http_client.fetch
     def fetch_request(self, request, callback, add_to_finish_group=True):
         return self._http_client.fetch_request(request, callback, add_to_finish_group)
