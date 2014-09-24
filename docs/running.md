@@ -14,8 +14,8 @@ You could launch your application using Frontik script as well:
 /usr/bin/frontik --app=/path/to/application --config=/path/to/config.file
 ```
 
-All customization is made through the configuration file. For description of all available config options see
-[Configuring Frontik](/docs/config.md)
+Configuration options can be set through command line or configuration file.
+For description of all available config options see [Configuring Frontik](/docs/config.md)
 
 For an example of a simple launcher that can be used in development environment, see [example-run.py](/examples/example-run.py).
 It uses [examples/frontik.cfg](/examples/frontik.cfg) config file to launch a simple application.

@@ -377,9 +377,13 @@ class PageHandlerDebug(object):
         if hasattr(self.handler.config, 'debug_labels') and isinstance(self.handler.config.debug_labels, dict):
             debug_log_data.append(frontik.xml_util.dict_to_xml(self.handler.config.debug_labels, 'labels'))
 
-        debug_log_data.append(E.versions(
-            _pretty_print_xml(frontik.app.get_frontik_and_apps_versions())
-        ))
+        try:
+            debug_log_data.append(E.versions(
+                _pretty_print_xml(frontik.app.get_frontik_and_apps_versions())
+            ))
+        except:
+            debug_log.exception('cannot add version information')
+            debug_log_data.append(E.versions('failed to get version information'))
 
         debug_log_data.append(E.request(
             E.method(self.handler.request.method),

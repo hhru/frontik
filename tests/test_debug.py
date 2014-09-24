@@ -51,7 +51,7 @@ class TestDebug(unittest.TestCase):
 
     def test_complex_debug_page(self):
         response = frontik_non_debug.get_page(
-            'debug?debug', headers={'Authorization': 'Basic {}'.format(base64.encodestring('user:god'))}
+            'app/debug?debug', headers={'Authorization': 'Basic {}'.format(base64.encodestring('user:god'))}
         )
 
         self.assertEquals(response.status_code, 200)
