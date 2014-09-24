@@ -18,9 +18,8 @@ import frontik.util
 
 
 class HttpClient(object):
-    def __init__(self, handler, http_client_impl, fetch, modify_http_request_hook):
+    def __init__(self, handler, http_client_impl, modify_http_request_hook):
         self.handler = handler
-        self.fetch = fetch
         self.modify_http_request_hook = modify_http_request_hook
         self.http_client_impl = http_client_impl
 
@@ -108,7 +107,7 @@ class HttpClient(object):
 
         return future
 
-    def fetch_request(self, request, callback, add_to_finish_group=True):
+    def fetch(self, request, callback, add_to_finish_group=True):
         """ Tornado HTTP client compatible method """
         if not self.handler._finished:
             global_stats.http_reqs_count += 1
