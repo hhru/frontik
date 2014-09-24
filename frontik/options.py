@@ -2,9 +2,8 @@
 
 import tornado.options
 
-tornado.options.define('urls', default=[], type=list)
 tornado.options.define('app', default=None, type=str)
-tornado.options.define('app_root_url', default='', type=str)
+tornado.options.define('app_root_url', default='/', type=str)
 tornado.options.define('tornado_settings', default=None, type=dict)
 tornado.options.define('handlers_count', default=100, type=int)
 
@@ -39,6 +38,16 @@ tornado.options.define('xsl_executor', default='threaded', type=str, metavar='th
 tornado.options.define('json_executor', default='ioloop', type=str, metavar='threaded|ioloop')
 tornado.options.define('executor_pool_size', default=1, type=int)
 tornado.options.define('warn_no_jobs', default=True, type=bool)
+
+tornado.options.define('xml_root', default=None, type=str)
+tornado.options.define('xml_cache_limit', default=None, type=int)
+tornado.options.define('xml_cache_step', default=None, type=int)
+tornado.options.define('xsl_root', default=None, type=str)
+tornado.options.define('xsl_cache_limit', default=None, type=int)
+tornado.options.define('xsl_cache_step', default=None, type=int)
+tornado.options.define('template_root', default=None, type=str)
+tornado.options.define('template_cache_limit', default=50, type=int)
+tornado.options.define('debug_labels', default=None, type=dict)
 
 tornado.options.define('graylog', default=False, type=bool)
 tornado.options.define('graylog_host', default='localhost', type=str)
