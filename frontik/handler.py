@@ -101,6 +101,8 @@ class BaseHandler(tornado.web.RequestHandler):
         self._late_postprocessors = []
         self._returned_methods = set()
 
+        self._http_client = HttpClient(self, self._app_globals.curl_http_client, self.modify_http_client_request)
+
         # this is deprecated
         if hasattr(self.config, 'postprocessor'):
             self.add_template_postprocessor(self.config.postprocessor)
@@ -250,6 +252,11 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def __get_allowed_methods(self):
         return [name for name in ('get', 'post', 'put', 'delete') if '{0}_page'.format(name) in vars(self.__class__)]
+
+    # HTTP client methods
+
+    def modify_http_client_request(self, request):
+        return request
 
     # Finish page
 
@@ -497,20 +504,6 @@ class PageHandler(BaseHandler):
     def __init__(self, application, request, logger, request_id=None, app_globals=None, **kwargs):
         super(PageHandler, self).__init__(application, request, logger, request_id, app_globals, **kwargs)
 
-        # This wrapper is needed in case someone replaces self.fetch_request in runtime,
-        # as happens in client legacy code.
-        # Remove it in HH-46704
-
-        def fetch_request_wrapper(*args, **kwargs):
-            return self.fetch_request(*args, **kwargs)
-
-        self._http_client = HttpClient(
-            self, self._app_globals.curl_http_client, fetch_request_wrapper, self.modify_http_client_request
-        )
-
-    def modify_http_client_request(self, request):
-        return request
-
     def group(self, futures, callback=None, name=None):
         return self._http_client.group(futures, callback, name)
 
@@ -555,4 +548,4 @@ class PageHandler(BaseHandler):
 
     # Deprecated, use PageHandler._http_client.fetch
     def fetch_request(self, request, callback, add_to_finish_group=True):
-        return self._http_client.fetch_request(request, callback, add_to_finish_group)
+        return self._http_client.fetch(request, callback, add_to_finish_group)
