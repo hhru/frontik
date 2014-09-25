@@ -1,3 +1,9 @@
+frontik (2.21.7) unstable; urgency=low
+
+  * HH-46655 fix send_error StackOverflow
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 25 Sep 2014 12:40:47 +0400
+
 frontik (2.21.6) unstable; urgency=low
 
   * HH-46489 remove urls option
