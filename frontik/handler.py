@@ -480,10 +480,6 @@ class BaseHandler(tornado.web.RequestHandler):
     def set_template(self, filename):
         return self.json_producer.set_template(filename)
 
-    # TODO: Will be removed
-    def check_xsrf_cookie(self):
-        pass
-
 
 class PageHandler(BaseHandler):
     def __init__(self, application, request, logger, request_id=None, app_globals=None, **kwargs):
