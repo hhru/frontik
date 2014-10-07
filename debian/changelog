@@ -1,3 +1,9 @@
+frontik (2.21.8) unstable; urgency=low
+
+  * HH-46075 remove xml deepcopy before xslt
+
+ -- Automated Build <n.miroshnichenko@hh.ru>  Tue, 07 Oct 2014 13:02:39 +0400
+
 frontik (2.21.7) unstable; urgency=low
 
   * HH-46655 fix send_error StackOverflow
