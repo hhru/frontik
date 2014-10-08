@@ -77,7 +77,6 @@ class BaseHandler(tornado.web.RequestHandler):
 
     # to restore tornado.web.RequestHandler compatibility
     def __init__(self, application, request, logger, request_id=None, app_globals=None, **kwargs):
-        self.handler_started = time.time()
         self._prepared = False
 
         if request_id is None:
@@ -265,9 +264,9 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def _finish_page_cb(self):
         if not self._finished:
-            self.log.stage_tag('page')
-
             def _callback():
+                self.log.stage_tag('page')
+
                 if self.text is not None:
                     producer = self._generic_producer
                 elif not self.json.is_empty():
@@ -387,7 +386,7 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def flush(self, include_footers=False, **kwargs):
         self.log.stage_tag('finish')
-        self.log.log_stages()
+        self.log.info('finished handler %r', self)
 
         if self._prepared and (self.debug.debug_mode.enabled or self.debug.debug_mode.error_debug):
             try:
@@ -400,7 +399,9 @@ class BaseHandler(tornado.web.RequestHandler):
                     'code': self._status_code
                 }
 
-                res = self.debug.get_debug_page(self._status_code, response_headers, original_response)
+                res = self.debug.get_debug_page(
+                    self._status_code, response_headers, original_response, self.log.get_current_total()
+                )
 
                 if self.debug.debug_mode.enabled:
                     # change status code only if debug was explicitly requested
@@ -421,7 +422,7 @@ class BaseHandler(tornado.web.RequestHandler):
     def _log(self):
         super(BaseHandler, self)._log()
         self.log.stage_tag('flush')
-        self.log.finish_stages(self._status_code)
+        self.log.log_stages(self._status_code)
 
     # Preprocessors and postprocessors
 

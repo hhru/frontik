@@ -39,17 +39,16 @@ which run on one Frontik instance.
 | `debug`                      | `bool`  | `False`       | Enable debug mode                                                     |
 | `debug_login`                | `str`   | `None`        | Debug mode login for basic authentication (when `debug=False`)        |
 | `debug_password`             | `str`   | `None`        | Debug mode password for basic authentication (when `debug=False`)     |
-| `logfile`                    | `str`   | `None`        | Logfile location (if `None`, Frontik will log to stderr)              |
-| `loglevel`                   | `str`   | `info`        | The lowest log level written to logfile                               |
-| `logformat`                  | `str`   | see code      | Log entry format                                                      |
-| `suppressed_loggers`         | `list`  | `[]`          | List of logger names to be excluded from debug output                 |
-| `timings_log_enabled`        | `bool`  | `False`       | Enables writing timings information to a separate log file            |
-| `timings_log_file_postfix`   | `str`   | `timings`     | Timings log file postfix, added to main log file name                 |
-| `timings_log_message_format` | `str`   | see code      | Message format for timings log, must contain `%(page)s` and `%(stages)s` placeholders |
+| `loglevel`                   | `str`   | `info`        | Python log level                                                      |
+| `logformat`                  | `str`   | see code      | Log entry format for files and syslog                                 |
+| `logfile`                    | `str`   | `None`        | Log file location (set to `None` to disable logging to file)          |
+| `stderr_log`                 | `bool`  | `False`       | Send log output to stderr (colorized if possible)                     |
+| `stderr_format`              | `str`   | see code      | Log entry format for stderr output                                    |
+| `stderr_dateformat`          | `str`   | see code      | Log entry date format for stderr output                               |
 | `syslog`                     | `bool`  | `False`       | Enables sending logs to syslog                                        |
 | `syslog_address`             | `str`   | `'/dev/log'`  | Syslog address                                                        |
 | `syslog_facility`            | `str`   | `'user'`      | Syslog facility                                                       |
-| `syslog_msg_max_length`      | `int`   | `2048`        | Syslog max message length                                             |
+| `suppressed_loggers`         | `list`  | `[]`          | List of logger names to be excluded from debug output                 |
 | `graylog`                    | `bool`  | `False`       | Enables sending logs to Graylog                                       |
 | `graylog_host`               | `str`   | `'localhost'` | Graylog host                                                          |
 | `graylog_port`               | `int`   | `12201`       | Graylog port                                                          |
