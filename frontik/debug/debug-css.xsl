@@ -19,6 +19,20 @@
                 word-break: break-all;
             }
 
+            .timeline {
+                position: absolute;
+                height: 100%;
+                background: #94b24d;
+                border-left: 1px solid green;
+                border-right: 1px solid green;
+                box-sizing: border-box;
+                opacity: 0.1;
+            }
+                .timeline_debug {
+                    border-left: none;
+                    background: #4d94b2;
+                }
+
             .timebar {
                 width: 100%;
                 margin-bottom: -1.4em;
@@ -29,14 +43,14 @@
                     vertical-align: middle;
                 }
                 .timebar__head {
-                    border-left: 1px solid green;
-                    border-right: 1px solid green;
-                    background-color: #94b24d;
-                    border-bottom: 1px solid #94b24d;
-                    opacity: 0.5;
                     display: block;
                     width: 0;
                     height: 1.4em;
+                    background-color: #94b24d;
+                    border-left: 1px solid green;
+                    border-right: 1px solid green;
+                    box-sizing: border-box;
+                    opacity: 0.5;
                 }
                     .timebar__head_error {
                         background-color: red;
@@ -46,12 +60,12 @@
                 top: 0;
                 height: 100%;
                 width: 100%;
+                margin-left: -20px;
+                margin-right: -20px;
                 white-space: nowrap;
             }
 
             .entry {
-                padding-left: 20px;
-                padding-right: 20px;
                 margin-bottom: 4px;
                 word-break: break-all;
                 position: relative;
@@ -61,8 +75,8 @@
                 }
                     .entry.entry_expandable:before {
                         float: left;
+                        position: absolute;
                         width: 20px;
-                        margin-left: -20px;
                         padding: 3px 0;
                         content: "▹";
                         text-align: center;
@@ -71,6 +85,7 @@
                 .entry_title {
                     font-size: 1.2em;
                     margin: 0.5em 0;
+                    margin-left: 20px;
                 }
                 .entry__head {
                     display: block;
@@ -82,6 +97,7 @@
                         display: inline-block;
                         position: relative;
                         padding: 3px 0;
+                        padding-left: 20px;
                         vertical-align: bottom;
                     }
                     .entry__head__level {
@@ -91,6 +107,7 @@
                     .entry__head__message {
                         display: inline-block;
                         padding: 2px 0;
+                        padding-left: 20px;
                         white-space: pre-wrap;
                     }
                 .entry__switcher {
@@ -103,12 +120,48 @@
             .headers{
             }
 
+            .line {
+                height: 12px;
+                margin-bottom: 12px;
+                text-align: center;
+                border-bottom: 1px solid #eee;
+            }
+                .line__bar {
+                    position: absolute;
+                    height: 0;
+                    margin-top: 10px;
+                    border-bottom: 4px solid #94b24d;
+                    opacity: 0.5;
+                }
+                    .line__bar_error {
+                        border-color: #c00;
+                    }
+                    .line__bar_warning {
+                        border-color: #E80;
+                    }
+                    .line__bar_info {
+                        border-color: #060;
+                    }
+                    .line__bar_debug {
+                        border-color: #00B;
+                    }
+                .line__label {
+                    position: relative;
+                    padding: 0 3px;
+                    font-size: 0.9em;
+                    line-height: 24px;
+                    background: white;
+                    border-radius: 2px;
+                }
+
             .details-expander {
                 display: none;
             }
             .details {
                 display: none;
                 padding-bottom: 8px;
+                padding-left: 20px;
+                padding-right: 20px;
                 position: relative;
             }
                 .m-details_visible,
@@ -193,21 +246,26 @@
                         color: #c00;
                     }
             .exception {
+                padding-left: 20px;
                 color: #c00;
             }
 
             .iframe {
                 width: 100%;
                 height: 500px;
+                margin-top: 5px;
                 background: #fff;
                 border: 1px solid #ccc;
-                margin-top: 5px;
-                box-shadow: 1px 1px 8px #aaacca;
+                box-sizing: border-box;
             }
 
             .debug-inherited {
+                position: relative;
                 margin: 10px 0;
-                border: 1px solid #ccc;
+                margin-left: -20px;
+                margin-right: -20px;
+                border-top: 1px solid #ccc;
+                border-bottom: 1px solid #ccc;
                 background: #fff;
             }
 
