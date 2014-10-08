@@ -73,7 +73,7 @@ def response_to_xml(response):
             E.effective_url(response.effective_url),
             E.error(str(response.error)),
             E.size(str(len(response.body)) if response.body is not None else '0'),
-            E.request_time(str(int(response.request_time * 1000))),
+            E.request_time(_format_number(response.request_time * 1000)),
             _headers_to_xml(response.headers),
             time_info,
         )
@@ -105,18 +105,16 @@ def request_to_xml(request):
     try:
         request = E.request(
             body,
+            E.start_time(_format_number(request.start_time)),
             E.connect_timeout(str(request.connect_timeout)),
+            E.request_timeout(str(request.request_timeout)),
             E.follow_redirects(str(request.follow_redirects)),
             E.max_redirects(str(request.max_redirects)),
             E.method(request.method),
-            E.request_timeout(str(request.request_timeout)),
-            _params_to_xml(request.url),
             E.url(request.url),
+            _params_to_xml(request.url),
             _headers_to_xml(request.headers),
             _cookies_to_xml(request.headers),
-            E.meta(
-                E.start_time(str(request.start_time))
-            ),
             E.curl(
                 request_to_curl_string(request)
             )
