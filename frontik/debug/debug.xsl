@@ -15,8 +15,9 @@
             <xsl:value-of select="substring(/log/@mode, 2)"/>
         </xsl:if>
     </xsl:variable>
+
     <xsl:variable name="total-time">
-        <xsl:value-of select="/log/stages/stage[@name='total']"/>
+        <xsl:value-of select="/log/@stages-total"/>
     </xsl:variable>
 
     <xsl:template match="log">

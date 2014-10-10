@@ -256,6 +256,9 @@ def _pretty_print_json(node):
     return json.dumps(node, sort_keys=True, indent=4, ensure_ascii=False)
 
 
+_format_number = '{:.4f}'.format
+
+
 class DebugLogBulkHandler(object):
     FIELDS = ['created', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs',
               'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
@@ -293,35 +296,35 @@ class DebugLogBulkHandler(object):
                 labels.append(E.label(label))
             entry.append(labels)
 
-        if getattr(record, "_response", None) is not None:
+        if getattr(record, '_response', None) is not None:
             entry.append(response_to_xml(record._response))
 
-        if getattr(record, "_request", None) is not None:
+        if getattr(record, '_request', None) is not None:
             entry.append(request_to_xml(record._request))
 
-        if getattr(record, "_debug_response", None) is not None:
+        if getattr(record, '_debug_response', None) is not None:
             entry.append(E.debug(record._debug_response))
 
         if getattr(record, '_xslt_profile', None) is not None:
             entry.append(record._xslt_profile)
 
-        if getattr(record, "_xml", None) is not None:
+        if getattr(record, '_xml', None) is not None:
             entry.append(E.text(_pretty_print_xml(record._xml)))
 
-        if getattr(record, "_protobuf", None) is not None:
+        if getattr(record, '_protobuf', None) is not None:
             entry.append(E.text(record._protobuf))
 
-        if getattr(record, "_text", None) is not None:
+        if getattr(record, '_text', None) is not None:
             entry.append(E.text(to_unicode(record._text)))
 
-        self.log_data.append(entry)
+        if getattr(record, '_stage', None) is not None:
+            entry.append(E.stage(
+                E.name(record._stage.name),
+                E.delta(_format_number(record._stage.delta)),
+                E.start_delta(_format_number(record._stage.start_delta))
+            ))
 
-        if getattr(record, "_stages", None) is not None:
-            self.log_data.append(
-                E.stages(
-                    *[E.stage(str(delta), {'name': str(name)}) for name, delta in record._stages]
-                )
-            )
+        self.log_data.append(entry)
 
 
 class PageHandlerDebug(object):
@@ -361,7 +364,7 @@ class PageHandlerDebug(object):
         if self.debug_mode.pass_debug:
             self.handler.log.debug('%s header will be passed to all requests', self.DEBUG_HEADER_NAME)
 
-    def get_debug_page(self, status_code, response_headers, original_response=None):
+    def get_debug_page(self, status_code, response_headers, original_response, stages_total):
 
         import frontik.app
 
@@ -371,8 +374,9 @@ class PageHandlerDebug(object):
         debug_log_data = copy.deepcopy(self.debug_log_handler.log_data)
         debug_log_data.set('code', str(status_code))
         debug_log_data.set('mode', ','.join(self.debug_mode.mode_values))
-        debug_log_data.set('started', str(self.handler.handler_started))
+        debug_log_data.set('started', _format_number(self.handler.request._start_time))
         debug_log_data.set('request-id', str(self.handler.request_id))
+        debug_log_data.set('stages-total', _format_number(stages_total))
 
         if hasattr(self.handler.config, 'debug_labels') and isinstance(self.handler.config.debug_labels, dict):
             debug_log_data.append(frontik.xml_util.dict_to_xml(self.handler.config.debug_labels, 'labels'))
@@ -400,7 +404,7 @@ class PageHandlerDebug(object):
         if original_response is not None:
             debug_log_data.append(frontik.xml_util.dict_to_xml(original_response, 'original-response'))
 
-        debug_log_data.set('generate-time', str((time.time() - start_time) * 1000))
+        debug_log_data.set('generate-time', _format_number((time.time() - start_time) * 1000))
 
         # return raw xml if this is specified explicitly (noxsl=true) or when in inherited mode
         if frontik.util.get_cookie_or_url_param_value(self.handler, 'noxsl') is None and not self.debug_mode.inherited:

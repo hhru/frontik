@@ -7,22 +7,22 @@ tornado.options.define('app_root_url', default='/', type=str)
 tornado.options.define('tornado_settings', default=None, type=dict)
 tornado.options.define('handlers_count', default=100, type=int)
 
-tornado.options.define('logfile', default=None, type=str, help='log file name')
-tornado.options.define('loglevel', default='info', type=str, help='log level')
-tornado.options.define('logformat', default='[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s', type=str)
-tornado.options.define('stdoutformat', default='%(color)s[%(levelname)1.1s %(asctime)s %(name)s '
-                                               '%(module)s:%(lineno)d]%(end_color)s %(message)s', type=str)
-tornado.options.define('stdoutdateformat', default='%y.%m.%d %H:%M:%S', type=str)
-tornado.options.define('suppressed_loggers', default=['tornado.curl_httpclient'], type=list)
+tornado.options.define('loglevel', default='info', type=str, help='Log level')
+tornado.options.define('logformat', default='[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s', type=str,
+                       help='Log format for files and syslog')
+tornado.options.define('logfile', default=None, type=str, help='Log file name')
 
-tornado.options.define('timings_log_enabled', default=False, type=bool)
-tornado.options.define('timings_log_file_postfix', default='timings', type=str)
-tornado.options.define('timings_log_message_format', default='timings for %(page)s : %(stages)s', type=str)
+tornado.options.define('stderr_log', default=False, type=bool,
+                       help='Send log output to stderr (colorized if possible).')
+tornado.options.define('stderr_format', default='%(color)s[%(levelname)1.1s %(asctime)s %(name)s '
+                                                '%(module)s:%(lineno)d]%(end_color)s %(message)s', type=str)
+tornado.options.define('stderr_dateformat', default='%y.%m.%d %H:%M:%S', type=str)
 
-tornado.options.define('syslog_address', default='/dev/log', type=str)
 tornado.options.define('syslog', default=False, type=bool)
+tornado.options.define('syslog_address', default='/dev/log', type=str)
 tornado.options.define('syslog_facility', default='user', type=str)
-tornado.options.define('syslog_msg_max_length', default=2048, type=int)
+
+tornado.options.define('suppressed_loggers', default=['tornado.curl_httpclient'], type=list)
 
 tornado.options.define('debug', default=False, type=bool)
 tornado.options.define('debug_login', default=None, type=str)

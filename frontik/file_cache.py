@@ -51,7 +51,7 @@ class FileCache(object):
             return self.cache[filename]
 
         real_filename = os.path.normpath(os.path.join(self.root_dir, filename))
-        log.debug('reading %s file from %s', filename, real_filename)
+        log.debug('reading file "%s"', real_filename)
         result = self.load_fn(real_filename, log)
         self.cache[filename] = result
 
