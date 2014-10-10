@@ -1,3 +1,10 @@
+frontik (2.21.11) unstable; urgency=low
+
+  * HH-46994 clean some configs and docs
+  * HH-46994 improve logging configuration
+
+ -- Automated Build <an.sumin@hh.ru>  Fri, 10 Oct 2014 15:35:45 +0400
+
 frontik (2.21.10) unstable; urgency=low
 
   * Bump version up to 2.21.10
