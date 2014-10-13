@@ -436,20 +436,20 @@ class BaseHandler(tornado.web.RequestHandler):
     # Preprocessors and postprocessors
 
     def _call_preprocessors(self, preprocessors, callback):
-        self._chain_functions(iter(preprocessors), callback)
+        self._chain_functions(iter(preprocessors), callback, 'preprocessor')
 
     def _call_postprocessors(self, postprocessors, callback, *args):
-        self._chain_functions(iter(postprocessors), callback, *args)
+        self._chain_functions(iter(postprocessors), callback, 'postprocessor', *args)
 
-    def _chain_functions(self, functions, callback, *args):
+    def _chain_functions(self, functions, callback, chain_type, *args):
         try:
             func = next(functions)
             start_time = time.time()
 
             def _callback(*args):
                 time_delta = (time.time() - start_time) * 1000
-                self.log.info('finished postprocessor "%r" in %.2fms', func, time_delta)
-                self._chain_functions(functions, callback, *args)
+                self.log.info('finished %s "%r" in %.2fms', chain_type, func, time_delta)
+                self._chain_functions(functions, callback, chain_type, *args)
 
             func(self, *(args + (_callback,)))
         except StopIteration:

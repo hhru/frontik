@@ -88,7 +88,7 @@ class MicroHandler(BaseHandler):
                     raise Exception('Invalid request object: {!r}'.format(req))
 
                 method = self._METHODS_MAPPING[req_type]
-                url = req.host + (req.uri if req.uri.startswith('/') or not req.uri else '/' + req.uri)
+                url = '{}/{}'.format(req.host.rstrip('/'), req.uri.lstrip('/'))
                 futures[name] = method(url, **req.kwargs)
 
             self._http_client.group(futures, _callback)
