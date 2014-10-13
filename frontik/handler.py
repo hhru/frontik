@@ -108,7 +108,7 @@ class BaseHandler(tornado.web.RequestHandler):
         self.text = None
 
     def __repr__(self):
-        return '.'.join([self.__module__, self.__class__.__name__])
+        return '.'.join([self.__module__.rstrip('.'), self.__class__.__name__])
 
     def initialize(self, logger=None, **kwargs):
         # Hides logger keyword argument from incompatible tornado versions
