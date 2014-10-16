@@ -14,3 +14,14 @@ class TestMicroHandler(unittest.TestCase):
         self.assertEqual(json['post']['get']['GET'], 'get')
         self.assertEqual(json['preprocessor'], True)
         self.assertEqual(json['delete'], None)
+
+    def test_fail_on_error(self):
+        response = frontik_test_app.get_page('micro_handler?fail_on_error=true')
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.content, '{"fail_on_error": true}')
+
+    def test_fail_on_error_default(self):
+        response = frontik_test_app.get_page('micro_handler?fail_on_error=true&default=true')
+
+        self.assertEqual(response.status_code, 401)
