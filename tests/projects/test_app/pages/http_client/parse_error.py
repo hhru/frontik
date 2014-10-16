@@ -10,7 +10,7 @@ class Page(frontik.handler.PageHandler):
             if element is None:
                 self.doc.put('42')
             else:
-                self.doc.put('it can''t be')
+                assert False
 
         self_uri = self.request.host + self.request.path
         self.post_url(self_uri + '?mode=xml', callback=callback_error)
