@@ -18,9 +18,10 @@ import frontik.util
 
 
 class HttpClient(object):
-    def __init__(self, handler, http_client_impl, fetcher_wrapper):
+    def __init__(self, handler, http_client_impl, fetch, modify_http_request_hook):
         self.handler = handler
-        self.fetcher_wrapper = fetcher_wrapper
+        self.fetch = fetch
+        self.modify_http_request_hook = modify_http_request_hook
         self.http_client_impl = http_client_impl
 
     def group(self, futures, callback=None, name=None):
@@ -51,7 +52,7 @@ class HttpClient(object):
         request = frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout, follow_redirects)
         request._frontik_labels = labels
 
-        self.fetcher_wrapper(
+        self.fetch(
             request,
             partial(self._parse_response, future, callback, parse_response, parse_on_error),
             add_to_finish_group=add_to_finish_group
@@ -69,7 +70,7 @@ class HttpClient(object):
         )
         request._frontik_labels = labels
 
-        self.fetcher_wrapper(
+        self.fetch(
             request,
             partial(self._parse_response, future, callback, parse_response, parse_on_error),
             add_to_finish_group=add_to_finish_group
@@ -84,7 +85,7 @@ class HttpClient(object):
         request = frontik.util.make_put_request(url, data, headers, content_type, connect_timeout, request_timeout)
         request._frontik_labels = labels
 
-        self.fetcher_wrapper(
+        self.fetch(
             request,
             partial(self._parse_response, future, callback, parse_response, parse_on_error),
             add_to_finish_group=add_to_finish_group
@@ -99,7 +100,7 @@ class HttpClient(object):
         request = frontik.util.make_delete_request(url, data, headers, content_type, connect_timeout, request_timeout)
         request._frontik_labels = labels
 
-        self.fetcher_wrapper(
+        self.fetch(
             request,
             partial(self._parse_response, future, callback, parse_response, parse_on_error),
             add_to_finish_group=add_to_finish_group
@@ -135,7 +136,7 @@ class HttpClient(object):
             else:
                 req_callback = partial(self._log_response, request, callback)
 
-            return self.http_client_impl.fetch(request, req_callback)
+            return self.http_client_impl.fetch(self.modify_http_request_hook(request), req_callback)
 
         self.handler.log.warning('attempted to make http request to %s when page is finished, ignoring', request.url)
 
