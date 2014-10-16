@@ -255,6 +255,18 @@ class BaseHandler(tornado.web.RequestHandler):
 
     # HTTP client methods
 
+    @staticmethod
+    def DEFAULT_ERROR_CALLBACK(data, response):
+        status = httplib.SERVICE_UNAVAILABLE
+        reason = 'got {} response code'.format(response.code)
+
+        if 400 <= response.code < 500:
+            status = response.code
+        elif data is None:
+            reason = 'got corrupted response data'
+
+        raise HTTPError(status, reason)
+
     def modify_http_client_request(self, request):
         return request
 
@@ -510,42 +522,45 @@ class PageHandler(BaseHandler):
     def group(self, futures, callback=None, name=None):
         return self._http_client.group(futures, callback, name)
 
-    def get_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                follow_redirects=True, labels=None, add_to_finish_group=True,
+    def get_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None,
+                callback=None, error_callback=None, follow_redirects=True, labels=None, add_to_finish_group=True,
                 parse_response=True, parse_on_error=False):
 
         return self._http_client.get_url(
             url, data=data, headers=headers, connect_timeout=connect_timeout, request_timeout=request_timeout,
-            callback=callback, follow_redirects=follow_redirects, labels=labels,
+            callback=callback, error_callback=error_callback, follow_redirects=follow_redirects, labels=labels,
             add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
 
     def post_url(self, url, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
-                 callback=None, follow_redirects=True, content_type=None, labels=None,
+                 callback=None, error_callback=None, follow_redirects=True, content_type=None, labels=None,
                  add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
         return self._http_client.post_url(
             url, data=data, headers=headers, files=files,
             connect_timeout=connect_timeout, request_timeout=request_timeout,
-            callback=callback, follow_redirects=follow_redirects, content_type=content_type, labels=labels,
+            callback=callback, error_callback=error_callback, follow_redirects=follow_redirects,
+            content_type=content_type, labels=labels,
             add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
 
-    def put_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                content_type=None, labels=None, add_to_finish_group=True, parse_response=True, parse_on_error=False):
+    def put_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None,
+                callback=None, error_callback=None, content_type=None, labels=None,
+                add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
         return self._http_client.put_url(
             url, data=data, headers=headers, connect_timeout=connect_timeout, request_timeout=request_timeout,
-            callback=callback, content_type=content_type, labels=labels,
+            callback=callback, error_callback=error_callback, content_type=content_type, labels=labels,
             add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
 
-    def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                   content_type=None, labels=None, add_to_finish_group=True, parse_response=True, parse_on_error=False):
+    def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None,
+                   callback=None, error_callback=None, content_type=None, labels=None,
+                   add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
         return self._http_client.delete_url(
             url, data=data, headers=headers, connect_timeout=connect_timeout, request_timeout=request_timeout,
-            callback=callback, content_type=content_type, labels=labels,
+            callback=callback, error_callback=error_callback, content_type=content_type, labels=labels,
             add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
 

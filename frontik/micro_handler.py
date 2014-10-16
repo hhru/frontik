@@ -1,8 +1,6 @@
 from collections import namedtuple
-from functools import wraps
 
 from frontik.handler import BaseHandler
-from frontik.http_client import HttpClient
 
 
 class MicroHandler(BaseHandler):
@@ -10,46 +8,46 @@ class MicroHandler(BaseHandler):
     _Request = namedtuple('_Request', ('method', 'host', 'uri', 'kwargs'))
 
     def GET(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None,
-            follow_redirects=True, labels=None):
+            follow_redirects=True, labels=None, error_callback=None):
         return MicroHandler._Request(
             'GET', host, uri, dict(
                 data=data, headers=headers,
                 connect_timeout=connect_timeout, request_timeout=request_timeout,
                 follow_redirects=follow_redirects, labels=labels,
-                parse_on_error=True
+                parse_on_error=True, error_callback=error_callback
             )
         )
 
     def POST(self, host, uri, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
-             follow_redirects=True, content_type=None, labels=None):
+             follow_redirects=True, content_type=None, labels=None, error_callback=None):
         return MicroHandler._Request(
             'POST', host, uri, dict(
                 data=data, headers=headers, files=files,
                 connect_timeout=connect_timeout, request_timeout=request_timeout,
                 follow_redirects=follow_redirects, content_type=content_type, labels=labels,
-                parse_on_error=True
+                parse_on_error=True, error_callback=error_callback
             )
         )
 
     def PUT(self, host, uri, data='', headers=None, connect_timeout=None, request_timeout=None,
-            content_type=None, labels=None):
+            content_type=None, labels=None, error_callback=None):
         return MicroHandler._Request(
             'PUT', host, uri, dict(
                 data=data, headers=headers,
                 connect_timeout=connect_timeout, request_timeout=request_timeout,
                 content_type=content_type, labels=labels,
-                parse_on_error=True
+                parse_on_error=True, error_callback=error_callback
             )
         )
 
     def DELETE(self, host, uri, data='', headers=None, connect_timeout=None, request_timeout=None,
-               content_type=None, labels=None):
+               content_type=None, labels=None, error_callback=None):
         return MicroHandler._Request(
             'DELETE', host, uri, dict(
                 data=data, headers=headers,
                 connect_timeout=connect_timeout, request_timeout=request_timeout,
                 content_type=content_type, labels=labels,
-                parse_on_error=True
+                parse_on_error=True, error_callback=error_callback
             )
         )
 

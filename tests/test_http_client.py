@@ -52,3 +52,24 @@ class TestHttpClient(unittest.TestCase):
     def test_custom_headers(self):
         json = frontik_test_app.get_page_json('http_client/custom_headers')
         self.assertEqual(json['X-Foo'], 'Bar')
+
+    def test_group(self):
+        text = frontik_test_app.get_page_text('http_client/group')
+        self.assertEqual(text, '{"1": {"1": "yay"}, "2": {"2": "yay"}, "final_callback_called": true}')
+
+    def test_group_with_failing_request(self):
+        response = frontik_test_app.get_page('http_client/group?fail=true')
+        self.assertEqual(response.status_code, 500)
+
+    def test_error_callback_on_error(self):
+        text = frontik_test_app.get_page_text('http_client/error_callback?code=500')
+        self.assertEqual(
+            text, '<?xml version=\'1.0\' encoding=\'utf-8\'?>\n<doc frontik="true">Error callback works</doc>'
+        )
+
+    def test_error_callback_on_204(self):
+        text = frontik_test_app.get_page_text('http_client/error_callback?code=204')
+        self.assertEqual(
+            text, '<?xml version=\'1.0\' encoding=\'utf-8\'?>\n'
+                  '<doc frontik="true">Success callback is called only if there was no error</doc>'
+        )

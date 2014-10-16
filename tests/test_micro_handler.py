@@ -13,4 +13,5 @@ class TestMicroHandler(unittest.TestCase):
         self.assertEqual(json['post']['POST'], 'post')
         self.assertEqual(json['post']['get']['GET'], 'get')
         self.assertEqual(json['preprocessor'], True)
+        self.assertEqual(json['error_callback'], True)
         self.assertEqual(json['delete'], None)
