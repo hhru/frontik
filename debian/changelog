@@ -1,3 +1,10 @@
+frontik (2.21.12) unstable; urgency=low
+
+  * HH-46659 fix pre/post-processor log message
+  * HH-46659 improve MicroHandler
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 16 Oct 2014 17:14:45 +0400
+
 frontik (2.21.11) unstable; urgency=low
 
   * HH-46994 clean some configs and docs
