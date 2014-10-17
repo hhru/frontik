@@ -31,7 +31,7 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
 
     def test_http_error_xml(self):
-        response = frontik_test_app.get_page('xsl_simple?raise=true')
+        response = frontik_test_app.get_page('xsl/simple?raise=true')
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.content, '<html><body>\n<h1>ok</h1>\n<h1>not ok</h1>\n</body></html>\n')
 
