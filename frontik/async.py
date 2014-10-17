@@ -8,6 +8,7 @@ from tornado.ioloop import IOLoop
 log = logging.getLogger('frontik.async')
 
 
+# TODO: deprecated, use BaseHandler.add_preprocessor
 def before(before_fun):
     """
     before_fun :: f(self, cb)
