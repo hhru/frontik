@@ -7,33 +7,40 @@ from .instances import frontik_test_app
 
 class TestXsl(unittest.TestCase):
     def test_xsl_transformation(self):
-        response = frontik_test_app.get_page('xsl_simple')
+        response = frontik_test_app.get_page('xsl/simple')
         self.assertTrue(response.headers['content-type'].startswith('text/html'))
         self.assertEqual(response.content, '<html><body><h1>ok</h1></body></html>\n')
 
-    def test_xsl_fail(self):
-        response = frontik_test_app.get_page('xsl_fail')
+    def test_xsl_apply_error(self):
+        response = frontik_test_app.get_page('xsl/apply_error')
         self.assertEqual(response.status_code, 500)
 
-        html = frontik_test_app.get_page_text('xsl_fail?debug')
+        html = frontik_test_app.get_page_text('xsl/apply_error?debug')
         self.assertIn('XSLTApplyError', html)
 
-    def test_xsl_parse_fail(self):
-        response = frontik_test_app.get_page('xsl_parse_fail')
+    def test_xsl_parse_error(self):
+        response = frontik_test_app.get_page('xsl/parse_error')
         self.assertEqual(response.status_code, 500)
 
-        html = frontik_test_app.get_page_text('xsl_parse_fail?debug')
+        html = frontik_test_app.get_page_text('xsl/parse_error?debug')
         self.assertIn('XSLTParseError', html)
 
-    def test_no_xsl_template(self):
-        response = frontik_test_app.get_page('xsl_simple?template=no.xsl')
+    def test_xsl_syntax_error(self):
+        response = frontik_test_app.get_page('xsl/syntax_error')
         self.assertEqual(response.status_code, 500)
 
-        html = frontik_test_app.get_page_text('xsl_simple?template=no.xsl&debug')
+        html = frontik_test_app.get_page_text('xsl/syntax_error?debug')
+        self.assertIn('XMLSyntaxError', html)
+
+    def test_no_xsl_template(self):
+        response = frontik_test_app.get_page('xsl/simple?template=no.xsl')
+        self.assertEqual(response.status_code, 500)
+
+        html = frontik_test_app.get_page_text('xsl/simple?template=no.xsl&debug')
         self.assertIn('IOError: Error reading file', html)
 
     def test_no_xsl_mode(self):
-        response = frontik_test_app.get_page('xsl_simple', notpl=True)
+        response = frontik_test_app.get_page('xsl/simple', notpl=True)
         self.assertTrue(response.headers['content-type'].startswith('application/xml'))
 
     def test_cdata(self):
