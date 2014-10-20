@@ -80,7 +80,7 @@ def route_less_or_equal_than(a, b):
 
 
 def url_less_or_equal_than(a, b):
-    if a.path.lstrip('/') != b.path.lstrip('/'):
+    if a.path.strip('/') != b.path.strip('/'):
         return False
     return query_less_than_or_equal(a.query, b.query)
 
