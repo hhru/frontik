@@ -48,8 +48,8 @@ class TestServiceMock(unittest.TestCase):
                         "swapped query parameters do not match each other")
 
     def test_different_paths(self):
-        self.assertFalse(route_less_or_equal_than(route("/abc?q=1"), route("/abc/?q=1")),
-                         "different paths should not match")
+        self.assertTrue(route_less_or_equal_than(route('/abc?q=1'), route('/abc/?q=1')),
+                        'paths with and w/o trailing slash at the end should match')
 
     def test_right_query_is_less(self):
         self.assertFalse(route_less_or_equal_than(route("/abc/?a=2&q=1"), route("/abc/?q=1")),
