@@ -48,6 +48,10 @@ class AsyncGroup(object):
     def log(self, msg, *args, **kwargs):
         self._log_fun(self._log_name + ': ' + msg, *args, **kwargs)
 
+    def abort(self):
+        self.log('aborting async group')
+        self._aborted = True
+
     def finish(self):
         if not self._finish_cb_called:
             self.log('done in %.2fms', (time.time() - self._start_time) * 1000.)
