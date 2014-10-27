@@ -18,7 +18,7 @@ import lxml.etree as etree
 from lxml.builder import E
 from tornado.escape import to_unicode, utf8
 from tornado.httpclient import HTTPResponse
-from tornado.httputil import HTTPHeaders, SilentCookie
+from tornado.httputil import HTTPHeaders, SimpleCookie
 
 import frontik.util
 import frontik.xml_util
@@ -205,7 +205,7 @@ def _headers_to_xml(request_or_response_headers):
 def _cookies_to_xml(request_headers):
     cookies = etree.Element('cookies')
     if 'Cookie' in request_headers:
-        _cookies = SilentCookie(request_headers['Cookie'])
+        _cookies = SimpleCookie(request_headers['Cookie'])
         for cookie in _cookies:
             cookies.append(E.cookie(_cookies[cookie].value, name=cookie))
     return cookies
