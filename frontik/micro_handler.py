@@ -56,22 +56,12 @@ class MicroHandler(BaseHandler):
     def __init__(self, application, request, logger, request_id=None, app_globals=None, **kwargs):
         super(MicroHandler, self).__init__(application, request, logger, request_id, app_globals, **kwargs)
 
-        def fetcher_wrapper(*args, **kwargs):
-            return self._http_client.fetch_request(*args, **kwargs)
-
-        self._http_client = HttpClient(
-            self, self._app_globals.curl_http_client, fetcher_wrapper, self.modify_http_client_request
-        )
-
         self._METHODS_MAPPING = {
             'GET': self._http_client.get_url,
             'POST': self._http_client.post_url,
             'PUT': self._http_client.put_url,
             'DELETE': self._http_client.delete_url
         }
-
-    def modify_http_client_request(self, request):
-        return request
 
     def handle_return_value(self, handler_method_name, return_value):
         done_method_name = handler_method_name + '_requests_done'
