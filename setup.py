@@ -51,7 +51,7 @@ setup(
         'tornado_util >= 0.7.6',
     ],
     dependency_links=[
-        'https://github.com/hhru/tornado-util/archive/master.zip#egg=tornado_util',
+        'https://github.com/hhru/tornado-util/archive/master.zip#egg=tornado_util-0.7.6',
         'https://github.com/hhru/tornado/archive/master.zip#egg=tornado-2.0.0',
     ],
     zip_safe=False

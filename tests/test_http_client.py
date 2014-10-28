@@ -52,4 +52,3 @@ class TestHttpClient(unittest.TestCase):
     def test_custom_headers(self):
         json = frontik_test_app.get_page_json('http_client/custom_headers')
         self.assertEqual(json['X-Foo'], 'Bar')
-        self.assertEqual(json['X-Bar'], 'Foo')
