@@ -1,3 +1,11 @@
+frontik (2.21.14) unstable; urgency=low
+
+  * HH-47396 fix tornado-3 compatibility
+  * HH-46704 fix example config and setup.py
+  * HH-46704 remove fetch_request_wrapper
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 28 Oct 2014 14:42:32 +0300
+
 frontik (2.21.13) unstable; urgency=low
 
   * HH-47288 fix test on trailing slash at the end
