@@ -61,13 +61,13 @@ class XmlProducer(object):
         try:
             self.transform = self.xsl_cache.load(self.transform_filename, self.log)
         except etree.XMLSyntaxError:
-            self.log.exception('failed parsing XSL file %s (XML syntax)', self.transform_filename)
+            self.log.error('failed parsing XSL file %s (XML syntax)', self.transform_filename)
             raise
         except etree.XSLTParseError:
-            self.log.exception('failed parsing XSL file %s (XSL parse error)', self.transform_filename)
+            self.log.error('failed parsing XSL file %s (XSL parse error)', self.transform_filename)
             raise
         except:
-            self.log.exception('failed loading XSL file %s', self.transform_filename)
+            self.log.error('failed loading XSL file %s', self.transform_filename)
             raise
 
         self._finish_with_xslt(callback)

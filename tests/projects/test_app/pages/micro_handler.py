@@ -22,8 +22,11 @@ class Page(MicroHandler):
         return {
             'post': self.POST(self.request.host, self.request.uri, data={'param': 'post'}),
             'put': self.PUT(self.request.host, self.request.uri),
-            'delete': self.DELETE(self.request.host, self.request.uri)
+            'delete': self.DELETE(self.request.host, self.request.uri, error_callback=self.delete_error_callback)
         }
+
+    def delete_error_callback(self, data, response):
+        self.json.put({'error_callback': True})
 
     def get_page_requests_done(self, result):
         assert result['post'].response.code == 200
