@@ -1,3 +1,9 @@
+frontik (2.21.15) unstable; urgency=low
+
+  * HH-47619 use SimpleCookie instead of SilentCookie
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 29 Oct 2014 13:02:35 +0300
+
 frontik (2.21.14) unstable; urgency=low
 
   * HH-47396 fix tornado-3 compatibility
