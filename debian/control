@@ -9,7 +9,7 @@ Build-Depends:
   python-setuptools,
   python-nose,
   python-simplejson,
-  python-tornado (>= 2.0+hh22),
+  python-tornado (>= 2.0.1+hh23),
   python-tornado-util (>= 0.7.6),
   python-jinja2,
 Standards-Version: 3.9.3
@@ -23,7 +23,7 @@ Depends:
   python, 
   python-lxml,
   python-simplejson,
-  python-tornado (>= 2.0+hh22),
+  python-tornado (>= 2.0.1+hh23),
   python-tornado-util (>= 0.7.6),
   python-jinja2,
 Suggests:
