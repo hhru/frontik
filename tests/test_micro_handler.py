@@ -2,6 +2,8 @@
 
 import unittest
 
+import requests
+
 from .instances import frontik_test_app
 
 
@@ -25,3 +27,7 @@ class TestMicroHandler(unittest.TestCase):
         response = frontik_test_app.get_page('micro_handler?fail_on_error=true&default=true')
 
         self.assertEqual(response.status_code, 401)
+
+    def test_invalid_return_value(self):
+        response = frontik_test_app.get_page('micro_handler?invalid_return_value=true', method=requests.delete)
+        self.assertEqual(response.status_code, 500)
