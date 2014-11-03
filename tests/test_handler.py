@@ -12,25 +12,25 @@ class TestHandler(unittest.TestCase):
         self.assertEqual(text, '200 200 200 200 200 503')
 
     def test_check_finished(self):
-        text = frontik_test_app.get_page_text('check_finished')
+        text = frontik_test_app.get_page_text('handler/check_finished')
         self.assertEqual(text, 'Callback not called')
 
         # Check that callback has not been called at later IOLoop iteration
 
-        text = frontik_test_app.get_page_text('check_finished')
+        text = frontik_test_app.get_page_text('handler/check_finished')
         self.assertEqual(text, 'Callback not called')
 
     def test_head(self):
-        response = frontik_test_app.get_page('head', method=requests.head)
+        response = frontik_test_app.get_page('handler/head', method=requests.head)
         self.assertEqual(response.headers['X-Foo'], 'Bar')
         self.assertEqual(response.content, '')
 
     def test_head_url(self):
-        response = frontik_test_app.get_page('head_url')
+        response = frontik_test_app.get_page('handler/head_url')
         self.assertEqual(response.content, 'OK')
 
     def test_no_method(self):
-        response = frontik_test_app.get_page('head', method=requests.post)
+        response = frontik_test_app.get_page('handler/head', method=requests.post)
         self.assertEqual(response.status_code, 405)
         self.assertEqual(response.headers['Allow'], 'get')
 
@@ -43,3 +43,7 @@ class TestHandler(unittest.TestCase):
         response = frontik_test_app.get_page('http_error?code=429&throw=false')
         self.assertEqual(response.status_code, 429)
         self.assertEqual(response.content, 'success')
+
+    def test_delete_post_arguments(self):
+        response = frontik_test_app.get_page('handler/delete', method=requests.delete)
+        self.assertEqual(response.status_code, 400)

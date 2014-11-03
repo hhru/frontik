@@ -547,7 +547,7 @@ class PageHandler(BaseHandler):
             add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
 
-    def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
+    def delete_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None, callback=None,
                    content_type=None, labels=None, add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
         return self._http_client.delete_url(
