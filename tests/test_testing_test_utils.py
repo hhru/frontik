@@ -7,30 +7,6 @@ from lxml import etree
 from frontik.testing import test_utils
 
 
-class TestHelpers(unittest.TestCase):
-
-    def test_remove_xpath(self):
-        root = etree.fromstring('''
-            <root>
-                <removeMe ppp="mmm"/>
-                <level2>
-                    <removeMe2 n="1"/>
-                    <removeMe2 n="2"/>
-                </level2>
-            </root>
-            '''.strip())
-        xpath1 = 'removeMe[@ppp="mmm"]'
-        xpath2 = 'level2/removeMe2'
-
-        self.assertEqual(len(root.xpath(xpath1)), 1)
-        self.assertEqual(len(root.xpath(xpath2)), 2)
-
-        test_utils.remove_xpaths(root, [xpath1, xpath2])
-
-        self.assertEqual(len(root.xpath(xpath1)), 0)
-        self.assertEqual(len(root.xpath(xpath2)), 0)
-
-
 class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixin):
 
     def test_assertXmlAlmostEquals_abs_equals(self):
