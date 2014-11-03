@@ -6,10 +6,11 @@ import unittest
 from frontik.doc import Doc
 from frontik.future import Future
 from frontik.http_client import RequestResult, FailedRequestException
+from frontik.testing.test_utils import XmlTestCaseMixin
 from .instances import frontik_test_app
 
 
-class TestDoc(unittest.TestCase):
+class TestDoc(unittest.TestCase, XmlTestCaseMixin):
     def test_simple(self):
         d = Doc('a')
 
@@ -18,18 +19,18 @@ class TestDoc(unittest.TestCase):
         d.put('test')
 
         self.assertFalse(d.is_empty())
-        self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
+        self.assertXmlAlmostEqual(d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
 
     def test_future_simple(self):
         d = Doc('a')
         f = Future()
         d.put(f)
 
-        self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a/>""")
+        self.assertXmlAlmostEqual(d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a/>""")
 
         f.set_result('test')
 
-        self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
+        self.assertXmlAlmostEqual(d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
 
     def test_future_etree_element(self):
         d = Doc('a')
@@ -37,7 +38,7 @@ class TestDoc(unittest.TestCase):
         f.set_result(etree.Element('b'))
         d.put(f)
 
-        self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a><b/></a>""")
+        self.assertXmlAlmostEqual(d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a><b/></a>""")
 
     def test_future_list(self):
         d = Doc('a')
@@ -45,7 +46,9 @@ class TestDoc(unittest.TestCase):
         f.set_result([etree.Comment('ccc'), etree.Element('bbb')])
         d.put(f)
 
-        self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a><!--ccc--><bbb/></a>""")
+        self.assertXmlAlmostEqual(
+            d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a><!--ccc--><bbb/></a>"""
+        )
 
     def test_failed_future(self):
         d = Doc('a')
@@ -55,8 +58,10 @@ class TestDoc(unittest.TestCase):
         f.set_result(result)
         d.put(f)
 
-        self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n"""
-                                        """<a><error reason="error" code="code"/></a>""")
+        self.assertXmlAlmostEqual(
+            d.to_etree_element(),
+            """<?xml version='1.0' encoding='utf-8'?>\n<a><error reason="error" code="code"/></a>"""
+        )
 
     def test_doc_nested(self):
         a = Doc('a')
@@ -64,7 +69,9 @@ class TestDoc(unittest.TestCase):
         b.put('test')
         a.put(b)
 
-        self.assertEqual(a.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a><b>test</b></a>""")
+        self.assertXmlAlmostEqual(
+            a.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a><b>test</b></a>"""
+        )
 
     def test_nodes_and_text(self):
         a = Doc('a')
@@ -74,13 +81,17 @@ class TestDoc(unittest.TestCase):
         a.put(Doc('c'))
         a.put('3')
 
-        self.assertEqual(a.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a>1<b/>2<c/>3</a>""")
+        self.assertXmlAlmostEqual(
+            a.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a>1<b/>2<c/>3</a>"""
+        )
 
     def test_root_node(self):
         d = Doc(root_node=etree.Element('doc'))
         d.put(etree.Element('test1'))
 
-        self.assertEqual(d.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<doc><test1/></doc>""")
+        self.assertXmlAlmostEqual(
+            d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<doc><test1/></doc>"""
+        )
 
     def test_root_node_doc(self):
         d1 = Doc('a')
@@ -89,7 +100,9 @@ class TestDoc(unittest.TestCase):
         d2 = Doc(root_node=d1)
         d2.put(etree.Comment('2'))
 
-        self.assertEqual(d2.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a><!--1--><!--2--></a>""")
+        self.assertXmlAlmostEqual(
+            d2.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a><!--1--><!--2--></a>"""
+        )
 
     def test_root_node_invalid(self):
         d = Doc(root_node='a')

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# coding=utf-8
 
 import itertools
 
@@ -165,60 +165,30 @@ def xml_check_compatibility(old, new, reorder_tags=True, reporter=None):
         return True
 
 
-def remove_xpaths(elem, xpaths):
-    """
-    Remove element that matches xpath from it's parent.
-    """
-    for x in xpaths:
-        res = elem.xpath(x)
-        if len(res) == 0:
-            continue
-        for e in res:
-            parent = e.getparent()
-            if parent is not None:
-                parent.remove(e)
-    return elem
-
-
 class XmlResponseTestCaseMixin(object):
-    """
-    Mixin for L{unittest.TestCase} or other class with similar API.
+    """Mixin for L{unittest.TestCase}."""
 
-    Add assertion:
-      * assertXmlAlmostEquals
-      * assertXmlCompatible
-
-    Add helpers:
-      * remove_xpaths
-    """
-
-    # ----------------------------------------------------
-    # Assertions
-    def _xml_cmp_assertion(self, cmp_func, x1, x2, msg=None):
+    def _assert_xml_compare(self, cmp_func, xml1, xml2, msg=None):
         if msg is None:
-            msg = 'XML not equals'
-        if not isinstance(x1, etree._Element):
-            x1 = etree.fromstring(x1)
-        if not isinstance(x2, etree._Element):
-            x2 = etree.fromstring(x2)
+            msg = 'XML documents are not equal'
+        if not isinstance(xml1, etree._Element):
+            xml1 = etree.fromstring(xml1)
+        if not isinstance(xml2, etree._Element):
+            xml2 = etree.fromstring(xml2)
 
         def _fail_reporter(err_message):
             self.fail('{0}: {1}'.format(msg, err_message))
 
-        cmp_func(x1, x2, reorder_tags=True, reporter=_fail_reporter)
+        cmp_func(xml1, xml2, reorder_tags=True, reporter=_fail_reporter)
 
     def assertXmlAlmostEquals(self, expected, real, msg=None):
-        """
-        Assert that xml almost equals.
-        Before comparing XML tags and properties will be ordered.
-        If real or expected xml has some extra tags, assertion fails.
-        """
-        self._xml_cmp_assertion(xml_compare, expected, real, msg)
+        """Assert that two xml documents are equal (the order of elements and attributes is ignored)."""
+        self._assert_xml_compare(xml_compare, expected, real, msg)
+
+    assertXmlAlmostEqual = assertXmlAlmostEquals  # Replaces the deprecated alias
 
     def assertXmlCompatible(self, old, new, msg=None):
-        """
-        Assert that xml almost equals.
-        Before comparing XML tags and properties will be ordered.
-        If real or expected xml has some extra tags, assertion fails.
-        """
-        self._xml_cmp_assertion(xml_check_compatibility, old, new, msg)
+        """Assert that one xml document is an extension of another."""
+        self._assert_xml_compare(xml_check_compatibility, old, new, msg)
+
+XmlTestCaseMixin = XmlResponseTestCaseMixin  # Replaces the deprecated alias
