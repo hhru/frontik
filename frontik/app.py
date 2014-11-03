@@ -8,6 +8,8 @@ import sys
 import time
 
 from lxml import etree
+import simplejson
+import tornado
 import tornado.autoreload
 import tornado.web
 import tornado.ioloop
@@ -39,6 +41,12 @@ def get_frontik_and_apps_versions():
     from frontik.version import version
     versions = etree.Element('versions')
     etree.SubElement(versions, 'frontik').text = version
+    etree.SubElement(versions, 'tornado').text = tornado.version
+    etree.SubElement(versions, 'lxml.etree.LXML').text = '.'.join(str(x) for x in etree.LXML_VERSION)
+    etree.SubElement(versions, 'lxml.etree.LIBXML').text = '.'.join(str(x) for x in etree.LIBXML_VERSION)
+    etree.SubElement(versions, 'lxml.etree.LIBXSLT').text = '.'.join(str(x) for x in etree.LIBXSLT_VERSION)
+    etree.SubElement(versions, 'simplejson').text = simplejson.__version__
+    etree.SubElement(versions, 'python').text = sys.version.replace('\n', '')
     versions.append(_get_apps_versions())
     return versions
 
