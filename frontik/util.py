@@ -215,15 +215,14 @@ def make_head_request(url, data=None, headers=None, connect_timeout=None, reques
     )
 
 
-def _asciify_url_char(c):
-    if ord(c) > 127:
-        return hex(ord(c)).replace('0x', '%')
-    else:
-        return c
-
-
 def asciify_url(url):
-    return ''.join(map(_asciify_url_char, url))
+    def _asciify_url_char(c):
+        if ord(c) > 127:
+            return hex(ord(c)).replace('0x', '%')
+        else:
+            return c
+
+    return ''.join(map(_asciify_url_char, _encode(url)))
 
 
 def get_cookie_or_url_param_value(handler, param_name):
