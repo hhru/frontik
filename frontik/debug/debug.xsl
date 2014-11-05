@@ -39,12 +39,15 @@
     </xsl:template>
 
     <xsl:template match="log" mode="debug-log">
+        <xsl:apply-templates select="." mode="timeline"/>
+
         <div class="entry entry_title">
-            requestid: <xsl:value-of select="@request-id"/>,
-            status: <xsl:value-of select="@code"/>,
+            request id: <xsl:value-of select="@request-id"/>,
+            code: <xsl:value-of select="@code"/><br/>
             requests: <xsl:value-of select="count(entry/response)"/>,
             bytes received: <xsl:value-of select="sum(entry/response/size)"/>,
-            bytes produced: <xsl:value-of select="@response-size"/>,
+            bytes produced: <xsl:value-of select="@response-size"/><br/>
+            page generated in: <xsl:value-of select="format-number(@stages-total, '#0.##')"/>ms,
             debug generated in: <xsl:value-of select="format-number(@generate-time, '#0.##')"/>ms
         </div>
 
@@ -55,6 +58,21 @@
     </xsl:template>
 
     <xsl:template match="entry[contains(@msg, 'finish group') and not(contains(/log/@mode, 'full'))]"/>
+
+    <xsl:template match="log" mode="timeline"/>
+
+    <xsl:template match="log[ancestor::log]" mode="timeline">
+        <xsl:variable name="timeline-offset-number" select="1000 * (../log/@started - /log/@started) div $total-time"/>
+
+        <xsl:variable name="timeline-offset" select="format-number($timeline-offset-number, '##.##%')"/>
+        <xsl:variable name="timeline-width" select="format-number(../log/@stages-total div $total-time, '##.##%')"/>
+
+        <xsl:variable name="timeline-debug-offset" select="format-number($timeline-offset-number + ../log/@stages-total div $total-time, '##.##%')"/>
+        <xsl:variable name="timeline-debug-width" select="format-number(@generate-time div $total-time, '##.##%')"/>
+
+        <div style="width: {$timeline-width}; left: {$timeline-offset}" class="timeline"/>
+        <div style="width: {$timeline-debug-width}; left: {$timeline-debug-offset}" class="timeline timeline_debug"/>
+    </xsl:template>
 
     <xsl:template match="log" mode="versions-info">
         <div class="entry entry_expandable">
@@ -90,17 +108,12 @@
     </xsl:template>
 
     <xsl:template match="entry">
-
         <xsl:variable name="highlight">
             <xsl:if test="$highlight-text != '' and contains(@msg, $highlight-text)">entry__head_highlight</xsl:if>
         </xsl:variable>
-
-        <xsl:variable name="loglevel">
-            <xsl:value-of select="@levelname"/>
-        </xsl:variable>
             
         <div class="entry">
-            <div class="entry__head {$highlight} {$loglevel}">
+            <div class="entry__head {$highlight} {@levelname}">
                 <span class="entry__head__message">
                     <xsl:value-of select="@msg"/>
                 </span>
@@ -108,6 +121,26 @@
             <xsl:apply-templates select="exception"/>
         </div>
         <xsl:apply-templates select="exception/trace"/>
+    </xsl:template>
+
+    <xsl:template match="entry[stage]">
+        <xsl:variable name="stagebar-offset" select="1000 * (../../log/@started - /log/@started)"/>
+
+        <xsl:variable name="stagebar-left">
+            <xsl:value-of select="format-number(($stagebar-offset + stage/start_delta) div $total-time, '##.##%')"/>
+        </xsl:variable>
+
+        <xsl:variable name="stagebar-width">
+            <xsl:value-of select="format-number(stage/delta div $total-time, '##.##%')"/>
+        </xsl:variable>
+
+        <div class="line {@levelname}">
+            <div class="line__bar line__bar_{@levelname}" style="left: {$stagebar-left}; width: {$stagebar-width}"/>
+            <span class="line__label">
+                <xsl:value-of select="stage/name"/>:
+                <xsl:value-of select="format-number(stage/delta, '##.#')"/>ms
+            </span>
+        </div>
     </xsl:template>
 
     <!-- Exceptions -->
@@ -181,15 +214,15 @@
         </xsl:variable>
 
         <xsl:variable name="timebar-offset-time">
-            <xsl:value-of select="1000 * (request/meta/start_time/text() - /log/@started)"/>
+            <xsl:value-of select="1000 * (request/start_time/text() - /log/@started)"/>
         </xsl:variable>
         
         <xsl:variable name="timebar-offset">
-            <xsl:value-of select="format-number($timebar-offset-time div $total-time, '##.#%')"/>
+            <xsl:value-of select="format-number($timebar-offset-time div $total-time, '##.##%')"/>
         </xsl:variable>
 
         <xsl:variable name="timebar-details-len">
-            <xsl:value-of select="format-number(response/request_time div $total-time, '##.#%')"/>
+            <xsl:value-of select="format-number(response/request_time div $total-time, '##.##%')"/>
         </xsl:variable>
 
         <xsl:variable name="timebar-details-direction">
@@ -207,13 +240,13 @@
             <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher {$status} {$highlight}">
                 <div class="timebar">
                     <div class="timebar__line" style="left: {$timebar-offset}">
-                        <strong class="timebar__head timebar__head_{$status}" style="width: {$timebar-details-len}"></strong>
+                        <strong class="timebar__head timebar__head_{$status}" style="width: {$timebar-details-len}"/>
                     </div>
                 </div>
 
                 <span class="entry__head__expandtext">
                     <span class="time">
-                        <xsl:value-of select="response/request_time"/>
+                        <xsl:value-of select="format-number(response/request_time, '#0.#')"/>
                         <xsl:text>ms </xsl:text>
                     </span>
                     <xsl:apply-templates select="labels/label"/>
@@ -268,9 +301,9 @@
     </xsl:template>
 
     <xsl:template match="request">
-        <xsl:apply-templates select="params[param]"/>
-        <xsl:apply-templates select="headers[header]"/>
-        <xsl:apply-templates select="cookies[cookie]"/>
+        <xsl:apply-templates select="params[param and not(../../debug/log/request/params)]"/>
+        <xsl:apply-templates select="headers[header and not(../../debug/log/request/headers)]"/>
+        <xsl:apply-templates select="cookies[cookie and not(../../debug/log/request/cookies)]"/>
         <xsl:apply-templates select="body[param]" mode="params"/>
         <xsl:apply-templates select="body[not(param)]"/>
     </xsl:template>
@@ -291,7 +324,7 @@
 
     <xsl:template match="response">
         <xsl:apply-templates select="error"/>
-        <xsl:apply-templates select="headers[header]"/>
+        <xsl:apply-templates select="headers[header and not(../../debug/log/response/headers)]"/>
         <xsl:apply-templates select="body"/>
     </xsl:template>
 
@@ -321,7 +354,7 @@
     <xsl:template match="body[contains(@content_type, 'text/html') and text() != '']">
         <xsl:variable name="id" select="generate-id(.)"/>
         <div class="delimeter"><xsl:value-of select="name(parent::*)"/> body</div>
-        <div id="{$id}"><![CDATA[]]></div> 
+        <div id="{$id}"><![CDATA[]]></div>
         <script>
             doiframe('<xsl:value-of select="$id"/>', '<xsl:value-of select="."/>');
         </script>
