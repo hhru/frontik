@@ -1,3 +1,10 @@
+frontik (2.21.17) unstable; urgency=low
+
+  * HH-47815 fix logging levels
+  * HH-47815 fix bug in write_error and add tests
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 06 Nov 2014 18:10:42 +0300
+
 frontik (2.21.16) unstable; urgency=low
 
   * HH-47074 new stages logging
