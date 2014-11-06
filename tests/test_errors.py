@@ -49,3 +49,13 @@ class TestHttpError(unittest.TestCase):
         response = frontik_test_app.get_page('http_error_in_prepare')
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.headers['X-Foo'], 'Bar')
+
+    def test_write_error(self):
+        response = frontik_test_app.get_page('write_error')
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.content, '{"write_error": true}')
+
+    def test_write_error_exception(self):
+        response = frontik_test_app.get_page('write_error?fail_write_error=true')
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.content, '')
