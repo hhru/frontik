@@ -37,6 +37,7 @@ def context_based_repr(self):
         self.__class__.__name__, args, dict(self.headers))
 
 
+# TODO: remove after Tornado3 migration
 HTTPRequest.__repr__ = context_based_repr
 
 
@@ -327,6 +328,8 @@ class BaseHandler(tornado.web.RequestHandler):
             self.write_error(status_code, **kwargs)
         except Exception:
             self.log.exception('Uncaught exception in write_error')
+            if not self._finished:
+                self.finish()
 
     def write_error(self, status_code=500, **kwargs):
         # write_error in Frontik must be asynchronous when handling custom errors (due to XSLT)
@@ -490,6 +493,7 @@ class BaseHandler(tornado.web.RequestHandler):
         self.log.debug('finishing plaintext')
         callback(self.text)
 
+    # Deprecated, use self.text directly
     def set_plaintext_response(self, text):
         self.text = text
 

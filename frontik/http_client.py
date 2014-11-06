@@ -158,7 +158,7 @@ class HttpClient(object):
             if getattr(request, '_frontik_labels', None) is not None:
                 debug_extra['_labels'] = request._frontik_labels
 
-            self.handler.log.debug(
+            self.handler.log.info(
                 'got {code}{size} {url} in {time:.2f}ms'.format(
                     code=response.code,
                     url=response.effective_url,

@@ -33,10 +33,10 @@ class PageHandlerActiveLimit(object):
         if not self.acquired:
             PageHandlerActiveLimit.working_handlers_count += 1
             self.acquired = True
-            self.handler.log.debug('handlers count + 1 = %d', PageHandlerActiveLimit.working_handlers_count)
+            self.handler.log.info('handlers count + 1 = %d', PageHandlerActiveLimit.working_handlers_count)
 
     def release(self):
         if self.acquired:
             PageHandlerActiveLimit.working_handlers_count -= 1
             self.acquired = False
-            self.handler.log.debug('handlers count - 1 = %d', PageHandlerActiveLimit.working_handlers_count)
+            self.handler.log.info('handlers count - 1 = %d', PageHandlerActiveLimit.working_handlers_count)
