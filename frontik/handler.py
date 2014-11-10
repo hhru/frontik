@@ -308,6 +308,12 @@ class BaseHandler(tornado.web.RequestHandler):
         if tornado.options.options.kill_long_requests:
             self.send_error()
 
+    def on_connection_close(self):
+        self.finish_group.abort()
+        self.log.stage_tag('page')
+        self.log.log_stages(408)
+        raise HTTPError(408, 'Client closed the connection: aborting request')
+
     def send_error(self, status_code=500, **kwargs):
         self.log.stage_tag('page')
 
