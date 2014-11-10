@@ -1,3 +1,10 @@
+frontik (2.21.18) unstable; urgency=low
+
+  * HH-47396 add timings to xsl files loading
+  * HH-47396 handle client connection closed
+
+ -- Automated Build <an.sumin@hh.ru>  Mon, 10 Nov 2014 17:01:22 +0300
+
 frontik (2.21.17) unstable; urgency=low
 
   * HH-47815 fix logging levels
