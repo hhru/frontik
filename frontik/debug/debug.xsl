@@ -330,6 +330,7 @@
 
     <xsl:template match="debug">
         <div class="debug-inherited">
+            <div class="debug-inheritance"/>
             <xsl:apply-templates select="." mode="debug-log"/>
         </div>
     </xsl:template>

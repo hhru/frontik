@@ -22,15 +22,13 @@
             .timeline {
                 position: absolute;
                 height: 100%;
-                background: #94b24d;
-                border-left: 1px solid green;
-                border-right: 1px solid green;
+                border-left: 1px dashed green;
+                border-right: 1px dashed green;
                 box-sizing: border-box;
-                opacity: 0.1;
+                opacity: 0.2;
             }
                 .timeline_debug {
                     border-left: none;
-                    background: #4d94b2;
                 }
 
             .timebar {
@@ -70,17 +68,22 @@
                 word-break: break-all;
                 position: relative;
             }
-                .entry_expandable {
+                .entry_expandable, .entry_expanded {
                     background: #fffccf;
                 }
-                    .entry.entry_expandable:before {
+                    .entry.entry_expandable:before, .entry.entry_expanded:before {
                         float: left;
                         position: absolute;
                         width: 20px;
                         padding: 3px 0;
-                        content: "▹";
                         text-align: center;
                         font-size: 0.8em;
+                    }
+                    .entry.entry_expandable:before {
+                        content: "▹";
+                    }
+                    .entry.entry_expanded:before {
+                        content: "▿";
                     }
                 .entry_title {
                     font-size: 1.2em;
@@ -268,6 +271,14 @@
                 border-bottom: 1px solid #ccc;
                 background: #fff;
             }
+                .debug-inheritance {
+                    left: 1px;
+                    width: 16px;
+                    height: 100%;
+                    position: absolute;
+                    background: black;
+                    opacity: 0.1;
+                }
 
             .xslt-profile {
                 margin: 8px 0;
