@@ -199,7 +199,7 @@ class App(object):
                 self.module.config = self.importer.imp_app_module('config')
                 # track all possible filenames for each app's config module to reload in case of change
                 for filename in self.importer.get_probable_module_filenames('config'):
-                    tornado.autoreload.watch_file(filename)
+                    tornado.autoreload.watch(filename)
             except ImportError:
                 self.module.config = App.DefaultConfig()
                 app_logger.warning('no config.py file, using empty default')
