@@ -1,3 +1,14 @@
+frontik (2.21.19) unstable; urgency=low
+
+  * HH-47330 set AsyncGroup default level to INFO
+  * HH-47330 use tornado.autoreload.watch alias
+  * HH-47330 fix tests with lxml >= 3
+  * HH-47330 update docs
+  * HH-47330 add xsl syntax error test
+  * HH-47330 add fail_on_error kwarg to MicroHandler HTTP client methods
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 13 Nov 2014 18:00:25 +0300
+
 frontik (2.21.18) unstable; urgency=low
 
   * HH-47396 add timings to xsl files loading
