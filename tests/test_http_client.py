@@ -32,11 +32,9 @@ class TestHttpClient(unittest.TestCase):
         xml = frontik_test_app.get_page_xml('http_client/long_page_request')
         self.assertEqual(xml.text, 'error')
 
-    def test_error_in_cb(self):
-        """
-        when json or xml parsing error ocuurs, we must send None into callback
-        """
-        xml = frontik_test_app.get_page_xml('bad_page')
+    def test_parse_error(self):
+        """ If json or xml parsing error occurs, we must send None into callback. """
+        xml = frontik_test_app.get_page_xml('http_client/parse_error')
         self.assertEqual(xml.text, '4242')
 
     def test_add_to_finish_group(self):
@@ -52,3 +50,11 @@ class TestHttpClient(unittest.TestCase):
     def test_custom_headers(self):
         json = frontik_test_app.get_page_json('http_client/custom_headers')
         self.assertEqual(json['X-Foo'], 'Bar')
+
+    def test_group(self):
+        text = frontik_test_app.get_page_text('http_client/group')
+        self.assertEqual(text, '{"1": {"1": "yay"}, "2": {"2": "yay"}, "final_callback_called": true}')
+
+    def test_group_with_failing_request(self):
+        response = frontik_test_app.get_page('http_client/group?fail=true')
+        self.assertEqual(response.status_code, 500)

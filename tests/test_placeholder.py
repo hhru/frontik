@@ -57,7 +57,3 @@ class TestPlaceholder(unittest.TestCase):
     def test_future_with_main_asyncgroup(self):
         response = frontik_test_app.get_page('future')
         self.assertEqual(response.content, '{"1": "yay", "cb": "yes", "2": "yay"}')
-
-    def test_group_with_single_request_failed(self):
-        response = frontik_test_app.get_page('group')
-        self.assertEqual(response.status_code, 500)

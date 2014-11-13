@@ -42,7 +42,7 @@ setup(
     install_requires=[
         'nose',
         'pep8',
-        'lxml >= 2.3.2, < 3',
+        'lxml >= 2.3.2',
         'simplejson >= 2.3.2',
         'pycurl >= 7.19.0',
         'requests >= 0.8.2',

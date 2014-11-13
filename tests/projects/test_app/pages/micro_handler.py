@@ -19,11 +19,17 @@ class Page(MicroHandler):
                 'GET': 'get'
             })
 
+        fail_on_error = self.get_argument('fail_on_error', 'false') == 'true'
+
         return {
             'post': self.POST(self.request.host, self.request.uri, data={'param': 'post'}),
-            'put': self.PUT(self.request.host, self.request.uri),
+            'put': self.PUT(self.request.host, self.request.uri, fail_on_error=fail_on_error),
             'delete': self.DELETE(self.request.host, self.request.uri)
         }
+
+    def get_page_requests_failed(self, name, data, response):
+        if self.get_argument('default', 'false') != 'true':
+            raise HTTPError(403, json={'fail_on_error': True})
 
     def get_page_requests_done(self, result):
         assert result['post'].response.code == 200
