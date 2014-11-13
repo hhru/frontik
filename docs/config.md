@@ -27,8 +27,7 @@ module, which provides convenient interface for running and controlling several 
 | `supervisor_sigterm_timeout` | `int`  | `4`             | Time in seconds to wait before sending SIGKILL (after SIGTERM has been sent) |
 | `nofile_soft_limit`          | `int`  | `4096`          | The value of soft NOFILE limit                           |
 
-These options are defined in Frontik (see [options.py](/frontik/options.py)) and are common to all Frontik applications,
-which run on one Frontik instance.
+These options are defined for one Frontik instance (see [options.py](/frontik/options.py)).
 
 | Option name                  | Type    | Default value | Description                                                           |
 | ---------------------------- | ------- | ------------  | --------------------------------------------------------------------- |
@@ -58,5 +57,5 @@ which run on one Frontik instance.
 | `timeout_multiplier`         | `float` | `1.0`         | Generic timeout multiplier for get_xxx calls (useful for testing)     |
 | `handlers_count`             | `int`   | `100`         | Limit for number of simultaneous requests handled by Frontik instance |
 
-There are also certain options, that are unique for each application, see
+There are also certain options, that can be defined in application configuration file, see
 [Configuring Frontik application](/docs/config-app.md) for more details.
