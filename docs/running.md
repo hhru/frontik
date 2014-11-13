@@ -1,6 +1,6 @@
 ## Running Frontik
 
-Frontik server is easy to run from application code:
+Frontik server is easy to start from application code:
 
 ```python
 frontik.server.main(config_file='/path/to/config.file')
@@ -8,7 +8,7 @@ frontik.server.main(config_file='/path/to/config.file')
 
 where `config.file` must contain at least `app` parameter (see [Configuring Frontik](/docs/config.md)).
 
-You could launch your application using Frontik script as well:
+You could launch your application using `/usr/bin/frontik` script as well:
 
 ```shell
 /usr/bin/frontik --app=/path/to/application --config=/path/to/config.file
@@ -20,7 +20,7 @@ For description of all available config options see [Configuring Frontik](/docs/
 For an example of a simple launcher that can be used in development environment, see [example-run.py](/examples/example-run.py).
 It uses [examples/frontik.cfg](/examples/frontik.cfg) config file to launch a simple application.
 
-Custom launcher from [tornado_util](https://github.com/hhru/tornado-util) module is used internally to run
-and control Frontik servers instances.
+At hh.ru we use a custom launcher from [tornado_util](https://github.com/hhru/tornado-util) module to run
+and control Frontik instances in production. There are plans to integrate this launcher in Frontik codebase.
 
 For information about Frontik applications, refer to [Frontik application structure](/docs/frontik-app.md).

@@ -1,7 +1,15 @@
 ## Configuring Frontik application
 
-These parameters are specific to each Frontik application and could be defined in `config.py` file in the
+These parameters can be set for a Frontik application, in `config.py` file in the
 root directory of the application (see [Frontik application structure](/docs/frontik-app.md)).
+
+`config.py` is executed when the application is first loaded. The reason for having another config file (besides Frontik
+configuration file: [Configuring Frontik](/docs/config.md)) is that sometimes it is desirable to provide a more advanced
+initialization logic. Frontik configuration file is executed by `tornado.options.parse_config_file` function, which
+uses `exec` internally. This sets some limitations, for example you can't use `__file__` constant in your code.
+Application's `config.py` is free of this limitation.
+
+If your application does not need any configuration, do not create `config.py` — Frontik will live normally without it.
 
 | Option name            | Type   | Default value | Description                                           |
 | ---------------------- | ------ | ------------- | ----------------------------------------------------- |

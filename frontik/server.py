@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # coding=utf-8
 
 import logging
@@ -15,7 +15,7 @@ from frontik.frontik_logging import bootstrap_logging
 log = logging.getLogger('frontik.server')
 
 
-def main(config_file='/etc/frontik/frontik.cfg'):
+def main(config_file=None):
     tornado_util.server.bootstrap(config_file=config_file, options_callback=bootstrap_logging)
 
     try:
