@@ -272,12 +272,11 @@
                 background: #fff;
             }
                 .debug-inheritance {
-                    left: 1px;
-                    width: 16px;
+                    left: 0;
+                    width: 14px;
                     height: 100%;
                     position: absolute;
-                    background: black;
-                    opacity: 0.1;
+                    background: #e6e6e6;
                 }
 
             .xslt-profile {
