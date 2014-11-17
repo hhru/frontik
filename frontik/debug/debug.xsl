@@ -236,6 +236,10 @@
             </xsl:choose>
         </xsl:variable>
 
+        <xsl:variable name="has-inherited-debug">
+            <xsl:if test="debug">details_debug</xsl:if>
+        </xsl:variable>
+
         <div class="entry entry_expandable">
             <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher {$status} {$highlight}">
                 <div class="timebar">
@@ -260,7 +264,9 @@
                 </span>
             </label>
             <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
-            <div class="details">
+            <div class="details {$has-inherited-debug}">
+                <xsl:apply-templates select="." mode="debug-inherited-indicator"/>
+
                 <div class="timebar-details">
                     <div class="timebar__line" style="left: {$timebar-offset}; direction: {$timebar-details-direction}; width: {$timebar-details-len}">
                         <xsl:value-of select="format-number($timebar-offset-time, '#0.##')"/>ms
@@ -276,6 +282,12 @@
                 <xsl:apply-templates select="response"/>
             </div>
         </div>
+    </xsl:template>
+
+    <xsl:template match="entry" mode="debug-inherited-indicator"/>
+
+    <xsl:template match="entry[debug]" mode="debug-inherited-indicator">
+        <div class="debug-inheritance"/>
     </xsl:template>
 
     <xsl:template match="label">
@@ -330,7 +342,6 @@
 
     <xsl:template match="debug">
         <div class="debug-inherited">
-            <div class="debug-inheritance"/>
             <xsl:apply-templates select="." mode="debug-log"/>
         </div>
     </xsl:template>
