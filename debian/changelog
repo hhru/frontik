@@ -1,3 +1,11 @@
+frontik (2.21.20) unstable; urgency=low
+
+  * HH-47942 fix styles
+  * HH-47942 fix debug styles
+  * HH-47942 Change inserted queries debug style
+
+ -- Automated Build <an.sumin@hh.ru>  Mon, 17 Nov 2014 19:12:02 +0300
+
 frontik (2.21.19) unstable; urgency=low
 
   * HH-47330 set AsyncGroup default level to INFO
