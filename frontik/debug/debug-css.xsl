@@ -167,6 +167,9 @@
                 padding-right: 20px;
                 position: relative;
             }
+                .details_debug {
+                    border-bottom: 1px solid #ccc;
+                }
                 .m-details_visible,
                 .details-expander:checked + .details {
                     display:block;
@@ -273,10 +276,13 @@
             }
                 .debug-inheritance {
                     left: 0;
-                    width: 14px;
+                    width: 3px;
                     height: 100%;
+                    margin-top: -24px;
+                    padding-bottom: 24px;
                     position: absolute;
-                    background: #e6e6e6;
+                    background: orange;
+                    z-index: 1;
                 }
 
             .xslt-profile {
