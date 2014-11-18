@@ -15,6 +15,7 @@ XSL_cache_limit = 1
 from frontik.app import FileMappingDispatcher
 
 import pages
+import pages.handler_404
 import pages.simple
 import pages.id_param
 
@@ -22,5 +23,5 @@ urls = [
     ('/id/(?P<id>[^/]+)', pages.id_param.Page),
     ('/ids/(?P<id>[^/]+)', pages.id_param.Page, lambda x: x.split(',')),
     ('/not_simple', pages.simple.Page),
-    ('', FileMappingDispatcher(pages)),
+    ('', FileMappingDispatcher(pages, handler_404=pages.handler_404.Page))
 ]

@@ -13,7 +13,7 @@ from tornado.options import options
 
 from frontik import frontik_logging
 from frontik.globals import global_stats
-from frontik.handler import ApplicationGlobals, PageHandler
+from frontik.handler import ApplicationGlobals, BaseHandler, ErrorHandler
 
 app_logger = logging.getLogger('frontik.app')
 
@@ -24,7 +24,7 @@ def _get_apps_versions():
     try:
         app_config = importlib.import_module('{}.config'.format(options.app))
         app_info.extend(list(app_config.version))
-    except AttributeError:
+    except:
         etree.SubElement(app_info, 'version').text = 'unknown'
 
     return app_info
@@ -94,7 +94,7 @@ class CountPageHandlerInstancesHandler(tornado.web.RequestHandler):
     def get(self):
         import gc
 
-        handlers = tuple(i for i in gc.get_objects() if isinstance(i, PageHandler))
+        handlers = tuple(i for i in gc.get_objects() if isinstance(i, BaseHandler))
 
         self.finish(
             '{0}\n{1}'.format(len(handlers), [i for i in gc.get_referrers(*handlers) if i is not handlers])
@@ -154,23 +154,20 @@ class FileMappingDispatcher(object):
         except ImportError:
             logger.exception('%s module not found', (self.name, page_module_name))
             if self.handler_404 is not None:
-                return self.handler_404
-            return tornado.web.ErrorHandler(application, request, status_code=404, logger=logger)
+                return self.handler_404(application, request, logger, **kwargs)
+            return ErrorHandler(application, request, logger, status_code=404, **kwargs)
         except:
             logger.exception('error while importing %s module', page_module_name)
-            return tornado.web.ErrorHandler(application, request, status_code=500, logger=logger)
+            return ErrorHandler(application, request, logger, status_code=500, **kwargs)
 
         if not hasattr(page_module, 'Page'):
             logger.error('%s.Page class not found', page_module_name)
-            return tornado.web.ErrorHandler(application, request, status_code=404, logger=logger)
+            return ErrorHandler(application, request, logger, status_code=404, **kwargs)
 
-        return page_module.Page(application, request, logger=logger, **kwargs)
+        return page_module.Page(application, request, logger, **kwargs)
 
     def __repr__(self):
         return '{}.{}(<{}, handler_404={}>)'.format(__package__, self.__class__.__name__, self.name, self.handler_404)
-
-# Deprecated synonym
-Map2ModuleName = FileMappingDispatcher
 
 
 class App(object):
@@ -200,7 +197,7 @@ class App(object):
         self.dispatcher = RegexpDispatcher(self.config.urls, self.module)
 
     def __call__(self, application, request, logger, **kwargs):
-        return self.dispatcher(application, request, logger=logger, app_globals=self.app_globals, **kwargs)
+        return self.dispatcher(application, request, logger, app_globals=self.app_globals, **kwargs)
 
     def __repr__(self):
         return '{}.{}({})'.format(__package__, self.__class__.__name__, self.module)
@@ -231,13 +228,13 @@ class RegexpDispatcher(object):
                     return app(application, request, logger, **kwargs)
                 except tornado.web.HTTPError as e:
                     logger.exception('tornado error: %s in %r', e, app)
-                    return tornado.web.ErrorHandler(application, request, status_code=e.status_code, logger=logger)
+                    return ErrorHandler(application, request, logger, status_code=e.status_code, **kwargs)
                 except Exception as e:
                     logger.exception('error handling request: %s in %r', e, app)
-                    return tornado.web.ErrorHandler(application, request, status_code=500, logger=logger)
+                    return ErrorHandler(application, request, logger, status_code=500, **kwargs)
 
         logger.error('match for request url "%s" not found', request.uri)
-        return tornado.web.ErrorHandler(application, request, status_code=404, logger=logger)
+        return ErrorHandler(application, request, logger, status_code=404, **kwargs)
 
     def __repr__(self):
         return '{}.{}(<{} routes>)'.format(__package__, self.__class__.__name__, len(self.apps))
@@ -255,7 +252,7 @@ def get_tornado_app(app_root_url, frontik_app, tornado_settings=None):
         set_rewritten_request_attribute(request, 'uri', add_leading_slash(request.uri[app_root_url_len:]))
         set_rewritten_request_attribute(request, 'path', add_leading_slash(request.path[app_root_url_len:]))
 
-        return frontik_app(tornado_app, request, logger=request_logger, request_id=request_id, **kwargs)
+        return frontik_app(tornado_app, request, request_logger, request_id=request_id, **kwargs)
 
     if tornado_settings is None:
         tornado_settings = {}
