@@ -36,8 +36,14 @@ class TestRouting(unittest.TestCase):
         html = frontik_re_app.get_page_text('id/{}'.format(','.join(values)))
         self.assertTrue(all(map(html.find, values)))
 
-    def test_404(self):
-        self.assertEqual(frontik_re_app.get_page('inexistent_page').status_code, 404)
+    def test_error_on_import(self):
+        response = frontik_test_app.get_page('error_on_import')
+        self.assertEqual(response.status_code, 500)
 
-    def test_no_page(self):
+    def test_custom_404(self):
+        response = frontik_re_app.get_page('inexistent_page')
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.content, '404')
+
+    def test_404(self):
         self.assertEqual(frontik_test_app.get_page('no_page').status_code, 404)

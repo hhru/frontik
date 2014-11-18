@@ -562,3 +562,11 @@ class PageHandler(BaseHandler):
     # Deprecated, use PageHandler._http_client.fetch
     def fetch_request(self, request, callback, add_to_finish_group=True):
         return self._http_client.fetch(request, callback, add_to_finish_group)
+
+
+class ErrorHandler(tornado.web.ErrorHandler, PageHandler):
+    pass
+
+
+class RedirectHandler(tornado.web.RedirectHandler, PageHandler):
+    pass
