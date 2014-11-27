@@ -4,9 +4,10 @@ import unittest
 from frontik.future import Future
 from frontik.json_builder import JsonBuilder
 from frontik.http_client import RequestResult, FailedRequestException
+from frontik.testing import json_asserts
 
 
-class TestJsonBuilder(unittest.TestCase):
+class TestJsonBuilder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
     def test_simple(self):
         j = JsonBuilder()
 
@@ -65,15 +66,15 @@ class TestJsonBuilder(unittest.TestCase):
         j.put({'a': 'b'})
         j.put({'c': 'd'})
 
-        self.assertEqual(j.to_string(), """{"a": "b", "c": "d"}""")
+        self.assertJsonEqual(j.to_dict(), {'a': 'b', 'c': 'd'})
 
         j.put({'a': 'x'}, {'e': 'f'})
 
-        self.assertEqual(j.to_string(), """{"a": "x", "c": "d", "e": "f"}""")
+        self.assertJsonEqual(j.to_dict(), {'a': 'x', 'c': 'd', 'e': 'f'})
 
         j.put(e='x')
 
-        self.assertEqual(j.to_string(), """{"a": "x", "c": "d", "e": "x"}""")
+        self.assertJsonEqual(j.to_dict(), {'a': 'x', 'c': 'd', 'e': 'x'})
 
     def test_future(self):
         j = JsonBuilder()
@@ -96,7 +97,7 @@ class TestJsonBuilder(unittest.TestCase):
         f.set_result(result)
         j.put(f)
 
-        self.assertEqual(j.to_string(), """{"error": {"reason": "error", "code": "code"}}""")
+        self.assertJsonEqual(j.to_dict(), {'error': {'reason': 'error', 'code': 'code'}})
 
     def test_nested_future(self):
         j = JsonBuilder()
@@ -130,8 +131,8 @@ class TestJsonBuilder(unittest.TestCase):
             {'a': result}
         )
 
-        self.assertEqual(
-            j.to_string(), """{"nested": {"a": {"error": {"reason": "error", "code": "code"}}}}"""
+        self.assertJsonEqual(
+            j.to_dict(), {'nested': {'a': {'error': {'reason': 'error', 'code': 'code'}}}}
         )
 
     def test_nested_json_builder(self):
@@ -143,8 +144,8 @@ class TestJsonBuilder(unittest.TestCase):
 
         j1.put(j2)
 
-        self.assertEqual(
-            j1.to_string(), """{"k2": "v2", "k1": "v1"}"""
+        self.assertJsonEqual(
+            j1.to_dict(), {'k2': 'v2', 'k1': 'v1'}
         )
 
     def test_dict_put_invalid(self):

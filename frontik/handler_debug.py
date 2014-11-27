@@ -169,11 +169,14 @@ def request_to_curl_string(request):
         curl_echo_data = ''
         curl_data_string = "--data '{0}'".format(_escape_apos(request.body)) if request.body else ''
 
+    def _format_header(key):
+        return "-H '{0}: {1}'".format(key, _escape_apos(str(curl_headers[key])))
+
     return "{echo} curl -X {method} '{url}' {headers} {data}".format(
         echo=curl_echo_data,
         method=request.method,
         url=request.url,
-        headers=' '.join("-H '{0}: {1}'".format(k, _escape_apos(str(v))) for k, v in curl_headers.iteritems()),
+        headers=' '.join(_format_header(k) for k in sorted(curl_headers.keys())),
         data=curl_data_string
     ).strip()
 
