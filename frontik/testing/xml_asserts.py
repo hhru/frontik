@@ -188,8 +188,6 @@ class XmlTestCaseMixin(object):
         """Assert that two xml documents are equal (the order of elements and attributes is ignored)."""
         self._assert_xml_compare(_xml_compare, expected, real, msg, check_tags_order=check_tags_order)
 
-    assertXmlAlmostEquals = assertXmlEqual  # Deprecated alias
-
     def assertXmlCompatible(self, old, new, msg=None):
         """Assert that one xml document is an extension of another."""
         self._assert_xml_compare(_xml_check_compatibility, old, new, msg)
