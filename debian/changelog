@@ -1,3 +1,9 @@
+frontik (2.21.22) unstable; urgency=low
+
+  * HH-44533 move json asserts and fix tests
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 27 Nov 2014 15:47:29 +0300
+
 frontik (2.21.21) unstable; urgency=low
 
   * HH-48291 extend /version info
