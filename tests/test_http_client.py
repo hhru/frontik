@@ -3,10 +3,11 @@
 import unittest
 from lxml import etree
 
+from frontik.testing import json_asserts
 from .instances import frontik_test_app
 
 
-class TestHttpClient(unittest.TestCase):
+class TestHttpClient(unittest.TestCase, json_asserts.JsonTestCaseMixin):
     def test_post_url_simple(self):
         xml = frontik_test_app.get_page_xml('http_client/post_simple')
         self.assertEqual(xml.text, '42')
@@ -42,9 +43,9 @@ class TestHttpClient(unittest.TestCase):
         self.assertEqual(text, '{"get": true}')
 
     def test_parse_response(self):
-        text = frontik_test_app.get_page_text('http_client/parse_response')
-        self.assertEqual(
-            text, '{"post": true, "delete": "deleted", "error": {"reason": "HTTP 400: Bad Request", "code": 400}}'
+        json = frontik_test_app.get_page_json('http_client/parse_response')
+        self.assertJsonEqual(
+            json, {'post': True, 'delete': 'deleted', 'error': {'reason': 'HTTP 400: Bad Request', 'code': 400}}
         )
 
     def test_custom_headers(self):
@@ -52,8 +53,8 @@ class TestHttpClient(unittest.TestCase):
         self.assertEqual(json['X-Foo'], 'Bar')
 
     def test_group(self):
-        text = frontik_test_app.get_page_text('http_client/group')
-        self.assertEqual(text, '{"1": {"1": "yay"}, "2": {"2": "yay"}, "final_callback_called": true}')
+        json = frontik_test_app.get_page_json('http_client/group')
+        self.assertJsonEqual(json, {'1': {'1': 'yay'}, '2': {'2': 'yay'}, 'final_callback_called': True})
 
     def test_group_with_failing_request(self):
         response = frontik_test_app.get_page('http_client/group?fail=true')
