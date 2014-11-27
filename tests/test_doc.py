@@ -6,7 +6,7 @@ import unittest
 from frontik.doc import Doc
 from frontik.future import Future
 from frontik.http_client import RequestResult, FailedRequestException
-from frontik.testing.test_utils import XmlTestCaseMixin
+from frontik.testing.xml_asserts import XmlTestCaseMixin
 from .instances import frontik_test_app
 
 
