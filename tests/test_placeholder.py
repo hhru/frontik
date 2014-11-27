@@ -3,11 +3,11 @@
 import unittest
 
 from frontik.future import Future, FutureStateException
-
+from frontik.testing import json_asserts
 from .instances import frontik_test_app
 
 
-class TestPlaceholder(unittest.TestCase):
+class TestPlaceholder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
     def test_single_data_set(self):
         f = Future()
 
@@ -55,5 +55,5 @@ class TestPlaceholder(unittest.TestCase):
         self.assertTrue(state['callback3'])
 
     def test_future_with_main_asyncgroup(self):
-        response = frontik_test_app.get_page('future')
-        self.assertEqual(response.content, '{"1": "yay", "cb": "yes", "2": "yay"}')
+        json = frontik_test_app.get_page_json('future')
+        self.assertJsonEqual(json, {'1': 'yay', 'cb': 'yes', '2': 'yay'})

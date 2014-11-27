@@ -4,38 +4,51 @@ import unittest
 
 from lxml import etree
 
-from frontik.testing import test_utils
+from frontik.testing import xml_asserts
 
 
-class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixin):
+class TestXmlResponseMixin(unittest.TestCase, xml_asserts.XmlTestCaseMixin):
 
-    def test_assertXmlAlmostEquals_abs_equals(self):
-        tree1_str, _, = self._get_almost_equals_xml()
-        tree1 = etree.fromstring(tree1_str)
-        tree1_2 = etree.fromstring(tree1_str)
+    TREE1 = '''
+        <elem start="17" end="18">
+            <zAtrib/>
+            <aAtrib>
+                <cAtrib/>
+                <bAtrib a="1" b="2"/>
+            </aAtrib>
+        </elem>
+        '''.strip()
+
+    TREE2 = '''
+        <elem end="18" start="17" >
+            <aAtrib>
+                <bAtrib b="2" a="1"/>
+                <cAtrib/>
+            </aAtrib>
+            <zAtrib/>
+        </elem>
+        '''.strip()
+
+    def test_assertXmlEqual_abs_equals(self):
         try:
-            self.assertXmlAlmostEquals(tree1_str, tree1_str)
-            self.assertXmlAlmostEquals(tree1, tree1_2)
+            self.assertXmlEqual(self.TREE1, self.TREE1)
+            self.assertXmlEqual(etree.fromstring(self.TREE1), etree.fromstring(self.TREE1))
         except self.failureException as e:
             self.fail('XML should be absolute equals (Reported error: "{0!s}")'.format(e))
 
-    def test_assertXmlAlmostEquals_with_strings(self):
-        tree1_str, tree2_str = self._get_almost_equals_xml()
+    def test_assertXmlEqual_with_strings(self):
         try:
-            self.assertXmlAlmostEquals(tree1_str, tree2_str)
+            self.assertXmlEqual(self.TREE1, self.TREE2)
         except self.failureException as e:
             self.fail('XML should be almost equals (Reported error: "{0!s}")'.format(e))
 
-    def test_assertXmlAlmostEquals_with_tree(self):
-        tree1_str, tree2_str = self._get_almost_equals_xml()
-        tree1 = etree.fromstring(tree1_str)
-        tree2 = etree.fromstring(tree2_str)
+    def test_assertXmlEqual_with_tree(self):
         try:
-            self.assertXmlAlmostEquals(tree1, tree2)
+            self.assertXmlEqual(etree.fromstring(self.TREE1), etree.fromstring(self.TREE2))
         except self.failureException as e:
             self.fail('XML should be almost equals (Reported error: "{0!s}")'.format(e))
 
-    def test_assertXmlAlmostEquals_same_tags_order(self):
+    def test_assertXmlEqual_same_tags_order(self):
         x1_str = '''
             <elem>
                 <a/>
@@ -66,16 +79,13 @@ class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixi
             </elem>
             '''.strip()
         try:
-            self.assertXmlAlmostEquals(x1_str, x2_str)
+            self.assertXmlEqual(x1_str, x2_str)
         except self.failureException as e:
             self.fail('XML should be almost equals (Reported error: "{0!s}")'.format(e))
 
-    # ----------------------------------------------------
-    # assertXmlCompatible
     def test_assertXmlCompatible_abs_equals(self):
-        tree1_str, _ = self._get_almost_equals_xml()
         try:
-            self.assertXmlCompatible(tree1_str, tree1_str)
+            self.assertXmlCompatible(self.TREE1, self.TREE1)
         except self.failureException as e:
             self.fail('XML should be absolute equals (Reported error: "{0!s}")'.format(e))
 
@@ -152,6 +162,7 @@ class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixi
                 <a douglas="adams" extra="extra"/>
             </elem>
             '''.strip()
+
         self.assertRaises(self.failureException, self.assertXmlCompatible, old, new)
 
     def test_assertXmlCompatible_incompatible_less_tags(self):
@@ -177,31 +188,8 @@ class TestXmlResponseMixin(unittest.TestCase, test_utils.XmlResponseTestCaseMixi
                 </a>
             </elem>
             '''.strip()
+
         try:
             self.assertXmlCompatible(old, new)
         except self.failureException as e:
             self.assertIn('Children length differs', str(e))
-
-    # ----------------------------------------------------
-    # helpers
-    def _get_almost_equals_xml(self):
-        tree1_str = '''
-            <elem start="17" end="18">
-                <zAtrib/>
-                <aAtrib>
-                    <cAtrib/>
-                    <bAtrib a="1" b="2"/>
-                </aAtrib>
-            </elem>
-            '''.strip()
-        # properties and tags order changed
-        tree2_str = '''
-            <elem end="18" start="17" >
-                <aAtrib>
-                    <bAtrib b="2" a="1"/>
-                    <cAtrib/>
-                </aAtrib>
-                <zAtrib/>
-            </elem>
-            '''.strip()
-        return tree1_str, tree2_str

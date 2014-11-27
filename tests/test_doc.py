@@ -19,18 +19,18 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
         d.put('test')
 
         self.assertFalse(d.is_empty())
-        self.assertXmlAlmostEqual(d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
+        self.assertXmlEqual(d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
 
     def test_future_simple(self):
         d = Doc('a')
         f = Future()
         d.put(f)
 
-        self.assertXmlAlmostEqual(d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a/>""")
+        self.assertXmlEqual(d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a/>""")
 
         f.set_result('test')
 
-        self.assertXmlAlmostEqual(d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
+        self.assertXmlEqual(d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
 
     def test_future_etree_element(self):
         d = Doc('a')
@@ -38,7 +38,7 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
         f.set_result(etree.Element('b'))
         d.put(f)
 
-        self.assertXmlAlmostEqual(d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a><b/></a>""")
+        self.assertXmlEqual(d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a><b/></a>""")
 
     def test_future_list(self):
         d = Doc('a')
@@ -46,7 +46,7 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
         f.set_result([etree.Comment('ccc'), etree.Element('bbb')])
         d.put(f)
 
-        self.assertXmlAlmostEqual(
+        self.assertXmlEqual(
             d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a><!--ccc--><bbb/></a>"""
         )
 
@@ -58,7 +58,7 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
         f.set_result(result)
         d.put(f)
 
-        self.assertXmlAlmostEqual(
+        self.assertXmlEqual(
             d.to_etree_element(),
             """<?xml version='1.0' encoding='utf-8'?>\n<a><error reason="error" code="code"/></a>"""
         )
@@ -69,7 +69,7 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
         b.put('test')
         a.put(b)
 
-        self.assertXmlAlmostEqual(
+        self.assertXmlEqual(
             a.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a><b>test</b></a>"""
         )
 
@@ -81,15 +81,16 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
         a.put(Doc('c'))
         a.put('3')
 
-        self.assertXmlAlmostEqual(
-            a.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a>1<b/>2<c/>3</a>"""
+        self.assertXmlEqual(
+            a.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a>1<b/>2<c/>3</a>""",
+            check_tags_order=True
         )
 
     def test_root_node(self):
         d = Doc(root_node=etree.Element('doc'))
         d.put(etree.Element('test1'))
 
-        self.assertXmlAlmostEqual(
+        self.assertXmlEqual(
             d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<doc><test1/></doc>"""
         )
 
@@ -100,7 +101,7 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
         d2 = Doc(root_node=d1)
         d2.put(etree.Comment('2'))
 
-        self.assertXmlAlmostEqual(
+        self.assertXmlEqual(
             d2.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a><!--1--><!--2--></a>"""
         )
 
