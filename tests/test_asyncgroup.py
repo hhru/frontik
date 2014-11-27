@@ -3,10 +3,11 @@ from functools import partial
 
 from frontik.async import AsyncGroup
 from frontik.future import Future
+from frontik.testing import json_asserts
 from .instances import frontik_test_app
 
 
-class TestAsyncGroup(unittest.TestCase):
+class TestAsyncGroup(unittest.TestCase, json_asserts.JsonTestCaseMixin):
     def test_callbacks(self):
         data = []
 
@@ -126,9 +127,11 @@ class TestAsyncGroup(unittest.TestCase):
         self.assertEqual(ag._aborted, False)
 
     def test_handler_async_group(self):
-        exp = '{"1": {"1": "yay"}, "3": {"error": {"reason": "HTTP 400: Bad Request", "code": 400}}, "2": {"2": "yay"}}'
-        response = frontik_test_app.get_page('async_group')
-        self.assertEqual(response.content, exp)
+        json = frontik_test_app.get_page_json('async_group')
+        self.assertJsonEqual(
+            json,
+            {'1': {'1': 'yay'}, '3': {'error': {'reason': 'HTTP 400: Bad Request', 'code': 400}}, '2': {'2': 'yay'}}
+        )
 
     def test_handler_async_group_fail(self):
         response = frontik_test_app.get_page('async_group?fail=true')

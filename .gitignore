@@ -20,6 +20,7 @@ frontik.egg-info/
 *.log
 *.pid
 .coverage*
+.tox/
 
 # OS X junk
 .AppleDouble
