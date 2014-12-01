@@ -1,3 +1,12 @@
+frontik (2.21.23) unstable; urgency=low
+
+  * HH-48514 remove some dead code
+  * HH-48514 set MicroHandler group name
+  * HH-48514 add new MicroHandler test
+  * HH-48514 add more handler tests
+
+ -- Automated Build <an.sumin@hh.ru>  Mon, 01 Dec 2014 18:54:27 +0300
+
 frontik (2.21.22) unstable; urgency=low
 
   * HH-44533 move json asserts and fix tests
