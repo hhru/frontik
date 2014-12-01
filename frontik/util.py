@@ -79,22 +79,6 @@ def get_query_parameters(url):
     return urlparse.parse_qs(urlparse.urlparse(url).query, True)
 
 
-def get_all_files(root, extension=None):
-    out = list()
-    for subdir, dirs, files in os.walk(root):
-        out += [os.path.abspath(file) for file in files if extension and file.endswith(extension)]
-    return out
-
-
-def dict_concat(dict1, dict2):
-    """
-    Returns content of dict1 after dict1.update(dict2)? without its modification
-    """
-    dict3 = copy(dict1)
-    dict3.update(dict2)
-    return dict3
-
-
 BOUNDARY = mimetools.choose_boundary()
 ENCODE_TEMPLATE = '--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{data}\r\n'
 ENCODE_TEMPLATE_FILE = ('--{boundary}\r\nContent-Disposition: form-data; name="{name}"; '

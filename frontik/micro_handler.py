@@ -86,7 +86,7 @@ class MicroHandler(BaseHandler):
                 futures[name] = method(url, **req.kwargs)
 
             done_method_name = handler_method_name + '_requests_done'
-            self._http_client.group(futures, getattr(self, done_method_name, None))
+            self._http_client.group(futures, getattr(self, done_method_name, None), name='MicroHandler')
 
         elif return_value is not None:
             raise Exception('Invalid return type: {}'.format(type(return_value)))
