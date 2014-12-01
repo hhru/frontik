@@ -63,7 +63,7 @@ class FrontikTestInstance(object):
             time.sleep(0.01)
         assert fun()
 
-    def get_page(self, page, notpl=False, **kwargs):
+    def get_page(self, page, notpl=False, method=requests.get, **kwargs):
         if not self.port:
             self.start()
 
@@ -79,7 +79,7 @@ class FrontikTestInstance(object):
             auth = kwargs['auth']
             kwargs['auth'] = HTTPBasicAuth(auth[1], auth[2])
 
-        return requests.get(url, **kwargs)
+        return method(url, **kwargs)
 
     def get_page_xml(self, page, notpl=False):
         content = self.get_page_text(page, notpl)

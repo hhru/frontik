@@ -22,9 +22,9 @@ class Page(MicroHandler):
         fail_on_error = self.get_argument('fail_on_error', 'false') == 'true'
 
         return {
-            'post': self.POST(self.request.host, self.request.uri, data={'param': 'post'}),
-            'put': self.PUT(self.request.host, self.request.uri, fail_on_error=fail_on_error),
-            'delete': self.DELETE(self.request.host, self.request.uri)
+            'post': self.POST(self.request.host, self.request.path, data={'param': 'post'}),
+            'put': self.PUT(self.request.host, self.request.path, fail_on_error=fail_on_error),
+            'delete': self.DELETE(self.request.host, self.request.path + '?invalid_dict_value=true')
         }
 
     def get_page_requests_failed(self, name, data, response):
@@ -55,6 +55,7 @@ class Page(MicroHandler):
         raise HTTPError(401, json={'error': 'forbidden'})
 
     def delete_page(self):
-        return {
-            'invalid': 'behavior'
-        }
+        if self.get_argument('invalid_dict_value', 'false') == 'true':
+            return {'invalid': 'value'}
+        elif self.get_argument('invalid_return_value', 'false') == 'true':
+            return object()

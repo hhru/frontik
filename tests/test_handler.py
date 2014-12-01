@@ -1,5 +1,6 @@
 # coding=utf-8
 
+import requests
 import unittest
 
 from .instances import frontik_non_debug, frontik_test_app
@@ -18,3 +19,13 @@ class TestHandler(unittest.TestCase):
 
         text = frontik_test_app.get_page_text('check_finished')
         self.assertEqual(text, 'Callback not called')
+
+    def test_head(self):
+        response = frontik_test_app.get_page('head', method=requests.head)
+        self.assertEqual(response.headers['X-Foo'], 'Bar')
+        self.assertEqual(response.content, '')
+
+    def test_no_method(self):
+        response = frontik_test_app.get_page('head', method=requests.post)
+        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.headers['Allow'], 'get')

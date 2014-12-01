@@ -2,8 +2,6 @@
 
 import time
 
-import tornado.ioloop
-
 import frontik.handler
 
 
@@ -21,7 +19,7 @@ class Page(frontik.handler.PageHandler):
             self.doc.put('ok')
 
     def post_page(self):
-        tornado.ioloop.IOLoop.instance().add_timeout(
+        self.add_timeout(
             time.time() + 2, self.finish_group.add(self.check_finished(self.timeout_callback))
         )
 
