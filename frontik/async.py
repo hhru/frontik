@@ -8,20 +8,6 @@ from tornado.ioloop import IOLoop
 log = logging.getLogger('frontik.async')
 
 
-# TODO: deprecated, use BaseHandler.add_preprocessor
-def before(before_fun):
-    """
-    before_fun :: f(self, cb)
-    """
-    def before_fun_deco(fun):
-        def new_fun(self, *args, **kw):
-            def cb():
-                fun(self, *args, **kw)
-            before_fun(self, self.check_finished(cb))
-        return new_fun
-    return before_fun_deco
-
-
 class AsyncGroup(object):
     """
     Grouping of several async requests and final callback in such way that final callback is invoked
