@@ -1,7 +1,8 @@
 import json
 import unittest
 
-from frontik.future import Future
+from tornado.concurrent import Future
+
 from frontik.json_builder import JsonBuilder
 from frontik.http_client import RequestResult, FailedRequestException
 from frontik.testing import json_asserts

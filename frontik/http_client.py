@@ -6,12 +6,12 @@ import re
 
 from lxml import etree
 import simplejson as json
+from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 from tornado.options import options
 
 from frontik.async import AsyncGroup
 from frontik import frontik_logging
-from frontik.future import Future
 from frontik.globals import global_stats
 from frontik.handler_debug import PageHandlerDebug, response_from_debug
 import frontik.util

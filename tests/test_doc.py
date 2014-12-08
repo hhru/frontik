@@ -3,8 +3,9 @@
 from lxml import etree
 import unittest
 
+from tornado.concurrent import Future
+
 from frontik.doc import Doc
-from frontik.future import Future
 from frontik.http_client import RequestResult, FailedRequestException
 from frontik.testing.xml_asserts import XmlTestCaseMixin
 from .instances import frontik_test_app
