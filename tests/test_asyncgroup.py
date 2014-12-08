@@ -1,8 +1,9 @@
 import unittest
 from functools import partial
 
+from tornado.concurrent import Future
+
 from frontik.async import AsyncGroup
-from frontik.future import Future
 from frontik.testing import json_asserts
 from .instances import frontik_test_app
 
@@ -132,6 +133,10 @@ class TestAsyncGroup(unittest.TestCase, json_asserts.JsonTestCaseMixin):
             json,
             {'1': {'1': 'yay'}, '3': {'error': {'reason': 'HTTP 400: Bad Request', 'code': 400}}, '2': {'2': 'yay'}}
         )
+
+    def test_future_with_main_asyncgroup(self):
+        json = frontik_test_app.get_page_json('future')
+        self.assertJsonEqual(json, {'1': 'yay', 'cb': 'yes', '2': 'yay'})
 
     def test_handler_async_group_fail(self):
         response = frontik_test_app.get_page('async_group?fail=true')

@@ -1,9 +1,14 @@
 # coding=utf-8
 
+import logging
+
 import lxml.etree as etree
 
-from frontik.future import Future
+from tornado.concurrent import Future
+
 from frontik.http_client import RequestResult
+
+future_logger = logging.getLogger('frontik.future')
 
 
 class Doc(object):
@@ -59,8 +64,11 @@ class Doc(object):
                         yield i
 
             elif isinstance(chunk, Future):
-                for i in chunk_to_element(chunk.result()):
-                    yield i
+                if chunk.done():
+                    for i in chunk_to_element(chunk.result()):
+                        yield i
+                else:
+                    future_logger.info('unresolved Future in Doc', exc_info=True)
 
             elif isinstance(chunk, etree._Element):
                 yield chunk
