@@ -1,3 +1,9 @@
+frontik (2.21.25) unstable; urgency=low
+
+  * HH-48427 remove old test_utils
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 09 Dec 2014 16:26:32 +0300
+
 frontik (2.21.24) unstable; urgency=low
 
   * HH-48399 remove @before
