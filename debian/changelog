@@ -1,3 +1,11 @@
+frontik (2.21.26) unstable; urgency=low
+
+  * HH-39242 return old code for backwards compatibility
+  * HH-39242 add tests and fix ErrorHandler
+  * HH-39242 remove frontik_import
+
+ -- Automated Build <an.sumin@hh.ru>  Fri, 12 Dec 2014 12:38:03 +0300
+
 frontik (2.21.25) unstable; urgency=low
 
   * HH-48427 remove old test_utils
