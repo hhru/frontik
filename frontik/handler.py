@@ -65,10 +65,10 @@ class HTTPError(tornado.web.HTTPError):
 
 class ApplicationGlobals(object):
     """ Global settings for Frontik instance """
-    def __init__(self, app_package):
-        self.config = app_package.config
-        self.xml = frontik.producers.xml_producer.ApplicationXMLGlobals(app_package.config)
-        self.json = frontik.producers.json_producer.ApplicationJsonGlobals(app_package.config)
+    def __init__(self, config):
+        self.config = config
+        self.xml = frontik.producers.xml_producer.ApplicationXMLGlobals(config)
+        self.json = frontik.producers.json_producer.ApplicationJsonGlobals(config)
         self.curl_http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(max_clients=200)
 
 
@@ -562,3 +562,11 @@ class PageHandler(BaseHandler):
     # Deprecated, use PageHandler._http_client.fetch
     def fetch_request(self, request, callback, add_to_finish_group=True):
         return self._http_client.fetch(request, callback, add_to_finish_group)
+
+
+class ErrorHandler(tornado.web.ErrorHandler, PageHandler):
+    pass
+
+
+class RedirectHandler(tornado.web.RedirectHandler, PageHandler):
+    pass

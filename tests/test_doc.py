@@ -86,6 +86,14 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
             check_tags_order=True
         )
 
+    def test_other_types(self):
+        a = Doc('a')
+        a.put(1)
+        a.put(2.0)
+        a.put((3, 4, 5))
+
+        self.assertEqual(a.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a>12.0(3, 4, 5)</a>""")
+
     def test_root_node(self):
         d = Doc(root_node=etree.Element('doc'))
         d.put(etree.Element('test1'))
