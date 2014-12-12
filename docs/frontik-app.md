@@ -1,6 +1,6 @@
 ## Frontik application structure
 
-Each Frontik instance serves one application, which is loaded from a directory given in
+Each Frontik instance serves one application, which is imported from a package specified in
 `app` parameter (see [Running Frontik](/docs/running.md)).
 
 Frontik application is a set of files, organized in the following structure
@@ -8,8 +8,9 @@ Frontik application is a set of files, organized in the following structure
 
 ```
 - app/
+  |-- __init__.py
   |-- pages/
-    |-- __index__py
+    |-- __init__.py
     |-- articles.py
     |-- some_other_module.py
   |-- config.py

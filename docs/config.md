@@ -31,7 +31,7 @@ These options are defined for one Frontik instance (see [options.py](/frontik/op
 
 | Option name                  | Type    | Default value | Description                                                           |
 | ---------------------------- | ------- | ------------  | --------------------------------------------------------------------- |
-| `app`                        | `str`   | `None`        | Directory from which to load an application (see [Frontik application structure](/docs/frontik-app.md)) |
+| `app`                        | `str`   | `None`        | Application package name (see [Frontik application structure](/docs/frontik-app.md)) |
 | `app_root_url`               | `str`   | `''`          | Root url for the application                                          |
 | `tornado_settings`           | `dict`  | `None`        | tornado.web.Application settings                                      |
 | `autoreload`                 | `bool`  | `True`        | Restart Frontik after changes in application sources or config files  |
