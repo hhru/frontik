@@ -135,98 +135,8 @@ def extend_request_arguments(request, match, parse_function):
         if value:
             request.arguments.setdefault(name, []).extend(parse_function(value))
 
-# Deprecated, remove after backwards-incompatible code is deleted
-
-import imp
-import sys
-
-import frontik.magic_imp
-
 
 class FileMappingDispatcher(object):
-    def __init__(self, module, handler_404=None):
-        self.module = module
-        self.name = module.__name__
-        self.handler_404 = handler_404
-        app_logger.info('initialized %r', self)
-
-    def __call__(self, application, request, logger, **kwargs):
-        url_parts = get_rewritten_request_attribute(request, 'path').strip('/').split('/')
-        page_module_name = 'pages.' + '.'.join(filter(None, url_parts))
-        logger.debug('page module: %s', page_module_name)
-
-        try:
-            page_module = self.module.frontik_import(page_module_name)
-            logger.debug('using %s from %s', (self.name, page_module_name), page_module.__file__)
-        except ImportError:
-            logger.exception('%s module not found', (self.name, page_module_name))
-            if self.handler_404 is not None:
-                return self.handler_404
-            return tornado.web.ErrorHandler(application, request, status_code=404, logger=logger)
-        except AttributeError:
-            logger.exception('%s is not frontik application module (no "frontik_import" method)', self.name)
-            return tornado.web.ErrorHandler(application, request, status_code=500, logger=logger)
-        except:
-            logger.exception('error while importing %s module', (self.name, page_module_name))
-            return tornado.web.ErrorHandler(application, request, status_code=500, logger=logger)
-
-        if not hasattr(page_module, 'Page'):
-            logger.error('%s. Page class not found', page_module_name)
-            return tornado.web.ErrorHandler(application, request, status_code=404, logger=logger)
-
-        return page_module.Page(application, request, logger=logger, **kwargs)
-
-    def __repr__(self):
-        return '{}.{}(<{}, handler_404={}>)'.format(__package__, self.__class__.__name__, self.name, self.handler_404)
-
-
-class App(object):
-    class DefaultConfig(object):
-        pass
-
-    def __init__(self, name, root, config=None):
-        self.name = name
-        self.root = root
-        self.config = config
-
-    def initialize_app(self):
-        app_logger.info('initializing %r', self)
-        self.importer = frontik.magic_imp.FrontikAppImporter(self.name, self.root)
-        self.init_app_package(self.name, self.config)
-
-    def init_app_package(self, name, config=None):
-        self.module = imp.new_module(frontik.magic_imp.gen_module_name(name))
-        sys.modules[self.module.__name__] = self.module
-
-        self.pages_module = self.importer.imp_app_module('pages')
-        sys.modules[self.pages_module.__name__] = self.pages_module
-
-        if config is not None:
-            self.module.config = config
-        else:
-            try:
-                self.module.config = self.importer.imp_app_module('config')
-                # track all possible filenames for each app's config module to reload in case of change
-                for filename in self.importer.get_probable_module_filenames('config'):
-                    tornado.autoreload.watch(filename)
-            except ImportError:
-                self.module.config = App.DefaultConfig()
-                app_logger.warning('no config.py file, using empty default')
-
-        if not hasattr(self.module.config, 'urls'):
-            self.module.config.urls = [('', FileMappingDispatcher(self.pages_module))]
-
-        self.app_globals = ApplicationGlobals(self.module.config)
-        self.dispatcher = RegexpDispatcher(self.module.config.urls, self.module.__name__)
-
-    def __call__(self, application, request, logger, **kwargs):
-        return self.dispatcher(application, request, logger=logger, app_globals=self.app_globals, **kwargs)
-
-    def __repr__(self):
-        return '{}.{}({})'.format(__package__, self.__class__.__name__, self.name)
-
-
-class NewFileMappingDispatcher(object):
     def __init__(self, module, handler_404=None):
         self.name = module.__name__
         self.handler_404 = handler_404
@@ -260,7 +170,7 @@ class NewFileMappingDispatcher(object):
         return '{}.{}(<{}, handler_404={}>)'.format(__package__, self.__class__.__name__, self.name, self.handler_404)
 
 
-class NewApp(object):
+class App(object):
     class DefaultConfig(object):
         pass
 
@@ -275,12 +185,12 @@ class NewApp(object):
                 self.config = importlib.import_module('{}.config'.format(self.module))
                 tornado.autoreload.watch(self.config.__file__)
             except ImportError:
-                self.config = NewApp.DefaultConfig()
+                self.config = App.DefaultConfig()
                 app_logger.warning('no config.py file, using empty default')
 
         if not hasattr(self.config, 'urls'):
             self.config.urls = [
-                ('', NewFileMappingDispatcher(importlib.import_module('{}.pages'.format(self.module))))
+                ('', FileMappingDispatcher(importlib.import_module('{}.pages'.format(self.module))))
             ]
 
         self.app_globals = ApplicationGlobals(self.config)
