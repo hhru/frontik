@@ -1,3 +1,9 @@
+frontik (2.22.0) unstable; urgency=low
+
+  * HH-48861 remove old App and FileMappingDispatcher
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 17 Dec 2014 12:07:46 +0300
+
 frontik (2.21.26) unstable; urgency=low
 
   * HH-39242 return old code for backwards compatibility
