@@ -12,6 +12,8 @@ from lxml import etree
 import tornado.options
 from tornado_util import supervisor
 
+from . import PROJECT_ROOT
+
 try:
     import sys
     import coverage
@@ -40,9 +42,10 @@ class FrontikTestInstance(object):
             raise AssertionError('No empty port in range 9000..10000 for frontik test instance')
 
         if USE_COVERAGE:
-            script = 'coverage run -p --branch --source=frontik ./frontik-test'
+            script_tpl = '{exe} coverage run -p --branch --source=frontik {runner}'
         else:
-            script = './frontik-test'
+            script_tpl = '{exe} {runner}'
+        script = script_tpl.format(exe=sys.executable, runner=os.path.join(PROJECT_ROOT, 'frontik-test'))
 
         supervisor.start_worker(script, app=self.app, config=self.config, port=port)
         self.wait_for(lambda: supervisor.is_running(port))
@@ -53,6 +56,7 @@ class FrontikTestInstance(object):
             supervisor.stop_worker(self.port)
             self.wait_for(lambda: not(supervisor.is_running(self.port)))
             supervisor.rm_pidfile(self.port)
+            self.port = None
 
     @staticmethod
     def wait_for(fun, n=50):
@@ -100,7 +104,7 @@ class FrontikTestInstance(object):
     def get_page_text(self, page, notpl=False):
         return self.get_page(page, notpl).content
 
-join_projects_dir = partial(os.path.join, os.path.dirname(__file__), 'projects')
+join_projects_dir = partial(os.path.join, PROJECT_ROOT, 'tests', 'projects')
 
 frontik_broken_app = FrontikTestInstance('tests.projects.broken_app', join_projects_dir('frontik_debug.cfg'))
 frontik_test_app = FrontikTestInstance('tests.projects.test_app', join_projects_dir('frontik_debug.cfg'))
