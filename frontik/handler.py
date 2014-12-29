@@ -130,15 +130,17 @@ class BaseHandler(tornado.web.RequestHandler):
     def require_debug_access(self, login=None, passwd=None):
         if self._debug_access is None:
             if tornado.options.options.debug:
-                self._debug_access = True
+                debug_access = True
             else:
                 check_login = login if login is not None else tornado.options.options.debug_login
                 check_passwd = passwd if passwd is not None else tornado.options.options.debug_password
+                error = frontik.auth.check_debug_auth(self, check_login, check_passwd)
+                debug_access = (error is None)
+                if not debug_access:
+                    code, headers = error
+                    raise HTTPError(code, headers=headers)
 
-                self._debug_access = frontik.auth.passed_basic_auth(self, check_login, check_passwd)
-
-            if not self._debug_access:
-                raise HTTPError(401, headers={'WWW-Authenticate': 'Basic realm="Secure Area"'})
+            self._debug_access = debug_access
 
     def set_default_headers(self):
         self._headers = tornado.httputil.HTTPHeaders({
