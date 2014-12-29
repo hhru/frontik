@@ -67,7 +67,7 @@ class FrontikTestInstance(object):
         if not self.port:
             self.start()
 
-        url = 'http://localhost:{port}/{page}{notpl}'.format(
+        url = 'http://127.0.0.1:{port}/{page}{notpl}'.format(
             port=self.port,
             page=page.format(port=self.port),
             notpl=('?' if '?' not in page else '&') + 'notpl' if notpl else ''
