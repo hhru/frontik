@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import base64
+import httplib
 import unittest
 
 from tornado.escape import to_unicode
@@ -11,6 +12,10 @@ from .instances import frontik_non_debug
 
 
 class TestDebug(unittest.TestCase):
+
+    def setUp(self):
+        self.debug_basic_auth = 'Basic {}'.format(base64.encodestring('user:god'))
+
     def test_curl_string_get(self):
         request = make_get_request(
             'http://test.com/path',
@@ -51,7 +56,7 @@ class TestDebug(unittest.TestCase):
 
     def test_complex_debug_page(self):
         response = frontik_non_debug.get_page(
-            'app/debug?debug', headers={'Authorization': 'Basic {}'.format(base64.encodestring('user:god'))}
+            'app/debug?debug', headers={'Authorization': self.debug_basic_auth}
         )
 
         self.assertEquals(response.status_code, 200)
@@ -121,3 +126,48 @@ class TestDebug(unittest.TestCase):
 
         for msg in assert_not_found:
             self.assertNotIn(msg, response.content)
+
+    def assertDebugResponseCode(self, page, expected_code, headers=None):
+        response = frontik_non_debug.get_page(page, headers=headers)
+        self.assertEqual(
+            response.status_code,
+            expected_code
+        )
+        return response
+
+    def test_debug_by_basic_auth(self):
+        for param in ('debug', 'nopost', 'noxsl', 'notpl'):
+            response = self.assertDebugResponseCode(page='app/simple_xml?{}'.format(param),
+                                                    expected_code=httplib.UNAUTHORIZED)
+            self.assertIn('Www-Authenticate', response.headers)
+            self.assertRegexpMatches(response.headers['Www-Authenticate'], 'Basic realm="[^"]+"')
+
+            self.assertDebugResponseCode(page='app/simple_xml?{}'.format(param),
+                                         headers={'Authorization': self.debug_basic_auth},
+                                         expected_code=httplib.OK)
+
+    def test_debug_by_basic_auth_with_wrong_header(self):
+        for value in ('Token user:god',
+                      'Bearer abcdfe0123456789',
+                      'Basic',
+                      'Basic ',
+                      'Basic ScrewYou',
+                      'Basic {}'.format(base64.encodestring(':')),
+                      'Basic {}'.format(base64.encodestring('')),
+                      'Basic {}'.format(base64.encodestring('not:pass')),
+                      'BASIC {}'.format(base64.encodestring('user:god'))):
+            self.assertDebugResponseCode(page='app/simple_xml?debug',
+                                         headers={'Authorization': value},
+                                         expected_code=httplib.UNAUTHORIZED)
+
+    def test_debug_by_cookie(self):
+        for param in ('debug', 'noxsl', 'notpl'):  # FIXME: nopost?
+            self.assertDebugResponseCode(page='app/simple_xml',
+                                         headers={'Cookie': '{}=true'.format(param)},
+                                         expected_code=httplib.UNAUTHORIZED)
+            self.assertDebugResponseCode(page='app/simple_xml',
+                                         headers={
+                                             'Cookie': '{}=true;'.format(param),
+                                             'Authorization': self.debug_basic_auth
+                                         },
+                                         expected_code=httplib.OK)
