@@ -9,7 +9,7 @@ from . import PROJECT_ROOT
 
 
 class TestPep8(unittest.TestCase):
-    CHECKED_FILES = ('frontik', 'tests', 'setup.py')
+    CHECKED_PATHS = ('frontik', 'tests', 'examples', 'setup.py', 'frontik-test')
 
     def test_pep8(self):
         pep8style = pep8.StyleGuide(
@@ -17,5 +17,5 @@ class TestPep8(unittest.TestCase):
             show_source=True,
             max_line_length=120
         )
-        result = pep8style.check_files(map(partial(os.path.join, PROJECT_ROOT), TestPep8.CHECKED_FILES))
+        result = pep8style.check_files(map(partial(os.path.join, PROJECT_ROOT), TestPep8.CHECKED_PATHS))
         self.assertEqual(result.total_errors, 0, 'Pep8 found code style errors or warnings')
