@@ -15,17 +15,19 @@ import tornado.web
 
 from frontik.async import AsyncGroup
 import frontik.auth
-from frontik.globals import global_stats
 import frontik.handler_active_limit
 from frontik.handler_debug import PageHandlerDebug
 from frontik.http_client import HttpClient
 import frontik.util
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
+from frontik.http_codes import process_status_code
 
 
 class HTTPError(tornado.web.HTTPError):
-    """Extends tornado.web.HTTPError with several keyword-only arguments.
+    """
+    Extends tornado.web.HTTPError with several keyword-only arguments.
+    Also allow using some extended HTTP codes
 
     :arg dict headers: Custom HTTP headers to pass along with the error response.
     :arg string text: Plain text override for error response.
@@ -39,9 +41,7 @@ class HTTPError(tornado.web.HTTPError):
         for data in ('text', 'xml', 'json'):
             setattr(self, data, kwargs.pop(data, None))
 
-        if status_code not in httplib.responses:
-            status_code = 503
-
+        status_code, kwargs['reason'] = process_status_code(status_code, kwargs.get('reason'))
         super(HTTPError, self).__init__(status_code, log_message, *args, **kwargs)
         self.headers = headers
 
@@ -158,8 +158,7 @@ class BaseHandler(tornado.web.RequestHandler):
             return value.decode('utf-8', 'ignore')
 
     def set_status(self, status_code, reason=None):
-        if status_code not in httplib.responses:
-            status_code = 503
+        status_code, reason = process_status_code(status_code, reason)
         super(BaseHandler, self).set_status(status_code, reason=reason)
 
     @staticmethod

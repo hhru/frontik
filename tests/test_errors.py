@@ -19,7 +19,17 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.headers['Content-Type'], 'text/html; charset=UTF-8')
         self.assertEqual(
             response.content,
-            '<html><title>401: Unauthorized</title><body>401: Unauthorized</body></html>'
+            u'<html><title>401: Unauthorized</title><body>401: Unauthorized</body></html>'
+        )
+
+    def test_raise_extended_code(self):
+        response = frontik_test_app.get_page('http_error?code=429')
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.headers['X-Foo'], 'Bar')
+        self.assertEqual(response.headers['Content-Type'], 'text/html; charset=UTF-8')
+        self.assertEqual(
+            response.content,
+            u'<html><title>429: Too Many Requests</title><body>429: Too Many Requests</body></html>'
         )
 
     def test_raise_with_unknown_code(self):
