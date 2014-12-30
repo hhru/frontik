@@ -29,3 +29,13 @@ class TestHandler(unittest.TestCase):
         response = frontik_test_app.get_page('head', method=requests.post)
         self.assertEqual(response.status_code, 405)
         self.assertEqual(response.headers['Allow'], 'get')
+
+    def test_set_status(self):
+        response = frontik_test_app.get_page('http_error?code=401&throw=false')
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.content, 'success')
+
+    def test_set_extended_status(self):
+        response = frontik_test_app.get_page('http_error?code=429&throw=false')
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.content, 'success')
