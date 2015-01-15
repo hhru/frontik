@@ -193,7 +193,7 @@ class DebugTestCase(unittest.TestCase):
             self.assertEqual('Frontik-Debug-Auth-Header realm="Secure Area"', response.headers['Www-Authenticate'])
 
     def test_debug_by_cookie(self):
-        for param in ('debug', 'noxsl', 'notpl'):  # FIXME: nopost?
+        for param in ('debug', 'noxsl', 'notpl', 'nopost'):
             self.assertDebugResponseCode(page='app/simple_xml',
                                          headers={'Cookie': '{}=true'.format(param)},
                                          expected_code=httplib.UNAUTHORIZED)

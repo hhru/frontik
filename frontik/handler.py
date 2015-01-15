@@ -112,7 +112,7 @@ class BaseHandler(tornado.web.RequestHandler):
         self.xml = self.xml_producer  # deprecated synonym
         self.doc = self.xml_producer.doc
 
-        if self.get_argument('nopost', None) is not None:
+        if frontik.util.get_cookie_or_url_param_value(self, 'nopost') is not None:
             self.require_debug_access()
             self.apply_postprocessor = False
             self.log.debug('apply_postprocessor = False due to "nopost" argument')
