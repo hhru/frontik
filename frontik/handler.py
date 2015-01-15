@@ -310,9 +310,9 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def on_connection_close(self):
         self.finish_group.abort()
+        self.cleanup()
         self.log.stage_tag('page')
         self.log.log_stages(408)
-        raise HTTPError(408, 'Client closed the connection: aborting request')
 
     def send_error(self, status_code=500, **kwargs):
         self.log.stage_tag('page')
@@ -387,15 +387,18 @@ class BaseHandler(tornado.web.RequestHandler):
         self.set_header('Content-Type', 'text/html; charset=UTF-8')
         return super(BaseHandler, self).write_error(status_code, **kwargs)
 
-    def finish(self, chunk=None):
+    def cleanup(self):
         if hasattr(self, 'finish_timeout_handle'):
             IOLoop.instance().remove_timeout(self.finish_timeout_handle)
 
+        if hasattr(self, 'active_limit'):
+            self.active_limit.release()
+
+    def finish(self, chunk=None):
         def _finish_with_async_hook():
             self.log.stage_tag('postprocess')
 
-            if hasattr(self, 'active_limit'):
-                self.active_limit.release()
+            self.cleanup()
 
             super(BaseHandler, self).finish(chunk)
             IOLoop.instance().add_timeout(
