@@ -9,7 +9,7 @@ from tornado.httpclient import HTTPRequest
 
 from frontik.async import AsyncGroup
 from frontik.handler import HTTPError
-from frontik.testing.service_mock import parse_query, route, route_less_or_equal_than, EmptyEnvironment
+from frontik.testing.service_mock import route, route_less_or_equal_than, EmptyEnvironment
 from frontik.testing.pages import Page
 
 
@@ -36,9 +36,6 @@ def _function_under_test(handler):
 
 
 class TestServiceMock(unittest.TestCase):
-    def test_parse_query_ok(self):
-        self.assertEquals(parse_query('a=&z=q&vacancyId=1432459'), {'a': ('',), 'z': ('q',), 'vacancyId': ('1432459',)})
-
     def test_equal_route(self):
         self.assertTrue(
             route_less_or_equal_than(route('/abc/?q=1'), route('/abc/?q=1')), 'equal routes do not match each other'

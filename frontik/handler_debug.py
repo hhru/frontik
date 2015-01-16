@@ -338,7 +338,6 @@ class PageHandlerDebug(object):
 
             self.mode_values = debug_value.split(',') if debug_value is not None else ''
             self.inherited = handler.request.headers.get(PageHandlerDebug.DEBUG_HEADER_NAME)
-            self.error_debug = False
 
             if debug_value is not None or self.inherited:
                 self.enabled = True

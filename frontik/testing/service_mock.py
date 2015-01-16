@@ -86,24 +86,17 @@ def url_less_or_equal_than(a, b):
 
 
 def query_less_than_or_equal(a, b):
-    a, b = map(parse_query, (a, b))
+    a, b = map(partial(parse_qs, keep_blank_values=True), (a, b))
     for i in a:
         bi = b.get(i)
-        if bi is None:
-            return False
-        if bi != a[i]:
+        if bi is None or bi != a[i]:
             return False
     return True
 
 
-def parse_query(query):
-    return {k: tuple(v) for k, v in parse_qs(query, keep_blank_values=True).iteritems()}
-
-
 class ServiceMock(object):
-    def __init__(self, routes, strict=0):
+    def __init__(self, routes):
         self.routes = routes
-        self.strict = strict
 
     def fetch_request(self, req):
         route_of_incoming_request = route(req.url, method=req.method)
@@ -112,25 +105,22 @@ class ServiceMock(object):
             if route_less_or_equal_than(destination_route, route_of_incoming_request):
                 result = self.get_result(req, self.routes[r])
                 result.request = req
-                if self.strict:
-                    del self.routes[r]
                 return result
+
         raise NotImplementedError(
-            "No route in service mock matches request to: \n" +
-            "{0} {1}\n tried to match following: \n'{2}', strictness = {3}".format(
-                req.method,
-                unquote(req.url),
-                "';\n'".join([unquote(str(rt)) for rt in self.routes]),
-                str(self.strict)))
+            "No route in service mock matches request '{0} {1}', tried to match following:\n'{2}'".format(
+                req.method, unquote(req.url), "';\n'".join([unquote(str(r)) for r in self.routes])
+            )
+        )
 
     def get_result(self, request, handler):
         if callable(handler):
             return self.get_result(request, handler(request))
         elif isinstance(handler, basestring):
-            (code, body) = (200, handler)
+            code, body = 200, handler
         elif isinstance(handler, tuple):
             try:
-                (code, body) = handler
+                code, body = handler
             except ValueError:
                 raise ValueError(
                     'Could not unpack {0!s} to (code, body) tuple that is a result to request {1} {2!s}'.format(
@@ -143,6 +133,7 @@ class ServiceMock(object):
                 'Handler {0!s}\n that matched request {1} {2!s}\n is neither tuple nor HTTPResponse '
                 'nor basestring instance nor callable returning any of above.'.format(handler, request.url, request)
             )
+
         return HTTPResponseStub(request, buffer=body, code=code, effective_url=request.url,
                                 headers=HTTPHeaders({'Content-Type': 'xml'}))
 

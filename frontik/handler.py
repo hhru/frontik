@@ -10,7 +10,6 @@ import tornado.httputil
 import tornado.options
 import tornado.web
 from tornado.ioloop import IOLoop
-from tornado.httpserver import HTTPRequest
 import tornado.options
 import tornado.web
 
@@ -23,22 +22,6 @@ from frontik.http_client import HttpClient
 import frontik.util
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
-
-
-# this function replaces __repr__ function for tornado's HTTPRequest
-# HTTPRequest.body is printed only in debug mode
-def context_based_repr(self):
-    attrs = ("protocol", "host", "method", "uri", "version", "remote_ip")
-    if tornado.options.options.debug:
-        attrs += ("body",)
-
-    args = ", ".join(["%s=%r" % (n, getattr(self, n)) for n in attrs])
-    return "%s(%s, headers=%s)" % (
-        self.__class__.__name__, args, dict(self.headers))
-
-
-# TODO: remove after Tornado3 migration
-HTTPRequest.__repr__ = context_based_repr
 
 
 class HTTPError(tornado.web.HTTPError):
@@ -174,11 +157,10 @@ class BaseHandler(tornado.web.RequestHandler):
             self.log.exception('cannot decode argument, ignoring invalid chars')
             return value.decode('utf-8', 'ignore')
 
-    # TODO: change signature after Tornado 3 migration
-    def set_status(self, status_code, **kwargs):
+    def set_status(self, status_code, reason=None):
         if status_code not in httplib.responses:
             status_code = 503
-        super(BaseHandler, self).set_status(status_code, **kwargs)
+        super(BaseHandler, self).set_status(status_code, reason=reason)
 
     @staticmethod
     def add_callback(callback):
@@ -322,13 +304,13 @@ class BaseHandler(tornado.web.RequestHandler):
 
         self.clear()
 
-        set_status_kwargs = {}
+        reason = None
         if 'exc_info' in kwargs:
             exception = kwargs['exc_info'][1]
             if isinstance(exception, HTTPError) and exception.reason:
-                set_status_kwargs['reason'] = exception.reason
+                reason = exception.reason
 
-        self.set_status(status_code, **set_status_kwargs)  # TODO: add explicit reason kwarg after Tornado 3 migration
+        self.set_status(status_code, reason=reason)
 
         try:
             self.write_error(status_code, **kwargs)
@@ -347,9 +329,7 @@ class BaseHandler(tornado.web.RequestHandler):
 
         # in Tornado 3 it may be better to rewrite this mechanism with futures
 
-        if 'exception' in kwargs:
-            exception = kwargs['exception']  # Old Tornado
-        elif 'exc_info' in kwargs:
+        if 'exc_info' in kwargs:
             exception = kwargs['exc_info'][1]
         else:
             exception = None
@@ -417,7 +397,7 @@ class BaseHandler(tornado.web.RequestHandler):
         self.log.stage_tag('finish')
         self.log.info('finished handler %r', self)
 
-        if self._prepared and (self.debug.debug_mode.enabled or self.debug.debug_mode.error_debug):
+        if self._prepared and self.debug.debug_mode.enabled:
             try:
                 self._response_size = sum(map(len, self._write_buffer))
                 original_headers = {'Content-Length': str(self._response_size)}
@@ -435,16 +415,13 @@ class BaseHandler(tornado.web.RequestHandler):
                     self._status_code, response_headers, original_response, self.log.get_current_total()
                 )
 
-                if self.debug.debug_mode.enabled:
-                    # change status code only if debug was explicitly requested
-                    self._status_code = 200
-
                 if self.debug.debug_mode.inherited:
                     self.set_header(PageHandlerDebug.DEBUG_HEADER_NAME, True)
 
                 self.set_header('Content-disposition', '')
                 self.set_header('Content-Length', str(len(res)))
                 self._write_buffer = [res]
+                self._status_code = 200
 
             except Exception:
                 self.log.exception('cannot write debug info')
@@ -561,10 +538,6 @@ class PageHandler(BaseHandler):
             callback=callback, content_type=content_type, labels=labels,
             add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
-
-    # Deprecated, use PageHandler._http_client.fetch
-    def fetch_request(self, request, callback, add_to_finish_group=True):
-        return self._http_client.fetch(request, callback, add_to_finish_group)
 
 
 class ErrorHandler(tornado.web.ErrorHandler, PageHandler):

@@ -47,7 +47,7 @@ setup(
         'pycurl >= 7.19.0',
         'requests >= 0.8.2',
         'jinja2 >= 2.6',
-        'tornado <= 3.2.2-hh99',
+        'tornado >= 3, <= 3.2.2-hh99',
         'tornado_util >= 0.7.6',
     ],
     dependency_links=[
