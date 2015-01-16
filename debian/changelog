@@ -1,3 +1,10 @@
+frontik (2.22.2) unstable; urgency=low
+
+  * HH-48866 service_mock improvements
+  * HH-48866 remove Tornado2 backwards compatible code
+
+ -- Automated Build <d.smirnov@hh.ru>  Fri, 16 Jan 2015 12:12:28 +0300
+
 frontik (2.22.1) unstable; urgency=low
 
   * HH-49403 Add proper cleanup
