@@ -240,7 +240,8 @@ class RegexpDispatcher(object):
         return '{}.{}(<{} routes>)'.format(__package__, self.__class__.__name__, len(self.apps))
 
 
-def get_tornado_app(app_root_url, frontik_app, tornado_settings=None):
+def build_frontik_app_dispatcher(frontik_app):
+
     def app_dispatcher(tornado_app, request, **kwargs):
         request_id = request.headers.get('X-Request-Id', str(global_stats.next_request_id()))
         request_logger = frontik_logging.RequestLogger(request, request_id)
@@ -253,6 +254,12 @@ def get_tornado_app(app_root_url, frontik_app, tornado_settings=None):
         set_rewritten_request_attribute(request, 'path', add_leading_slash(request.path[app_root_url_len:]))
 
         return frontik_app(tornado_app, request, request_logger, request_id=request_id, **kwargs)
+
+    return app_dispatcher
+
+
+def get_tornado_app(app_root_url, frontik_app, tornado_settings=None):
+    app_dispatcher = build_frontik_app_dispatcher(frontik_app)
 
     if tornado_settings is None:
         tornado_settings = {}
