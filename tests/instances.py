@@ -12,6 +12,8 @@ from lxml import etree
 import tornado.options
 from tornado_util import supervisor
 
+from . import PROJECT_ROOT
+
 try:
     import sys
     import coverage
@@ -21,11 +23,12 @@ except ImportError:
 
 
 class FrontikTestInstance(object):
-    def __init__(self, app, config):
+    def __init__(self, app, config, wait_steps=50):
         tornado.options.parse_config_file(config)
         self.app = app
         self.config = config
         self.port = None
+        self.wait_steps = wait_steps
 
     def start(self):
         for port in xrange(9000, 10000):
@@ -40,26 +43,28 @@ class FrontikTestInstance(object):
             raise AssertionError('No empty port in range 9000..10000 for frontik test instance')
 
         if USE_COVERAGE:
-            script = 'coverage run -p --branch --source=frontik ./frontik-test'
+            script_tpl = '{exe} coverage run -p --branch --source=frontik {runner}'
         else:
-            script = './frontik-test'
+            script_tpl = '{exe} {runner}'
+        script = script_tpl.format(exe=sys.executable, runner=os.path.join(PROJECT_ROOT, 'frontik-test'))
 
         supervisor.start_worker(script, app=self.app, config=self.config, port=port)
-        self.wait_for(lambda: supervisor.is_running(port))
+        self.wait_for(lambda: supervisor.is_running(port), n=self.wait_steps)
         self.port = port
 
     def stop(self):
         if self.port is not None:
             supervisor.stop_worker(self.port)
-            self.wait_for(lambda: not(supervisor.is_running(self.port)))
+            self.wait_for(lambda: not(supervisor.is_running(self.port)), n=self.wait_steps)
             supervisor.rm_pidfile(self.port)
+            self.port = None
 
     @staticmethod
     def wait_for(fun, n=50):
         for i in xrange(n):
             if fun():
                 return
-            time.sleep(0.01)
+            time.sleep(0.1)  # up to 5 seconds with n=50
 
         assert fun()
 
@@ -67,7 +72,7 @@ class FrontikTestInstance(object):
         if not self.port:
             self.start()
 
-        url = 'http://localhost:{port}/{page}{notpl}'.format(
+        url = 'http://127.0.0.1:{port}/{page}{notpl}'.format(
             port=self.port,
             page=page.format(port=self.port),
             notpl=('?' if '?' not in page else '&') + 'notpl' if notpl else ''
@@ -100,9 +105,10 @@ class FrontikTestInstance(object):
     def get_page_text(self, page, notpl=False):
         return self.get_page(page, notpl).content
 
-join_projects_dir = partial(os.path.join, os.path.dirname(__file__), 'projects')
+join_projects_dir = partial(os.path.join, PROJECT_ROOT, 'tests', 'projects')
 
-frontik_broken_app = FrontikTestInstance('tests.projects.broken_app', join_projects_dir('frontik_debug.cfg'))
+frontik_broken_app = FrontikTestInstance('tests.projects.broken_app', join_projects_dir('frontik_debug.cfg'),
+                                         wait_steps=5)
 frontik_test_app = FrontikTestInstance('tests.projects.test_app', join_projects_dir('frontik_debug.cfg'))
 frontik_re_app = FrontikTestInstance('tests.projects.re_app', join_projects_dir('frontik_debug.cfg'))
 frontik_non_debug = FrontikTestInstance('tests.projects.test_app', join_projects_dir('frontik_non_debug.cfg'))
