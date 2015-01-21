@@ -115,7 +115,7 @@ class RequestLogger(logging.LoggerAdapter):
         super(RequestLogger, self).__init__(PerRequestLogBufferHandler('frontik.handler'), {'request_id': request_id})
 
         self.stages = []
-        self._additional_data = {}
+        self._additional_data = {'request_id': request_id}
 
         # backcompatibility with logger
         self.warn = self.warning
