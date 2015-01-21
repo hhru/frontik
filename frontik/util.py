@@ -1,12 +1,10 @@
 # coding=utf-8
 
-import os
 import mimetools
 import mimetypes
 import re
 import urlparse
 from urllib import urlencode
-from copy import copy
 
 from tornado.httpclient import HTTPRequest
 from tornado.httputil import HTTPHeaders
