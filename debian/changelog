@@ -1,3 +1,22 @@
+frontik (2.23.0) unstable; urgency=low
+
+  * HH-48946 [tmp] send request_id field as additional data for bulk
+    loggers
+  * HH-48946 additional data for bulk loggers, simplify graylog handler,
+    add separate traceback field
+  * HH-48947 extended HTTP status codes support
+  * HH-49458 extract app dispatcher builder
+  * HH-48945 allow send 'nopost' as a cookie
+  * HH-48945 debugging auth by header
+  * HH-48945 fix parsing malformed basic auth header, add more tests for
+    debug auth
+  * HH-48945 testing infrastructure tests
+  * HH-48945 make tests more solid
+  * HH-48945 use 127.0.0.1 instead of localhost for forcing using ipv4
+    (fix failing tests in OS X)
+
+ -- Automated Build <n.kovalev@hh.ru>  Wed, 21 Jan 2015 12:17:20 +0300
+
 frontik (2.22.2) unstable; urgency=low
 
   * HH-48866 service_mock improvements
