@@ -152,7 +152,7 @@ class FileMappingDispatcher(object):
             page_module = importlib.import_module(page_module_name)
             logger.debug('using %s from %s', page_module_name, page_module.__file__)
         except ImportError:
-            logger.exception('%s module not found', (self.name, page_module_name))
+            logger.warning('%s module not found', (self.name, page_module_name))
             if self.handler_404 is not None:
                 return self.handler_404(application, request, logger, **kwargs)
             return ErrorHandler(application, request, logger, status_code=404, **kwargs)
