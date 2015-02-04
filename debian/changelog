@@ -1,3 +1,9 @@
+frontik (2.23.1) unstable; urgency=low
+
+  * HH-49557 Module not found is now warning
+
+ -- Automated Build <n.miroshnichenko@hh.ru>  Wed, 04 Feb 2015 22:21:31 +0300
+
 frontik (2.23.0) unstable; urgency=low
 
   * HH-48946 [tmp] send request_id field as additional data for bulk
