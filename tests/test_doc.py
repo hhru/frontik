@@ -87,6 +87,21 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
             check_tags_order=True
         )
 
+    def test_serializable(self):
+        class Serializable(object):
+            def __init__(self, tag, value):
+                self.tag = tag
+                self.value = value
+
+            def to_etree_element(self):
+                result = etree.Element(self.tag)
+                result.text = self.value
+                return result
+
+        a = Doc('a')
+        a.put(Serializable('testNode', 'vally'))
+        self.assertEqual(a.to_string(), """<?xml version='1.0' encoding='utf-8'?>\n<a><testNode>vally</testNode></a>""")
+
     def test_other_types(self):
         a = Doc('a')
         a.put(1)

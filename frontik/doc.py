@@ -56,6 +56,9 @@ class Doc(object):
                     for i in chunk_to_element(chunk_i):
                         yield i
 
+            elif hasattr(chunk, 'to_etree_element'):
+                yield chunk.to_etree_element()
+
             elif isinstance(chunk, RequestResult):
                 if chunk.exception is not None:
                     yield self.get_error_node(chunk.exception)
@@ -72,9 +75,6 @@ class Doc(object):
 
             elif isinstance(chunk, etree._Element):
                 yield chunk
-
-            elif isinstance(chunk, Doc):
-                yield chunk.to_etree_element()
 
             elif isinstance(chunk, basestring):
                 yield chunk
