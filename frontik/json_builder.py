@@ -44,19 +44,23 @@ class JsonBuilder(object):
 
         if isinstance(v, dict):
             return _check_dict(v)
+
         elif isinstance(v, (set, frozenset, list, tuple)):
             return _check_iterable(v)
+
         elif isinstance(v, RequestResult):
             if v.exception is not None:
                 return self.get_error_node(v.exception)
             return self._check_value(v.data)
+
         elif isinstance(v, Future):
             if v.done():
                 return self._check_value(v.result())
 
             future_logger.info('unresolved Future in JsonBuilder', exc_info=True)
             return None
-        elif isinstance(v, JsonBuilder):
+
+        elif hasattr(v, 'to_dict'):
             return _check_dict(v.to_dict())
 
         return v
