@@ -2,6 +2,9 @@
 
 import os
 
+from lxml import etree
+
+
 XSL_root = os.path.normpath(os.path.join(os.path.dirname(__file__), 'xsl'))
 XML_root = os.path.normpath(os.path.join(os.path.dirname(__file__), 'xml'))
 template_root = os.path.normpath(os.path.join(os.path.dirname(__file__), 'templates'))
@@ -16,7 +19,6 @@ def post(self, data, cb):
 
 postprocessor = post
 
-from lxml import etree
 version = [etree.Element('app-version', number='last version')]
 
 debug_labels = {
