@@ -124,7 +124,7 @@ class BaseHandler(tornado.web.RequestHandler):
             self.finish_timeout_handle = IOLoop.instance().add_timeout(
                 time.time() + tornado.options.options.long_request_timeout, self.__handle_long_request)
 
-        self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish', log=self.log.info)
+        self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish', logger=self.log)
         self._prepared = True
 
     def require_debug_access(self, login=None, passwd=None):
@@ -449,7 +449,7 @@ class BaseHandler(tornado.web.RequestHandler):
 
             def _callback(*args):
                 time_delta = (time.time() - start_time) * 1000
-                self.log.info('finished %s "%r" in %.2fms', chain_type, func, time_delta)
+                self.log.debug('finished %s "%r" in %.2fms', chain_type, func, time_delta)
                 self._chain_functions(functions, callback, chain_type, *args)
 
             func(self, *(args + (_callback,)))
