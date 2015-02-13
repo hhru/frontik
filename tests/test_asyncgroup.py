@@ -8,6 +8,20 @@ from frontik.testing import json_asserts
 from .instances import frontik_test_app
 
 
+class LoggerMock(object):
+    def __init__(self):
+        self.log = []
+
+    def debug(self, msg, *args):
+        self.log.append(msg % args)
+
+    def error(self, msg, *args):
+        self.log.append(msg % args)
+
+    def info(self, msg, *args):
+        self.log.append(msg % args)
+
+
 class TestAsyncGroup(unittest.TestCase, json_asserts.JsonTestCaseMixin):
     def test_callbacks(self):
         data = []
@@ -71,7 +85,7 @@ class TestAsyncGroup(unittest.TestCase, json_asserts.JsonTestCaseMixin):
         self.assertEqual(f.result(), True)
 
     def test_exception_in_first(self):
-        log = []
+        logger = LoggerMock()
 
         def callback1():
             raise Exception('callback1 error')
@@ -82,7 +96,7 @@ class TestAsyncGroup(unittest.TestCase, json_asserts.JsonTestCaseMixin):
         def finish_callback():
             self.fail('finish_callback should not be called')
 
-        ag = AsyncGroup(finish_callback, log=lambda msg, *args: log.append(msg % args), name='test_group')
+        ag = AsyncGroup(finish_callback, logger=logger, name='test_group')
         cb1 = ag.add(callback1)
         cb2 = ag.add(callback2)
 
@@ -92,12 +106,12 @@ class TestAsyncGroup(unittest.TestCase, json_asserts.JsonTestCaseMixin):
 
         cb2()
 
-        self.assertEqual(log[-1], 'test_group group: ignoring response because of already finished group')
+        self.assertEqual(logger.log[-1], 'test_group group: ignoring response because of already finished group')
         self.assertEqual(ag._finish_cb_called, False)
         self.assertEqual(ag._aborted, True)
 
     def test_exception_in_last(self):
-        log = []
+        logger = LoggerMock()
 
         def callback2():
             raise Exception('callback1 error')
@@ -105,7 +119,7 @@ class TestAsyncGroup(unittest.TestCase, json_asserts.JsonTestCaseMixin):
         def finish_callback():
             self.fail('finish_callback should not be called')
 
-        ag = AsyncGroup(finish_callback, log=lambda msg, *args: log.append(msg % args), name='test_group')
+        ag = AsyncGroup(finish_callback, logger=logger, name='test_group')
         cb1 = ag.add(lambda: None)
         cb2 = ag.add(callback2)
 
@@ -113,7 +127,8 @@ class TestAsyncGroup(unittest.TestCase, json_asserts.JsonTestCaseMixin):
 
         self.assertRaises(Exception, cb2)
 
-        self.assertEqual(log[-2], 'test_group group: aborting async group due to unhandled exception in callback')
+        self.assertEqual(logger.log[-2],
+                         'test_group group: aborting async group due to unhandled exception in callback')
         self.assertEqual(ag._finish_cb_called, False)
         self.assertEqual(ag._aborted, True)
 
