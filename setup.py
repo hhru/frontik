@@ -41,7 +41,6 @@ setup(
     },
     install_requires=[
         'nose',
-        'pep8',
         'lxml >= 2.3.2',
         'simplejson >= 2.3.2',
         'pycurl >= 7.19.0',
@@ -49,6 +48,9 @@ setup(
         'jinja2 >= 2.6',
         'tornado >= 3, <= 3.2.2-hh99',
         'tornado_util >= 0.7.6',
+    ],
+    tests_require=[
+        'pep8',
     ],
     dependency_links=[
         'https://github.com/hhru/tornado-util/archive/master.zip#egg=tornado_util-0.7.6',

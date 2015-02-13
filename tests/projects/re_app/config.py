@@ -1,4 +1,14 @@
+# coding=utf-8
+
 import os
+
+from frontik.app import FileMappingDispatcher
+
+import pages
+import pages.handler_404
+import pages.simple
+import pages.id_param
+
 
 XSL_root = os.path.normpath(os.path.join(os.path.dirname(__file__), 'xsl'))
 XML_root = None
@@ -11,13 +21,6 @@ def post(self, data, cb):
 postprocessor = post
 
 XSL_cache_limit = 1
-
-from frontik.app import FileMappingDispatcher
-
-import pages
-import pages.handler_404
-import pages.simple
-import pages.id_param
 
 urls = [
     ('/id/(?P<id>[^/]+)', pages.id_param.Page),
