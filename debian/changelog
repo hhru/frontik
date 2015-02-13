@@ -1,3 +1,11 @@
+frontik (2.23.2) unstable; urgency=low
+
+  * HH-50050 Change log levels for async group and pre/post processors
+    to debug
+  * HH-50094 Small style fixes
+
+ -- Automated Build <d.smirnov@hh.ru>  Fri, 13 Feb 2015 11:20:23 +0300
+
 frontik (2.23.1) unstable; urgency=low
 
   * HH-49557 Module not found is now warning
