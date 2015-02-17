@@ -184,9 +184,9 @@ class App(object):
             try:
                 self.config = importlib.import_module('{}.config'.format(self.module))
                 tornado.autoreload.watch(self.config.__file__)
-            except ImportError:
+            except ImportError as ie:
+                app_logger.warning('no config.py file, using empty default: %s', ie)
                 self.config = App.DefaultConfig()
-                app_logger.warning('no config.py file, using empty default')
 
         if not hasattr(self.config, 'urls'):
             self.config.urls = [
