@@ -32,6 +32,7 @@ These options are defined for one Frontik instance (see [options.py](/frontik/op
 | Option name                  | Type    | Default value | Description                                                           |
 | ---------------------------- | ------- | ------------  | --------------------------------------------------------------------- |
 | `app`                        | `str`   | `None`        | Application package name (see [Frontik application structure](/docs/frontik-app.md)) |
+| `app_class`                  | `str`   | `None`        | Application class name defined in application root module, uses default FrontikApplication class if default value is used  |
 | `app_root_url`               | `str`   | `''`          | Root url for the application                                          |
 | `tornado_settings`           | `dict`  | `None`        | tornado.web.Application settings                                      |
 | `autoreload`                 | `bool`  | `True`        | Restart Frontik after changes in application sources or config files  |
@@ -57,5 +58,5 @@ These options are defined for one Frontik instance (see [options.py](/frontik/op
 | `timeout_multiplier`         | `float` | `1.0`         | Generic timeout multiplier for get_xxx calls (useful for testing)     |
 | `handlers_count`             | `int`   | `100`         | Limit for number of simultaneous requests handled by Frontik instance |
 
-There are also certain options, that can be defined in application configuration file, see
+There are also certain options, that can be defined by application, see
 [Configuring Frontik application](/docs/config-app.md) for more details.
