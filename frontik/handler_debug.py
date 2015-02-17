@@ -383,7 +383,7 @@ class PageHandlerDebug(object):
 
         try:
             debug_log_data.append(E.versions(
-                _pretty_print_xml(frontik.app.get_frontik_and_apps_versions())
+                _pretty_print_xml(frontik.app.get_frontik_and_apps_versions(self.handler.application))
             ))
         except:
             debug_log.exception('cannot add version information')
