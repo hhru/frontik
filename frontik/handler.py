@@ -2,7 +2,6 @@
 
 import base64
 from functools import partial
-import httplib
 import time
 
 import tornado.curl_httpclient
@@ -22,6 +21,7 @@ import frontik.util
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
 from frontik.http_codes import process_status_code
+import frontik.sentry
 
 
 class HTTPError(tornado.web.HTTPError):
@@ -79,6 +79,7 @@ class BaseHandler(tornado.web.RequestHandler):
             self.add_template_postprocessor(self.config.postprocessor)
 
         self.text = None
+        self._sentry_handler = None
 
     def __repr__(self):
         return '.'.join([self.__module__, self.__class__.__name__])
@@ -479,6 +480,25 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def set_template(self, filename):
         return self.json_producer.set_template(filename)
+
+    # Sentry
+
+    def get_sentry_handler(self):
+        if self._sentry_handler is None:
+            client = getattr(self.application, 'sentry_client', None)
+            if client:
+                self._sentry_handler = frontik.sentry.SentryHandler(client, self.request)
+                self.preset_sentry_handler(self._sentry_handler)
+        return self._sentry_handler
+
+    def preset_sentry_handler(self, sentry_handler):
+        pass
+
+    def log_exception(self, typ, value, tb):
+        super(BaseHandler, self).log_exception(typ, value, tb)
+        sentry_handler = self.get_sentry_handler()
+        if sentry_handler is not None and not isinstance(value, tornado.web.HTTPError):
+            sentry_handler.capture_exception(exc_info=(typ, value, tb))
 
 
 class PageHandler(BaseHandler):

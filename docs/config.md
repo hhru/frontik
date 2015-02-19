@@ -52,6 +52,7 @@ These options are defined for one Frontik instance (see [options.py](/frontik/op
 | `graylog`                    | `bool`  | `False`       | Enables sending logs to Graylog                                       |
 | `graylog_host`               | `str`   | `'localhost'` | Graylog host                                                          |
 | `graylog_port`               | `int`   | `12201`       | Graylog port                                                          |
+| `sentry_dsn`                 | `str`   | `None`        | Enable Sentry and set Sentry DSN for sending errors                   |
 | `xsl_executor`               | `str`   | `'threaded'`  | Executor type for XSL templating (alternative: `'ioloop'`)            |
 | `json_executor`              | `str`   | `'ioloop'`    | Executor type for JSON templating                                     |
 | `warn_no_jobs`               | `bool`  | `True`        | Write a warning if no jobs were found in executor queue               |
