@@ -1,7 +1,7 @@
 # coding=utf-8
 
 import threading
-import Queue
+from Queue import PriorityQueue, Empty as QueueEmpty
 import logging
 from functools import partial
 
@@ -14,11 +14,12 @@ __threadpool_executor = None
 
 
 def queue_worker(queue):
+    warn_no_jobs = tornado.options.options.warn_no_jobs
     while True:
         try:
             (prio, (func, cb, exception_cb)) = queue.get(timeout=10)
-        except Queue.Empty:
-            if tornado.options.options.warn_no_jobs:
+        except QueueEmpty:
+            if warn_no_jobs:
                 jobs_log.warning('no job in 10 secs')
             continue
         except Exception:
@@ -49,7 +50,7 @@ class ThreadPoolExecutor(object):
 
     def __init__(self, pool_size):
         assert pool_size > 0
-        self.events = Queue.PriorityQueue()
+        self.events = PriorityQueue()
 
         jobs_log.debug('pool size: ' + str(pool_size))
         self.workers = [threading.Thread(target=partial(queue_worker, self.events)) for i in range(pool_size)]
