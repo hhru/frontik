@@ -275,7 +275,7 @@ class BaseHandler(tornado.web.RequestHandler):
                 else:
                     producer = self.xml_producer
 
-                self.log.info('using %s producer', producer)
+                self.log.debug('using %s producer', producer)
 
                 if self.apply_postprocessor:
                     producer(partial(self._call_postprocessors, self._template_postprocessors, self.finish))
