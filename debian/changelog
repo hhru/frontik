@@ -1,3 +1,10 @@
+frontik (2.23.4) unstable; urgency=low
+
+  * HH-49568 sentry integration
+  * HH-50021 serializable object can be put into doc
+
+ -- Automated Build <n.kovalev@hh.ru>  Mon, 02 Mar 2015 16:48:29 +0300
+
 frontik (2.23.3) unstable; urgency=low
 
   * HH-50161 Use debug log level for file cache and producers
