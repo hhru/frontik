@@ -138,6 +138,17 @@ class ServiceMock(object):
                                 headers=HTTPHeaders({'Content-Type': 'xml'}))
 
 
+def application_mock(handlers, config):
+    class Mock(frontik.app.FrontikApplication):
+        def application_urls(self):
+            return handlers
+
+        def application_config(self):
+            return config
+
+    return Mock
+
+
 class EmptyEnvironment(object):
 
     class LocalHandlerConfig(object):
@@ -215,16 +226,17 @@ class EmptyEnvironment(object):
             handler_class = type('TestPage', (frontik.handler.PageHandler,), {})
 
         # Create application with the only route — handler_class
-        self._config.urls = [('', handler_class)]
-        frontik_app = frontik.app.App('frontik.testing', self._config)
-        tornado_app = frontik.app.get_tornado_app('/', frontik_app)
+        application = application_mock([('', handler_class)], self._config)(**{
+            'app': 'frontik.testing',
+            'app_root_url': '/',
+        })
 
         # Mock methods
 
         def fetch(request, callback, **kwargs):
             IOLoop.instance().add_callback(partial(self._fetch_mock, request, callback, **kwargs))
 
-        frontik_app.app_globals.curl_http_client.fetch = fetch
+        application.curl_http_client.fetch = fetch
 
         def wrapped_method(handler):
             method(handler, *args, **kwargs)
@@ -251,7 +263,7 @@ class EmptyEnvironment(object):
 
         handler_class.flush = flush
 
-        self._handler = tornado_app(self._request)
+        self._handler = application(self._request)
         IOLoop.instance().start()
 
         if raise_exceptions and exceptions:

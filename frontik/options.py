@@ -3,6 +3,7 @@
 import tornado.options
 
 tornado.options.define('app', default=None, type=str)
+tornado.options.define('app_class', default=None, type=str)
 tornado.options.define('app_root_url', default='/', type=str)
 tornado.options.define('tornado_settings', default=None, type=dict)
 tornado.options.define('handlers_count', default=100, type=int)

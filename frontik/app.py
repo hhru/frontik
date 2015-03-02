@@ -9,28 +9,19 @@ from lxml import etree
 import tornado.autoreload
 import tornado.web
 import tornado.ioloop
+import tornado.curl_httpclient
 from tornado.options import options
 
 from frontik import frontik_logging
 from frontik.globals import global_stats
-from frontik.handler import ApplicationGlobals, BaseHandler, ErrorHandler
+import frontik.producers.json_producer
+import frontik.producers.xml_producer
+from frontik.handler import BaseHandler, ErrorHandler
 
 app_logger = logging.getLogger('frontik.app')
 
 
-def _get_apps_versions():
-    app_info = etree.Element('application', name=options.app)
-
-    try:
-        app_config = importlib.import_module('{}.config'.format(options.app))
-        app_info.extend(list(app_config.version))
-    except:
-        etree.SubElement(app_info, 'version').text = 'unknown'
-
-    return app_info
-
-
-def get_frontik_and_apps_versions():
+def get_frontik_and_apps_versions(application):
     from frontik.version import version
     import simplejson
     import sys
@@ -44,7 +35,7 @@ def get_frontik_and_apps_versions():
     etree.SubElement(versions, 'lxml.etree.LIBXSLT').text = '.'.join(str(x) for x in etree.LIBXSLT_VERSION)
     etree.SubElement(versions, 'simplejson').text = simplejson.__version__
     etree.SubElement(versions, 'python').text = sys.version.replace('\n', '')
-    versions.append(_get_apps_versions())
+    etree.SubElement(versions, 'application', name=options.app).extend(application.application_version_xml())
 
     return versions
 
@@ -52,7 +43,8 @@ def get_frontik_and_apps_versions():
 class VersionHandler(tornado.web.RequestHandler):
     def get(self):
         self.set_header('Content-Type', 'text/xml')
-        self.write(etree.tostring(get_frontik_and_apps_versions(), encoding='utf-8', xml_declaration=True))
+        self.write(
+            etree.tostring(get_frontik_and_apps_versions(self.application), encoding='utf-8', xml_declaration=True))
 
 
 class StatusHandler(tornado.web.RequestHandler):
@@ -122,13 +114,6 @@ def set_rewritten_request_attribute(request, field, value):
     setattr(request, 're_' + field, value)
 
 
-get_to_dispatch = get_rewritten_request_attribute  # Old aliases
-
-
-def set_to_dispatch(request, value, field='path'):
-    set_rewritten_request_attribute(request, field, value)
-
-
 def extend_request_arguments(request, match, parse_function):
     arguments = match.groupdict()
     for name, value in arguments.iteritems():
@@ -170,39 +155,6 @@ class FileMappingDispatcher(object):
         return '{}.{}(<{}, handler_404={}>)'.format(__package__, self.__class__.__name__, self.name, self.handler_404)
 
 
-class App(object):
-    class DefaultConfig(object):
-        pass
-
-    def __init__(self, module, config=None):
-        self.module = module
-        self.config = config
-
-        app_logger.info('initializing %r', self)
-
-        if self.config is None:
-            try:
-                self.config = importlib.import_module('{}.config'.format(self.module))
-                tornado.autoreload.watch(self.config.__file__)
-            except ImportError:
-                self.config = App.DefaultConfig()
-                app_logger.warning('no config.py file, using empty default')
-
-        if not hasattr(self.config, 'urls'):
-            self.config.urls = [
-                ('', FileMappingDispatcher(importlib.import_module('{}.pages'.format(self.module))))
-            ]
-
-        self.app_globals = ApplicationGlobals(self.config)
-        self.dispatcher = RegexpDispatcher(self.config.urls, self.module)
-
-    def __call__(self, application, request, logger, **kwargs):
-        return self.dispatcher(application, request, logger, app_globals=self.app_globals, **kwargs)
-
-    def __repr__(self):
-        return '{}.{}({})'.format(__package__, self.__class__.__name__, self.module)
-
-
 class RegexpDispatcher(object):
     def __init__(self, app_list, name='RegexpDispatcher'):
         self.name = name
@@ -240,36 +192,59 @@ class RegexpDispatcher(object):
         return '{}.{}(<{} routes>)'.format(__package__, self.__class__.__name__, len(self.apps))
 
 
-def build_frontik_app_dispatcher(frontik_app):
+def app_dispatcher(tornado_app, request, **kwargs):
+    request_id = request.headers.get('X-Request-Id', str(global_stats.next_request_id()))
+    request_logger = frontik_logging.RequestLogger(request, request_id)
 
-    def app_dispatcher(tornado_app, request, **kwargs):
-        request_id = request.headers.get('X-Request-Id', str(global_stats.next_request_id()))
-        request_logger = frontik_logging.RequestLogger(request, request_id)
+    def add_leading_slash(value):
+        return value if value.startswith('/') else '/' + value
 
-        def add_leading_slash(value):
-            return value if value.startswith('/') else '/' + value
+    app_root_url_len = len(options.app_root_url)
+    set_rewritten_request_attribute(request, 'uri', add_leading_slash(request.uri[app_root_url_len:]))
+    set_rewritten_request_attribute(request, 'path', add_leading_slash(request.path[app_root_url_len:]))
 
-        app_root_url_len = len(options.app_root_url)
-        set_rewritten_request_attribute(request, 'uri', add_leading_slash(request.uri[app_root_url_len:]))
-        set_rewritten_request_attribute(request, 'path', add_leading_slash(request.path[app_root_url_len:]))
-
-        return frontik_app(tornado_app, request, request_logger, request_id=request_id, **kwargs)
-
-    return app_dispatcher
+    return tornado_app.dispatcher(tornado_app, request, request_logger, request_id=request_id, **kwargs)
 
 
-def get_tornado_app(app_root_url, frontik_app, tornado_settings=None):
-    app_dispatcher = build_frontik_app_dispatcher(frontik_app)
+class FrontikApplication(tornado.web.Application):
+    class DefaultConfig(object):
+        pass
 
-    if tornado_settings is None:
-        tornado_settings = {}
+    def __init__(self, **settings):
+        tornado_settings = settings.get('tornado_settings')
 
-    return tornado.web.Application([
-        (r'/version/?', VersionHandler),
-        (r'/status/?', StatusHandler),
-        (r'/stop/?', StopHandler),
-        (r'/types_count/?', CountTypesHandler),
-        (r'/pdb/?', PdbHandler),
-        (r'/ph_count/?', CountPageHandlerInstancesHandler),
-        (r'{}.*'.format(app_root_url), app_dispatcher),
-    ], **tornado_settings)
+        if tornado_settings is None:
+            tornado_settings = {}
+
+        super(FrontikApplication, self).__init__([
+            (r'/version/?', VersionHandler),
+            (r'/status/?', StatusHandler),
+            (r'/stop/?', StopHandler),
+            (r'/types_count/?', CountTypesHandler),
+            (r'/pdb/?', PdbHandler),
+            (r'/ph_count/?', CountPageHandlerInstancesHandler),
+            (r'{}.*'.format(settings.get('app_root_url')), app_dispatcher),
+        ], **tornado_settings)
+
+        self.config = self.application_config()
+        self.app = settings.get('app')
+        self.xml = frontik.producers.xml_producer.ApplicationXMLGlobals(self.config)
+        self.json = frontik.producers.json_producer.ApplicationJsonGlobals(self.config)
+        self.curl_http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(max_clients=200)
+        self.dispatcher = RegexpDispatcher(self.application_urls(), self.app)
+
+    def application_urls(self):
+        return [
+            ('', FileMappingDispatcher(importlib.import_module('{}.pages'.format(self.app))))
+        ]
+
+    def application_config(self):
+        return FrontikApplication.DefaultConfig()
+
+    def application_version_xml(self):
+        version = etree.Element('version')
+        version.text = 'unknown'
+        return [version]
+
+# Temporary for backward compatibility
+App = FrontikApplication
