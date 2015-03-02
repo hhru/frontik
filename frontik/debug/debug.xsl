@@ -57,8 +57,6 @@
         <xsl:apply-templates select="entry[not(profile)]"/>
     </xsl:template>
 
-    <xsl:template match="entry[contains(@msg, 'finish group') and not(contains(/log/@mode, 'full'))]"/>
-
     <xsl:template match="log" mode="timeline"/>
 
     <xsl:template match="log[ancestor::log]" mode="timeline">
@@ -206,7 +204,9 @@
 
     <xsl:template match="entry[response]">
         <xsl:variable name="status">
-            <xsl:if test="response/code &lt; 200 or response/code >= 300">error</xsl:if>
+            <xsl:if test="response[code &lt; 200 or code >= 300 or error != 'None'] or exception">
+                error
+            </xsl:if>
         </xsl:variable>
 
         <xsl:variable name="highlight">
@@ -280,6 +280,7 @@
                 <xsl:apply-templates select="debug"/>
                 <xsl:apply-templates select="request"/>
                 <xsl:apply-templates select="response"/>
+                <xsl:apply-templates select="exception"/>
             </div>
         </div>
     </xsl:template>
