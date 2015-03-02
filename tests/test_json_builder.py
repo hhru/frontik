@@ -155,3 +155,19 @@ class TestJsonBuilder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
         j.put(['c'])
 
         self.assertRaises(ValueError, j.to_dict)
+
+    def test_serializable(self):
+        class Serializable(object):
+            def __init__(self, name, values):
+                self.name = name
+                self.values = values
+
+            def to_dict(self):
+                return {self.name: self.values}
+
+        j = JsonBuilder()
+        j.put(Serializable('some', ['test1', 'test2', 'test3']))
+
+        self.assertJsonEqual(
+            j.to_dict(), {'some': ['test1', 'test2', 'test3']}
+        )
