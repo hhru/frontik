@@ -28,4 +28,5 @@ Depends:
   python-jinja2,
 Suggests:
   python-graypy (>= 1:0.2.9+hh2),
+  python-raven (>= 5.2.0+hh1),
 Description: Tornado-based application server
