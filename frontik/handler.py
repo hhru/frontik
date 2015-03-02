@@ -46,38 +46,25 @@ class HTTPError(tornado.web.HTTPError):
         self.headers = headers
 
 
-class ApplicationGlobals(object):
-    """ Global settings for Frontik instance """
-    def __init__(self, config):
-        self.config = config
-        self.xml = frontik.producers.xml_producer.ApplicationXMLGlobals(config)
-        self.json = frontik.producers.json_producer.ApplicationJsonGlobals(config)
-        self.curl_http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(max_clients=200)
-
-
 class BaseHandler(tornado.web.RequestHandler):
 
     preprocessors = ()
 
     # to restore tornado.web.RequestHandler compatibility
-    def __init__(self, application, request, logger, request_id=None, app_globals=None, **kwargs):
+    def __init__(self, application, request, logger, request_id=None, **kwargs):
         self._prepared = False
 
         if request_id is None:
             raise Exception('no request_id for {} provided'.format(self.__class__))
 
-        if app_globals is None:
-            raise Exception('{} need to have app_globals'.format(self.__class__))
-
         self.name = self.__class__.__name__
         self.request_id = request_id
         self.log = logger
         self.log.register_handler(self)
-        self.config = app_globals.config
+        self.config = application.config
 
         super(BaseHandler, self).__init__(application, request, logger=self.log, **kwargs)
 
-        self._app_globals = app_globals
         self._debug_access = None
 
         self._template_postprocessors = []
@@ -85,7 +72,7 @@ class BaseHandler(tornado.web.RequestHandler):
         self._late_postprocessors = []
         self._returned_methods = set()
 
-        self._http_client = HttpClient(self, self._app_globals.curl_http_client, self.modify_http_client_request)
+        self._http_client = HttpClient(self, self.application.curl_http_client, self.modify_http_client_request)
 
         # this is deprecated
         if hasattr(self.config, 'postprocessor'):
@@ -105,10 +92,10 @@ class BaseHandler(tornado.web.RequestHandler):
         self.debug = PageHandlerDebug(self)
 
         self.json_producer = frontik.producers.json_producer.JsonProducer(
-            self, self._app_globals.json, getattr(self, 'json_encoder', None))
+            self, self.application.json, getattr(self, 'json_encoder', None))
         self.json = self.json_producer.json
 
-        self.xml_producer = frontik.producers.xml_producer.XmlProducer(self, self._app_globals.xml)
+        self.xml_producer = frontik.producers.xml_producer.XmlProducer(self, self.application.xml)
         self.xml = self.xml_producer  # deprecated synonym
         self.doc = self.xml_producer.doc
 
@@ -495,8 +482,8 @@ class BaseHandler(tornado.web.RequestHandler):
 
 
 class PageHandler(BaseHandler):
-    def __init__(self, application, request, logger, request_id=None, app_globals=None, **kwargs):
-        super(PageHandler, self).__init__(application, request, logger, request_id, app_globals, **kwargs)
+    def __init__(self, application, request, logger, request_id=None, **kwargs):
+        super(PageHandler, self).__init__(application, request, logger, request_id, **kwargs)
 
     def group(self, futures, callback=None, name=None):
         return self._http_client.group(futures, callback, name)

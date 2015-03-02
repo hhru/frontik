@@ -13,15 +13,29 @@ Frontik application is a set of files, organized in the following structure
     |-- __init__.py
     |-- articles.py
     |-- some_other_module.py
-  |-- config.py
 ```
 
-Frontik application can contain a file named `config.py`. It is executed once at application startup
-and can contain custom application initialization code.
+Application root module may contain class with overrides frontik.app.FrontikApplication class, providing application
+specific configs and url mappings, for example:
 
-Global variables from `config.py` are accessible from `PageHandler` instances via `self.config` attribute.
+```
+from frontik.app import FrontikApplication
 
-There are also certain global variables that you can set in `config.py`. For the list of such configuration parameters,
+
+class MyApplication(FrontikApplication):
+    def application_config(self):
+        return config
+
+    def application_urls(self):
+        return config.urls
+```
+
+For this class to be used, you should set app_class option on frontik configuration file to 'MyApplication'
+
+Config parameter from FrontikApplication application_config method is accessible from `PageHandler` instances
+via `self.config` attribute.
+
+There are also certain application configs that affects frontik. For the list of such configuration parameters,
 see [Configuring Frontik application](/docs/config-app.md).
 
 Frontik application must contain a `pages` module, containing application controllers. By default, routing mechanism
