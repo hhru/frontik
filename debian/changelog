@@ -1,3 +1,13 @@
+frontik (2.23.3) unstable; urgency=low
+
+  * HH-50161 Use debug log level for file cache and producers
+  * HH-48942 Make frontik application initialisation similar to tornado
+    application
+  * HH-50283 import object to module scope to prevent errors on
+    interpreter shutdown
+
+ -- Automated Build <d.smirnov@hh.ru>  Mon, 02 Mar 2015 10:01:11 +0300
+
 frontik (2.23.2) unstable; urgency=low
 
   * HH-50050 Change log levels for async group and pre/post processors
