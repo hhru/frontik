@@ -47,7 +47,7 @@ class FileCache(object):
 
     def load(self, filename, log):
         if filename in self.cache:
-            log.info('got %s file from cache (%s cache size: %s)', filename, self.cache_name, len(self.cache))
+            log.debug('got %s file from cache (%s cache size: %s)', filename, self.cache_name, len(self.cache))
             return self.cache[filename]
 
         real_filename = os.path.normpath(os.path.join(self.root_dir, filename))
