@@ -131,12 +131,16 @@ def response_from_debug(request, response):
     original_response = debug_response.xpath('//original-response')
     if original_response:
         response_info = frontik.xml_util.xml_to_dict(original_response[0])
-        debug_response.remove(original_response[0])
+        original_response[0].getparent().remove(original_response[0])
 
         original_buffer = base64.decodestring(response_info['buffer'])
 
+        headers = dict(response.headers)
+        if response_info['headers']:
+            headers.update(response_info['headers'])
+
         fake_response = HTTPResponse(
-            request, int(response_info['code']), headers=dict(response.headers, **response_info['headers']),
+            request, int(response_info['code']), headers=headers,
             buffer=cStringIO.StringIO(utf8(original_buffer)),
             effective_url=response.effective_url, request_time=response.request_time,
             time_info=response.time_info
