@@ -16,7 +16,7 @@ from frontik import frontik_logging
 from frontik.globals import global_stats
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
-from frontik.handler import BaseHandler, ErrorHandler
+from frontik.handler import ErrorHandler
 import frontik.sentry
 
 app_logger = logging.getLogger('frontik.app')
@@ -71,27 +71,10 @@ class StatusHandler(tornado.web.RequestHandler):
         self.write(result)
 
 
-class StopHandler(tornado.web.RequestHandler):
-    def get(self):
-        app_logger.info('requested shutdown')
-        tornado.ioloop.IOLoop.instance().stop()
-
-
 class PdbHandler(tornado.web.RequestHandler):
     def get(self):
         import pdb
         pdb.set_trace()
-
-
-class CountPageHandlerInstancesHandler(tornado.web.RequestHandler):
-    def get(self):
-        import gc
-
-        handlers = tuple(i for i in gc.get_objects() if isinstance(i, BaseHandler))
-
-        self.finish(
-            '{0}\n{1}'.format(len(handlers), [i for i in gc.get_referrers(*handlers) if i is not handlers])
-        )
 
 
 class CountTypesHandler(tornado.web.RequestHandler):
@@ -220,10 +203,8 @@ class FrontikApplication(tornado.web.Application):
         super(FrontikApplication, self).__init__([
             (r'/version/?', VersionHandler),
             (r'/status/?', StatusHandler),
-            (r'/stop/?', StopHandler),
             (r'/types_count/?', CountTypesHandler),
             (r'/pdb/?', PdbHandler),
-            (r'/ph_count/?', CountPageHandlerInstancesHandler),
             (r'{}.*'.format(settings.get('app_root_url')), app_dispatcher),
         ], **tornado_settings)
 
