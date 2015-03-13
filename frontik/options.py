@@ -21,6 +21,7 @@ tornado.options.define('stderr_dateformat', default='%y.%m.%d %H:%M:%S', type=st
 
 tornado.options.define('syslog', default=False, type=bool)
 tornado.options.define('syslog_address', default='/dev/log', type=str)
+tornado.options.define('syslog_port', default=None, type=int)
 tornado.options.define('syslog_facility', default='user', type=str)
 
 tornado.options.define('suppressed_loggers', default=['tornado.curl_httpclient'], type=list)
