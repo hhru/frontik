@@ -1,3 +1,11 @@
+frontik (2.23.6) unstable; urgency=low
+
+  * HH-50844 Add syslog port
+  * HH-50589 Remove unused frontik internal urls
+  * HH-49600 Fix debug
+
+ -- Automated Build <d.smirnov@hh.ru>  Fri, 13 Mar 2015 19:09:52 +0300
+
 frontik (2.23.4) unstable; urgency=low
 
   * HH-49568 sentry integration
