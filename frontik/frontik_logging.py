@@ -216,10 +216,15 @@ def bootstrap_logging():
         logging.getLogger('frontik.logging').warning('Unable to load graypy module, graylog disabled')
 
     if options.syslog:
+        if options.syslog_port is not None:
+            syslog_address = (options.syslog_address, options.syslog_port)
+        else:
+            syslog_address = options.syslog_address
+
         try:
             syslog_handler = SysLogHandler(
                 facility=SysLogHandler.facility_names[options.syslog_facility],
-                address=options.syslog_address
+                address=syslog_address
             )
             syslog_handler.setFormatter(logging.Formatter(options.logformat))
             syslog_handler.setLevel(level)
