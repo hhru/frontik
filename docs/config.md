@@ -46,7 +46,8 @@ These options are defined for one Frontik instance (see [options.py](/frontik/op
 | `stderr_format`              | `str`   | see code      | Log entry format for stderr output                                    |
 | `stderr_dateformat`          | `str`   | see code      | Log entry date format for stderr output                               |
 | `syslog`                     | `bool`  | `False`       | Enables sending logs to syslog                                        |
-| `syslog_address`             | `str`   | `'/dev/log'`  | Syslog address                                                        |
+| `syslog_address`             | `str`   | `'/dev/log'`  | Syslog address, unix socket name or server address                    |
+| `syslog_port`                | `int`   | `None`        | Syslog port. If this value is None, unix socket is used, UDP otherwise|
 | `syslog_facility`            | `str`   | `'user'`      | Syslog facility                                                       |
 | `suppressed_loggers`         | `list`  | `[]`          | List of logger names to be excluded from debug output                 |
 | `graylog`                    | `bool`  | `False`       | Enables sending logs to Graylog                                       |
