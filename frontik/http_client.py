@@ -59,6 +59,22 @@ class HttpClient(object):
 
         return future
 
+    def head_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None,
+                 callback=None, error_callback=None, follow_redirects=True, labels=None,
+                 add_to_finish_group=True):
+
+        future = Future()
+        request = frontik.util.make_head_request(url, data, headers, connect_timeout, request_timeout, follow_redirects)
+        request._frontik_labels = labels
+
+        self.fetch(
+            request,
+            partial(self._parse_response, future, callback, error_callback, False, False),
+            add_to_finish_group=add_to_finish_group
+        )
+
+        return future
+
     def post_url(self, url, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
                  callback=None, error_callback=None, follow_redirects=True, content_type=None, labels=None,
                  add_to_finish_group=True, parse_response=True, parse_on_error=False):

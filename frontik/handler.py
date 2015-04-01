@@ -518,6 +518,15 @@ class PageHandler(BaseHandler):
             add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
 
+    def head_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None, callback=None,
+                 follow_redirects=True, labels=None, add_to_finish_group=True):
+
+        return self._http_client.head_url(
+            url, data=data, headers=headers, connect_timeout=connect_timeout, request_timeout=request_timeout,
+            callback=callback, follow_redirects=follow_redirects, labels=labels,
+            add_to_finish_group=add_to_finish_group
+        )
+
     def post_url(self, url, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
                  callback=None, follow_redirects=True, content_type=None, labels=None,
                  add_to_finish_group=True, parse_response=True, parse_on_error=False):
