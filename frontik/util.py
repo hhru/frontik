@@ -200,6 +200,20 @@ def make_delete_request(url, data='', headers=None, content_type=None, connect_t
     )
 
 
+def make_head_request(url, data=None, headers=None, connect_timeout=None, request_timeout=None, follow_redirects=True):
+    data = {} if data is None else data
+    headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
+
+    return HTTPRequest(
+        url=_encode(make_url(url, **data)),
+        follow_redirects=follow_redirects,
+        method='HEAD',
+        headers=headers,
+        connect_timeout=connect_timeout,
+        request_timeout=request_timeout
+    )
+
+
 def _asciify_url_char(c):
     if ord(c) > 127:
         return hex(ord(c)).replace('0x', '%')
