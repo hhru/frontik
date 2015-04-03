@@ -33,7 +33,7 @@ These options are defined for one Frontik instance (see [options.py](/frontik/op
 | ---------------------------- | ------- | ------------  | --------------------------------------------------------------------- |
 | `app`                        | `str`   | `None`        | Application package name (see [Frontik application structure](/docs/frontik-app.md)) |
 | `app_class`                  | `str`   | `None`        | Application class name defined in application root module, uses default FrontikApplication class if default value is used  |
-| `app_root_url`               | `str`   | `''`          | Root url for the application                                          |
+| `app_root_url`               | `str`   | `''`          | <a name="app_root_url"></a>Root url for the application                                          |
 | `tornado_settings`           | `dict`  | `None`        | tornado.web.Application settings                                      |
 | `autoreload`                 | `bool`  | `True`        | Restart Frontik after changes in application sources or config files  |
 | `debug`                      | `bool`  | `False`       | Enable debug mode                                                     |
