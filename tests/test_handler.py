@@ -25,6 +25,10 @@ class TestHandler(unittest.TestCase):
         self.assertEqual(response.headers['X-Foo'], 'Bar')
         self.assertEqual(response.content, '')
 
+    def test_head_url(self):
+        response = frontik_test_app.get_page('head_url')
+        self.assertEqual(response.content, 'OK')
+
     def test_no_method(self):
         response = frontik_test_app.get_page('head', method=requests.post)
         self.assertEqual(response.status_code, 405)
