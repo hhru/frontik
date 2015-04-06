@@ -1,3 +1,11 @@
+frontik (2.23.7) unstable; urgency=low
+
+  * HH-51329 add head_url for PageHandler
+  * HH-50957 Log all exceptions during application initialization
+  * HH-51161 fix make_qs with unicode param keys
+
+ -- Automated Build <p.didevich@hh.ru>  Mon, 06 Apr 2015 13:35:23 +0300
+
 frontik (2.23.6) unstable; urgency=low
 
   * HH-50844 Add syslog port
