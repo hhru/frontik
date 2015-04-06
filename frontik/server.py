@@ -24,7 +24,7 @@ def main(config_file=None):
 
     try:
         module = importlib.import_module(options.app)
-    except ImportError as e:
+    except Exception as e:
         log.exception('failed to import application module "%s": %s', options.app, e)
         sys.exit(1)
 
