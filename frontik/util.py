@@ -23,13 +23,14 @@ def _encode(s):
 
 def make_qs(query_args):
     kv_pairs = []
-    for (key, val) in query_args.iteritems():
+    for key, val in query_args.iteritems():
         if val is not None:
+            encoded_key = _encode(key)
             if isinstance(val, (set, frozenset, list, tuple)):
                 for v in val:
-                    kv_pairs.append((key, _encode(v)))
+                    kv_pairs.append((encoded_key, _encode(v)))
             else:
-                kv_pairs.append((key, _encode(val)))
+                kv_pairs.append((encoded_key, _encode(val)))
 
     qs = urlencode(kv_pairs)
 
