@@ -12,6 +12,7 @@ from tornado.options import options
 
 from frontik.async import AsyncGroup
 from frontik import frontik_logging
+from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.globals import global_stats
 from frontik.handler_debug import PageHandlerDebug, response_from_debug
 import frontik.util
@@ -131,10 +132,11 @@ class HttpClient(object):
             global_stats.http_reqs_count += 1
 
             if self.handler._prepared and self.handler.debug.debug_mode.pass_debug:
-                authorization = self.handler.request.headers.get('Authorization')
                 request.headers[PageHandlerDebug.DEBUG_HEADER_NAME] = True
-                if authorization is not None:
-                    request.headers['Authorization'] = authorization
+                for header_name in ('Authorization', DEBUG_AUTH_HEADER_NAME):
+                    authorization = self.handler.request.headers.get(header_name)
+                    if authorization is not None:
+                        request.headers[header_name] = authorization
 
             request.headers['X-Request-Id'] = self.handler.request_id
 
