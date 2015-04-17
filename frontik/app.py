@@ -84,6 +84,7 @@ class StatusHandler(tornado.web.RequestHandler):
             )
 
             def _request_ready(result):
+                app_logger.debug('Got reponse for second status request. Code: %d', result.code)
                 if result.error is not None:
                     raise tornado.web.HTTPError(httplib.SERVICE_UNAVAILABLE)
                 self.set_header('Content-Type', 'application/json; charset=UTF-8')
