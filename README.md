@@ -12,6 +12,7 @@ Frontik was originally developed by Andrey Tatarinov at [hh.ru](http://hh.ru/) a
 * [Frontik application structure](/docs/frontik-app.md)
 * [Configuring Frontik application](/docs/config-app.md)
 * [Routing — TBA](/docs/routing.md)
+* [Service ulrs](/docs/service-urls.md)
 * [Page generation process](/docs/page-generation.md)
 * [Preprocessors](/docs/preprocessors.md)
 * [Making HTTP requests](/docs/http-client.md)
