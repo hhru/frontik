@@ -12,6 +12,8 @@ Build-Depends:
   python-tornado (>= 2.0.1+hh24),
   python-tornado-util (>= 0.7.6),
   python-jinja2,
+  libcurl3 (=7.22.0-3ubuntu4.14+hh1),
+  libcurl3-gnutls (=7.22.0-3ubuntu4.14+hh1),
 Standards-Version: 3.9.3
 X-Python-Version: >= 2.7
 
@@ -20,6 +22,8 @@ Architecture: all
 Depends:
   ${python:Depends},
   ${misc:Depends},
+  libcurl3 (=7.22.0-3ubuntu4.14+hh1),
+  libcurl3-gnutls (=7.22.0-3ubuntu4.14+hh1),
   python, 
   python-lxml,
   python-simplejson,
