@@ -1,3 +1,9 @@
+frontik (2.23.9) unstable; urgency=low
+
+  * HH-52500 add libcurl in debs
+
+ -- Automated Build <a.akhmetshin@hh.ru>  Wed, 03 Jun 2015 16:15:46 +0300
+
 frontik (2.23.8) unstable; urgency=low
 
   * HH-51249 [tmp] add logging
