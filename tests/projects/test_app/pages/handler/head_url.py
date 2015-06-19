@@ -9,4 +9,4 @@ class Page(frontik.handler.PageHandler):
             if data == '' and response.code == httplib.OK:
                 self.text = 'OK'
 
-        self.head_url(self.request.host+'/head', callback=_cb)
+        self.head_url(self.request.host+'/handler/head', callback=_cb)
