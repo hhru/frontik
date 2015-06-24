@@ -41,7 +41,7 @@ class MicroHandler(BaseHandler):
             )
         )
 
-    def DELETE(self, host, uri, data='', headers=None, connect_timeout=None, request_timeout=None,
+    def DELETE(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None,
                content_type=None, labels=None, fail_on_error=False):
         return MicroHandler._Request(
             'DELETE', host, uri, dict(
