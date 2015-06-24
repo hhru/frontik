@@ -1,3 +1,11 @@
+frontik (2.24.0) unstable; urgency=low
+
+  * HH-53228 Fix test
+  * HH-53228 Append data kwarg in delete requests to query string
+    instead of body
+
+ -- Automated Build <i.petropolsky@hh.ru>  Wed, 24 Jun 2015 13:24:17 +0300
+
 frontik (2.23.9) unstable; urgency=low
 
   * HH-52500 add libcurl in debs
