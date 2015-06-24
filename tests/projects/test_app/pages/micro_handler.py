@@ -24,7 +24,7 @@ class Page(MicroHandler):
         return {
             'post': self.POST(self.request.host, self.request.path, data={'param': 'post'}),
             'put': self.PUT(self.request.host, self.request.path, fail_on_error=fail_on_error),
-            'delete': self.DELETE(self.request.host, self.request.path + '?invalid_dict_value=true')
+            'delete': self.DELETE(self.request.host, self.request.path, data={'invalid_dict_value': 'true'})
         }
 
     def get_page_requests_failed(self, name, data, response):

@@ -17,6 +17,10 @@ class TestHttpClient(unittest.TestCase, json_asserts.JsonTestCaseMixin):
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(etree.fromstring(response.content.encode('utf-8')).text)
 
+    def test_delete_query_arguments(self):
+        json = frontik_test_app.get_page_json('handler/delete')
+        self.assertEqual(json['delete'], 'true')
+
     def test_fib0(self):
         xml = frontik_test_app.get_page_xml('http_client/fibonacci?n=0')
         self.assertEqual(xml.text, '1')

@@ -186,14 +186,14 @@ def make_put_request(url, data='', headers=None, content_type=None, connect_time
     )
 
 
-def make_delete_request(url, data='', headers=None, content_type=None, connect_timeout=None, request_timeout=None):
+def make_delete_request(url, data=None, headers=None, content_type=None, connect_timeout=None, request_timeout=None):
+    data = {} if data is None else data
     headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
     if content_type is not None:
         headers['Content-Type'] = content_type
 
     return HTTPRequest(
-        url=_encode(url),
-        body=make_body(data),
+        url=_encode(make_url(url, **data)),
         method='DELETE',
         headers=headers,
         connect_timeout=connect_timeout,

@@ -110,7 +110,7 @@ class HttpClient(object):
 
         return future
 
-    def delete_url(self, url, data='', headers=None, connect_timeout=None, request_timeout=None,
+    def delete_url(self, url, data=None, headers=None, connect_timeout=None, request_timeout=None,
                    callback=None, error_callback=None, content_type=None, labels=None,
                    add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
