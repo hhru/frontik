@@ -1,6 +1,7 @@
 # coding=utf-8
 
 from functools import partial
+from distutils.spawn import find_executable
 import json
 import os
 import socket
@@ -43,10 +44,14 @@ class FrontikTestInstance(object):
             raise AssertionError('No empty port in range 9000..10000 for frontik test instance')
 
         if USE_COVERAGE:
-            script_tpl = '{exe} coverage run -p --branch --source=frontik {runner}'
+            script_tpl = '{exe} {coverage_executable} run -p --branch --source=frontik {runner}'
         else:
             script_tpl = '{exe} {runner}'
-        script = script_tpl.format(exe=sys.executable, runner=os.path.join(PROJECT_ROOT, 'frontik-test'))
+        script = script_tpl.format(
+            exe=sys.executable,
+            coverage_executable=find_executable('coverage'),
+            runner=os.path.join(PROJECT_ROOT, 'frontik-test')
+        )
 
         supervisor.start_worker(script, app=self.app, config=self.config, port=port)
         self.wait_for(lambda: supervisor.is_running(port), n=self.wait_steps)
