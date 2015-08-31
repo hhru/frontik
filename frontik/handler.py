@@ -251,6 +251,9 @@ class BaseHandler(tornado.web.RequestHandler):
     def finish_with_postprocessors(self):
         self.finish_group.finish()
 
+    def _check_producer(self, producer):
+        pass
+
     def _finish_page_cb(self):
         if not self._finished:
             def _callback():
@@ -263,6 +266,7 @@ class BaseHandler(tornado.web.RequestHandler):
                 else:
                     producer = self.xml_producer
 
+                self._check_producer(producer)
                 self.log.debug('using %s producer', producer)
 
                 if self.apply_postprocessor:
