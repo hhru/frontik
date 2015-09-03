@@ -82,7 +82,7 @@ class MicroHandler(BaseHandler):
                     req.kwargs['error_callback'] = partial(_fail_on_error_wrapper, name)
 
                 method = self._METHODS_MAPPING[req_type]
-                url = '{}/{}'.format(req.host.rstrip('/'), req.uri.lstrip('/'))
+                url = u'{}/{}'.format(req.host.rstrip(u'/'), req.uri.lstrip(u'/'))
                 futures[name] = method(url, **req.kwargs)
 
             done_method_name = handler_method_name + '_requests_done'
