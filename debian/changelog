@@ -1,3 +1,10 @@
+frontik (2.24.1) unstable; urgency=low
+
+  * HH-54606 add unicode url and path test
+  * HH-54606 Unicode uri in microhandler
+
+ -- Automated Build <a.inozemtsev@hh.ru>  Thu, 03 Sep 2015 10:56:00 +0300
+
 frontik (2.24.0) unstable; urgency=low
 
   * HH-53228 Fix test
