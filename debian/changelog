@@ -1,3 +1,9 @@
+frontik (2.24.2) unstable; urgency=low
+
+  * HH-53444 fix coverage
+
+ -- Automated Build <i.khokhryakov@hh.ru>  Tue, 22 Sep 2015 14:46:55 +0300
+
 frontik (2.24.1) unstable; urgency=low
 
   * HH-54606 add unicode url and path test
