@@ -71,7 +71,10 @@ log = logging.getLogger('frontik.handler')
 
 class ContextFilter(logging.Filter):
     def filter(self, record):
-        record.name = '.'.join(filter(None, [record.name, getattr(record, 'request_id', None)]))
+        handler = getattr(record, 'handler', None)
+        handler_id = repr(handler) if handler is not None else None
+        request_id = getattr(record, 'request_id', None)
+        record.name = '.'.join(filter(None, [record.name, handler_id, request_id]))
         return True
 
 log.addFilter(ContextFilter())
