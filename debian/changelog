@@ -1,3 +1,9 @@
+frontik (2.24.3) unstable; urgency=low
+
+  * HH-55342 add handler id to all log lines
+
+ -- Automated Build <an.ivanov@hh.ru>  Mon, 28 Sep 2015 10:52:56 +0300
+
 frontik (2.24.2) unstable; urgency=low
 
   * HH-53444 fix coverage
