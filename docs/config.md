@@ -50,9 +50,6 @@ These options are defined for one Frontik instance (see [options.py](/frontik/op
 | `syslog_port`                | `int`   | `None`        | Syslog port. If this value is None, unix socket is used, UDP otherwise|
 | `syslog_facility`            | `str`   | `'user'`      | Syslog facility                                                       |
 | `suppressed_loggers`         | `list`  | `[]`          | List of logger names to be excluded from debug output                 |
-| `graylog`                    | `bool`  | `False`       | Enables sending logs to Graylog                                       |
-| `graylog_host`               | `str`   | `'localhost'` | Graylog host                                                          |
-| `graylog_port`               | `int`   | `12201`       | Graylog port                                                          |
 | `sentry_dsn`                 | `str`   | `None`        | Enable Sentry and set Sentry DSN for sending errors                   |
 | `xsl_executor`               | `str`   | `'threaded'`  | Executor type for XSL templating (alternative: `'ioloop'`)            |
 | `json_executor`              | `str`   | `'ioloop'`    | Executor type for JSON templating                                     |

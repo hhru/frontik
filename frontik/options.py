@@ -51,8 +51,4 @@ tornado.options.define('template_root', default=None, type=str)
 tornado.options.define('template_cache_limit', default=50, type=int)
 tornado.options.define('debug_labels', default=None, type=dict)
 
-tornado.options.define('graylog', default=False, type=bool)
-tornado.options.define('graylog_host', default='localhost', type=str)
-tornado.options.define('graylog_port', default=12201, type=int)
-
 tornado.options.define('sentry_dsn', default=None, type=str, metavar='http://public:secret@example.com/1')
