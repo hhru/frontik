@@ -1,6 +1,6 @@
 # coding=utf-8
+
 import logging
-import traceback
 import time
 import socket
 from collections import namedtuple
@@ -9,62 +9,7 @@ from logging.handlers import SysLogHandler, WatchedFileHandler
 
 import tornado.options
 from tornado.options import options
-from tornado.escape import to_unicode
 
-try:
-    from graypy.handler import GELFHandler, LAN_CHUNK
-
-    class BulkGELFHandler(GELFHandler):
-
-        @staticmethod
-        def format_time(record):
-            t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(record.created))
-            return "%s,%03d" % (t, record.msecs)
-
-        def handle_bulk(self, records_list, stages=None, status_code=None, uri=None, method=None,
-                        additional_data=None, **kwargs):
-            if not records_list:
-                return
-
-            record_for_gelf = logging.makeLogRecord({
-                'short': u"{0} {1} {2}".format(method, to_unicode(uri), status_code),
-                'levelno': logging.INFO,
-                'code': status_code,
-                'msg': u'',
-            })
-
-            for record in records_list:
-                if record_for_gelf.name is None and hasattr(record, 'handler'):
-                    record_for_gelf.name = repr(record.handler)
-
-                message = to_unicode(record.getMessage())
-                if record.levelno > record_for_gelf.levelno:
-                    record_for_gelf.levelno = record.levelno
-                    record_for_gelf.lineno = record.lineno
-                    record_for_gelf.short = message
-
-                # only the last exception will be sent
-                if record.exc_info is not None:
-                    exception_text = u'\n' + u''.join(map(to_unicode, traceback.format_exception(*record.exc_info)))
-                    record_for_gelf.traceback = exception_text
-
-                record_for_gelf.msg += u' {time} {level} {msg} \n'.format(
-                    time=self.format_time(record), level=record.levelname, msg=message
-                )
-
-            if stages is not None:
-                for s in stages:
-                    setattr(record_for_gelf, s.name + '_stage', int(s.delta))
-
-            if additional_data:
-                for field, value in additional_data.iteritems():
-                    setattr(record_for_gelf, field, value)
-
-            GELFHandler.handle(self, record_for_gelf)
-            GELFHandler.close(self)
-
-except ImportError:
-    BulkGELFHandler = None
 
 log = logging.getLogger('frontik.handler')
 
@@ -123,11 +68,6 @@ class RequestLogger(logging.LoggerAdapter):
         # backcompatibility with logger
         self.warn = self.warning
         self.addHandler = self.logger.addHandler
-
-        if options.graylog:
-            self.logger.add_bulk_handler(
-                BulkGELFHandler(options.graylog_host, options.graylog_port, LAN_CHUNK, False)
-            )
 
     def register_handler(self, handler):
         self._handler = handler
@@ -213,10 +153,6 @@ def bootstrap_logging():
 
             handler.setLevel(level)
             root_logger.addHandler(handler)
-
-    if options.graylog and BulkGELFHandler is None:
-        options.graylog = False
-        logging.getLogger('frontik.logging').warning('Unable to load graypy module, graylog disabled')
 
     if options.syslog:
         if options.syslog_port is not None:
