@@ -1,3 +1,9 @@
+frontik (2.24.4) unstable; urgency=low
+
+  * HH-55621 Remove graylog
+
+ -- Automated Build <d.smirnov@hh.ru>  Thu, 08 Oct 2015 13:13:06 +0300
+
 frontik (2.24.3) unstable; urgency=low
 
   * HH-55342 add handler id to all log lines
