@@ -63,7 +63,6 @@ class RequestLogger(logging.LoggerAdapter):
         super(RequestLogger, self).__init__(PerRequestLogBufferHandler('frontik.handler'), {'request_id': request_id})
 
         self.stages = []
-        self._additional_data = {'request_id': request_id}
 
         # backcompatibility with logger
         self.warn = self.warning
@@ -72,12 +71,6 @@ class RequestLogger(logging.LoggerAdapter):
     def register_handler(self, handler):
         self._handler = handler
         self.extra['handler'] = handler
-
-    def add_additional_data(self, **data):
-        """
-        :type data: dict
-        """
-        self._additional_data.update(data)
 
     def stage_tag(self, stage_name):
         stage_end_time = time.time()
@@ -119,8 +112,7 @@ class RequestLogger(logging.LoggerAdapter):
         self.logger.add_bulk_handler(handler, auto_flush)
 
     def request_finish_hook(self, status_code, request_method, request_uri):
-        self.logger.flush(status_code=status_code, stages=self.stages, method=request_method, uri=request_uri,
-                          additional_data=self._additional_data)
+        self.logger.flush(status_code=status_code, stages=self.stages, method=request_method, uri=request_uri)
 
 
 def bootstrap_logging():
