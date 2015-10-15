@@ -1,3 +1,9 @@
+frontik (2.24.5) unstable; urgency=low
+
+  * HH-55628 Delete additional data
+
+ -- Automated Build <d.smirnov@hh.ru>  Thu, 15 Oct 2015 12:51:53 +0300
+
 frontik (2.24.4) unstable; urgency=low
 
   * HH-55621 Remove graylog
