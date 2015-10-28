@@ -135,6 +135,11 @@ class FileMappingDispatcher(object):
 
     def __call__(self, application, request, logger, **kwargs):
         url_parts = get_rewritten_request_attribute(request, 'path').strip('/').split('/')
+
+        if any('.' in part for part in url_parts):
+            logger.error('Url part contains "."')
+            return self.handle_404(application, request, logger, **kwargs)
+
         page_name = '.'.join(filter(None, url_parts))
         page_module_name = '.'.join(filter(None, (self.name, page_name)))
         logger.debug('page module: %s', page_module_name)
@@ -144,21 +149,24 @@ class FileMappingDispatcher(object):
             logger.debug('using %s from %s', page_module_name, page_module.__file__)
         except ImportError:
             logger.warning('%s module not found', (self.name, page_module_name))
-            if self.handler_404 is not None:
-                return self.handler_404(application, request, logger, **kwargs)
-            return ErrorHandler(application, request, logger, status_code=404, **kwargs)
+            return self.handle_404(application, request, logger, **kwargs)
         except:
             logger.exception('error while importing %s module', page_module_name)
             return ErrorHandler(application, request, logger, status_code=500, **kwargs)
 
         if not hasattr(page_module, 'Page'):
             logger.error('%s.Page class not found', page_module_name)
-            return ErrorHandler(application, request, logger, status_code=404, **kwargs)
+            return self.handle_404(application, request, logger, **kwargs)
 
         return page_module.Page(application, request, logger, **kwargs)
 
     def __repr__(self):
         return '{}.{}(<{}, handler_404={}>)'.format(__package__, self.__class__.__name__, self.name, self.handler_404)
+
+    def handle_404(self, application, request, logger, **kwargs):
+        if self.handler_404 is not None:
+            return self.handler_404(application, request, logger, **kwargs)
+        return ErrorHandler(application, request, logger, status_code=404, **kwargs)
 
 
 class RegexpDispatcher(object):
