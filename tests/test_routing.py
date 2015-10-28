@@ -47,3 +47,6 @@ class TestRouting(unittest.TestCase):
 
     def test_404(self):
         self.assertEqual(frontik_test_app.get_page('no_page').status_code, 404)
+
+    def test_404_on_dot_in_url(self):
+        self.assertEqual(frontik_test_app.get_page('/nested/nested.nested').status_code, 404)
