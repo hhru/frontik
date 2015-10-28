@@ -137,7 +137,7 @@ class FileMappingDispatcher(object):
         url_parts = get_rewritten_request_attribute(request, 'path').strip('/').split('/')
 
         if any('.' in part for part in url_parts):
-            logger.error('Url part contains "."')
+            logger.error('Url part contains "." %s', '/'.join(url_parts))
             return self.handle_404(application, request, logger, **kwargs)
 
         page_name = '.'.join(filter(None, url_parts))
