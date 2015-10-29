@@ -1,3 +1,10 @@
+frontik (2.24.6) unstable; urgency=low
+
+  * HH-56064 add test and more info to log
+  * HH-56064 fix bug caused by "." char in url
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 29 Oct 2015 18:46:05 +0300
+
 frontik (2.24.5) unstable; urgency=low
 
   * HH-55628 Delete additional data
