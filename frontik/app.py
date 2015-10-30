@@ -54,43 +54,24 @@ class StatusHandler(tornado.web.RequestHandler):
 
     @tornado.web.asynchronous
     def get(self):
-        if self.get_argument('no_network_check', 'false') == 'true':
-            self.set_header('Content-Type', 'application/json; charset=UTF-8')
+        self.set_header('Content-Type', 'application/json; charset=UTF-8')
 
-            result = {
-                'pages served': global_stats.page_count,
-                'http requests made': global_stats.http_reqs_count,
-                'bytes from http requests': global_stats.http_reqs_size_sum,
-            }
+        result = {
+            'pages served': global_stats.page_count,
+            'http requests made': global_stats.http_reqs_count,
+            'bytes from http requests': global_stats.http_reqs_size_sum,
+        }
 
-            cur_uptime = time.time() - global_stats.start_time
-            if cur_uptime < 60:
-                uptime_value = '{:.2f} seconds'.format(cur_uptime)
-            elif cur_uptime < 3600:
-                uptime_value = '{:.2f} minutes'.format(cur_uptime / 60)
-            else:
-                uptime_value = '{:.2f} hours and {:.2f} minutes'.format(cur_uptime / 3600, (cur_uptime % 3600) / 60)
-
-            result['uptime'] = uptime_value
-            self.finish(result)
+        cur_uptime = time.time() - global_stats.start_time
+        if cur_uptime < 60:
+            uptime_value = '{:.2f} seconds'.format(cur_uptime)
+        elif cur_uptime < 3600:
+            uptime_value = '{:.2f} minutes'.format(cur_uptime / 60)
         else:
-            request = make_get_request(
-                'http://{host}:{port}/status'.format(host='127.0.0.1' if options.host == '0.0.0.0' else options.host,
-                                                     port=options.port),
-                data={'no_network_check': 'true'},
-                connect_timeout=0.5,
-                request_timeout=0.5,
-                follow_redirects=False
-            )
+            uptime_value = '{:.2f} hours and {:.2f} minutes'.format(cur_uptime / 3600, (cur_uptime % 3600) / 60)
 
-            def _request_ready(result):
-                app_logger.debug('Got reponse for second status request. Code: %d', result.code)
-                if result.error is not None:
-                    raise tornado.web.HTTPError(httplib.SERVICE_UNAVAILABLE)
-                self.set_header('Content-Type', 'application/json; charset=UTF-8')
-                self.finish(result.body)
-
-            self.application.curl_http_client.fetch(request, callback=_request_ready)
+        result['uptime'] = uptime_value
+        self.finish(result)
 
 
 class PdbHandler(tornado.web.RequestHandler):
