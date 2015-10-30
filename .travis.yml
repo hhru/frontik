@@ -3,5 +3,8 @@ python:
   - 2.7
 install:
   - python setup.py install
+  - mkdir ~/.python-eggs
+  - chmod og-wx ~/.python-eggs
 script:
   - python setup.py test
+sudo: false
