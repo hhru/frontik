@@ -324,6 +324,11 @@
                 background: #fff;
                 font-family: monospace;
             }
+
+            .sql-debug__message {
+                margin: 20px;
+                word-break: normal;
+            }
         </style>
     </xsl:template>
 
