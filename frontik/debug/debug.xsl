@@ -109,7 +109,7 @@
         <xsl:variable name="highlight">
             <xsl:if test="$highlight-text != '' and contains(@msg, $highlight-text)">entry__head_highlight</xsl:if>
         </xsl:variable>
-            
+
         <div class="entry">
             <div class="entry__head {$highlight} {@levelname}">
                 <span class="entry__head__message">
@@ -119,6 +119,38 @@
             <xsl:apply-templates select="exception"/>
         </div>
         <xsl:apply-templates select="exception/trace"/>
+    </xsl:template>
+
+    <xsl:template match="entry[labels/label/text() = 'SQL']">
+        <div class="entry entry_expandable">
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+                <span class="entry__head__expandtext">
+                    <span class="time">
+                        <xsl:value-of select="format-number(response/request_time, '#0.#')"/>
+                        <xsl:text>ms </xsl:text>
+                    </span>
+                    <xsl:apply-templates select="labels/label"/>
+                    <xsl:text> at </xsl:text>
+                    <xsl:value-of select="@pathname" />
+                    <xsl:text>.</xsl:text>
+                    <xsl:value-of select="@funcName" />
+                    <xsl:text>(</xsl:text>
+                    <xsl:value-of select="@filename" />
+                    <xsl:text>:</xsl:text>
+                    <xsl:value-of select="@lineno" />
+                    <xsl:text>)</xsl:text>
+                </span>
+            </label>
+            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
+            <div class="details">
+                <pre class="entry__head">
+                    <code class="sql-debug__message  hljs sql">
+                        <xsl:value-of select="@msg"/>
+                    </code>
+                </pre>
+            </div>
+        </div>
+        <xsl:apply-templates select="exception"/>
     </xsl:template>
 
     <xsl:template match="entry[stage]">
@@ -216,7 +248,7 @@
         <xsl:variable name="timebar-offset-time">
             <xsl:value-of select="1000 * (request/start_time/text() - /log/@started)"/>
         </xsl:variable>
-        
+
         <xsl:variable name="timebar-offset">
             <xsl:value-of select="format-number($timebar-offset-time div $total-time, '##.##%')"/>
         </xsl:variable>
