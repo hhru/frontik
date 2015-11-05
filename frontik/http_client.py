@@ -3,6 +3,7 @@
 from collections import namedtuple
 from functools import partial
 import re
+import time
 
 from lxml import etree
 import simplejson as json
@@ -65,7 +66,14 @@ class HttpClient(object):
                  add_to_finish_group=True):
 
         future = Future()
-        request = frontik.util.make_head_request(url, data, headers, connect_timeout, request_timeout, follow_redirects)
+        request = frontik.util.make_head_request(
+            url,
+            data,
+            headers,
+            connect_timeout,
+            request_timeout,
+            follow_redirects
+        )
         request._frontik_labels = labels
 
         self.fetch(
@@ -133,6 +141,8 @@ class HttpClient(object):
 
             if self.handler._prepared and self.handler.debug.debug_mode.pass_debug:
                 request.headers[PageHandlerDebug.DEBUG_HEADER_NAME] = True
+                request.url = frontik.util.make_url(request.url, hh_debug_param=int(time.time()))
+
                 for header_name in ('Authorization', DEBUG_AUTH_HEADER_NAME):
                     authorization = self.handler.request.headers.get(header_name)
                     if authorization is not None:
