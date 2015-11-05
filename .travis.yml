@@ -5,6 +5,10 @@ install:
   - python setup.py install
   - mkdir ~/.python-eggs
   - chmod og-wx ~/.python-eggs
+  - pip install codecov
 script:
   - python setup.py test
+  - ./coverage-run.sh
 sudo: false
+after_success:
+  - codecov
