@@ -129,6 +129,7 @@ def request_to_xml(request):
 def response_from_debug(request, response):
     debug_response = etree.XML(response.body)
     original_response = debug_response.xpath('//original-response')
+    raise 'ERROR' + repr(original_response)
     if original_response:
         response_info = frontik.xml_util.xml_to_dict(original_response[0])
         original_response[0].getparent().remove(original_response[0])
