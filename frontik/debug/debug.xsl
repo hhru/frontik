@@ -6,6 +6,7 @@
     <xsl:include href="debug-css.xsl"/>
     <xsl:include href="highlight-css.xsl"/>
     <xsl:include href="debug-js.xsl"/>
+    <xsl:include href="vkbeautify-js.xsl"/>
     <xsl:include href="highlight-js.xsl"/>
 
     <xsl:key name="labels" match="/log/labels/*" use="local-name()"/>
@@ -29,6 +30,7 @@
                 </title>
                 <xsl:call-template name="debug-css"/>
                 <xsl:call-template name="highlight-css"/>
+                <xsl:call-template name="vkbeautify-js"/>
                 <xsl:call-template name="debug-js"/>
                 <xsl:call-template name="highlight-js"/>
             </head>
@@ -74,12 +76,11 @@
 
     <xsl:template match="log" mode="versions-info">
         <div class="entry entry_expandable">
-            <label for="details_{generate-id(versions)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+            <span class="entry__head entry__switcher">
                 <span class="entry__head__expandtext">
                     Version info
                 </span>
-            </label>
-            <input type="checkbox" class="details-expander" id="details_{generate-id(versions)}"/>
+            </span>
             <div class="details">
                 <xsl:call-template name="highlighted-block">
                     <xsl:with-param name="text" select="versions"/>
@@ -90,12 +91,11 @@
 
     <xsl:template match="log" mode="general-info">
         <div class="entry entry_expandable">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+            <span class="entry__head entry__switcher">
                 <span class="entry__head__expandtext">
                     General request/response info
                 </span>
-            </label>
-            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
+            </span>
             <div class="details">
                 <xsl:apply-templates select="request/params"/>
                 <xsl:apply-templates select="request/headers"/>
@@ -123,7 +123,7 @@
 
     <xsl:template match="entry[labels/label/text() = 'SQL']">
         <div class="entry entry_expandable">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+            <span class="entry__head entry__switcher">
                 <span class="entry__head__expandtext">
                     <span class="time">
                         <xsl:value-of select="format-number(response/request_time, '#0.#')"/>
@@ -140,14 +140,12 @@
                     <xsl:value-of select="@lineno" />
                     <xsl:text>)</xsl:text>
                 </span>
-            </label>
-            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
+            </span>
             <div class="details">
-                <pre class="entry__head">
-                    <code class="sql-debug__message  hljs sql">
-                        <xsl:value-of select="@msg"/>
-                    </code>
-                </pre>
+                <xsl:call-template name="highlighted-block">
+                    <xsl:with-param name="mode" select="'sql'" />
+                    <xsl:with-param name="text" select="@msg" />
+                </xsl:call-template>
             </div>
         </div>
         <xsl:apply-templates select="exception"/>
@@ -183,10 +181,9 @@
 
     <xsl:template match="exception/trace">
         <div class="entry entry_expandable">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+            <span class="entry__head entry__switcher">
                 <span class="entry__head__expandtext">Exception traceback</span>
-            </label>
-            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
+            </span>
             <div class="details">
                 <xsl:apply-templates select="step"/>
             </div>
@@ -198,10 +195,9 @@
             <xsl:value-of select="file"/>
         </pre>
         <div class="entry entry_expandable trace-locals">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+            <span class="entry__head entry__switcher">
                 <span class="entry__head__expandtext trace-locals__caption">Show/hide locals</span>
-            </label>
-            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
+            </span>
             <div class="details">
                 <pre class="trace-locals__text">
                     <xsl:value-of select="locals/text()"/>
@@ -273,7 +269,7 @@
         </xsl:variable>
 
         <div class="entry entry_expandable">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher {$status} {$highlight}">
+            <span class="entry__head entry__switcher {$status} {$highlight}">
                 <div class="timebar">
                     <div class="timebar__line" style="left: {$timebar-offset}">
                         <strong class="timebar__head timebar__head_{$status}" style="width: {$timebar-details-len}"/>
@@ -294,8 +290,7 @@
                     <xsl:text>Kb </xsl:text>
                     <xsl:value-of select="request/url"/>
                 </span>
-            </label>
-            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
+            </span>
             <div class="details {$has-inherited-debug}">
                 <xsl:apply-templates select="." mode="debug-inherited-indicator"/>
 
@@ -331,12 +326,11 @@
 
     <xsl:template match="entry[text]">
         <div class="entry entry_expandable">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+            <span class="entry__head entry__switcher">
                 <span class="entry__head__expandtext">
                     <xsl:value-of select="@msg"/>
                 </span>
-            </label>
-            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
+            </span>
             <pre class="details">
                 <xsl:call-template name="highlighted-block">
                     <xsl:with-param name="text" select="text/node()"/>
@@ -355,9 +349,9 @@
 
     <xsl:template match="request" mode="copy-as-curl">
         <div class="params">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode); select(this.parentNode)" class="delimeter copy-as-curl-link">
+            <span for="details_{generate-id(.)}" onclick="toggle(this.parentNode); select(this.parentNode)" class="delimeter copy-as-curl-link">
                 copy as cURL
-            </label>
+            </span>
             <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
             <div>
                 <pre class="details copy-as-curl">
@@ -391,7 +385,6 @@
     <xsl:template match="body[text() != '']">
         <div class="delimeter"><xsl:value-of select="name(parent::*)"/> body</div>
         <xsl:call-template name="highlighted-block">
-            <xsl:with-param name="mode" select="@mode"/>
             <xsl:with-param name="text" select="."/>
         </xsl:call-template>
     </xsl:template>
@@ -455,11 +448,11 @@
     <!-- Response body highlighting -->
 
     <xsl:template name="highlighted-block">
-        <xsl:param name="mode" select="''"/>
+        <xsl:param name="mode" select="'xml'"/>
         <xsl:param name="text"/>
 
         <pre class="body">
-            <code class="{$mode}">
+            <code class="language-{$mode} highlighted-code">
                 <xsl:value-of select="$text"/>
             </code>
         </pre>
@@ -471,10 +464,9 @@
 
     <xsl:template match="entry[profile]">
         <div class="entry entry_expandable">
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+            <span class="entry__head entry__switcher">
                 <span class="entry__head__expandtext">XSLT profiling results</span>
-            </label>
-            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}" checked="checked"/>
+            </span>
             <div class="details m-details_visible">
                 <xsl:apply-templates select="profile" mode="xslt-profile"/>
             </div>

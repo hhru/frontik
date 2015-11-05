@@ -17,6 +17,7 @@
             }
             .body {
                 word-break: break-all;
+                max-height: 400px;
             }
 
             .timeline {
@@ -323,11 +324,6 @@
                 padding: 4px;
                 background: #fff;
                 font-family: monospace;
-            }
-
-            .sql-debug__message {
-                margin: 20px;
-                word-break: normal;
             }
         </style>
     </xsl:template>

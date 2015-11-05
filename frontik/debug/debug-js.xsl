@@ -7,11 +7,11 @@
             function toggle(entry) {
                 var details = entry.querySelector('.details');
                 if (details.className.indexOf('m-details_visible') != -1) {
-                    details.className = details.className.replace(/\bm-details_visible\b/, '');
-                    entry.className = entry.className.replace(/\bentry_expanded\b/, 'entry_expandable')
+                   details.className = details.className.replace(/\bm-details_visible\b/, '');
+                   entry.className = entry.className.replace(/\bentry_expanded\b/, 'entry_expandable')
                 } else {
-                    details.className = details.className + ' m-details_visible';
-                    entry.className = entry.className.replace(/\bentry_expandable\b/, 'entry_expanded')
+                   details.className = details.className + ' m-details_visible';
+                   entry.className = entry.className.replace(/\bentry_expandable\b/, 'entry_expanded')
                 }
             }
 
@@ -73,6 +73,39 @@
                     range.selectNode(entry.querySelector('.details'));
                     selection.removeAllRanges();
                     selection.addRange(range);
+                }
+            }
+
+            document.onreadystatechange = function () {
+                if (document.readyState == "interactive") {
+                    var sql = document.getElementsByClassName('language-sql highlighted-code');
+                    console.log(sql);
+                    Array.prototype.forEach.call(sql, function(el) {
+                        el.innerHTML = vkbeautify.sql(el.textContent);
+                    });
+                    var xml = document.getElementsByClassName('language-xml highlighted-code');
+                    console.log(xml);
+                    Array.prototype.forEach.call(xml, function(el) {
+                        console.log(el.textContent, el.innerText, vkbeautify.xml(el.innerText));
+                        el.innerHTML = vkbeautify.xml(el.textContent).replace(/</g, '&lt;');
+                    });
+
+                    var switchers = document.getElementsByClassName('entry__switcher');
+                    Array.prototype.forEach.call(switchers, function(switcher) {
+                        switcher.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            var details = this.querySelector('.details');
+                            if (details.className.indexOf('m-details_visible') != -1) {
+                                details.className = details.className.replace(/\bm-details_visible\b/, '');
+                                this.className = this.className.replace(/\bentry_expanded\b/, 'entry_expandable')
+                            } else {
+                                details.className = details.className + ' m-details_visible';
+                                this.className = this.className.replace(/\bentry_expandable\b/, 'entry_expanded')
+                            }
+                            console.log(this.className, this)
+                            return false;
+                        }.bind(switcher.parentNode), false);
+                    })
                 }
             }
 
