@@ -126,7 +126,7 @@
             <span class="entry__head entry__switcher">
                 <span class="entry__head__expandtext">
                     <span class="time">
-                        <xsl:value-of select="format-number(response/request_time, '#0.#')"/>
+                        <xsl:value-of select="format-number(@duration, '#0.#')"/>
                         <xsl:text>ms </xsl:text>
                     </span>
                     <xsl:apply-templates select="labels/label"/>
