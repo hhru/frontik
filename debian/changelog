@@ -1,3 +1,10 @@
+frontik (2.24.7) unstable; urgency=low
+
+  * HH-56141 add codecov support
+  * HH-56141 improve travis support
+
+ -- Automated Build <an.sumin@hh.ru>  Fri, 06 Nov 2015 18:33:56 +0300
+
 frontik (2.24.6) unstable; urgency=low
 
   * HH-56064 add test and more info to log
