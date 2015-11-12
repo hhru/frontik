@@ -1,7 +1,11 @@
 language: python
 python:
   - 2.7
+env:
+  - TORNADO_VERSION=HH
+  - TORNADO_VERSION=3.2.2
 install:
+  - if [[ $TORNADO_VERSION == 'HH' ]]; then pip install https://github.com/hhru/tornado/archive/fix-version.zip; else pip install tornado==$TORNADO_VERSION; fi
   - python setup.py install
   - mkdir ~/.python-eggs
   - chmod og-wx ~/.python-eggs
