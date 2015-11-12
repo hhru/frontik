@@ -545,8 +545,12 @@ class PageHandler(BaseHandler):
 
 
 class ErrorHandler(tornado.web.ErrorHandler, PageHandler):
-    pass
+    def initialize(self, status_code, logger=None):
+        # Hides logger keyword argument from incompatible tornado versions
+        super(ErrorHandler, self).initialize(status_code)
 
 
 class RedirectHandler(tornado.web.RedirectHandler, PageHandler):
-    pass
+    def initialize(self, url, permanent=True, logger=None):
+        # Hides logger keyword argument from incompatible tornado versions
+        super(RedirectHandler, self).initialize(url, permanent)
