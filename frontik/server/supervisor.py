@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
+# coding=utf-8
 
 """
 This is module for creating of init.d scripts for tornado-based
@@ -18,9 +18,9 @@ Sample usage:
 from frontik.server.supervisor import supervisor
 
 supervisor(
-    script='/usr/bin/frontik_srv.py',
-    app='/usr/share/pyshared/application',
-    config='/etc/frontik/frontik.cfg'
+    script='/usr/bin/frontik',
+    app='application_package',
+    config='/etc/application/frontik.cfg'
 )
 
 All exit codes returned by commands are trying to be compatible with LSB standard [1] as much as possible
@@ -51,15 +51,15 @@ tornado.options.define('pidfile_template', None, str)
 tornado.options.define('supervisor_sigterm_timeout', 4, int)
 tornado.options.define('nofile_soft_limit', 4096, int)
 
-starter_scripts = {}
+STARTER_SCRIPTS = {}
 
 
-def is_alive(port, config):
+def worker_is_alive(port, config):
     try:
         path_beginning, _, path_ending = options.pidfile_template.partition('%(port)s')
         pidfile_regex = '{0}([0-9]+){1}'.format(re.escape(path_beginning), re.escape(path_ending))
-        for pid in subprocess.check_output('pgrep -f "{0}"'.format(pidfile_regex), shell=True).strip().split('\n'):
-            with open("/proc/{0}/cmdline".format(pid.strip()), 'r') as cmdline_file:
+        for pid in subprocess.check_output('pgrep -f "{}"'.format(pidfile_regex), shell=True).strip().split('\n'):
+            with open('/proc/{}/cmdline'.format(pid.strip()), 'r') as cmdline_file:
                 cmdline = cmdline_file.readline()
                 if cmdline is not None and str(port) in cmdline and config in cmdline and 'python' in cmdline:
                     return True
@@ -68,9 +68,9 @@ def is_alive(port, config):
         return False
 
 
-def is_running(port):
+def worker_is_running(port):
     try:
-        response = urllib2.urlopen('http://localhost:%s/status/' % (port,), timeout=1)
+        response = urllib2.urlopen('http://localhost:{}/status/'.format(port), timeout=1)
         for (header, value) in response.info().items():
             if header == 'server' and value.startswith('TornadoServer'):
                 return True
@@ -78,14 +78,34 @@ def is_running(port):
     except urllib2.URLError:
         return False
     except socket.error as e:
-        logging.warn("socket error ({0}) on port {1}".format(e, port))
+        logging.warn('socket error ({}) on port {}'.format(e, port))
         return False
 
 
+def worker_is_started(port, config):
+    shell_script_exited = STARTER_SCRIPTS.get(port, None) is None or STARTER_SCRIPTS[port].poll() is not None
+    if not shell_script_exited:
+        return False
+
+    alive = worker_is_alive(port, config)
+    running = worker_is_running(port)
+
+    if alive and running:
+        return True
+
+    if not alive and not running:
+        logging.error('worker on port %s failed to start', port)
+        return True
+
+    logging.info('waiting for worker on port %s to start', port)
+    return False
+
+
 def start_worker(script, config=None, port=None, app=None):
-    if is_alive(port, config):
-        logging.warn("another worker already started on %s", port)
+    if worker_is_alive(port, config):
+        logging.warn('another worker already started on %s', port)
         return None
+
     logging.debug('start worker %s', port)
 
     args = script.split() + [
@@ -100,8 +120,8 @@ def start_worker(script, config=None, port=None, app=None):
     if options.logfile_template:
         args.append('--logfile={}'.format(options.logfile_template % dict(port=port)))
 
-    starter_scripts[port] = subprocess.Popen(args)
-    return starter_scripts[port]
+    STARTER_SCRIPTS[port] = subprocess.Popen(args)
+    return STARTER_SCRIPTS[port]
 
 
 def stop_worker(port, signal_to_send=signal.SIGTERM):
@@ -116,13 +136,13 @@ def stop_worker(port, signal_to_send=signal.SIGTERM):
         pass
 
 
-def rm_pidfile(port):
+def cleanup_worker(port):
     pid_path = options.pidfile_template % dict(port=port)
     if os.path.exists(pid_path):
         try:
             os.remove(pid_path)
-        except:
-            logging.warning('failed to rm  %s', pid_path)
+        except Exception as e:
+            logging.warning('failed to remove %s (%s)', pid_path, e)
 
 
 def map_workers(f):
@@ -141,6 +161,7 @@ def map_stale_workers(f):
             port_match = re.search(re_escaped_template, pidfile)
             if port_match and not port_match.group(1) in ports:
                 stale_ports.append(port_match.group(1))
+
     return map(f, stale_ports)
 
 
@@ -149,50 +170,45 @@ def map_all_workers(f):
 
 
 def stop(config):
-    if any(map_all_workers(lambda port: is_alive(port, config))):
-        logging.warning('some of the workers are running; trying to kill')
+    if any(map_all_workers(lambda port: worker_is_alive(port, config))):
+        logging.warning('some of the workers are running, trying to kill')
 
-    map_all_workers(lambda port: stop_worker(port, signal.SIGTERM) if is_alive(port, config) else rm_pidfile(port))
-    time.sleep(int(options.supervisor_sigterm_timeout))
-    map_all_workers(lambda port: stop_worker(port, signal.SIGKILL) if is_alive(port, config) else rm_pidfile(port))
+    map_all_workers(
+        lambda port: stop_worker(port, signal.SIGTERM) if worker_is_alive(port, config) else cleanup_worker(port)
+    )
+
+    time.sleep(options.supervisor_sigterm_timeout)
+
+    map_all_workers(
+        lambda port: stop_worker(port, signal.SIGKILL) if worker_is_alive(port, config) else cleanup_worker(port)
+    )
+
     time.sleep(0.1 * options.workers_count)
-    map_all_workers(lambda port:
-                    rm_pidfile(port) if not is_alive(port, config)
-                    else logging.warning("failed to stop worker on port %d" % port))
-    if any(map_all_workers(lambda port: is_alive(port, config))):
+
+    map_all_workers(
+        lambda port: cleanup_worker(port) if not worker_is_alive(port, config)
+        else logging.warning('failed to stop worker on port %d', port)
+    )
+
+    if any(map_all_workers(lambda port: worker_is_alive(port, config))):
         logging.warning('failed to stop workers')
         sys.exit(1)
-
-
-def check_start_status(port, config):
-    shell_script_exited = starter_scripts.get(port, None) is None or starter_scripts[port].poll() is not None
-    if not shell_script_exited:
-        return False
-    alive = is_alive(port, config)
-    running = is_running(port)
-    if alive and running:
-        return True
-    if not alive and not running:
-        logging.error("worker on port %s failed to start" % port)
-        return True
-    logging.info('waiting for worker on port {0} to start'.format(port))
-    return False
 
 
 def start(script, app, config):
     map_workers(partial(start_worker, script, config, app=app))
     time.sleep(1)
-    while not all(map_workers(lambda port: check_start_status(port, config))):
+    while not all(map_workers(lambda port: worker_is_started(port, config))):
         time.sleep(1)
-    map_workers(lambda port: rm_pidfile(port) if not is_alive(port, config) else 0)
+    map_workers(lambda port: cleanup_worker(port) if not worker_is_alive(port, config) else 0)
 
 
 def status(expect=None):
-    res = map_stale_workers(is_running)
+    res = map_stale_workers(worker_is_running)
     if any(res):
         logging.warn('some stale workers are running!')
 
-    res = map_workers(is_running)
+    res = map_workers(worker_is_running)
 
     if all(res):
         if expect == 'stopped':
@@ -213,10 +229,7 @@ def status(expect=None):
             return 3
 
 
-def supervisor(script, config, app=None):
-    tornado.options.parse_config_file(config, final=False)
-    (cmd,) = tornado.options.parse_command_line(final=False)
-
+def _setup_logging():
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.NOTSET)
 
@@ -228,13 +241,28 @@ def supervisor(script, config, app=None):
 
     root_logger.addHandler(handler)
 
+
+def supervisor(script, config, app):
+    _setup_logging()
+
+    tornado.options.parse_config_file(config, final=False)
+    arguments = tornado.options.parse_command_line(final=False)
+
+    if not arguments:
+        logging.error('missing action: please use `start`, `stop`, `restart` or `status`')
+        sys.exit(1)
+
+    cmd = arguments[0]
+
     cur_soft_limit, cur_hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
     new_soft_limit = options.nofile_soft_limit
     try:
         resource.setrlimit(resource.RLIMIT_NOFILE, (new_soft_limit, max(new_soft_limit, cur_hard_limit)))
     except ValueError:
-        logging.warning('We don\'t have CAP_SYS_RESOURCE, therefore soft NOFILE limit will be set to {0}'.format(
-            min(new_soft_limit, cur_hard_limit)))
+        logging.warning(
+            "We don't have CAP_SYS_RESOURCE, therefore soft NOFILE limit will be set to %s",
+            min(new_soft_limit, cur_hard_limit)
+        )
         resource.setrlimit(resource.RLIMIT_NOFILE, (min(new_soft_limit, cur_hard_limit), cur_hard_limit))
 
     if cmd == 'start':
@@ -255,5 +283,5 @@ def supervisor(script, config, app=None):
         sys.exit(status())
 
     else:
-        logging.error('either --start, --stop, --restart or --status should be present')
+        logging.error('incorrect action: please use `start`, `stop`, `restart` or `status`')
         sys.exit(1)
