@@ -20,7 +20,7 @@ For description of all available config options see [Configuring Frontik](/docs/
 For an example of a simple launcher that can be used in development environment, see [example-run.py](/examples/example-run.py).
 It uses [examples/frontik.cfg](/examples/frontik.cfg) config file to launch a simple application.
 
-At hh.ru we use a custom launcher from [tornado_util](https://github.com/hhru/tornado-util) module to run
-and control Frontik instances in production. There are plans to integrate this launcher in Frontik codebase.
+A launcher from [frontik.server.supervisor](https://github.com/hhru/frontik/blob/master/frontik/server/supervisor.py)
+module is used to run and control Frontik instances in production.
 
 For information about Frontik applications, refer to [Frontik application structure](/docs/frontik-app.md).
