@@ -47,6 +47,7 @@ class FrontikTestInstance(object):
             script_tpl = '{exe} {coverage_executable} run -p --branch --source=frontik {runner}'
         else:
             script_tpl = '{exe} {runner}'
+
         script = script_tpl.format(
             exe=sys.executable,
             coverage_executable=find_executable('coverage'),
@@ -54,19 +55,19 @@ class FrontikTestInstance(object):
         )
 
         supervisor.start_worker(script, app=self.app, config=self.config, port=port)
-        self.wait_for(lambda: supervisor.is_running(port), n=self.wait_steps)
+        self.wait_for(lambda: supervisor.worker_is_running(port), steps=self.wait_steps)
         self.port = port
 
     def stop(self):
         if self.port is not None:
             supervisor.stop_worker(self.port)
-            self.wait_for(lambda: not(supervisor.is_running(self.port)), n=self.wait_steps)
-            supervisor.rm_pidfile(self.port)
+            self.wait_for(lambda: not(supervisor.worker_is_running(self.port)), steps=self.wait_steps)
+            supervisor.cleanup_worker(self.port)
             self.port = None
 
     @staticmethod
-    def wait_for(fun, n=50):
-        for i in xrange(n):
+    def wait_for(fun, steps):
+        for i in xrange(steps):
             if fun():
                 return
             time.sleep(0.1)  # up to 5 seconds with n=50
