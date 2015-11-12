@@ -47,13 +47,11 @@ setup(
         'requests >= 0.8.2',
         'jinja2 >= 2.6',
         'tornado == 3.2.2-hh2',
-        'tornado_util >= 0.8.0',
     ],
     tests_require=[
         'pep8',
     ],
     dependency_links=[
-        'https://github.com/hhru/tornado-util/archive/master.zip#egg=tornado_util-0.8.0',
         'https://github.com/hhru/tornado/archive/master.zip#egg=tornado-3.2.2-hh2',
     ],
     zip_safe=False
