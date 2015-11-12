@@ -34,7 +34,7 @@ setup(
     long_description=open('README.md').read(),
     url='https://github.com/hhru/frontik',
     cmdclass={'build_py': BuildHook, 'test': TestHook},
-    packages=['frontik', 'frontik/producers', 'frontik/testing', 'frontik/testing/pages'],
+    packages=['frontik', 'frontik/producers', 'frontik/server', 'frontik/testing', 'frontik/testing/pages'],
     scripts=['scripts/frontik'],
     package_data={
         'frontik': ['debug/*.xsl'],
@@ -46,15 +46,13 @@ setup(
         'pycurl >= 7.19.0',
         'requests >= 0.8.2',
         'jinja2 >= 2.6',
-        'tornado == 3.2.2-hh2',
-        'tornado_util >= 0.8.0',
+        'tornado >= 3.2.2, < 4',
     ],
     tests_require=[
         'pep8',
     ],
     dependency_links=[
-        'https://github.com/hhru/tornado-util/archive/master.zip#egg=tornado_util-0.8.0',
-        'https://github.com/hhru/tornado/archive/master.zip#egg=tornado-3.2.2-hh2',
+        'https://github.com/hhru/tornado/archive/fix-version.zip',
     ],
     zip_safe=False
 )

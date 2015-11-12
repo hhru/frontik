@@ -2,7 +2,7 @@
 from collections import OrderedDict
 import unittest
 
-from frontik.util import make_qs
+from frontik.util import asciify_url, make_qs
 
 
 class TestUtil(unittest.TestCase):
@@ -38,6 +38,16 @@ class TestUtil(unittest.TestCase):
             make_qs({'при': 'вет', u'по': u'ка'}),
             '%D0%BF%D1%80%D0%B8=%D0%B2%D0%B5%D1%82&%D0%BF%D0%BE=%D0%BA%D0%B0'
         )
+
+    def test_asciify_url(self):
+        cases = (
+            ('http://localhost/test', 'http://localhost/test'),
+            ('http://яндекс.рф', 'http://%d1%8f%d0%bd%d0%b4%d0%b5%d0%ba%d1%81.%d1%80%d1%84'),
+            (u'http://localhost/тест', 'http://localhost/%d1%82%d0%b5%d1%81%d1%82')
+        )
+
+        for case, expected in cases:
+            self.assertEqual(asciify_url(case), expected)
 
     def assertQueriesEqual(self, qs1, qs2):
         qs1_list = sorted(qs1.split('&'))
