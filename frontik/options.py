@@ -8,6 +8,16 @@ tornado.options.define('app_root_url', default='/', type=str)
 tornado.options.define('tornado_settings', default=None, type=dict)
 tornado.options.define('handlers_count', default=100, type=int)
 
+tornado.options.define('config', None, str)
+tornado.options.define('host', '0.0.0.0', str)
+tornado.options.define('port', 8080, int)
+tornado.options.define('daemonize', False, bool)
+tornado.options.define('pidfile', default=None, help='Set the name of pidfile')
+
+tornado.options.define('autoreload', True, bool)
+tornado.options.define('stop_timeout', 3, int)
+tornado.options.define('log_blocked_ioloop_timeout', 0, float)
+
 tornado.options.define('loglevel', default='info', type=str, help='Log level')
 tornado.options.define('logformat', default='[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s', type=str,
                        help='Log format for files and syslog')
@@ -33,8 +43,6 @@ tornado.options.define('debug_password', default=None, type=str)
 tornado.options.define('http_client_default_connect_timeout', default=0.2, type=float)
 tornado.options.define('http_client_default_request_timeout', default=2.0, type=float)
 tornado.options.define('timeout_multiplier', default=1.0, type=float)
-tornado.options.define('long_request_timeout', default=None, type=float)
-tornado.options.define('kill_long_requests', default=False, type=bool)
 
 tornado.options.define('xsl_executor', default='threaded', type=str, metavar='threaded|ioloop')
 tornado.options.define('json_executor', default='ioloop', type=str, metavar='threaded|ioloop')

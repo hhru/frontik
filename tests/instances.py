@@ -11,7 +11,7 @@ import requests
 from lxml import etree
 
 import tornado.options
-from tornado_util import supervisor
+from frontik.server import supervisor
 
 from . import PROJECT_ROOT
 
