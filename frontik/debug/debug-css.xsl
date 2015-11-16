@@ -12,12 +12,11 @@
                 white-space: pre-wrap;
             }
             code {
-                max-height: 500px;
                 overflow-y: auto;
             }
             .body {
                 word-break: break-all;
-                max-height: 400px;
+                max-height: 500px;
             }
 
             .timeline {

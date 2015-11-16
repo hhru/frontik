@@ -62,7 +62,7 @@
     <xsl:template match="log" mode="timeline"/>
 
     <xsl:template match="log[ancestor::log]" mode="timeline">
-        <xsl:variable name="timeline-offset-number" select="1000 * (../log/@started - /log/@started) div $total-time"/>
+        <xsl:variable name="timeline-offset-number" select="(../log/@started - /log/@started) div $total-time"/>
 
         <xsl:variable name="timeline-offset" select="format-number($timeline-offset-number, '##.##%')"/>
         <xsl:variable name="timeline-width" select="format-number(../log/@stages-total div $total-time, '##.##%')"/>
@@ -152,7 +152,7 @@
     </xsl:template>
 
     <xsl:template match="entry[stage]">
-        <xsl:variable name="stagebar-offset" select="1000 * (../../log/@started - /log/@started)"/>
+        <xsl:variable name="stagebar-offset" select="(../../log/@started - /log/@started)"/>
 
         <xsl:variable name="stagebar-left">
             <xsl:value-of select="format-number(($stagebar-offset + stage/start_delta) div $total-time, '##.##%')"/>
@@ -349,12 +349,11 @@
 
     <xsl:template match="request" mode="copy-as-curl">
         <div class="params">
-            <span for="details_{generate-id(.)}" onclick="toggle(this.parentNode); select(this.parentNode)" class="delimeter copy-as-curl-link">
+            <span class="delimeter copy-as-curl-link entry__switcher">
                 copy as cURL
             </span>
-            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
-            <div>
-                <pre class="details copy-as-curl">
+            <div  class="details">
+                <pre class="copy-as-curl">
                     <xsl:value-of select='curl'/>
                 </pre>
             </div>
@@ -386,6 +385,7 @@
         <div class="delimeter"><xsl:value-of select="name(parent::*)"/> body</div>
         <xsl:call-template name="highlighted-block">
             <xsl:with-param name="text" select="."/>
+            <xsl:with-param name="mode" select="translate(@mode, 'json', 'js')"/>
         </xsl:call-template>
     </xsl:template>
 

@@ -44,14 +44,14 @@ def response_to_xml(response):
             body = body.replace('\n', '\\n').replace("'", "\\'").replace("<", "&lt;")
         elif 'json' in content_type:
             mode = 'json'
-            body = _pretty_print_json(json.loads(response.body))
+            body = to_unicode(response.body)
         elif 'protobuf' in content_type:
             body = repr(response.body)
         elif response.body is None:
             body = ''
         elif 'xml' in content_type:
             mode = 'xml'
-            body = _pretty_print_xml(etree.fromstring(response.body))
+            body = to_unicode(response.body)
         else:
             if 'javascript' in content_type:
                 mode = 'javascript'
@@ -128,11 +128,11 @@ def request_to_xml(request):
 
 def response_from_debug(request, response):
     debug_response = etree.XML(response.body)
-    original_response = debug_response.xpath('//original-response')
-    raise 'ERROR' + repr(original_response)
+    original_response = debug_response.find('original-response')
+
     if original_response:
-        response_info = frontik.xml_util.xml_to_dict(original_response[0])
-        original_response[0].getparent().remove(original_response[0])
+        response_info = frontik.xml_util.xml_to_dict(original_response)
+        original_response.getparent().remove(original_response)
 
         original_buffer = base64.decodestring(response_info['buffer'])
 
@@ -253,15 +253,6 @@ def _exception_to_xml(exc_info, log=debug_log):
     exc_node.append(E.text(''.join(map(to_unicode, traceback.format_exception(*exc_info)))))
     return exc_node
 
-
-def _pretty_print_xml(node):
-    return etree.tostring(node, pretty_print=True, encoding=unicode)
-
-
-def _pretty_print_json(node):
-    return json.dumps(node, sort_keys=True, indent=4, ensure_ascii=False)
-
-
 _format_number = '{:.4f}'.format
 
 
@@ -315,7 +306,7 @@ class DebugLogBulkHandler(object):
             entry.append(record._xslt_profile)
 
         if getattr(record, '_xml', None) is not None:
-            entry.append(E.text(_pretty_print_xml(record._xml)))
+            entry.append(E.text(etree.tostring(record._xml, encoding=unicode)))
 
         if getattr(record, '_protobuf', None) is not None:
             entry.append(E.text(record._protobuf))
@@ -388,7 +379,7 @@ class PageHandlerDebug(object):
 
         try:
             debug_log_data.append(E.versions(
-                _pretty_print_xml(frontik.app.get_frontik_and_apps_versions(self.handler.application))
+                etree.tostring(frontik.app.get_frontik_and_apps_versions(self.handler.application), encoding=unicode)
             ))
         except:
             debug_log.exception('cannot add version information')
