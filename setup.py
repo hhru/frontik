@@ -19,13 +19,19 @@ class BuildHook(build_py):
 
 
 class TestHook(test):
+    user_options = [('with-coverage', 'c', 'Run test suite with coverage')]
+
+    def initialize_options(self):
+        self.with_coverage = False
+        test.initialize_options(self)
+
     def run(self):
         test.run(self)
 
         import nose
         import logging
         logging.disable(logging.CRITICAL)
-        nose.main(argv=['tests', '-v'])
+        nose.main(argv=['tests', '-v'], exit=False)
 
 setup(
     name='frontik',
@@ -33,7 +39,10 @@ setup(
     description='Frontik is an asyncronous Tornado-based application server',
     long_description=open('README.md').read(),
     url='https://github.com/hhru/frontik',
-    cmdclass={'build_py': BuildHook, 'test': TestHook},
+    cmdclass={
+        'build_py': BuildHook,
+        'test': TestHook
+    },
     packages=['frontik', 'frontik/producers', 'frontik/server', 'frontik/testing', 'frontik/testing/pages'],
     scripts=['scripts/frontik'],
     package_data={

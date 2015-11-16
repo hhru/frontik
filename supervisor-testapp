@@ -1,0 +1,10 @@
+#!/usr/bin/env python
+# coding=utf-8
+
+from frontik.server.supervisor import supervisor
+
+supervisor(
+    script='./frontik-test',
+    app='tests.projects.test_app',
+    config='tests/projects/frontik_debug.cfg'
+)
