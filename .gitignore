@@ -20,6 +20,7 @@ frontik.egg-info/
 *.log
 *.pid
 .coverage*
+!.coveragerc
 .tox/
 /tests/temp/
 

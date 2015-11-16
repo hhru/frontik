@@ -50,6 +50,7 @@ tornado.options.define('logfile_template', None, str)
 tornado.options.define('pidfile_template', None, str)
 tornado.options.define('supervisor_sigterm_timeout', 4, int)
 tornado.options.define('nofile_soft_limit', 4096, int)
+tornado.options.define('with_coverage', False, bool)
 
 STARTER_SCRIPTS = {}
 
@@ -120,15 +121,18 @@ def start_worker(script, config=None, port=None, app=None):
     if options.logfile_template:
         args.append('--logfile={}'.format(options.logfile_template % dict(port=port)))
 
+    if options.with_coverage:
+        args = ['coverage', 'run'] + args
+
     STARTER_SCRIPTS[port] = subprocess.Popen(args)
     return STARTER_SCRIPTS[port]
 
 
 def stop_worker(port, signal_to_send=signal.SIGTERM):
-    logging.debug('stop worker %s', port)
+    logging.debug('stopping worker %s', port)
     path = options.pidfile_template % dict(port=port)
     if not os.path.exists(path):
-        logging.warning('pidfile %s does not exist. dont know how to stop', path)
+        logging.warning("pidfile %s does not exist, don't know how to stop", path)
     try:
         pid = int(file(path).read())
         os.kill(pid, signal_to_send)
