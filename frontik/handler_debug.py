@@ -42,20 +42,18 @@ def response_to_xml(response):
         if 'text/html' in content_type:
             body = frontik.util.decode_string_from_charset(response.body, try_charsets)
             body = body.replace('\n', '\\n').replace("'", "\\'").replace("<", "&lt;")
-        elif 'json' in content_type:
-            mode = 'json'
-            body = to_unicode(response.body)
         elif 'protobuf' in content_type:
             body = repr(response.body)
         elif response.body is None:
             body = ''
-        elif 'xml' in content_type:
-            mode = 'xml'
-            body = to_unicode(response.body)
         else:
-            if 'javascript' in content_type:
-                mode = 'javascript'
             body = frontik.util.decode_string_from_charset(response.body, try_charsets)
+
+        if 'xml' in content_type:
+            mode = 'xml'
+        elif 'javascript' in content_type or 'json' in content_type:
+            mode = 'javascript'
+
     except Exception:
         debug_log.exception('cannot parse response body')
         body = repr(response.body)
