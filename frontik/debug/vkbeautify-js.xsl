@@ -4,7 +4,10 @@
     <xsl:template name="vkbeautify-js">
         <script><![CDATA[
             /*
-               VKBeautify
+               VKBeautify https://github.com/vkiryukhin/vkBeautify
+               javascript plugin to pretty-print or minify text in XML, JSON, CSS and SQL formats.
+               Version - 0.98.00.beta
+
             */
             (function(){function m(e){var b="    ";if(isNaN(parseInt(e)))b=e;else switch(e){case 1:b=" ";break;case 2:b="  ";break;case 3:b="   ";break;case 4:b="    ";break;case 5:b="     ";break;case 6:b="      ";break;case 7:b="       ";break;case 8:b="        ";break;case 9:b="         ";break;case 10:b="          ";break;case 11:b="           ";break;case 12:b="            "}e=["\n"];for(ix=0;100>ix;ix++)e.push(e[ix]+b);return e}function k(){this.step="    ";this.shift=m(this.step)}function p(e,b){return e.replace(/\s{1,}/g,
             " ").replace(/ AND /ig,"~::~"+b+b+"AND ").replace(/ BETWEEN /ig,"~::~"+b+"BETWEEN ").replace(/ CASE /ig,"~::~"+b+"CASE ").replace(/ ELSE /ig,"~::~"+b+"ELSE ").replace(/ END /ig,"~::~"+b+"END ").replace(/ FROM /ig,"~::~FROM ").replace(/ GROUP\s{1,}BY/ig,"~::~GROUP BY ").replace(/ HAVING /ig,"~::~HAVING ").replace(/ IN /ig," IN ").replace(/ JOIN /ig,"~::~JOIN ").replace(/ CROSS~::~{1,}JOIN /ig,"~::~CROSS JOIN ").replace(/ INNER~::~{1,}JOIN /ig,"~::~INNER JOIN ").replace(/ LEFT~::~{1,}JOIN /ig,"~::~LEFT JOIN ").replace(/ RIGHT~::~{1,}JOIN /ig,

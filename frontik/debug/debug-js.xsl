@@ -3,6 +3,17 @@
 
     <xsl:template name="debug-js">
         <script><![CDATA[
+            function toggle(entry) {
+                var details = entry.querySelector('.details');
+                if (details.className.indexOf('m-details_visible') != -1) {
+                    details.className = details.className.replace(/\bm-details_visible\b/, '');
+                    entry.className = entry.className.replace(/\bentry_expanded\b/, 'entry_expandable')
+                } else {
+                    details.className = details.className + ' m-details_visible';
+                    entry.className = entry.className.replace(/\bentry_expandable\b/, 'entry_expanded')
+                }
+            }
+
             function doiframe(id, text) {
                 var iframe = window.document.createElement('iframe');
                 iframe.className = 'iframe'
@@ -64,7 +75,7 @@
                 }
             }
 
-            document.addEventListener("DOMContentLoaded", function(event) {
+            document.addEventListener('DOMContentLoaded', function(event) {
                 var sql = document.getElementsByClassName('language-sql highlighted-code');
                 Array.prototype.forEach.call(sql, function(el) {
                     el.innerHTML = vkbeautify.sql(el.textContent);
@@ -81,23 +92,6 @@
                 });
 
                 Prism.highlightAll();
-
-                var switchers = document.getElementsByClassName('entry__switcher');
-                Array.prototype.forEach.call(switchers, function(switcher) {
-                    switcher.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        var details = this.querySelector('.details');
-                        if (details.className.indexOf('m-details_visible') != -1) {
-                            details.className = details.className.replace(/\bm-details_visible\b/, '');
-                            this.className = this.className.replace(/\bentry_expanded\b/, 'entry_expandable')
-                        } else {
-                            details.className = details.className + ' m-details_visible';
-                            this.className = this.className.replace(/\bentry_expandable\b/, 'entry_expanded')
-                        }
-                        console.log(this.className, this)
-                        return false;
-                    }.bind(switcher.parentNode), false);
-                });
             });
         ]]></script>
     </xsl:template>
