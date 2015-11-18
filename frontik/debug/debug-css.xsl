@@ -13,10 +13,10 @@
             }
             code {
                 overflow-y: auto;
+                max-height: 500px;
             }
             .body {
                 word-break: break-all;
-                max-height: 500px;
             }
 
             .timeline {
