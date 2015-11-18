@@ -3,13 +3,12 @@
 
     <xsl:template name="highlight-css">
         <style>
-            /* http://prismjs.com/download.html?themes=prism&amp;languages=markup+clike+javascript+sql */
-            /**
-             * prism.js default theme for JavaScript, CSS and HTML
-             * Based on dabblet (http://dabblet.com)
-             * @author Lea Verou
-             */
-            code[class*=language-],pre[class*=language-]{color:#000;text-shadow:0 1px #fff;font-family:Consolas,Monaco,'Andale Mono','Ubuntu Mono',monospace;direction:ltr;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.5;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}code[class*=language-] ::-moz-selection,code[class*=language-]::-moz-selection,pre[class*=language-] ::-moz-selection,pre[class*=language-]::-moz-selection{text-shadow:none;background:#b3d4fc}code[class*=language-] ::selection,code[class*=language-]::selection,pre[class*=language-] ::selection,pre[class*=language-]::selection{text-shadow:none;background:#b3d4fc}@media print{code[class*=language-],pre[class*=language-]{text-shadow:none}}pre[class*=language-]{padding:1em;margin:.5em 0;overflow:auto}:not(pre)>code[class*=language-],pre[class*=language-]{background:#f5f2f0}:not(pre)>code[class*=language-]{padding:.1em;border-radius:.3em;white-space:normal}.token.cdata,.token.comment,.token.doctype,.token.prolog{color:#708090}.token.punctuation{color:#999}.namespace{opacity:.7}.token.boolean,.token.constant,.token.deleted,.token.number,.token.property,.token.symbol,.token.tag{color:#905}.token.attr-name,.token.builtin,.token.char,.token.inserted,.token.selector,.token.string{color:#690}.language-css .token.string,.style .token.string,.token.entity,.token.operator,.token.url{color:#a67f59;background:hsla(0,0%,100%,.5)}.token.atrule,.token.attr-value,.token.keyword{color:#07a}.token.function{color:#DD4A68}.token.important,.token.regex,.token.variable{color:#e90}.token.bold,.token.important{font-weight:700}.token.italic{font-style:italic}.token.entity{cursor:help}
+            /*
+                version: 8.0 (JavaScript, JSON, HTML/XML)
+                http://highlightjs.org/
+                github.com style (c) Vasily Polovnyov, vast@whiteants.net
+            */
+            .hljs{display:block;padding:.5em;color:#333;background:#f8f8f8}.diff .hljs-header,.hljs-comment,.hljs-javadoc,.hljs-template_comment{color:#998;font-style:italic}.css .rule .hljs-keyword,.hljs-keyword,.hljs-request,.hljs-status,.hljs-subst,.hljs-winutils,.javascript .hljs-title,.nginx .hljs-title{color:#333;font-weight:700}.hljs-hexcolor,.hljs-number,.ruby .hljs-constant{color:#099}.hljs-phpdoc,.hljs-string,.hljs-tag .hljs-value,.tex .hljs-formula{color:#d14}.coffeescript .hljs-params,.hljs-id,.hljs-title,.scss .hljs-preprocessor{color:#900;font-weight:700}.clojure .hljs-title,.hljs-subst,.javascript .hljs-title,.lisp .hljs-title{font-weight:400}.haskell .hljs-type,.hljs-class .hljs-title,.tex .hljs-command,.vhdl .hljs-literal{color:#458;font-weight:700}.django .hljs-tag .hljs-keyword,.hljs-rules .hljs-property,.hljs-tag,.hljs-tag .hljs-title{color:navy;font-weight:400}.hljs-attribute,.hljs-variable,.lisp .hljs-body{color:teal}.hljs-regexp{color:#009926}.hljs-prompt,.hljs-symbol,.lisp .hljs-keyword,.ruby .hljs-symbol .hljs-string,.tex .hljs-special{color:#990073}.clojure .hljs-built_in,.hljs-built_in,.lisp .hljs-title{color:#0086b3}.hljs-cdata,.hljs-doctype,.hljs-pi,.hljs-pragma,.hljs-preprocessor,.hljs-shebang{color:#999;font-weight:700}.hljs-deletion{background:#fdd}.hljs-addition{background:#dfd}.diff .hljs-change{background:#0086b3}.hljs-chunk{color:#aaa}
         </style>
     </xsl:template>
 </xsl:stylesheet>

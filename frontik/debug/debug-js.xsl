@@ -76,22 +76,20 @@
             }
 
             document.addEventListener('DOMContentLoaded', function(event) {
-                var sql = document.getElementsByClassName('language-sql highlighted-code');
+                var sql = document.getElementsByClassName('sql highlighted-code');
                 Array.prototype.forEach.call(sql, function(el) {
                     el.innerHTML = vkbeautify.sql(el.textContent);
                 });
 
-                var xml = document.getElementsByClassName('language-xml highlighted-code');
+                var xml = document.getElementsByClassName('xml highlighted-code');
                 Array.prototype.forEach.call(xml, function(el) {
                     el.innerHTML = vkbeautify.xml(el.textContent).replace(/</g, '&lt;');
                 });
 
-                var json = document.getElementsByClassName('language-js highlighted-code');
+                var json = document.getElementsByClassName('javascript highlighted-code');
                 Array.prototype.forEach.call(json, function(el) {
                     el.innerHTML = vkbeautify.json(el.textContent).replace(/</g, '&lt;');
                 });
-
-                Prism.highlightAll();
             });
         ]]></script>
     </xsl:template>

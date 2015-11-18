@@ -46,13 +46,16 @@ def response_to_xml(response):
             body = repr(response.body)
         elif response.body is None:
             body = ''
-        else:
-            body = frontik.util.decode_string_from_charset(response.body, try_charsets)
-
-        if 'xml' in content_type:
+        elif 'xml' in content_type:
             mode = 'xml'
-        elif 'javascript' in content_type or 'json' in content_type:
+            body = _pretty_print_xml(etree.fromstring(response.body))
+        elif 'json' in content_type:
             mode = 'javascript'
+            body = _pretty_print_json(json.loads(response.body))
+        else:
+            if 'javascript' in content_type:
+                mode = 'javascript'
+            body = frontik.util.decode_string_from_charset(response.body, try_charsets)
 
     except Exception:
         debug_log.exception('cannot parse response body')
@@ -252,6 +255,14 @@ def _exception_to_xml(exc_info, log=debug_log):
     return exc_node
 
 _format_number = '{:.4f}'.format
+
+
+def _pretty_print_xml(node):
+    return etree.tostring(node, pretty_print=True, encoding=unicode)
+
+
+def _pretty_print_json(node):
+    return json.dumps(node, sort_keys=True, indent=4, ensure_ascii=False)
 
 
 class DebugLogBulkHandler(object):

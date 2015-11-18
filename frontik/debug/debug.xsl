@@ -467,7 +467,12 @@
         <xsl:param name="text"/>
 
         <pre class="body">
-            <code class="language-{$mode} highlighted-code">
+            <code>
+                <xsl:attribute name="class">
+                    <xsl:if test="$mode != ''">
+                        <xsl:value-of select="$mode"/><xsl:text> highlighted-code</xsl:text>
+                    </xsl:if>
+                </xsl:attribute>
                 <xsl:value-of select="$text"/>
             </code>
         </pre>
