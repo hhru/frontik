@@ -4,7 +4,7 @@
     <xsl:template name="highlight-js">
         <script>
             <![CDATA[
-                /*
+               /*
                     version: 8.0 (JavaScript, JSON, HTML/XML)
                     http://highlightjs.org/
                 */
