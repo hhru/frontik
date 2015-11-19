@@ -1,3 +1,14 @@
+frontik (2.24.8) unstable; urgency=low
+
+  * HH-56003 move back xml and json PP
+  * HH-56003 fix origin-response handling for nested debug
+  * HH-56003 modify http client request to disable caching
+  * HH-56003 use duration attribute as sql processing time
+  * HH-56003 replace highlightjs with prism, add xml,sql formatter
+  * HH-56003 add sql highlight and folding
+
+ -- Automated Build <a.anatskiy@hh.ru>  Thu, 19 Nov 2015 17:56:56 +0300
+
 frontik (2.24.7) unstable; urgency=low
 
   * HH-56141 add codecov support
