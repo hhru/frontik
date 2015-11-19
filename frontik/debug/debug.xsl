@@ -6,6 +6,7 @@
     <xsl:include href="debug-css.xsl"/>
     <xsl:include href="highlight-css.xsl"/>
     <xsl:include href="debug-js.xsl"/>
+    <xsl:include href="vkbeautify-js.xsl"/>
     <xsl:include href="highlight-js.xsl"/>
 
     <xsl:key name="labels" match="/log/labels/*" use="local-name()"/>
@@ -29,6 +30,7 @@
                 </title>
                 <xsl:call-template name="debug-css"/>
                 <xsl:call-template name="highlight-css"/>
+                <xsl:call-template name="vkbeautify-js"/>
                 <xsl:call-template name="debug-js"/>
                 <xsl:call-template name="highlight-js"/>
             </head>
@@ -90,6 +92,7 @@
 
     <xsl:template match="log" mode="general-info">
         <div class="entry entry_expandable">
+            <!-- This allows debug page to work inside dev tools request preview, useful for ajax requests debugging -->
             <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
                 <span class="entry__head__expandtext">
                     General request/response info
@@ -109,7 +112,7 @@
         <xsl:variable name="highlight">
             <xsl:if test="$highlight-text != '' and contains(@msg, $highlight-text)">entry__head_highlight</xsl:if>
         </xsl:variable>
-            
+
         <div class="entry">
             <div class="entry__head {$highlight} {@levelname}">
                 <span class="entry__head__message">
@@ -119,6 +122,38 @@
             <xsl:apply-templates select="exception"/>
         </div>
         <xsl:apply-templates select="exception/trace"/>
+    </xsl:template>
+
+    <xsl:template match="entry[labels/label/text() = 'SQL']">
+        <div class="entry entry_expandable">
+            <!-- This allows debug page to work inside dev tools request preview, useful for ajax requests debugging -->
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+                <span class="entry__head__expandtext">
+                    <span class="time">
+                        <xsl:value-of select="format-number(@duration, '#0.#')"/>
+                        <xsl:text>ms </xsl:text>
+                    </span>
+                    <xsl:apply-templates select="labels/label"/>
+                    <xsl:text> at </xsl:text>
+                    <xsl:value-of select="@pathname" />
+                    <xsl:text>.</xsl:text>
+                    <xsl:value-of select="@funcName" />
+                    <xsl:text>(</xsl:text>
+                    <xsl:value-of select="@filename" />
+                    <xsl:text>:</xsl:text>
+                    <xsl:value-of select="@lineno" />
+                    <xsl:text>)</xsl:text>
+                </span>
+            </label>
+            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
+            <div class="details">
+                <xsl:call-template name="highlighted-block">
+                    <xsl:with-param name="mode" select="'sql'" />
+                    <xsl:with-param name="text" select="@msg" />
+                </xsl:call-template>
+            </div>
+        </div>
+        <xsl:apply-templates select="exception"/>
     </xsl:template>
 
     <xsl:template match="entry[stage]">
@@ -151,6 +186,7 @@
 
     <xsl:template match="exception/trace">
         <div class="entry entry_expandable">
+            <!-- This allows debug page to work inside dev tools request preview, useful for ajax requests debugging -->
             <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
                 <span class="entry__head__expandtext">Exception traceback</span>
             </label>
@@ -166,6 +202,7 @@
             <xsl:value-of select="file"/>
         </pre>
         <div class="entry entry_expandable trace-locals">
+            <!-- This allows debug page to work inside dev tools request preview, useful for ajax requests debugging -->
             <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
                 <span class="entry__head__expandtext trace-locals__caption">Show/hide locals</span>
             </label>
@@ -216,7 +253,7 @@
         <xsl:variable name="timebar-offset-time">
             <xsl:value-of select="1000 * (request/start_time/text() - /log/@started)"/>
         </xsl:variable>
-        
+
         <xsl:variable name="timebar-offset">
             <xsl:value-of select="format-number($timebar-offset-time div $total-time, '##.##%')"/>
         </xsl:variable>
@@ -241,6 +278,7 @@
         </xsl:variable>
 
         <div class="entry entry_expandable">
+            <!-- This allows debug page to work inside dev tools request preview, useful for ajax requests debugging -->
             <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher {$status} {$highlight}">
                 <div class="timebar">
                     <div class="timebar__line" style="left: {$timebar-offset}">
@@ -299,6 +337,7 @@
 
     <xsl:template match="entry[text]">
         <div class="entry entry_expandable">
+            <!-- This allows debug page to work inside dev tools request preview, useful for ajax requests debugging -->
             <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
                 <span class="entry__head__expandtext">
                     <xsl:value-of select="@msg"/>
@@ -323,6 +362,7 @@
 
     <xsl:template match="request" mode="copy-as-curl">
         <div class="params">
+            <!-- This allows debug page to work inside dev tools request preview, useful for ajax requests debugging -->
             <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode); select(this.parentNode)" class="delimeter copy-as-curl-link">
                 copy as cURL
             </label>
@@ -359,8 +399,8 @@
     <xsl:template match="body[text() != '']">
         <div class="delimeter"><xsl:value-of select="name(parent::*)"/> body</div>
         <xsl:call-template name="highlighted-block">
-            <xsl:with-param name="mode" select="@mode"/>
             <xsl:with-param name="text" select="."/>
+            <xsl:with-param name="mode" select="@mode"/>
         </xsl:call-template>
     </xsl:template>
 
@@ -423,11 +463,16 @@
     <!-- Response body highlighting -->
 
     <xsl:template name="highlighted-block">
-        <xsl:param name="mode" select="''"/>
+        <xsl:param name="mode" select="'xml'"/>
         <xsl:param name="text"/>
 
         <pre class="body">
-            <code class="{$mode}">
+            <code>
+                <xsl:attribute name="class">
+                    <xsl:if test="$mode != ''">
+                        <xsl:value-of select="$mode"/><xsl:text> highlighted-code</xsl:text>
+                    </xsl:if>
+                </xsl:attribute>
                 <xsl:value-of select="$text"/>
             </code>
         </pre>
@@ -439,6 +484,7 @@
 
     <xsl:template match="entry[profile]">
         <div class="entry entry_expandable">
+            <!-- This allows debug page to work inside dev tools request preview, useful for ajax requests debugging -->
             <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
                 <span class="entry__head__expandtext">XSLT profiling results</span>
             </label>

@@ -12,8 +12,8 @@
                 white-space: pre-wrap;
             }
             code {
-                max-height: 500px;
                 overflow-y: auto;
+                max-height: 500px;
             }
             .body {
                 word-break: break-all;
