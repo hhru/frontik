@@ -56,6 +56,8 @@ These options are defined for one Frontik instance (see [options.py](/frontik/op
 | `warn_no_jobs`               | `bool`  | `True`        | Write a warning if no jobs were found in executor queue               |
 | `timeout_multiplier`         | `float` | `1.0`         | Generic timeout multiplier for get_xxx calls (useful for testing)     |
 | `handlers_count`             | `int`   | `100`         | Limit for number of simultaneous requests handled by Frontik instance |
+| `http_proxy_host`            | `str`   | `None`        | HTTP proxy host                                                       |
+| `http_proxy_port`            | `int`   | `3128`        | HTTP proxy port                                                       |
 
 There are also certain options, that can be defined by application, see
 [Configuring Frontik application](/docs/config-app.md) for more details.
