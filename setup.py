@@ -31,7 +31,7 @@ class TestHook(test):
         import nose
         import logging
         logging.disable(logging.CRITICAL)
-        nose.main(argv=['tests', '-v'], exit=False)
+        nose.main(argv=['tests', '-v'])
 
 setup(
     name='frontik',
@@ -50,7 +50,7 @@ setup(
     },
     install_requires=[
         'nose',
-        'python-daemon',
+        'python-daemon < 2',
         'lxml >= 2.3.2',
         'simplejson >= 2.3.2',
         'pycurl >= 7.19.0',
