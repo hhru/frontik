@@ -1,3 +1,15 @@
+frontik (2.25.0) unstable; urgency=low
+
+  * HH-56406 add some more tests for supervisor
+  * HH-56406 fix frontik to pass tests with Tornado 3.2.2
+  * HH-56406 update docs
+  * HH-56406 remove tornado_util
+  * HH-56406 refactor frontik.server.supervisor
+  * HH-56406 move tornado_util server and supervisor to frontik
+  * HH-56406 remove long requests
+
+ -- Automated Build <an.sumin@hh.ru>  Mon, 30 Nov 2015 10:15:54 +0300
+
 frontik (2.24.8) unstable; urgency=low
 
   * HH-56003 move back xml and json PP
