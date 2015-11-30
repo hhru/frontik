@@ -8,7 +8,7 @@ from tornado.escape import to_unicode
 
 from frontik.handler_debug import request_to_curl_string
 from frontik.util import make_get_request, make_post_request, make_put_request
-from .instances import frontik_non_debug
+from .instances import create_basic_auth_header, frontik_non_debug
 
 
 class CurlStringTestCase(unittest.TestCase):
@@ -54,7 +54,7 @@ class CurlStringTestCase(unittest.TestCase):
 
 class DebugTestCase(unittest.TestCase):
 
-    DEBUG_BASIC_AUTH = 'Basic {}'.format(base64.encodestring('user:god'))
+    DEBUG_BASIC_AUTH = create_basic_auth_header('user:god')
 
     def test_complex_debug_page(self):
         response = frontik_non_debug.get_page(
@@ -131,10 +131,7 @@ class DebugTestCase(unittest.TestCase):
 
     def assertDebugResponseCode(self, page, expected_code, headers=None):
         response = frontik_non_debug.get_page(page, headers=headers)
-        self.assertEqual(
-            response.status_code,
-            expected_code
-        )
+        self.assertEqual(response.status_code, expected_code)
         return response
 
     def test_debug_by_basic_auth(self):
@@ -148,58 +145,54 @@ class DebugTestCase(unittest.TestCase):
                                          headers={'Authorization': self.DEBUG_BASIC_AUTH},
                                          expected_code=httplib.OK)
 
-    def test_debug_by_basic_auth_with_wrong_header(self):
-        for value in ('Token user:god',
-                      'Bearer abcdfe0123456789',
-                      'Basic',
-                      'Basic ',
-                      'Basic ScrewYou',
-                      'Basic {}'.format(base64.encodestring(':')),
-                      'Basic {}'.format(base64.encodestring('')),
-                      'Basic {}'.format(base64.encodestring('not:pass')),
-                      'BASIC {}'.format(base64.encodestring('user:god'))):
-            self.assertDebugResponseCode(page='app/simple_xml?debug',
-                                         headers={'Authorization': value},
-                                         expected_code=httplib.UNAUTHORIZED)
+    def test_debug_by_basic_auth_with_invalid_header(self):
+        invalid_headers = (
+            'Token user:god',
+            'Bearer abcdfe0123456789',
+            'Basic',
+            'Basic ',
+            'Basic ScrewYou',
+            create_basic_auth_header(':'),
+            create_basic_auth_header(''),
+            create_basic_auth_header('not:pass'),
+            'BASIC {}'.format(base64.encodestring('user:god').strip())
+        )
+
+        for h in invalid_headers:
+            self.assertDebugResponseCode('app/simple_xml?debug', httplib.UNAUTHORIZED, headers={'Authorization': h})
 
     def test_debug_by_header(self):
         for param in ('debug', 'nopost', 'noxsl', 'notpl'):
-            response = self.assertDebugResponseCode(page='app/simple_xml?{}'.format(param),
-                                                    expected_code=httplib.UNAUTHORIZED)
+            response = self.assertDebugResponseCode('app/simple_xml?{}'.format(param), httplib.UNAUTHORIZED)
+
             self.assertIn('Www-Authenticate', response.headers)
             self.assertEqual('Basic realm="Secure Area"', response.headers['Www-Authenticate'])
 
-            self.assertDebugResponseCode(page='app/simple_xml?{}'.format(param),
-                                         headers={'Frontik-Debug-Auth': 'user:god'},
-                                         expected_code=httplib.OK)
+            self.assertDebugResponseCode(
+                'app/simple_xml?{}'.format(param), httplib.OK, headers={'Frontik-Debug-Auth': 'user:god'}
+            )
 
-            self.assertDebugResponseCode(page='app/simple_xml?{}'.format(param),
-                                         headers={
-                                             'Frontik-Debug-Auth': 'user:god',
-                                             'Authorization': 'Basic bad'},
-                                         expected_code=httplib.OK)
+            self.assertDebugResponseCode(
+                'app/simple_xml?{}'.format(param), httplib.OK,
+                headers={'Frontik-Debug-Auth': 'user:god', 'Authorization': 'Basic bad'}
+            )
 
     def test_debug_by_header_with_wrong_header(self):
-        for value in ('',
-                      'not:pass',
-                      'user: god',
-                      self.DEBUG_BASIC_AUTH):
+        for value in ('', 'not:pass', 'user: god', self.DEBUG_BASIC_AUTH):
             response = self.assertDebugResponseCode(
-                page='app/simple_xml?debug',
-                headers={'Frontik-Debug-Auth': value},
-                expected_code=httplib.UNAUTHORIZED
+                'app/simple_xml?debug', httplib.UNAUTHORIZED, headers={'Frontik-Debug-Auth': value}
             )
+
             self.assertIn('Www-Authenticate', response.headers)
             self.assertEqual('Frontik-Debug-Auth-Header realm="Secure Area"', response.headers['Www-Authenticate'])
 
     def test_debug_by_cookie(self):
         for param in ('debug', 'noxsl', 'notpl', 'nopost'):
-            self.assertDebugResponseCode(page='app/simple_xml',
-                                         headers={'Cookie': '{}=true'.format(param)},
-                                         expected_code=httplib.UNAUTHORIZED)
-            self.assertDebugResponseCode(page='app/simple_xml',
-                                         headers={
-                                             'Cookie': '{}=true;'.format(param),
-                                             'Authorization': self.DEBUG_BASIC_AUTH
-                                         },
-                                         expected_code=httplib.OK)
+            self.assertDebugResponseCode(
+                'app/simple_xml', httplib.UNAUTHORIZED, headers={'Cookie': '{}=true'.format(param)}
+            )
+
+            self.assertDebugResponseCode(
+                'app/simple_xml', httplib.OK,
+                headers={'Cookie': '{}=true;'.format(param), 'Authorization': self.DEBUG_BASIC_AUTH}
+            )

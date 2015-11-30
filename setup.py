@@ -19,13 +19,19 @@ class BuildHook(build_py):
 
 
 class TestHook(test):
+    user_options = [('with-coverage', 'c', 'Run test suite with coverage')]
+
+    def initialize_options(self):
+        self.with_coverage = False
+        test.initialize_options(self)
+
     def run(self):
         test.run(self)
 
         import nose
         import logging
         logging.disable(logging.CRITICAL)
-        nose.main(argv=['tests', '-v'])
+        nose.main(argv=['tests', '-v'], exit=False)
 
 setup(
     name='frontik',
@@ -33,28 +39,30 @@ setup(
     description='Frontik is an asyncronous Tornado-based application server',
     long_description=open('README.md').read(),
     url='https://github.com/hhru/frontik',
-    cmdclass={'build_py': BuildHook, 'test': TestHook},
-    packages=['frontik', 'frontik/producers', 'frontik/testing', 'frontik/testing/pages'],
+    cmdclass={
+        'build_py': BuildHook,
+        'test': TestHook
+    },
+    packages=['frontik', 'frontik/producers', 'frontik/server', 'frontik/testing', 'frontik/testing/pages'],
     scripts=['scripts/frontik'],
     package_data={
         'frontik': ['debug/*.xsl'],
     },
     install_requires=[
         'nose',
+        'python-daemon',
         'lxml >= 2.3.2',
         'simplejson >= 2.3.2',
         'pycurl >= 7.19.0',
         'requests >= 0.8.2',
         'jinja2 >= 2.6',
-        'tornado == 3.2.2-hh2',
-        'tornado_util >= 0.8.0',
+        'tornado >= 3.2.2, < 4',
     ],
     tests_require=[
         'pep8',
     ],
     dependency_links=[
-        'https://github.com/hhru/tornado-util/archive/master.zip#egg=tornado_util-0.8.0',
-        'https://github.com/hhru/tornado/archive/master.zip#egg=tornado-3.2.2-hh2',
+        'https://github.com/hhru/tornado/archive/fix-version.zip',
     ],
     zip_safe=False
 )

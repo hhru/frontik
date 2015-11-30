@@ -9,11 +9,11 @@ Build-Depends:
   python-setuptools,
   python-nose,
   python-simplejson,
-  python-tornado (>= 2.0.1+hh24),
-  python-tornado-util (>= 0.7.6),
+  python-tornado (>= 3.2.2+hh4),
   python-jinja2,
   libcurl3 (=7.22.0-3ubuntu4.14+hh1),
   libcurl3-gnutls (=7.22.0-3ubuntu4.14+hh1),
+  python-pycurl,
 Standards-Version: 3.9.3
 X-Python-Version: >= 2.7
 
@@ -27,9 +27,10 @@ Depends:
   python, 
   python-lxml,
   python-simplejson,
-  python-tornado (>= 2.0.1+hh24),
-  python-tornado-util (>= 0.7.6),
+  python-tornado (>= 3.2.2+hh4),
   python-jinja2,
+  python-pycurl,
+  python-daemon,
 Suggests:
   python-raven (>= 5.2.0+hh1),
 Description: Tornado-based application server
