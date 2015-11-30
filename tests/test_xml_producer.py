@@ -16,28 +16,28 @@ class TestXsl(unittest.TestCase):
         self.assertEqual(response.status_code, 500)
 
         html = frontik_test_app.get_page_text('xsl/apply_error?debug')
-        self.assertIn('XSLTApplyError', html)
+        self.assertIn('XSLT ERROR in file', html)
 
     def test_xsl_parse_error(self):
         response = frontik_test_app.get_page('xsl/parse_error')
         self.assertEqual(response.status_code, 500)
 
         html = frontik_test_app.get_page_text('xsl/parse_error?debug')
-        self.assertIn('XSLTParseError', html)
+        self.assertIn('failed parsing XSL file parse_error.xsl (XSL parse error)', html)
 
     def test_xsl_syntax_error(self):
         response = frontik_test_app.get_page('xsl/syntax_error')
         self.assertEqual(response.status_code, 500)
 
         html = frontik_test_app.get_page_text('xsl/syntax_error?debug')
-        self.assertIn('XMLSyntaxError', html)
+        self.assertIn('failed parsing XSL file syntax_error.xsl (XML syntax)', html)
 
     def test_no_xsl_template(self):
         response = frontik_test_app.get_page('xsl/simple?template=no.xsl')
         self.assertEqual(response.status_code, 500)
 
         html = frontik_test_app.get_page_text('xsl/simple?template=no.xsl&debug')
-        self.assertIn('IOError: Error reading file', html)
+        self.assertIn('failed loading XSL file no.xsl', html)
 
     def test_no_xsl_mode(self):
         response = frontik_test_app.get_page('xsl/simple', notpl=True)

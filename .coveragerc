@@ -1,0 +1,4 @@
+[run]
+source = frontik/
+parallel = True
+branch = True

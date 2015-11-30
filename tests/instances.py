@@ -1,75 +1,95 @@
 # coding=utf-8
 
-from functools import partial
+import base64
 from distutils.spawn import find_executable
 import json
 import os
 import socket
+import subprocess
+import sys
 import time
 
-import requests
 from lxml import etree
+import requests
 
-import tornado.options
-from tornado_util import supervisor
-
-from . import PROJECT_ROOT
+from . import FRONTIK_ROOT
+from frontik.server import supervisor
 
 try:
-    import sys
     import coverage
     USE_COVERAGE = '--with-coverage' in sys.argv
 except ImportError:
     USE_COVERAGE = False
 
 
+def run_supervisor_command(supervisor_script, port, command):
+    if USE_COVERAGE:
+        template = '{exe} {coverage} run {supervisor} --with-coverage {args} {command}'
+    else:
+        template = '{exe} {supervisor} {args} {command}'
+
+    args = '--start_port={port} --workers_count=1 --pidfile_template={pidfile} --logfile_template={logfile}'.format(
+        port=port,
+        pidfile=os.path.join(FRONTIK_ROOT, '{}.%(port)s.pid'.format(supervisor_script)),
+        logfile=os.path.join(FRONTIK_ROOT, 'frontik_test.log')
+    )
+
+    executable = template.format(
+        exe=sys.executable,
+        coverage=find_executable('coverage'),
+        supervisor=supervisor_script,
+        args=args,
+        command=command
+    )
+
+    return subprocess.Popen(executable.split(), stderr=subprocess.PIPE)
+
+
+def find_free_port(from_port=9000, to_port=10000):
+    for port in xrange(from_port, to_port):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.bind(('', port))
+            s.close()
+            break
+        except:
+            pass
+    else:
+        raise AssertionError('No empty port in range {}..{} for frontik test instance'.format(from_port, to_port))
+
+    return port
+
+
+def create_basic_auth_header(credentials):
+    return 'Basic {}'.format(base64.encodestring(credentials)).strip()
+
+
 class FrontikTestInstance(object):
-    def __init__(self, app, config, wait_steps=50):
-        tornado.options.parse_config_file(config)
-        self.app = app
-        self.config = config
+    def __init__(self, supervisor_script):
+        self.supervisor_script = supervisor_script
         self.port = None
-        self.wait_steps = wait_steps
 
     def start(self):
-        for port in xrange(9000, 10000):
-            try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.bind(('', port))
-                s.close()
-                break
-            except:
-                pass
-        else:
-            raise AssertionError('No empty port in range 9000..10000 for frontik test instance')
+        self.port = find_free_port()
+        run_supervisor_command(self.supervisor_script, self.port, 'start')
+        self.wait_for(lambda: supervisor.worker_is_running(self.port), 50)
 
-        if USE_COVERAGE:
-            script_tpl = '{exe} {coverage_executable} run -p --branch --source=frontik {runner}'
-        else:
-            script_tpl = '{exe} {runner}'
-        script = script_tpl.format(
-            exe=sys.executable,
-            coverage_executable=find_executable('coverage'),
-            runner=os.path.join(PROJECT_ROOT, 'frontik-test')
-        )
-
-        supervisor.start_worker(script, app=self.app, config=self.config, port=port)
-        self.wait_for(lambda: supervisor.is_running(port), n=self.wait_steps)
-        self.port = port
+        assert self.get_page('status').status_code == 200
 
     def stop(self):
-        if self.port is not None:
-            supervisor.stop_worker(self.port)
-            self.wait_for(lambda: not(supervisor.is_running(self.port)), n=self.wait_steps)
-            supervisor.rm_pidfile(self.port)
-            self.port = None
+        if not self.port:
+            return
+
+        process = run_supervisor_command(self.supervisor_script, self.port, 'stop')
+        assert process.wait() == 0
+        self.port = None
 
     @staticmethod
-    def wait_for(fun, n=50):
-        for i in xrange(n):
+    def wait_for(fun, steps):
+        for i in xrange(steps):
             if fun():
                 return
-            time.sleep(0.1)  # up to 5 seconds with n=50
+            time.sleep(0.1)  # up to 5 seconds with steps=50
 
         assert fun()
 
@@ -110,10 +130,8 @@ class FrontikTestInstance(object):
     def get_page_text(self, page, notpl=False):
         return self.get_page(page, notpl).content
 
-join_projects_dir = partial(os.path.join, PROJECT_ROOT, 'tests', 'projects')
 
-frontik_broken_app = FrontikTestInstance('tests.projects.broken_app', join_projects_dir('frontik_debug.cfg'),
-                                         wait_steps=5)
-frontik_test_app = FrontikTestInstance('tests.projects.test_app', join_projects_dir('frontik_debug.cfg'))
-frontik_re_app = FrontikTestInstance('tests.projects.re_app', join_projects_dir('frontik_debug.cfg'))
-frontik_non_debug = FrontikTestInstance('tests.projects.test_app', join_projects_dir('frontik_non_debug.cfg'))
+frontik_broken_app = FrontikTestInstance('supervisor-brokenapp')
+frontik_test_app = FrontikTestInstance('supervisor-testapp')
+frontik_re_app = FrontikTestInstance('supervisor-reapp')
+frontik_non_debug = FrontikTestInstance('supervisor-nodebug')
