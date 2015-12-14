@@ -1,13 +1,19 @@
 # coding=utf-8
 
 import threading
-from Queue import PriorityQueue, Empty as QueueEmpty
 import logging
 from functools import partial
 
 import tornado.options
 from tornado import stack_context
 from tornado.ioloop import IOLoop
+
+from frontik.compat import PY3
+
+if PY3:
+    from queue import Empty, PriorityQueue
+else:
+    from Queue import Empty, PriorityQueue
 
 jobs_log = logging.getLogger('frontik.jobs')
 __threadpool_executor = None
@@ -18,7 +24,7 @@ def queue_worker(queue):
     while True:
         try:
             (prio, (func, cb, exception_cb)) = queue.get(timeout=10)
-        except QueueEmpty:
+        except Empty:
             if warn_no_jobs:
                 jobs_log.warning('no job in 10 secs')
             continue
