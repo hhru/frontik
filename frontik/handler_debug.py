@@ -2,7 +2,7 @@
 
 import base64
 import copy
-import cStringIO
+from datetime import datetime
 import inspect
 import logging
 import os
@@ -11,7 +11,6 @@ import time
 import traceback
 import urlparse
 import weakref
-from datetime import datetime
 
 import simplejson as json
 import lxml.etree as etree
@@ -25,9 +24,14 @@ try:
 except ImportError:
     from Cookie import SimpleCookie
 
-from frontik.compat import iteritems
+from frontik.compat import iteritems, PY3
 import frontik.util
 import frontik.xml_util
+
+if PY3:
+    from io import StringIO
+else:
+    from cStringIO import StringIO
 
 debug_log = logging.getLogger('frontik.debug')
 
@@ -149,7 +153,7 @@ def response_from_debug(request, response):
 
         fake_response = HTTPResponse(
             request, int(response_info['code']), headers=headers,
-            buffer=cStringIO.StringIO(utf8(original_buffer)),
+            buffer=StringIO(utf8(original_buffer)),
             effective_url=response.effective_url, request_time=response.request_time,
             time_info=response.time_info
         )

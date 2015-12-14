@@ -5,7 +5,6 @@ See source code for get_doc_shows_what_expected for example that doubles as test
 """
 
 from collections import namedtuple
-from cStringIO import StringIO
 from functools import partial
 import json
 from logging import getLogger
@@ -23,12 +22,17 @@ from tornado.ioloop import IOLoop
 from tornado.util import raise_exc_info
 
 import frontik.app
-from frontik.compat import iteritems
+from frontik.compat import iteritems, PY3
 import frontik.handler
 import frontik.handler_active_limit
 import frontik.http_client
 import frontik.loggers
 import frontik.options
+
+if PY3:
+    from io import StringIO
+else:
+    from cStringIO import StringIO
 
 tornado.options.options.stderr_log = True
 tornado.options.options.loglevel = 'debug'
