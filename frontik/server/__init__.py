@@ -50,9 +50,8 @@ def parse_configs_and_start(config_files):
         ctx.open()
 
     if options.pidfile:
-        pidfile = file(options.pidfile, 'w+')
-        pidfile.write(str(os.getpid()))
-        pidfile.close()
+        with open(options.pidfile, 'w+') as pidfile:
+            pidfile.write(str(os.getpid()))
 
     bootstrap_core_logging()
 
