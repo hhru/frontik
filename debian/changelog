@@ -1,3 +1,9 @@
+frontik (2.25.1) unstable; urgency=low
+
+  * HH-56601 http proxy settings
+
+ -- Automated Build <n.kovalev@hh.ru>  Fri, 18 Dec 2015 11:00:29 +0300
+
 frontik (2.25.0) unstable; urgency=low
 
   * HH-56406 add some more tests for supervisor
