@@ -135,7 +135,7 @@ class DebugTestCase(unittest.TestCase):
         return response
 
     def test_debug_by_basic_auth(self):
-        for param in ('debug', 'nopost', 'noxsl', 'notpl'):
+        for param in ('debug', 'noxsl', 'notpl'):
             response = self.assertDebugResponseCode(page='app/simple_xml?{}'.format(param),
                                                     expected_code=httplib.UNAUTHORIZED)
             self.assertIn('Www-Authenticate', response.headers)
@@ -162,7 +162,7 @@ class DebugTestCase(unittest.TestCase):
             self.assertDebugResponseCode('app/simple_xml?debug', httplib.UNAUTHORIZED, headers={'Authorization': h})
 
     def test_debug_by_header(self):
-        for param in ('debug', 'nopost', 'noxsl', 'notpl'):
+        for param in ('debug', 'noxsl', 'notpl'):
             response = self.assertDebugResponseCode('app/simple_xml?{}'.format(param), httplib.UNAUTHORIZED)
 
             self.assertIn('Www-Authenticate', response.headers)
@@ -187,7 +187,7 @@ class DebugTestCase(unittest.TestCase):
             self.assertEqual('Frontik-Debug-Auth-Header realm="Secure Area"', response.headers['Www-Authenticate'])
 
     def test_debug_by_cookie(self):
-        for param in ('debug', 'noxsl', 'notpl', 'nopost'):
+        for param in ('debug', 'noxsl', 'notpl'):
             self.assertDebugResponseCode(
                 'app/simple_xml', httplib.UNAUTHORIZED, headers={'Cookie': '{}=true'.format(param)}
             )
