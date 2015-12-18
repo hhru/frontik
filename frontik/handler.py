@@ -99,14 +99,6 @@ class BaseHandler(tornado.web.RequestHandler):
         self.xml_producer = frontik.producers.xml_producer.XmlProducer(self, self.application.xml)
         self.xml = self.xml_producer  # deprecated synonym
         self.doc = self.xml_producer.doc
-
-        if frontik.util.get_cookie_or_url_param_value(self, 'nopost') is not None:
-            self.require_debug_access()
-            self.apply_postprocessor = False
-            self.log.debug('apply_postprocessor = False due to "nopost" argument')
-        else:
-            self.apply_postprocessor = True
-
         self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish', logger=self.log)
         self._prepared = True
 
@@ -259,11 +251,7 @@ class BaseHandler(tornado.web.RequestHandler):
                     producer = self.xml_producer
 
                 self.log.debug('using %s producer', producer)
-
-                if self.apply_postprocessor:
-                    producer(partial(self._call_postprocessors, self._template_postprocessors, self.finish))
-                else:
-                    producer(self.finish)
+                producer(partial(self._call_postprocessors, self._template_postprocessors, self.finish))
 
             self._call_postprocessors(self._early_postprocessors, _callback)
         else:
