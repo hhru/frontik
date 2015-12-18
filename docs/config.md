@@ -39,6 +39,8 @@ These options are defined for a separate Frontik instance (see [options.py](/fro
 | `warn_no_jobs`               | `bool`  | `True`        | Write a warning if no jobs were found in executor queue               |
 | `timeout_multiplier`         | `float` | `1.0`         | Generic timeout multiplier for get_xxx calls (useful for testing)     |
 | `handlers_count`             | `int`   | `100`         | Limit for number of simultaneous requests handled by Frontik instance |
+| `http_proxy_host`            | `str`   | `None`        | HTTP proxy host                                                       |
+| `http_proxy_port`            | `int`   | `3128`        | HTTP proxy port                                                       |
 
 The following options are specific to [frontik.server.supervisor](https://github.com/hhru/frontik/blob/master/frontik/server/supervisor.py)
 module, which provides a convenient interface for running and controlling several Frontik instances on one machine.
