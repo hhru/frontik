@@ -165,6 +165,10 @@ class HttpClient(object):
             else:
                 req_callback = partial(self._log_response, request, callback)
 
+            if options.http_proxy_host is not None:
+                request.proxy_host = options.http_proxy_host
+                request.proxy_port = options.http_proxy_port
+
             return self.http_client_impl.fetch(self.modify_http_request_hook(request), req_callback)
 
         self.handler.log.warning('attempted to make http request to %s when page is finished, ignoring', request.url)
