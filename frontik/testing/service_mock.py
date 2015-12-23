@@ -9,7 +9,6 @@ from cStringIO import StringIO
 from functools import partial
 import json
 from logging import getLogger
-import os.path
 import sys
 from urllib import unquote_plus as unquote
 from urlparse import urlparse, parse_qs
@@ -21,6 +20,7 @@ import tornado.web
 from tornado.httpclient import HTTPResponse
 from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
+from tornado.util import raise_exc_info
 
 import frontik.app
 import frontik.handler
@@ -203,20 +203,24 @@ class EmptyEnvironment(object):
         self._request.body = body
         return self
 
-    # deprecated, make default when raise_exceptions is removed
+    # TODO:
+    # remove call_with_exception_handler
+    # remove call_function usages and rename it to _call_function
+    # refactor call_* usages to explicitly pass raise_exceptions=True
+    # switch raise_exceptions default to False
     def call_with_exception_handler(self, method, *args, **kwargs):
         return self.call_function(method, raise_exceptions=False, *args, **kwargs)
 
-    def call_get(self, page_handler):
+    def call_get(self, page_handler, raise_exceptions=True):
         return self.call_function(page_handler.get_page)
 
-    def call_post(self, page_handler):
+    def call_post(self, page_handler, raise_exceptions=True):
         return self.call_function(page_handler.post_page)
 
-    def call_put(self, page_handler):
+    def call_put(self, page_handler, raise_exceptions=True):
         return self.call_function(page_handler.put_page)
 
-    def call_delete(self, page_handler):
+    def call_delete(self, page_handler, raise_exceptions=True):
         return self.call_function(page_handler.delete_page)
 
     def call_function(self, method, raise_exceptions=True, *args, **kwargs):
@@ -267,8 +271,7 @@ class EmptyEnvironment(object):
         IOLoop.instance().start()
 
         if raise_exceptions and exceptions:
-            last_exception = exceptions[0]
-            raise last_exception[0], last_exception[1], last_exception[2]
+            raise_exc_info(exceptions[0])
 
         return TestResult(self._config, self._request, self._handler, self._response_text)
 
