@@ -21,7 +21,7 @@ import frontik.util
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
 from frontik.http_codes import process_status_code
-import frontik.sentry
+import frontik.loggers.sentry
 
 
 class HTTPError(tornado.web.HTTPError):
@@ -59,9 +59,14 @@ class BaseHandler(tornado.web.RequestHandler):
 
         self.name = self.__class__.__name__
         self.request_id = request_id
+        self.config = application.config
+
         self.log = logger
         self.log.register_handler(self)
-        self.config = application.config
+        self._exception_hooks = []
+
+        for initializer in application.loggers_initializers:
+            initializer(self)
 
         super(BaseHandler, self).__init__(application, request, logger=self.log, **kwargs)
 
@@ -74,12 +79,7 @@ class BaseHandler(tornado.web.RequestHandler):
 
         self._http_client = HttpClient(self, self.application.curl_http_client, self.modify_http_client_request)
 
-        # this is deprecated
-        if hasattr(self.config, 'postprocessor'):
-            self.add_template_postprocessor(self.config.postprocessor)
-
         self.text = None
-        self._sentry_handler = None
 
     def __repr__(self):
         return '.'.join([self.__module__, self.__class__.__name__])
@@ -262,6 +262,19 @@ class BaseHandler(tornado.web.RequestHandler):
         self.log.stage_tag('page')
         self.log.log_stages(408)
         self.cleanup()
+
+    def register_exception_hook(self, exception_hook):
+        """
+        Adds a function to the list of hooks, which are executed when `log_exception` is called.
+        `exception_hook` must have the same signature as `log_exception`
+        """
+        self._exception_hooks.append(exception_hook)
+
+    def log_exception(self, typ, value, tb):
+        super(BaseHandler, self).log_exception(typ, value, tb)
+
+        for exception_hook in self._exception_hooks:
+            exception_hook(typ, value, tb)
 
     def send_error(self, status_code=500, **kwargs):
         self.log.stage_tag('page')
@@ -456,24 +469,9 @@ class BaseHandler(tornado.web.RequestHandler):
     def set_template(self, filename):
         return self.json_producer.set_template(filename)
 
-    # Sentry
-
+    # Deprecated
     def get_sentry_handler(self):
-        if self._sentry_handler is None:
-            client = getattr(self.application, 'sentry_client', None)
-            if client:
-                self._sentry_handler = frontik.sentry.SentryHandler(client, self.request)
-                self.preset_sentry_handler(self._sentry_handler)
-        return self._sentry_handler
-
-    def preset_sentry_handler(self, sentry_handler):
         pass
-
-    def log_exception(self, typ, value, tb):
-        super(BaseHandler, self).log_exception(typ, value, tb)
-        sentry_handler = self.get_sentry_handler()
-        if sentry_handler is not None and not isinstance(value, tornado.web.HTTPError):
-            sentry_handler.capture_exception(exc_info=(typ, value, tb))
 
 
 class PageHandler(BaseHandler):

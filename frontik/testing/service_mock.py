@@ -23,15 +23,15 @@ from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
 
 import frontik.app
-import frontik.frontik_logging
 import frontik.handler
 import frontik.http_client
+import frontik.loggers
 import frontik.options
 import frontik.handler_active_limit
 
 tornado.options.options.stderr_log = True
 tornado.options.options.loglevel = 'debug'
-frontik.frontik_logging.bootstrap_logging()
+frontik.loggers.bootstrap_core_logging()
 
 
 class HTTPResponseStub(HTTPResponse):

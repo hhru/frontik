@@ -1,12 +1,51 @@
-# coding: utf-8
+# coding=utf-8
+
+import logging
+
 from tornado.httpclient import AsyncHTTPClient
 from tornado.options import options
+from tornado.web import HTTPError
 
 try:
     from raven.contrib.tornado import AsyncSentryClient as OriginalAsyncSentryClient
     has_raven = True
 except ImportError:
     has_raven = False
+
+
+def bootstrap_logger(app):
+    dsn = app.app_settings.get('sentry_dsn')
+
+    if not has_raven:
+        logging.getLogger('frontik.loggers').warning('sentry_dsn set but raven not avalaible')
+
+    def logger_initializer(handler):
+        if not dsn or not has_raven:
+            handler.get_sentry_logger = lambda: None
+            return
+
+        sentry_client = AsyncSentryClient(dsn=dsn, http_client=app.curl_http_client)
+
+        def get_sentry_logger():
+            if not hasattr(handler, 'sentry_logger'):
+                handler.sentry_logger = SentryLogger(sentry_client, handler.request)
+                if hasattr(handler, 'initialize_sentry_logger'):
+                    handler.initialize_sentry_logger(handler.sentry_logger)
+
+            return handler.sentry_logger
+
+        # Defer logger creation after exception actually occurs
+        def log_exception_to_sentry(typ, value, tb):
+            if isinstance(value, HTTPError):
+                return
+
+            handler.get_sentry_logger().capture_exception(exc_info=(typ, value, tb))
+
+        handler.get_sentry_logger = get_sentry_logger
+        handler.register_exception_hook(log_exception_to_sentry)
+
+    return logger_initializer
+
 
 if has_raven:
     class AsyncSentryClient(OriginalAsyncSentryClient):
@@ -23,13 +62,12 @@ if has_raven:
             """
             http_client = self.http_client if self.http_client else AsyncHTTPClient()
             return http_client.fetch(
-                url, callback, method="POST", body=data, headers=headers if headers else {},
+                url, callback, method='POST', body=data, headers=headers if headers else {},
                 validate_cert=self.validate_cert, connect_timeout=options.http_client_default_connect_timeout,
                 request_timeout=options.http_client_default_request_timeout
             )
 
-    class SentryHandler(object):
-
+    class SentryLogger(object):
         def __init__(self, sentry_client, request):
             """
             :type request: tornado.httpserver.HTTPRequest
@@ -46,7 +84,7 @@ if has_raven:
         def set_request_extra_data(self, request_extra_data):
             """
             :type request_extra_data: dict
-            :param request_extra_data: data is sent with any exception or message
+            :param request_extra_data: extra data to be sent with any exception or message
             """
             self.request_extra_data = request_extra_data
 
@@ -59,9 +97,6 @@ if has_raven:
             }
             new_data = {k: v for k, v in new_data.iteritems() if v is not None}
             self.user_info.update(new_data)
-
-        def set_full_url(self, url):
-            self.url = url
 
         def capture_exception(self, exc_info=None, extra_data=None, **kwargs):
             """
@@ -79,7 +114,7 @@ if has_raven:
 
         def _collect_sentry_data(self, extra_data):
             data = {
-                # url & method are required
+                # url and method are required
                 # see http://sentry.readthedocs.org/en/latest/developer/interfaces/#sentry.interfaces.http.Http
                 'request': {
                     'url': self.url,
@@ -90,7 +125,7 @@ if has_raven:
                     'headers': dict(self.request.headers),
                 },
 
-                # either an id or ip_address is required
+                # either user id or ip_address is required
                 # see http://sentry.readthedocs.org/en/latest/developer/interfaces/#sentry.interfaces.user.User
                 'user': self.user_info,
 

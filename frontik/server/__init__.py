@@ -15,7 +15,7 @@ import tornado.options
 from tornado.options import options
 
 from frontik.app import FrontikApplication
-from frontik.frontik_logging import bootstrap_logging
+from frontik.loggers import bootstrap_core_logging
 
 log = logging.getLogger('frontik.server')
 
@@ -52,7 +52,7 @@ def parse_configs_and_start(config_file):
         pidfile.write(str(os.getpid()))
         pidfile.close()
 
-    bootstrap_logging()
+    bootstrap_core_logging()
 
     for config in configs_to_read:
         log.debug('using config: %s', config)

@@ -41,7 +41,9 @@ setup(
         'build_py': BuildHook,
         'test': TestHook
     },
-    packages=['frontik', 'frontik/producers', 'frontik/server', 'frontik/testing', 'frontik/testing/pages'],
+    packages=[
+        'frontik', 'frontik/loggers', 'frontik/producers', 'frontik/server', 'frontik/testing', 'frontik/testing/pages'
+    ],
     scripts=['scripts/frontik'],
     package_data={
         'frontik': ['debug/*.xsl'],
