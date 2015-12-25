@@ -3,12 +3,11 @@
 from email.generator import _make_boundary
 import mimetypes
 import re
-from urllib import urlencode
 
 from tornado.httpclient import HTTPRequest
 from tornado.httputil import HTTPHeaders
 
-from frontik.compat import iteritems, urlparse
+from frontik.compat import iteritems, urlencode, urlparse
 
 
 def list_unique(l):
