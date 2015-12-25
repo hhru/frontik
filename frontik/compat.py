@@ -2,21 +2,22 @@
 
 import sys
 
+__all__ = ['iteritems', 'unquote_plus', 'urlencode', 'urlparse']
+
 PY3 = sys.version_info >= (3,)
 
 if PY3:
-    import urllib.parse as urlparse_alias
-    from urllib.parse import urlencode as urlencode_alias
+    import urllib.parse as urlparse
+    from urllib.parse import unquote_plus
+    from urllib.parse import urlencode
 
     def iteritems(d, **kw):
         return d.items(**kw)
 
 else:
-    import urlparse as urlparse_alias
-    from urllib import urlencode as urlencode_alias
+    from urllib import unquote_plus
+    from urllib import urlencode
+    import urlparse
 
     def iteritems(d, **kw):
         return d.iteritems(**kw)
-
-urlparse = urlparse_alias
-urlencode = urlencode_alias
