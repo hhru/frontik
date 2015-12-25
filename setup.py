@@ -25,9 +25,7 @@ class TestHook(test):
         self.with_coverage = False
         test.initialize_options(self)
 
-    def run(self):
-        test.run(self)
-
+    def run_tests(self):
         import nose
         import logging
         logging.disable(logging.CRITICAL)
@@ -50,7 +48,7 @@ setup(
     },
     install_requires=[
         'nose',
-        'python-daemon < 2',
+        'python-daemon',
         'lxml >= 2.3.2',
         'simplejson >= 2.3.2',
         'pycurl >= 7.19.0',
@@ -58,6 +56,7 @@ setup(
         'jinja2 >= 2.6',
         'tornado >= 3.2.2, < 4',
     ],
+    test_suite='tests',
     tests_require=[
         'pep8',
     ],
