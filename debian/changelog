@@ -1,3 +1,9 @@
+frontik (2.25.2) unstable; urgency=low
+
+  * HH-53847 Log unresolved futures correctly
+
+ -- Automated Build <y.zhanov@hh.ru>  Mon, 11 Jan 2016 16:20:21 +0300
+
 frontik (2.25.1) unstable; urgency=low
 
   * HH-56601 http proxy settings
