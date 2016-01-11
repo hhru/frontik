@@ -11,12 +11,28 @@ from frontik.http_client import RequestResult
 future_logger = logging.getLogger('frontik.future')
 
 
-class Doc(object):
-    __slots__ = ('root_node_name', 'root_node', 'data')
+def _is_valid_element(node):
+    if not isinstance(node, etree._Element):
+        return False
 
-    def __init__(self, root_node_name='doc', root_node=None):
-        self.root_node_name = root_node_name
+    if node.tag is etree.PI or node.tag is etree.Comment or node.tag is etree.Entity:
+        return False
+
+    return True
+
+
+class Doc(object):
+    __slots__ = ('root_node', 'data', 'logger')
+
+    def __init__(self, root_node='doc', logger=None):
+        if isinstance(root_node, basestring):
+            root_node = etree.Element(root_node)
+
+        if not (_is_valid_element(root_node) or isinstance(root_node, Doc)):
+            raise TypeError('Cannot set {} as root node'.format(root_node))
+
         self.root_node = root_node
+        self.logger = logger if logger is not None else future_logger
         self.data = []
 
     def put(self, chunk):
@@ -38,17 +54,7 @@ class Doc(object):
         return etree.Element('error', **{k: str(v) for k, v in exception.attrs.iteritems()})
 
     def to_etree_element(self):
-        if self.root_node is not None:
-            if isinstance(self.root_node, etree._Element):
-                # TODO: PIs, comments and entities are also _Elements
-                res = self.root_node
-            elif isinstance(self.root_node, Doc):
-                res = self.root_node.to_etree_element()
-            else:
-                # TODO: maybe better to fail fast in __init__
-                raise ValueError('Cannot set {0} as Doc root node'.format(self.root_node))
-        else:
-            res = etree.Element(self.root_node_name)
+        res = self.root_node.to_etree_element() if isinstance(self.root_node, Doc) else self.root_node
 
         def chunk_to_element(chunk):
             if isinstance(chunk, list):
@@ -71,7 +77,7 @@ class Doc(object):
                     for i in chunk_to_element(chunk.result()):
                         yield i
                 else:
-                    future_logger.info('unresolved Future in Doc', exc_info=True)
+                    self.logger.info('unresolved Future in Doc')
 
             elif isinstance(chunk, etree._Element):
                 yield chunk

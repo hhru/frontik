@@ -32,7 +32,7 @@ class JsonProducer(object):
         self.log = weakref.proxy(self.handler.log)
         self.executor = frontik.jobs.get_executor(tornado.options.options.json_executor)
 
-        self.json = frontik.json_builder.JsonBuilder(json_encoder=json_encoder)
+        self.json = frontik.json_builder.JsonBuilder(json_encoder=json_encoder, logger=self.log)
         self.template_filename = None
         self.environment = json_globals.environment
 
