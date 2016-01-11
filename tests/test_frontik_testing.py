@@ -89,7 +89,7 @@ class TestServiceMock(unittest.TestCase):
         self.assertEqual(result.get_headers().get('X-Foo'), 'Bar')
         self.assertEqual(
             result.get_text_response(),
-            '<?xml version=\'1.0\' encoding=\'utf-8\'?>\n<doc frontik="true"><result>3</result></doc>'
+            '<?xml version=\'1.0\' encoding=\'utf-8\'?>\n<doc><result>3</result></doc>'
         )
 
     def test_call_get(self):

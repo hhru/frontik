@@ -54,5 +54,5 @@ class TestXsl(unittest.TestCase):
 
     def test_root_node_frontik_attribute(self):
         xml = frontik_test_app.get_page_xml('simple_xml')
-        self.assertEqual(xml.get('frontik'), 'true')
+        self.assertEqual(xml.find('element').get('name'), 'Test element')
         self.assertIsNone(xml.find('doc').get('frontik', None))

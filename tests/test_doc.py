@@ -129,11 +129,12 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
             d2.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a><!--1--><!--2--></a>"""
         )
 
-    def test_root_node_invalid(self):
+    def test_string_as_root_node(self):
         d = Doc(root_node='a')
-        d.put(etree.Element('a'))
+        self.assertXmlEqual(d.to_etree_element(), """<?xml version='1.0' encoding='utf-8'?>\n<a></a>""")
 
-        self.assertRaises(ValueError, d.to_etree_element)
+    def test_root_node_invalid(self):
+        self.assertRaises(TypeError, Doc, root_node=etree.Comment('invalid root doc'))
 
     def test_doc_page(self):
         xml = frontik_test_app.get_page_xml('compose_doc')

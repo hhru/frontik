@@ -32,10 +32,13 @@ class TestJsonBuilder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
         self.assertEqual(j.to_string(), '{}')
 
     def test_root_node_name(self):
-        j = JsonBuilder(root_node_name='root')
+        j = JsonBuilder(root_node='root')
         j.put({'a': 'b'})
 
         self.assertEqual(j.to_string(), """{"root": {"a": "b"}}""")
+
+    def test_invalid_root_node_name(self):
+        self.assertRaises(TypeError, JsonBuilder, root_node=10)
 
     def test_list(self):
         j = JsonBuilder()

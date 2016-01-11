@@ -43,7 +43,7 @@ class XmlProducer(object):
         self.xml_cache = xml_globals.xml_cache
         self.xsl_cache = xml_globals.xsl_cache
 
-        self.doc = frontik.doc.Doc(root_node=etree.Element('doc', frontik='true'))
+        self.doc = frontik.doc.Doc(logger=self.log)
         self.transform = None
         self.transform_filename = None
 

@@ -11,12 +11,16 @@ future_logger = logging.getLogger('frontik.future')
 
 
 class JsonBuilder(object):
-    __slots__ = ('_data', '_encoder', 'root_node_name')
+    __slots__ = ('_data', '_encoder', 'root_node', 'logger')
 
-    def __init__(self, root_node_name=None, json_encoder=None):
+    def __init__(self, root_node=None, json_encoder=None, logger=None):
+        if root_node is not None and not isinstance(root_node, basestring):
+            raise TypeError('Cannot set {} as root node'.format(root_node))
+
         self._data = []
         self._encoder = json_encoder
-        self.root_node_name = root_node_name
+        self.logger = logger if logger is not None else future_logger
+        self.root_node = root_node
 
     def put(self, *args, **kwargs):
         self._data.extend(args)
@@ -57,7 +61,7 @@ class JsonBuilder(object):
             if v.done():
                 return self._check_value(v.result())
 
-            future_logger.info('unresolved Future in JsonBuilder', exc_info=True)
+            self.logger.info('unresolved Future in JsonBuilder')
             return None
 
         elif hasattr(v, 'to_dict'):
@@ -71,8 +75,8 @@ class JsonBuilder(object):
             if chunk is not None:
                 result.update(chunk)
 
-        if self.root_node_name is not None:
-            result = {self.root_node_name: result}
+        if self.root_node is not None:
+            result = {self.root_node: result}
 
         return result
 
