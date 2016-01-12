@@ -7,8 +7,8 @@ from .instances import create_basic_auth_header, frontik_non_debug
 
 class TestNonDebugMode(unittest.TestCase):
     def test_simple(self):
-        html = frontik_non_debug.get_page_text('app/simple')
-        self.assertIsNotNone(html.find('ok'))
+        html = frontik_non_debug.get_page_text('app/simple_xml')
+        self.assertIn('ok', html)
 
     def test_basic_auth_fail(self):
         response = frontik_non_debug.get_page('app/basic_auth')
