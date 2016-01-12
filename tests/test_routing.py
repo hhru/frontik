@@ -8,15 +8,15 @@ from .instances import frontik_re_app, frontik_test_app
 class TestRouting(unittest.TestCase):
     def test_regexp(self):
         html = frontik_re_app.get_page_text('not_simple')
-        self.assertIsNotNone(html.find('ok'))
+        self.assertIn('ok', html)
 
     def test_file_mapping(self):
-        html = frontik_test_app.get_page_text('simple')
-        self.assertIsNotNone(html.find('ok'))
+        html = frontik_test_app.get_page_text('simple_xml')
+        self.assertIn('ok', html)
 
     def test_fallback_file_mapping(self):
         html = frontik_re_app.get_page_text('simple')
-        self.assertIsNotNone(html.find('ok'))
+        self.assertIn('ok', html)
 
     def test_extra_slash_in_regex(self):
         """Routes specified with regexps should match precisely"""
@@ -29,7 +29,7 @@ class TestRouting(unittest.TestCase):
 
     def test_rewrite_single(self):
         html = frontik_re_app.get_page_text('id/some')
-        self.assertIsNotNone(html.find('some'))
+        self.assertIn('some', html)
 
     def test_rewrite_multiple(self):
         values = ('some', 'another')

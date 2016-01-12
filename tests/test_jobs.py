@@ -11,4 +11,4 @@ class TestJobs(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
 
         html = frontik_test_app.get_page_text('job_fail?nofail=True')
-        self.assertIsNotNone(html.find('ok'))
+        self.assertIn('ok', html)
