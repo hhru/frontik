@@ -45,8 +45,8 @@ class TestXsl(unittest.TestCase):
 
     def test_cdata(self):
         html = frontik_test_app.get_page_text('cdata')
-        self.assertIsNotNone(html.find('test'))
-        self.assertIsNotNone(html.find('CDATA'))
+        self.assertIn('test', html)
+        self.assertIn('CDATA', html)
 
     def test_xml_include(self):
         xml = frontik_test_app.get_page_xml('include_xml')

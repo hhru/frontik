@@ -44,6 +44,7 @@ def parse_configs_and_start(config_file):
     if options.daemonize:
         import daemon
         ctx = daemon.DaemonContext()
+        ctx.initgroups = False  # For python-daemon >= 2
         ctx.open()
 
     if options.pidfile:
