@@ -1,3 +1,10 @@
+frontik (2.25.3) unstable; urgency=low
+
+  * HH-57384 fix tests with str.find
+  * HH-57384 fix setup.py and python-daemon for tests
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 13 Jan 2016 17:29:11 +0300
+
 frontik (2.25.2) unstable; urgency=low
 
   * HH-53847 Log unresolved futures correctly
