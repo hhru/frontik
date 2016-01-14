@@ -6,21 +6,24 @@ Frontik server is easy to start from application code:
 frontik.server.main(config_file='/path/to/config.file')
 ```
 
-where `config.file` must contain at least `app` parameter (see [Configuring Frontik](/docs/config.md)).
+`config_file` argument can contain a path to the configuration file.
+If `config_file` is set to `None` and `--config` option is missing from the command line, then Frontik will expect all
+configuration options to be specified through command line.
 
-You could launch your application using `/usr/bin/frontik` script as well:
+The only mandatory configuration option is `app` option, specifying the name of Frontik application package.
+
+For more details about configuration refer to [Configuring Frontik](/docs/config.md).
+
+You could launch your application using [/usr/bin/frontik](/scripts/frontik) script as well:
 
 ```shell
 /usr/bin/frontik --app=application.package --config=/path/to/config.file
 ```
 
-Configuration options can be set through command line or configuration file.
-For description of all available config options see [Configuring Frontik](/docs/config.md)
-
 For an example of a simple launcher that can be used in development environment, see [example-run.py](/examples/example-run.py).
 It uses [examples/frontik.cfg](/examples/frontik.cfg) config file to launch a simple application.
 
-A launcher from [frontik.server.supervisor](https://github.com/hhru/frontik/blob/master/frontik/server/supervisor.py)
-module is used to run and control Frontik instances in production.
+A supervisor from [frontik.server.supervisor](/frontik/server/supervisor.py) module can be used to run and control
+Frontik instances in production. For more information on the supervisor see [Using built-in supervisor](/docs/supervisor.md).
 
 For information about Frontik applications, refer to [Frontik application structure](/docs/frontik-app.md).

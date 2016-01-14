@@ -20,7 +20,7 @@ from frontik.loggers import bootstrap_core_logging
 log = logging.getLogger('frontik.server')
 
 
-def parse_configs_and_start(config_file):
+def parse_configs_and_start(config_files):
     """
     — read command line options and config file
     — daemonize
@@ -31,9 +31,11 @@ def parse_configs_and_start(config_file):
     if options.config:
         configs_to_read = options.config
     else:
-        configs_to_read = config_file
+        configs_to_read = config_files
 
-    configs_to_read = [configs_to_read] if not isinstance(configs_to_read, (list, tuple)) else configs_to_read
+    configs_to_read = filter(
+        None, [configs_to_read] if not isinstance(configs_to_read, (list, tuple)) else configs_to_read
+    )
 
     for config in configs_to_read:
         tornado.options.parse_config_file(config, final=False)
@@ -121,7 +123,7 @@ def main(config_file=None):
     # noinspection PyUnresolvedReferences
     import frontik.options
 
-    parse_configs_and_start(config_file=config_file)
+    parse_configs_and_start(config_files=config_file)
 
     if options.app is None:
         log.exception('no frontik application present (`app` option is not specified)')
