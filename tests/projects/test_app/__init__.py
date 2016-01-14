@@ -6,6 +6,11 @@ from tests.projects.test_app import config
 
 
 class TestApplication(FrontikApplication):
+    def __init__(self, **settings):
+        settings['sentry_dsn'] = 'http://key:secret@127.0.0.1:{}/sentry'.format(settings['port'])
+
+        super(TestApplication, self).__init__(**settings)
+
     def application_config(self):
         return config
 
