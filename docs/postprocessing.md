@@ -32,9 +32,6 @@ __Template postprocessors__ could be used for modifying the response text after 
 One of the possible use-cases is replacing translation placeholders with real localized values.
 Template postprocessor callable receives additional parameter containing the result of templating.
 
-Template postprocessors can be turned off for debug purposes with HTTP argument `nopost`
-(see [Debug mode](/docs/debug.md)).
-
 ```python
 def tpl_postprocessor(handler, template, callback):
     callback(template.replace('foo', 'bar'))
