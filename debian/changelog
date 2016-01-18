@@ -1,3 +1,9 @@
+frontik (2.25.4) unstable; urgency=low
+
+  * HH-57223 nopost and apply_postprocessor cut-off
+
+ -- Automated Build <m.leontyeva@hh.ru>  Mon, 18 Jan 2016 12:13:17 +0300
+
 frontik (2.25.3) unstable; urgency=low
 
   * HH-57384 fix tests with str.find
