@@ -1,17 +1,11 @@
 # coding=utf-8
 
-import logging
-import time
-import socket
 from collections import namedtuple
 from functools import partial
-from logging.handlers import SysLogHandler, WatchedFileHandler
+import logging
+import time
 
-import tornado.options
-from tornado.options import options
-
-
-log = logging.getLogger('frontik.handler')
+logger = logging.getLogger('frontik.handler')
 
 
 class ContextFilter(logging.Filter):
@@ -22,7 +16,7 @@ class ContextFilter(logging.Filter):
         record.name = '.'.join(filter(None, [record.name, handler_id, request_id]))
         return True
 
-log.addFilter(ContextFilter())
+logger.addFilter(ContextFilter())
 
 
 class PerRequestLogBufferHandler(logging.Logger):
@@ -35,7 +29,7 @@ class PerRequestLogBufferHandler(logging.Logger):
         self.bulk_handlers = []
 
     def handle(self, record):
-        log.handle(record)
+        logger.handle(record)
         self.records_list.append(record)
 
     def add_bulk_handler(self, handler, auto_flush=True):
@@ -113,55 +107,3 @@ class RequestLogger(logging.LoggerAdapter):
 
     def request_finish_hook(self, status_code, request_method, request_uri):
         self.logger.flush(status_code=status_code, stages=self.stages, method=request_method, uri=request_uri)
-
-
-def bootstrap_logging():
-    """This is a replacement for standard Tornado logging configuration."""
-
-    root_logger = logging.getLogger()
-    level = getattr(logging, options.loglevel.upper())
-    root_logger.setLevel(logging.NOTSET)
-
-    if options.logfile:
-        handler = logging.handlers.WatchedFileHandler(options.logfile)
-        handler.setFormatter(logging.Formatter(options.logformat))
-        handler.setLevel(level)
-        root_logger.addHandler(handler)
-
-    if options.stderr_log:
-        if hasattr(tornado.options, 'enable_pretty_logging'):
-            # Old Tornado version
-            tornado.options.enable_pretty_logging(level)
-
-        else:
-            from tornado.log import LogFormatter
-
-            handler = logging.StreamHandler()
-            handler.setFormatter(
-                LogFormatter(
-                    fmt=tornado.options.options.stderr_format, datefmt=tornado.options.options.stderr_dateformat
-                )
-            )
-
-            handler.setLevel(level)
-            root_logger.addHandler(handler)
-
-    if options.syslog:
-        if options.syslog_port is not None:
-            syslog_address = (options.syslog_address, options.syslog_port)
-        else:
-            syslog_address = options.syslog_address
-
-        try:
-            syslog_handler = SysLogHandler(
-                facility=SysLogHandler.facility_names[options.syslog_facility],
-                address=syslog_address
-            )
-            syslog_handler.setFormatter(logging.Formatter(options.logformat))
-            syslog_handler.setLevel(level)
-            root_logger.addHandler(syslog_handler)
-        except socket.error:
-            logging.getLogger('frontik.logging').exception('cannot initialize syslog')
-
-    for logger_name in options.suppressed_loggers:
-        logging.getLogger(logger_name).setLevel(logging.WARN)

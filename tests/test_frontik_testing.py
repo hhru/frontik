@@ -8,7 +8,7 @@ import lxml.etree
 from tornado.httpclient import HTTPRequest
 
 from frontik.async import AsyncGroup
-from frontik.handler import HTTPError
+from frontik.handler import HTTPError, PageHandler
 from frontik.testing.service_mock import route, route_less_or_equal_than, EmptyEnvironment
 from frontik.testing.pages import Page
 
@@ -97,16 +97,19 @@ class TestServiceMock(unittest.TestCase):
         self.assertEqual(result.get_json_response()['Hello'], 'world')
 
     def test_exception(self):
-        def _test_function(handler):
-            def _inner():
-                raise HTTPError(500, 'fail')
-            _inner()
+        class ExceptionHandler(PageHandler):
+            def get_page(self):
+                def _inner():
+                    raise HTTPError(500, 'fail')
+                _inner()
 
         try:
-            EmptyEnvironment().call_function(_test_function)
-        except Exception as e:
+            EmptyEnvironment().call_get(ExceptionHandler, raise_exceptions=True)
+        except HTTPError as e:
             self.assertEqual(e.status_code, 500)
             self.assertEqual(e.log_message, 'fail')
 
             tb = ''.join(traceback.format_tb(sys.exc_traceback))
             self.assertIn('_inner()', tb)
+        else:
+            self.fail('HTTPError must be raised')

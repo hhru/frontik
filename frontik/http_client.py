@@ -12,10 +12,10 @@ from tornado.ioloop import IOLoop
 from tornado.options import options
 
 from frontik.async import AsyncGroup
-from frontik import frontik_logging
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.globals import global_stats
 from frontik.handler_debug import PageHandlerDebug, response_from_debug
+from frontik.loggers.request import logger as request_logger
 import frontik.util
 
 
@@ -268,7 +268,7 @@ class RequestResult(object):
         self.exception = exception
 
 
-def _parse_response(response, logger=frontik_logging.log, parser=None, response_type=None):
+def _parse_response(response, logger=request_logger, parser=None, response_type=None):
     try:
         return parser(response.body)
     except:
