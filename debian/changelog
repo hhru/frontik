@@ -1,3 +1,14 @@
+frontik (2.25.5) unstable; urgency=low
+
+  * HH-57276 update frontik.testing Environment methods to support
+    further refactoring
+  * HH-57276 add some docs
+  * HH-57276 remove unused postprocessor option
+  * HH-57276 add tests for sentry logger
+  * HH-57276 refactor sentry logger
+
+ -- Automated Build <an.sumin@hh.ru>  Fri, 22 Jan 2016 17:22:49 +0300
+
 frontik (2.25.4) unstable; urgency=low
 
   * HH-57223 nopost and apply_postprocessor cut-off
