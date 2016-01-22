@@ -42,9 +42,6 @@ self.add_template_postprocessor(postprocessor)
 `callback` for template postprocessor must be called with the result of postprocessing as an only argument
 (callbacks for early and late postprocessors have no arguments).
 
-Default template postprocessor is set from the `postprocessor` variable of the application config file
-(see [Configuring application](/docs/config-app.md)).
-
 Postprocessors are executed one after another in the order of their addition.
 If any postprocessor throws an exception, the page would be finished with an error.
 Postprocessing can also be interrupted by calling `self.redirect` or `self.finish`
