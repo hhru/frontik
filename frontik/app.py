@@ -99,11 +99,11 @@ def set_rewritten_request_attribute(request, field, value):
     setattr(request, 're_' + field, value)
 
 
-def extend_request_arguments(request, match, parse_function):
+def extend_request_arguments(request, match):
     arguments = match.groupdict()
     for name, value in arguments.iteritems():
         if value:
-            request.arguments.setdefault(name, []).extend(parse_function(value))
+            request.arguments.setdefault(name, []).append(value)
 
 
 class FileMappingDispatcher(object):
@@ -151,38 +151,33 @@ class FileMappingDispatcher(object):
 class RegexpDispatcher(object):
     def __init__(self, app_list, name='RegexpDispatcher'):
         self.name = name
+        self.handlers = [(re.compile(pattern), handler) for pattern, handler in app_list]
 
-        def parse_conf(pattern, app, parse=lambda x: [x]):
-            if hasattr(app, 'initialize_app'):
-                app.initialize_app()
-            return re.compile(pattern), app, parse
-
-        self.apps = [parse_conf(*app_conf) for app_conf in app_list]
         app_logger.info('initialized %r', self)
 
     def __call__(self, application, request, logger, **kwargs):
         relative_url = get_rewritten_request_attribute(request, 'uri')
         logger.info('requested url: %s (%s)', relative_url, request.uri)
 
-        for pattern, app, parse in self.apps:
+        for pattern, handler in self.handlers:
             match = pattern.match(relative_url)
             if match:
-                logger.debug('using %r', app)
-                extend_request_arguments(request, match, parse)
+                logger.debug('using %r', handler)
+                extend_request_arguments(request, match)
                 try:
-                    return app(application, request, logger, **kwargs)
+                    return handler(application, request, logger, **kwargs)
                 except tornado.web.HTTPError as e:
-                    logger.exception('tornado error: %s in %r', e, app)
+                    logger.exception('tornado error: %s in %r', e, handler)
                     return ErrorHandler(application, request, logger, status_code=e.status_code, **kwargs)
                 except Exception as e:
-                    logger.exception('error handling request: %s in %r', e, app)
+                    logger.exception('error handling request: %s in %r', e, handler)
                     return ErrorHandler(application, request, logger, status_code=500, **kwargs)
 
         logger.error('match for request url "%s" not found', request.uri)
         return ErrorHandler(application, request, logger, status_code=404, **kwargs)
 
     def __repr__(self):
-        return '{}.{}(<{} routes>)'.format(__package__, self.__class__.__name__, len(self.apps))
+        return '{}.{}(<{} routes>)'.format(__package__, self.__class__.__name__, len(self.handlers))
 
 
 def app_dispatcher(tornado_app, request, **kwargs):
