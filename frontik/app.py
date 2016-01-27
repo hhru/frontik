@@ -72,25 +72,6 @@ class StatusHandler(tornado.web.RequestHandler):
         self.finish(result)
 
 
-class PdbHandler(tornado.web.RequestHandler):
-    def get(self):
-        import pdb
-        pdb.set_trace()
-
-
-class CountTypesHandler(tornado.web.RequestHandler):
-    def get(self):
-        import gc
-        from collections import defaultdict
-
-        counts = defaultdict(int)
-        for o in gc.get_objects():
-            counts[type(o)] += 1
-
-        for k, v in sorted(counts.items(), key=lambda x: x[0]):
-            self.write('%s\t%s\n' % (v, k))
-
-
 def get_rewritten_request_attribute(request, field):
     return getattr(request, 're_' + field, getattr(request, field))
 
@@ -207,8 +188,6 @@ class FrontikApplication(tornado.web.Application):
         super(FrontikApplication, self).__init__([
             (r'/version/?', VersionHandler),
             (r'/status/?', StatusHandler),
-            (r'/types_count/?', CountTypesHandler),
-            (r'/pdb/?', PdbHandler),
             (r'{}.*'.format(settings.get('app_root_url')), app_dispatcher),
         ], **tornado_settings)
 
