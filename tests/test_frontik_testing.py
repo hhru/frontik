@@ -13,26 +13,27 @@ from frontik.testing.service_mock import route, route_less_or_equal_than, EmptyE
 from frontik.testing.pages import Page
 
 
-def _function_under_test(handler):
-    def finished():
-        res = lxml.etree.Element('result')
-        res.text = str(handler.result)
-        handler.doc.put(res)
-        handler.set_header('X-Foo', 'Bar')
-        handler.set_status(400)
+class TestPage(PageHandler):
+    def get_page(self):
+        def finished():
+            res = lxml.etree.Element('result')
+            res.text = str(self.result)
+            self.doc.put(res)
+            self.set_header('X-Foo', 'Bar')
+            self.set_status(400)
 
-    handler.result = 0
-    ag = AsyncGroup(finished)
+        self.result = 0
+        ag = AsyncGroup(finished)
 
-    def accumulate(xml, response):
-        if response.code >= 400:
-            raise HTTPError(503, 'remote server returned error with code {}'.format(response.code))
-        if xml is None:
-            raise HTTPError(503)
-        handler.result += int(xml.findtext('a'))
+        def accumulate(xml, response):
+            if response.code >= 400:
+                raise HTTPError(503, 'remote server returned error with code {}'.format(response.code))
+            if xml is None:
+                raise HTTPError(503)
+            self.result += int(xml.findtext('a'))
 
-    handler.get_url(handler.config.serviceHost + 'vacancy/1234', callback=ag.add(accumulate))
-    handler.get_url(handler.config.serviceHost + 'employer/1234', callback=ag.add(accumulate))
+        self.get_url(self.config.serviceHost + 'vacancy/1234', callback=ag.add(accumulate))
+        self.get_url(self.config.serviceHost + 'employer/1234', callback=ag.add(accumulate))
 
 
 class TestServiceMock(unittest.TestCase):
@@ -60,10 +61,11 @@ class TestServiceMock(unittest.TestCase):
         )
 
     def test_config(self):
-        def check_config(handler):
-            self.assertTrue(handler.config.config_param)
+        class CheckConfigHandler(PageHandler):
+            def get_page(self):
+                assert self.config.config_param
 
-        EmptyEnvironment().configure(config_param=True).call_function(check_config)
+        EmptyEnvironment().configure(config_param=True).call_get(CheckConfigHandler)
 
     def test_routing_by_url(self):
         test_handler = '<xml></xml>'
@@ -82,7 +84,7 @@ class TestServiceMock(unittest.TestCase):
                 '/vacancy/1234': (200, '<b><a>1</a></b>'),
                 '/employer/1234': '<b><a>2</a></b>'
             }
-        ).call_function(_function_under_test)
+        ).call_get(TestPage)
 
         self.assertEqual(result.get_xml_response().findtext('result'), '3')
         self.assertEqual(result.get_status(), 400)
