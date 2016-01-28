@@ -203,25 +203,20 @@ class EmptyEnvironment(object):
         self._request.body = body
         return self
 
-    # TODO:
-    # remove call_with_exception_handler
-    # remove call_function usages and rename it to _call_function
-    # refactor call_* usages to explicitly pass raise_exceptions=True
-    # switch raise_exceptions default to False
     def call_with_exception_handler(self, method, *args, **kwargs):
         return self.call_function(method, raise_exceptions=False, *args, **kwargs)
 
     def call_get(self, page_handler, raise_exceptions=True):
-        return self.call_function(page_handler.get_page)
+        return self.call_function(page_handler.get_page, raise_exceptions)
 
     def call_post(self, page_handler, raise_exceptions=True):
-        return self.call_function(page_handler.post_page)
+        return self.call_function(page_handler.post_page, raise_exceptions)
 
     def call_put(self, page_handler, raise_exceptions=True):
-        return self.call_function(page_handler.put_page)
+        return self.call_function(page_handler.put_page, raise_exceptions)
 
     def call_delete(self, page_handler, raise_exceptions=True):
-        return self.call_function(page_handler.delete_page)
+        return self.call_function(page_handler.delete_page, raise_exceptions)
 
     def call_function(self, method, raise_exceptions=True, *args, **kwargs):
         if hasattr(method, 'im_class'):
