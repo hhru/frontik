@@ -1,3 +1,9 @@
+frontik (2.25.6) unstable; urgency=low
+
+  * HH-57740 fix service_mock methods
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 28 Jan 2016 17:54:33 +0300
+
 frontik (2.25.5) unstable; urgency=low
 
   * HH-57276 update frontik.testing Environment methods to support
