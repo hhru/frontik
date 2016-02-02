@@ -6,8 +6,6 @@ import time
 
 import tornado.curl_httpclient
 import tornado.httputil
-import tornado.options
-import tornado.web
 from tornado.ioloop import IOLoop
 import tornado.options
 import tornado.web
@@ -468,10 +466,6 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def set_template(self, filename):
         return self.json_producer.set_template(filename)
-
-    # Deprecated
-    def get_sentry_handler(self):
-        pass
 
 
 class PageHandler(BaseHandler):
