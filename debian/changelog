@@ -1,3 +1,9 @@
+frontik (2.25.7) unstable; urgency=low
+
+  * HH-57819 remove unused stuff
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 03 Feb 2016 17:49:56 +0300
+
 frontik (2.25.6) unstable; urgency=low
 
   * HH-57740 fix service_mock methods
