@@ -203,27 +203,23 @@ class EmptyEnvironment(object):
         self._request.body = body
         return self
 
-    def call_with_exception_handler(self, method, *args, **kwargs):
-        return self.call_function(method, raise_exceptions=False, *args, **kwargs)
-
     def call_get(self, page_handler, raise_exceptions=True):
-        return self.call_function(page_handler.get_page, raise_exceptions)
+        self._request.method = 'GET'
+        return self._call_function(page_handler, raise_exceptions)
 
     def call_post(self, page_handler, raise_exceptions=True):
-        return self.call_function(page_handler.post_page, raise_exceptions)
+        self._request.method = 'POST'
+        return self._call_function(page_handler, raise_exceptions)
 
     def call_put(self, page_handler, raise_exceptions=True):
-        return self.call_function(page_handler.put_page, raise_exceptions)
+        self._request.method = 'PUT'
+        return self._call_function(page_handler, raise_exceptions)
 
     def call_delete(self, page_handler, raise_exceptions=True):
-        return self.call_function(page_handler.delete_page, raise_exceptions)
+        self._request.method = 'DELETE'
+        return self._call_function(page_handler, raise_exceptions)
 
-    def call_function(self, method, raise_exceptions=True, *args, **kwargs):
-        if hasattr(method, 'im_class'):
-            handler_class = type('TestPage', (method.im_class,), {})
-        else:
-            handler_class = type('TestPage', (frontik.handler.PageHandler,), {})
-
+    def _call_function(self, handler_class, raise_exceptions=True):
         # Create application with the only route — handler_class
         application = application_mock([('', handler_class)], self._config)(**{
             'app': 'frontik.testing',
@@ -236,11 +232,6 @@ class EmptyEnvironment(object):
             IOLoop.instance().add_callback(partial(self._fetch_mock, request, callback, **kwargs))
 
         application.curl_http_client.fetch = fetch
-
-        def wrapped_method(handler):
-            method(handler, *args, **kwargs)
-
-        handler_class.get_page = wrapped_method
 
         # raise_exceptions kwarg is deprecated
         if raise_exceptions:
