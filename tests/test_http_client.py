@@ -58,8 +58,17 @@ class TestHttpClient(unittest.TestCase, json_asserts.JsonTestCaseMixin):
 
     def test_group(self):
         json = frontik_test_app.get_page_json('http_client/group')
+        self.assertJsonEqual(json, {'1': {'1': 'yay'}, '2': {'2': 'yay'}, '3': {'3': 'yay'}, '4': {'4': 'yay'},
+                                    'final_callback_called': True})
+
+    def test_group_with_only_resolved_futures(self):
+        json = frontik_test_app.get_page_json('http_client/group?only_resolved_futures=true')
         self.assertJsonEqual(json, {'1': {'1': 'yay'}, '2': {'2': 'yay'}, 'final_callback_called': True})
 
     def test_group_with_failing_request(self):
         response = frontik_test_app.get_page('http_client/group?fail=true')
+        self.assertEqual(response.status_code, 500)
+
+    def test_group_with_failing_future(self):
+        response = frontik_test_app.get_page('http_client/group?failed_future=true')
         self.assertEqual(response.status_code, 500)
