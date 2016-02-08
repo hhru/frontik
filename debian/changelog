@@ -1,3 +1,10 @@
+frontik (2.25.8) unstable; urgency=low
+
+  * HH-57927 rename future_callback
+  * HH-57927 group of resolved futures should not finish early
+
+ -- Automated Build <a.inozemtsev@hh.ru>  Mon, 08 Feb 2016 18:07:50 +0300
+
 frontik (2.25.7) unstable; urgency=low
 
   * HH-57819 remove unused stuff
