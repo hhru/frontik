@@ -35,11 +35,14 @@ class HttpClient(object):
 
             async_group = AsyncGroup(delay_cb, logger=self.handler.log, name=name)
 
-            def callback(future_name, future):
-                results_holder[future_name] = future.result()
+            def future_callback(name, future):
+                results_holder[name] = future.result()
 
             for name, future in futures.iteritems():
-                future.add_done_callback(async_group.add(partial(callback, name)))
+                if future.done():
+                    future_callback(name, future)
+                else:
+                    future.add_done_callback(async_group.add(partial(future_callback, name)))
 
             async_group.try_finish()
 
