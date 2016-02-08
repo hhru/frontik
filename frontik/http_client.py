@@ -26,12 +26,6 @@ class HttpClient(object):
         self.http_client_impl = http_client_impl
 
     def group(self, futures, callback=None, name=None):
-
-        log_name = 'group'
-
-        if name is not None:
-            log_name = '{0} group'.format(name)
-
         if callable(callback):
             results_holder = {}
             group_callback = self.handler.finish_group.add(partial(callback, results_holder))
@@ -41,15 +35,14 @@ class HttpClient(object):
 
             async_group = AsyncGroup(delay_cb, logger=self.handler.log, name=name)
 
-            def callback(future_name, future):
-                results_holder[future_name] = future.result()
+            def future_callback(name, future):
+                results_holder[name] = future.result()
 
             for name, future in futures.iteritems():
                 if future.done():
-                    callback(name, future)
-                    self.handler.log.debug('{0}: skipping already done future'.format(log_name))
+                    future_callback(name, future)
                 else:
-                    future.add_done_callback(async_group.add(partial(callback, name)))
+                    future.add_done_callback(async_group.add(partial(future_callback, name)))
 
             async_group.try_finish()
 
