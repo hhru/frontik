@@ -14,5 +14,3 @@ There are some service urls available for an any frontik app.
 }
 ```
 * `/version` – xml with app version and versions of some dependencies
-* `/types_count` – returns a list with amount of object types tracked by the garbage collector
-* `/pdb` – opens pdb debugging session
