@@ -1,3 +1,11 @@
+frontik (2.25.9) unstable; urgency=low
+
+  * HH-57512 add more routing tests
+  * HH-57512 remove unneccessary application urls
+  * HH-57512 remove parse function for application urls
+
+ -- Automated Build <an.sumin@hh.ru>  Mon, 15 Feb 2016 13:30:59 +0300
+
 frontik (2.25.8) unstable; urgency=low
 
   * HH-57927 rename future_callback
