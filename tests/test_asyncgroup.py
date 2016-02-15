@@ -1,11 +1,11 @@
+# coding=utf-8
+
 import unittest
 from functools import partial
 
 from tornado.concurrent import Future
 
 from frontik.async import AsyncGroup
-from frontik.testing import json_asserts
-from .instances import frontik_test_app
 
 
 class LoggerMock(object):
@@ -22,7 +22,7 @@ class LoggerMock(object):
         self.log.append(msg % args)
 
 
-class TestAsyncGroup(unittest.TestCase, json_asserts.JsonTestCaseMixin):
+class TestAsyncGroup(unittest.TestCase):
     def test_callbacks(self):
         data = []
 
@@ -127,8 +127,11 @@ class TestAsyncGroup(unittest.TestCase, json_asserts.JsonTestCaseMixin):
 
         self.assertRaises(Exception, cb2)
 
-        self.assertEqual(logger.log[-2],
-                         'test_group group: aborting async group due to unhandled exception in callback')
+        self.assertEqual(
+            logger.log[-2],
+            'test_group group: aborting async group due to unhandled exception in callback'
+        )
+
         self.assertEqual(ag._finish_cb_called, False)
         self.assertEqual(ag._aborted, True)
 
@@ -141,18 +144,3 @@ class TestAsyncGroup(unittest.TestCase, json_asserts.JsonTestCaseMixin):
         self.assertRaises(Exception, ag.try_finish)
         self.assertEqual(ag._finish_cb_called, True)
         self.assertEqual(ag._aborted, False)
-
-    def test_handler_async_group(self):
-        json = frontik_test_app.get_page_json('async_group')
-        self.assertJsonEqual(
-            json,
-            {'1': {'1': 'yay'}, '3': {'error': {'reason': 'HTTP 400: Bad Request', 'code': 400}}, '2': {'2': 'yay'}}
-        )
-
-    def test_future_with_main_asyncgroup(self):
-        json = frontik_test_app.get_page_json('future')
-        self.assertJsonEqual(json, {'1': 'yay', 'cb': 'yes', '2': 'yay'})
-
-    def test_handler_async_group_fail(self):
-        response = frontik_test_app.get_page('async_group?fail=true')
-        self.assertEqual(response.status_code, 500)
