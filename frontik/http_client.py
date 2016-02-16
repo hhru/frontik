@@ -33,10 +33,7 @@ class HttpClient(object):
             results_holder = {}
             group_callback = self.handler.finish_group.add(partial(callback, results_holder))
 
-            def delay_cb():
-                IOLoop.instance().add_callback(self.handler.check_finished(group_callback))
-
-            async_group = AsyncGroup(delay_cb, logger=self.handler.log, name=name)
+            async_group = AsyncGroup(self.handler.check_finished(group_callback), logger=self.handler.log, name=name)
 
             def future_callback(name, future):
                 results_holder[name] = future.result()
@@ -47,7 +44,7 @@ class HttpClient(object):
                 else:
                     self.handler.add_future(future, async_group.add(partial(future_callback, name)))
 
-            async_group.try_finish()
+            async_group.try_finish_async()
 
         return futures
 

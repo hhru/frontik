@@ -1,11 +1,99 @@
-# -*- coding: utf-8 -*-
+# coding=utf-8
 
 import time
 import logging
 
+from tornado import gen
+from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 
 default_logger = logging.getLogger('frontik.async')
+
+
+def dependency(func_or_deps_list):
+    """Create a dependency decorator.
+
+    The function can return a ``Future`` or an arbitrary value (which is ignored).
+    The dependency is considered resolved when a ``Future`` returned by it is resolved.
+
+    Usage::
+        @dependency
+        def get_a():
+            future = Future()
+            # Do something asynchronously
+            return future
+
+        @dependency
+        def get_b():
+            # Do something
+            return None
+
+        class Page(PageHandler):
+            @get_a
+            @get_b
+            # Can also be rewritten as:
+            # @dependency([get_a, get_b])
+            def get_page(self):
+                pass
+
+    When the ``Future`` returned by ``get_a`` is resolved, ``get_b`` is called.
+    Finally, after ``get_b`` is executed, ``get_page`` will be called.
+    """
+
+    def dependency_decorator(func):
+        if callable(func_or_deps_list):
+            DependencyChain.register_dependency(func, [func_or_deps_list])
+        else:
+            for dep in reversed(func_or_deps_list):
+                dep(func)
+
+        return func
+
+    if callable(func_or_deps_list):
+        dep_name = func_or_deps_list.__name__
+    else:
+        dep_name = [f.__name__ for f in func_or_deps_list]
+
+    dependency_decorator.func_name = 'dependency_decorator({})'.format(dep_name)
+
+    return dependency_decorator
+
+
+class DependencyChain(object):
+    """Controls execution of functions marked with @dependency decorator.
+
+    ``bound_args`` and ``bound_kwargs`` will be passed to each function as positional and keyword arguments.
+    """
+    def __init__(self, bound_args=None, bound_kwargs=None):
+        self._bound_args = bound_args if bound_args else ()
+        self._bound_kwargs = bound_kwargs if bound_kwargs else {}
+
+    @gen.coroutine
+    def resolve(self, dependencies):
+        """Executes the functions passed in ``dependencies`` argument in consecutive order.
+
+        Each dependency is executed only after all preceding dependencies have been executed.
+        Returns a future that is resolved only after all dependencies have been resolved.
+        """
+
+        for d in dependencies:
+            result = d(*self._bound_args, **self._bound_kwargs)
+            if not isinstance(result, Future):
+                result_future = Future()
+                result_future.set_result(result)
+                result = result_future
+
+            yield result
+
+    @staticmethod
+    def get_dependencies(func):
+        """Returns immediate dependencies for `func`."""
+        return getattr(func, '_dependency_depends_on', [])
+
+    @staticmethod
+    def register_dependency(func, dependencies):
+        """Adds dependencies for `func`."""
+        setattr(func, '_dependency_depends_on', dependencies + DependencyChain.get_dependencies(func))
 
 
 class AsyncGroup(object):
