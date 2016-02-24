@@ -54,16 +54,20 @@ setup(
         'lxml >= 2.3.2',
         'simplejson >= 2.3.2',
         'pycurl >= 7.19.0',
-        'requests >= 0.8.2',
         'jinja2 >= 2.6',
         'tornado >= 3.2.2, < 4',
     ],
     test_suite='tests',
     tests_require=[
         'pep8',
+        'requests >= 0.8.2',
     ],
     dependency_links=[
         'https://github.com/hhru/tornado/archive/fix-version.zip',
     ],
+    extras_require={
+        'futures': ['futures'],
+        'sentry': ['raven']
+    },
     zip_safe=False
 )
