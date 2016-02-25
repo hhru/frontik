@@ -42,7 +42,7 @@ class HttpClient(object):
                 if future.done():
                     future_callback(name, future)
                 else:
-                    future.add_done_callback(async_group.add(partial(future_callback, name)))
+                    self.handler.add_future(future, async_group.add(partial(future_callback, name)))
 
             async_group.try_finish()
 
