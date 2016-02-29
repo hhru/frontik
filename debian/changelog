@@ -1,3 +1,9 @@
+frontik (2.25.10) unstable; urgency=low
+
+  * HH-58331 lower logging level for FileMappingDispatcher
+
+ -- Automated Build <an.sumin@hh.ru>  Mon, 29 Feb 2016 17:40:20 +0300
+
 frontik (2.25.9) unstable; urgency=low
 
   * HH-57512 add more routing tests
