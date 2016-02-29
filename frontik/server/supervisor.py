@@ -134,7 +134,8 @@ def stop_worker(port, signal_to_send=signal.SIGTERM):
     if not os.path.exists(path):
         logging.warning("pidfile %s does not exist, don't know how to stop", path)
     try:
-        pid = int(file(path).read())
+        with open(path) as pidfile:
+            pid = int(pidfile.read())
         os.kill(pid, signal_to_send)
     except (OSError, IOError, ValueError):
         pass
