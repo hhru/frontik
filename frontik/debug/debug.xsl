@@ -124,7 +124,7 @@
         <xsl:apply-templates select="exception/trace"/>
     </xsl:template>
 
-    <xsl:template match="entry[labels/label/text() = 'SQL']">
+    <xsl:template match="entry[labels/label/text() = 'SQL' or labels/label/text() = 'CQL']">
         <div class="entry entry_expandable">
             <!-- This allows debug page to work inside dev tools request preview, useful for ajax requests debugging -->
             <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
