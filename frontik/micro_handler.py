@@ -68,7 +68,7 @@ class MicroHandler(BaseHandler):
             if hasattr(self, error_method_name):
                 getattr(self, error_method_name)(name, data, response)
 
-            status_code = response.code if 300 <= response.code < 500 else 503
+            status_code = response.code if 300 <= response.code < 500 else 502
             raise HTTPError(status_code, 'HTTP request failed with code {}'.format(response.code))
 
         if isinstance(return_value, dict):
