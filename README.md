@@ -1,4 +1,6 @@
 [![Build Status](https://travis-ci.org/hhru/frontik.svg?branch=master)](https://travis-ci.org/hhru/frontik)
+[![codecov.io](https://codecov.io/github/hhru/frontik/coverage.svg?branch=master)](https://codecov.io/github/hhru/frontik?branch=master)
+
 
 ## What is Frontik?
 
