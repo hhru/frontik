@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/hhru/frontik.svg?branch=master)](https://travis-ci.org/hhru/frontik)
+
 ## What is Frontik?
 
 Frontik is an asyncronous Tornado-based application server. It was designed to support simple xml aggregation with xsl
