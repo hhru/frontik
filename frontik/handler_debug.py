@@ -323,7 +323,10 @@ class DebugLogBulkHandler(object):
             entry.append(E.text(etree.tostring(record._xml, encoding=unicode)))
 
         if getattr(record, '_protobuf', None) is not None:
-            entry.append(E.text(record._protobuf))
+            if isinstance(record._protobuf, basestring):
+                entry.append(E.text(record._protobuf))
+            else:
+                entry.append(E.text(unicode(record._protobuf)))
 
         if getattr(record, '_text', None) is not None:
             entry.append(E.text(to_unicode(record._text)))
