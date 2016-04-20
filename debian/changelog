@@ -1,3 +1,9 @@
+frontik (2.25.14) unstable; urgency=low
+
+  * HH-59444 make frontik able to use raw protobuf data
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 20 Apr 2016 16:13:07 +0300
+
 frontik (2.25.13) unstable; urgency=low
 
   * HH-58572 add CI run with concurrent.futures backport
