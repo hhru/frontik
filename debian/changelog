@@ -1,3 +1,10 @@
+frontik (2.25.15) unstable; urgency=low
+
+  * HH-59459 remove old protobuf debug convention
+  * HH-59459 fix byte strings in supervisor test
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 26 Apr 2016 14:20:50 +0300
+
 frontik (2.25.14) unstable; urgency=low
 
   * HH-59444 make frontik able to use raw protobuf data
