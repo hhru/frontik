@@ -18,12 +18,7 @@ from tornado.escape import to_unicode, utf8
 from tornado.httpclient import HTTPResponse
 from tornado.httputil import HTTPHeaders
 
-try:
-    from tornado.httputil import SimpleCookie  # Tornado with patched cookies (https://github.com/hhru/tornado)
-except ImportError:
-    from Cookie import SimpleCookie
-
-from frontik.compat import iteritems, PY3, urlparse
+from frontik.compat import iteritems, PY3, SimpleCookie, urlparse
 import frontik.util
 import frontik.xml_util
 

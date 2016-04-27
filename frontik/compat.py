@@ -2,7 +2,7 @@
 
 import sys
 
-__all__ = ['iteritems', 'unquote_plus', 'urlencode', 'urlparse']
+__all__ = ['iteritems', 'SimpleCookie', 'unquote_plus', 'urlencode', 'urlparse']
 
 PY3 = sys.version_info >= (3,)
 
@@ -21,3 +21,11 @@ else:
 
     def iteritems(d, **kw):
         return d.iteritems(**kw)
+
+try:
+    from tornado.httputil import SimpleCookie  # Tornado with patched cookies (https://github.com/hhru/tornado)
+except ImportError:
+    if PY3:
+        from http.cookies import SimpleCookie
+    else:
+        from Cookie import SimpleCookie
