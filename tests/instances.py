@@ -46,7 +46,7 @@ def run_supervisor_command(supervisor_script, port, command):
 
 
 def find_free_port(from_port=9000, to_port=10000):
-    for port in xrange(from_port, to_port):
+    for port in range(from_port, to_port):
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind(('', port))
@@ -86,7 +86,7 @@ class FrontikTestInstance(object):
 
     @staticmethod
     def wait_for(fun, steps):
-        for i in xrange(steps):
+        for i in range(steps):
             if fun():
                 return
             time.sleep(0.1)  # up to 5 seconds with steps=50

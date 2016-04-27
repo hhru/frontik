@@ -68,7 +68,7 @@ class JsonTestCaseMixin(object):
                 self._format_msg_and_path('Lists lengths are not equal: {} != {}'.format(len(a), len(b)), msg, path)
             )
 
-            for i in xrange(len(a)):
+            for i in range(len(a)):
                 self._assertJsonStructuresEqualsRecursive(a[i], b[i], path + '[{}]'.format(i), msg)
 
         elif isinstance(a, dict):
