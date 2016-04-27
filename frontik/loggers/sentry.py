@@ -12,6 +12,8 @@ try:
 except ImportError:
     has_raven = False
 
+from frontik.compat import iteritems
+
 
 def bootstrap_logger(app):
     dsn = app.app_settings.get('sentry_dsn')
@@ -45,7 +47,6 @@ def bootstrap_logger(app):
         handler.register_exception_hook(log_exception_to_sentry)
 
     return logger_initializer
-
 
 if has_raven:
     class AsyncSentryClient(OriginalAsyncSentryClient):
@@ -95,7 +96,7 @@ if has_raven:
                 'email': email,
                 'ip_address': ip,
             }
-            new_data = {k: v for k, v in new_data.iteritems() if v is not None}
+            new_data = {k: v for k, v in iteritems(new_data) if v is not None}
             self.user_info.update(new_data)
 
         def capture_exception(self, exc_info=None, extra_data=None, **kwargs):

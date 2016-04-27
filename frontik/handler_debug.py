@@ -25,6 +25,7 @@ try:
 except ImportError:
     from Cookie import SimpleCookie
 
+from frontik.compat import iteritems
 import frontik.util
 import frontik.xml_util
 
@@ -67,7 +68,7 @@ def response_to_xml(response):
         body = repr(response.body)
 
     try:
-        for name, value in response.time_info.iteritems():
+        for name, value in iteritems(response.time_info):
             time_info.append(E.time(str(value), name=name))
     except Exception:
         debug_log.exception('cannot append time info')
@@ -101,7 +102,7 @@ def request_to_xml(request):
                 body.text = repr(request.body)
             else:
                 body_query = urlparse.parse_qs(str(request.body), True)
-                for name, values in body_query.iteritems():
+                for name, values in iteritems(body_query):
                     for value in values:
                         body.append(E.param(to_unicode(value), name=to_unicode(name)))
         except Exception:
@@ -195,7 +196,7 @@ def request_to_curl_string(request):
 def _params_to_xml(url, logger=debug_log):
     params = etree.Element('params')
     query = frontik.util.get_query_parameters(url)
-    for name, values in query.iteritems():
+    for name, values in iteritems(query):
         for value in values:
             try:
                 params.append(E.param(to_unicode(value), name=to_unicode(name)))
@@ -207,7 +208,7 @@ def _params_to_xml(url, logger=debug_log):
 
 def _headers_to_xml(request_or_response_headers):
     headers = etree.Element('headers')
-    for name, value in request_or_response_headers.iteritems():
+    for name, value in iteritems(request_or_response_headers):
         if name != 'Cookie':
             str_value = value if isinstance(value, basestring) else str(value)
             headers.append(E.header(to_unicode(str_value), name=name))

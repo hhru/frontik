@@ -4,6 +4,8 @@ import types
 
 from tornado.escape import recursive_unicode
 
+from frontik.compat import iteritems
+
 
 def _is_json_scalar_type(val):
     return isinstance(val, (unicode, str, bool, int, float, long, types.NoneType))
@@ -39,7 +41,7 @@ class JsonTestCaseMixin(object):
                 self._assertIsJson(list_item, path + '[{}]'.format(i), msg)
 
         elif isinstance(data, dict):
-            for key, dict_item in data.iteritems():
+            for key, dict_item in iteritems(data):
                 self._assertIsJsonKeyType(
                     key, self._format_msg_and_path('Wrong key type ({!r})'.format(key), msg, path)
                 )

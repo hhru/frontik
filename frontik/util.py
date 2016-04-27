@@ -3,11 +3,13 @@
 import mimetools
 import mimetypes
 import re
-import urlparse
 from urllib import urlencode
+import urlparse
 
 from tornado.httpclient import HTTPRequest
 from tornado.httputil import HTTPHeaders
+
+from frontik.compat import iteritems
 
 
 def list_unique(l):
@@ -23,7 +25,7 @@ def _encode(s):
 
 def make_qs(query_args):
     kv_pairs = []
-    for key, val in query_args.iteritems():
+    for key, val in iteritems(query_args):
         if val is not None:
             encoded_key = _encode(key)
             if isinstance(val, (set, frozenset, list, tuple)):
@@ -98,7 +100,7 @@ def make_mfd(fields, files):
 
     body = ""
 
-    for name, data in fields.iteritems():
+    for name, data in iteritems(fields):
 
         if data is None:
             continue
@@ -119,7 +121,7 @@ def make_mfd(fields, files):
                 data=_encode(data)
             )
 
-    for name, files in files.iteritems():
+    for name, files in iteritems(files):
         for file in files:
             body += ENCODE_TEMPLATE_FILE.format(
                 boundary=BOUNDARY,

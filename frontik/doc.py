@@ -6,6 +6,7 @@ import lxml.etree as etree
 
 from tornado.concurrent import Future
 
+from frontik.compat import iteritems
 from frontik.http_client import RequestResult
 
 future_logger = logging.getLogger('frontik.future')
@@ -51,7 +52,7 @@ class Doc(object):
 
     @staticmethod
     def get_error_node(exception):
-        return etree.Element('error', **{k: str(v) for k, v in exception.attrs.iteritems()})
+        return etree.Element('error', **{k: str(v) for k, v in iteritems(exception.attrs)})
 
     def to_etree_element(self):
         res = self.root_node.to_etree_element() if isinstance(self.root_node, Doc) else self.root_node

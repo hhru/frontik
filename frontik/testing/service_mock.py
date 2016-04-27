@@ -23,11 +23,12 @@ from tornado.ioloop import IOLoop
 from tornado.util import raise_exc_info
 
 import frontik.app
+from frontik.compat import iteritems
 import frontik.handler
+import frontik.handler_active_limit
 import frontik.http_client
 import frontik.loggers
 import frontik.options
-import frontik.handler_active_limit
 
 tornado.options.options.stderr_log = True
 tornado.options.options.loglevel = 'debug'
@@ -165,7 +166,7 @@ class EmptyEnvironment(object):
         self._response_text = None
 
     def expect(self, **kwargs):
-        for name, routes in kwargs.iteritems():
+        for name, routes in iteritems(kwargs):
             service = self._registry.setdefault(name, ServiceMock({}))
             service.routes.update(routes)
             setattr(self._config, name, 'http://' + name + '/')
@@ -183,7 +184,7 @@ class EmptyEnvironment(object):
         return self._registry[urlparse(url).netloc]
 
     def configure(self, **kwargs):
-        for name, val in kwargs.iteritems():
+        for name, val in iteritems(kwargs):
             setattr(self._config, name, val)
         return self
 
@@ -192,7 +193,7 @@ class EmptyEnvironment(object):
         return self
 
     def add_arguments(self, arguments):
-        for key, val in arguments.iteritems():
+        for key, val in iteritems(arguments):
             self._request.arguments[key] = [val] if isinstance(val, basestring) else val
         return self
 

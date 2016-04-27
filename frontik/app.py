@@ -12,12 +12,13 @@ import tornado.ioloop
 import tornado.curl_httpclient
 from tornado.options import options
 
+from frontik.compat import iteritems
+from frontik.globals import global_stats
+from frontik.handler import ErrorHandler
 import frontik.loggers
 from frontik.loggers.request import RequestLogger
-from frontik.globals import global_stats
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
-from frontik.handler import ErrorHandler
 
 app_logger = logging.getLogger('frontik.app')
 
@@ -82,7 +83,7 @@ def set_rewritten_request_attribute(request, field, value):
 
 def extend_request_arguments(request, match):
     arguments = match.groupdict()
-    for name, value in arguments.iteritems():
+    for name, value in iteritems(arguments):
         if value:
             request.arguments.setdefault(name, []).append(value)
 
