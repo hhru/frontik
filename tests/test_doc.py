@@ -8,10 +8,11 @@ from tornado.concurrent import Future
 from frontik.doc import Doc
 from frontik.http_client import RequestResult, FailedRequestException
 from frontik.testing.xml_asserts import XmlTestCaseMixin
-from .instances import frontik_test_app
+from . import py3_skip
 
 
 class TestDoc(unittest.TestCase, XmlTestCaseMixin):
+    @py3_skip
     def test_simple(self):
         d = Doc('a')
 
@@ -26,6 +27,7 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
             b"""<?xml version='1.0' encoding='utf-8'?>\n<a>test\xd1\x82\xd0\xb5\xd1\x81\xd1\x82</a>"""
         )
 
+    @py3_skip
     def test_future_simple(self):
         d = Doc('a')
         f = Future()
@@ -37,6 +39,7 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
 
         self.assertXmlEqual(d.to_etree_element(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
 
+    @py3_skip
     def test_future_etree_element(self):
         d = Doc('a')
         f = Future()
@@ -45,6 +48,7 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
 
         self.assertXmlEqual(d.to_etree_element(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a><b/></a>""")
 
+    @py3_skip
     def test_future_list(self):
         d = Doc('a')
         f = Future()
@@ -53,6 +57,7 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
 
         self.assertXmlEqual(d.to_etree_element(), u"""<?xml version='1.0'?>\n<a><!--ccc--><bbb/></a>""")
 
+    @py3_skip
     def test_failed_future(self):
         d = Doc('a')
         f = Future()
@@ -65,6 +70,7 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
             d.to_etree_element(), u"""<?xml version='1.0'?>\n<a><error reason="error" code="code"/></a>"""
         )
 
+    @py3_skip
     def test_doc_nested(self):
         a = Doc('a')
         b = Doc('b')
@@ -75,6 +81,7 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
             a.to_etree_element(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a><b>test</b></a>"""
         )
 
+    @py3_skip
     def test_nodes_and_text(self):
         a = Doc('a')
         a.put('1')
@@ -114,6 +121,7 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
 
         self.assertEqual(a.to_string(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a>12.0(3, 4, 5)</a>""")
 
+    @py3_skip
     def test_root_node(self):
         d = Doc(root_node=etree.Element('doc'))
         d.put(etree.Element('test1'))
@@ -122,6 +130,7 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
             d.to_etree_element(), b"""<?xml version='1.0' encoding='utf-8'?>\n<doc><test1/></doc>"""
         )
 
+    @py3_skip
     def test_root_node_doc(self):
         d1 = Doc('a')
         d1.put(etree.Comment('1'))
@@ -133,26 +142,10 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
             d2.to_etree_element(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a><!--1--><!--2--></a>"""
         )
 
+    @py3_skip
     def test_string_as_root_node(self):
         d = Doc(root_node='a')
         self.assertXmlEqual(d.to_etree_element(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a></a>""")
 
     def test_root_node_invalid(self):
         self.assertRaises(TypeError, Doc, root_node=etree.Comment('invalid root doc'))
-
-    def test_doc_page(self):
-        xml = frontik_test_app.get_page_xml('compose_doc')
-
-        self.assertIsNotNone(xml.find('a'))
-        self.assertEqual(xml.findtext('a'), 'aaa')
-
-        self.assertIsNotNone(xml.find('bbb'))
-
-        self.assertIsNotNone(xml.find('c'))
-        self.assertIn(xml.findtext('c'), (None, ''))
-
-    def test_doc_invalid_xml(self):
-        xml = frontik_test_app.get_page_xml('compose_doc?invalid=true')
-
-        self.assertIsNotNone(xml.find('error'))
-        self.assertEqual(xml.find('error').get('reason'), 'invalid XML')

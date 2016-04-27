@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import json
 import unittest
 
@@ -6,6 +8,7 @@ from tornado.concurrent import Future
 from frontik.json_builder import JsonBuilder
 from frontik.http_client import RequestResult, FailedRequestException
 from frontik.testing import json_asserts
+from . import py3_skip
 
 
 class TestJsonBuilder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
@@ -65,6 +68,7 @@ class TestJsonBuilder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
 
         self.assertEqual(j.to_string(), """{"a": "1.2.3"}""")
 
+    @py3_skip
     def test_multiple_items(self):
         j = JsonBuilder()
         j.put({'a': 'b'})
@@ -93,6 +97,7 @@ class TestJsonBuilder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
         self.assertEqual(j.to_dict()['a'], 'b')
         self.assertEqual(j.to_string(), """{"a": "b"}""")
 
+    @py3_skip
     def test_failed_future(self):
         j = JsonBuilder()
         f = Future()
@@ -119,6 +124,7 @@ class TestJsonBuilder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
 
         self.assertEqual(j.to_string(), """{"nested": {"a": ["b", "c"]}}""")
 
+    @py3_skip
     def test_nested_future_error_node(self):
         j = JsonBuilder()
         f1 = Future()
@@ -139,6 +145,7 @@ class TestJsonBuilder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
             j.to_dict(), {'nested': {'a': {'error': {'reason': 'error', 'code': 'code'}}}}
         )
 
+    @py3_skip
     def test_nested_json_builder(self):
         j1 = JsonBuilder()
         j1.put(k1='v1')
@@ -159,6 +166,7 @@ class TestJsonBuilder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
 
         self.assertRaises(ValueError, j.to_dict)
 
+    @py3_skip
     def test_serializable(self):
         class Serializable(object):
             def __init__(self, name, values):
