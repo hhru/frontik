@@ -5,6 +5,7 @@ import logging
 
 from tornado.concurrent import Future
 
+from frontik.compat import iteritems
 from frontik.http_client import RequestResult
 
 future_logger = logging.getLogger('frontik.future')
@@ -36,7 +37,7 @@ class JsonBuilder(object):
     @staticmethod
     def get_error_node(exception):
         return {
-            'error': {k: v for k, v in exception.attrs.iteritems()}
+            'error': {k: v for k, v in iteritems(exception.attrs)}
         }
 
     def _check_value(self, v):
@@ -44,7 +45,7 @@ class JsonBuilder(object):
             return [self._check_value(v) for v in l]
 
         def _check_dict(d):
-            return dict((k, self._check_value(v)) for k, v in d.iteritems())
+            return {k: self._check_value(v) for k, v in iteritems(d)}
 
         if isinstance(v, dict):
             return _check_dict(v)
