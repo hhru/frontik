@@ -10,6 +10,7 @@ import sys
 import time
 
 from lxml import etree
+from tornado.escape import utf8
 import requests
 
 from . import FRONTIK_ROOT
@@ -61,7 +62,7 @@ def find_free_port(from_port=9000, to_port=10000):
 
 
 def create_basic_auth_header(credentials):
-    return 'Basic {}'.format(base64.encodestring(credentials)).strip()
+    return 'Basic {}'.format(base64.b64encode(utf8(credentials)))
 
 
 class FrontikTestInstance(object):
