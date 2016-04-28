@@ -198,8 +198,4 @@ class TestXmlResponseMixin(unittest.TestCase, xml_asserts.XmlTestCaseMixin):
         xml_string = ('<a><b><c><d>1</d><e>2</e></c><f><g>3</g></f></b><h>4</h><i><l>5</l><m>6</m></i>'
                       '<i><l>7</l><m>8</m></i></a>')
         xml = etree.fromstring(xml_string)
-
-        try:
-            self.assertXmlEqual(xml_string, xml)
-        except self.failureException as e:
-            self.fail('XML should be equals after reordering children (Reported error: "{}")'.format(e))
+        self.assertXmlEqual(xml_string, xml)
