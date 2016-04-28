@@ -34,7 +34,10 @@ def _xml_tags_compare(a, b):
     a_children.sort(_xml_tags_compare)
     b_children.sort(_xml_tags_compare)
     for a_child, b_child in itertools.izip_longest(a_children, b_children):
-        child_res = cmp(a_child, b_child)
+        if etree.iselement(a_child) and etree.iselement(b_child):
+            child_res = _xml_tags_compare(a_child, b_child)
+        else:
+            child_res = cmp(a_child, b_child)
         if child_res != 0:
             res = child_res
             break
