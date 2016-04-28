@@ -202,4 +202,4 @@ class TestXmlResponseMixin(unittest.TestCase, xml_asserts.XmlTestCaseMixin):
         try:
             self.assertXmlEqual(xml_string, xml)
         except self.failureException as e:
-            self.fail('XML should be equals (Reported error: "{}")'.format(e))
+            self.fail('XML should be equals after reordering children (Reported error: "{}")'.format(e))
