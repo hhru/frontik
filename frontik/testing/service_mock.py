@@ -20,7 +20,7 @@ from tornado.ioloop import IOLoop
 from tornado.util import raise_exc_info
 
 import frontik.app
-from frontik.compat import iteritems, PY3, unquote_plus, urlparse
+from frontik.compat import basestring_type, iteritems, PY3, unquote_plus, urlparse
 import frontik.handler
 import frontik.handler_active_limit
 import frontik.http_client
@@ -119,7 +119,7 @@ class ServiceMock(object):
     def get_result(self, request, handler):
         if callable(handler):
             return self.get_result(request, handler(request))
-        elif isinstance(handler, basestring):
+        elif isinstance(handler, basestring_type):
             code, body = 200, handler
         elif isinstance(handler, tuple):
             try:
@@ -196,7 +196,7 @@ class EmptyEnvironment(object):
 
     def add_arguments(self, arguments):
         for key, val in iteritems(arguments):
-            self._request.arguments[key] = [val] if isinstance(val, basestring) else val
+            self._request.arguments[key] = [val] if isinstance(val, basestring_type) else val
         return self
 
     def get_arguments(self, name):
