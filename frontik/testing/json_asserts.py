@@ -1,14 +1,12 @@
 # coding=utf-8
 
-import types
-
 from tornado.escape import recursive_unicode
 
-from frontik.compat import iteritems
+from frontik.compat import basestring_type, iteritems, long_type
 
 
 def _is_json_scalar_type(val):
-    return isinstance(val, (unicode, str, bool, int, float, long, types.NoneType))
+    return isinstance(val, (basestring_type, bool, int, float, long_type, type(None)))
 
 
 def _is_json_non_scalar_type(val):
@@ -16,7 +14,7 @@ def _is_json_non_scalar_type(val):
 
 
 def _is_json_key_type(val):
-    return isinstance(val, (unicode, str))
+    return isinstance(val, basestring_type)
 
 
 class JsonTestCaseMixin(object):

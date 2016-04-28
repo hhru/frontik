@@ -11,14 +11,14 @@ import time
 import traceback
 import weakref
 
-import simplejson as json
 import lxml.etree as etree
 from lxml.builder import E
+import simplejson as json
 from tornado.escape import to_unicode, utf8
 from tornado.httpclient import HTTPResponse
 from tornado.httputil import HTTPHeaders
 
-from frontik.compat import iteritems, PY3, SimpleCookie, urlparse
+from frontik.compat import basestring_type, iteritems, PY3, SimpleCookie, unicode_type, urlparse
 import frontik.util
 import frontik.xml_util
 
@@ -208,7 +208,7 @@ def _headers_to_xml(request_or_response_headers):
     headers = etree.Element('headers')
     for name, value in iteritems(request_or_response_headers):
         if name != 'Cookie':
-            str_value = value if isinstance(value, basestring) else str(value)
+            str_value = value if isinstance(value, basestring_type) else str(value)
             headers.append(E.header(to_unicode(str_value), name=name))
     return headers
 
@@ -262,7 +262,7 @@ _format_number = '{:.4f}'.format
 
 
 def _pretty_print_xml(node):
-    return etree.tostring(node, pretty_print=True, encoding=unicode)
+    return etree.tostring(node, pretty_print=True, encoding='unicode')
 
 
 def _pretty_print_json(node):
@@ -319,10 +319,10 @@ class DebugLogBulkHandler(object):
             entry.append(record._xslt_profile)
 
         if getattr(record, '_xml', None) is not None:
-            entry.append(E.text(etree.tostring(record._xml, encoding=unicode)))
+            entry.append(E.text(etree.tostring(record._xml, encoding='unicode')))
 
         if getattr(record, '_protobuf', None) is not None:
-            entry.append(E.text(unicode(record._protobuf)))
+            entry.append(E.text(unicode_type(record._protobuf)))
 
         if getattr(record, '_text', None) is not None:
             entry.append(E.text(to_unicode(record._text)))
@@ -392,7 +392,7 @@ class PageHandlerDebug(object):
 
         try:
             debug_log_data.append(E.versions(
-                etree.tostring(frontik.app.get_frontik_and_apps_versions(self.handler.application), encoding=unicode)
+                etree.tostring(frontik.app.get_frontik_and_apps_versions(self.handler.application), encoding='unicode')
             ))
         except:
             debug_log.exception('cannot add version information')
