@@ -10,7 +10,6 @@ import json
 from logging import getLogger
 import sys
 from urllib import unquote_plus as unquote
-from urlparse import urlparse, parse_qs
 
 from lxml import etree
 import tornado.httpserver
@@ -22,7 +21,7 @@ from tornado.ioloop import IOLoop
 from tornado.util import raise_exc_info
 
 import frontik.app
-from frontik.compat import iteritems, PY3
+from frontik.compat import iteritems, PY3, urlparse
 import frontik.handler
 import frontik.handler_active_limit
 import frontik.http_client
@@ -75,7 +74,7 @@ raw_route = namedtuple('raw_route', 'path query cookies method')
 
 
 def route(url, cookies='', method='GET'):
-    parsed_url = urlparse(url)
+    parsed_url = urlparse.urlparse(url)
     return raw_route(parsed_url.path, parsed_url.query, cookies, method)
 
 
@@ -91,7 +90,7 @@ def url_less_or_equal_than(a, b):
 
 
 def query_less_than_or_equal(a, b):
-    a, b = map(partial(parse_qs, keep_blank_values=True), (a, b))
+    a, b = map(partial(urlparse.parse_qs, keep_blank_values=True), (a, b))
     for i in a:
         bi = b.get(i)
         if bi is None or bi != a[i]:
@@ -185,7 +184,7 @@ class EmptyEnvironment(object):
             return False
 
     def _get_candidate_service(self, url):
-        return self._registry[urlparse(url).netloc]
+        return self._registry[urlparse.urlparse(url).netloc]
 
     def configure(self, **kwargs):
         for name, val in iteritems(kwargs):

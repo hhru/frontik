@@ -9,7 +9,6 @@ import os
 import pprint
 import time
 import traceback
-import urlparse
 import weakref
 
 import simplejson as json
@@ -24,7 +23,7 @@ try:
 except ImportError:
     from Cookie import SimpleCookie
 
-from frontik.compat import iteritems, PY3
+from frontik.compat import iteritems, PY3, urlparse
 import frontik.util
 import frontik.xml_util
 
