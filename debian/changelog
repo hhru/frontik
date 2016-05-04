@@ -1,3 +1,11 @@
+frontik (2.25.16) unstable; urgency=low
+
+  * HH-59025 [fixup] remove additional assert message
+  * HH-59025 [fixup] add meaniang message
+  * HH-59025 fix assertXmlEqual: order xml children with deep comparing
+
+ -- Automated Build <n.kovalev@hh.ru>  Wed, 04 May 2016 18:07:14 +0300
+
 frontik (2.25.15) unstable; urgency=low
 
   * HH-59459 remove old protobuf debug convention
