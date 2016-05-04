@@ -14,7 +14,7 @@ import weakref
 import lxml.etree as etree
 from lxml.builder import E
 import simplejson as json
-from tornado.escape import to_unicode, utf8
+from tornado.escape import recursive_unicode, to_unicode, utf8
 from tornado.httpclient import HTTPResponse
 from tornado.httputil import HTTPHeaders
 
@@ -159,34 +159,35 @@ def response_from_debug(request, response):
 
 def request_to_curl_string(request):
     def _escape_apos(string):
-        return string.replace("'", "'\"'\"'")
+        return string.replace(u"'", u"'\"'\"'")
 
     try:
-        if request.body:
-            request.body.decode('ascii')
-        is_binary_data = False
+        request_body = _escape_apos(request.body.decode('ascii')) if request.body else None
+        is_binary_body = False
     except UnicodeError:
-        is_binary_data = True
+        request_body = repr(request.body).strip('b')
+        is_binary_body = True
 
     curl_headers = HTTPHeaders(request.headers)
     if request.body and 'Content-Length' not in curl_headers:
         curl_headers['Content-Length'] = len(request.body)
 
-    if is_binary_data:
-        curl_echo_data = "echo -e {0} |".format(repr(request.body))
-        curl_data_string = '--data-binary @-'
+    if is_binary_body:
+        curl_echo_data = u"echo -e {} |".format(request_body)
+        curl_data_string = u'--data-binary @-'
     else:
         curl_echo_data = ''
-        curl_data_string = "--data '{0}'".format(_escape_apos(request.body)) if request.body else ''
+        curl_data_string = u"--data '{}'".format(request_body) if request_body else ''
 
     def _format_header(key):
-        return "-H '{0}: {1}'".format(key, _escape_apos(str(curl_headers[key])))
+        header_value = unicode_type(recursive_unicode(curl_headers[key]))
+        return u"-H '{0}: {1}'".format(key, _escape_apos(header_value))
 
-    return "{echo} curl -X {method} '{url}' {headers} {data}".format(
+    return u"{echo} curl -X {method} '{url}' {headers} {data}".format(
         echo=curl_echo_data,
         method=request.method,
-        url=request.url,
-        headers=' '.join(_format_header(k) for k in sorted(curl_headers.keys())),
+        url=to_unicode(request.url),
+        headers=u' '.join(_format_header(k) for k in sorted(curl_headers.keys())),
         data=curl_data_string
     ).strip()
 
