@@ -1,3 +1,15 @@
+frontik (2.25.17) unstable; urgency=low
+
+  * HH-59605 update travis config
+  * HH-59605 update debian/control
+  * HH-59605 ignore unittests that fail on Python 3
+  * HH-59605 add basestring, unicode, long aliases for PY2/3
+  * HH-59605 replace incompatible Cookie usages
+  * HH-59605 replace incompatible xrange usages
+  * HH-59605 replace incompatible urllib2 usages
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 05 May 2016 12:23:48 +0300
+
 frontik (2.25.16) unstable; urgency=low
 
   * HH-59025 [fixup] remove additional assert message
