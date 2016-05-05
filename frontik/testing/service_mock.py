@@ -5,13 +5,10 @@ See source code for get_doc_shows_what_expected for example that doubles as test
 """
 
 from collections import namedtuple
-from cStringIO import StringIO
 from functools import partial
 import json
 from logging import getLogger
 import sys
-from urllib import unquote_plus as unquote
-from urlparse import urlparse, parse_qs
 
 from lxml import etree
 import tornado.httpserver
@@ -23,11 +20,17 @@ from tornado.ioloop import IOLoop
 from tornado.util import raise_exc_info
 
 import frontik.app
+from frontik.compat import basestring_type, iteritems, PY3, unquote_plus, urlparse
 import frontik.handler
+import frontik.handler_active_limit
 import frontik.http_client
 import frontik.loggers
 import frontik.options
-import frontik.handler_active_limit
+
+if PY3:
+    from io import StringIO
+else:
+    from cStringIO import StringIO
 
 tornado.options.options.stderr_log = True
 tornado.options.options.loglevel = 'debug'
@@ -70,7 +73,7 @@ raw_route = namedtuple('raw_route', 'path query cookies method')
 
 
 def route(url, cookies='', method='GET'):
-    parsed_url = urlparse(url)
+    parsed_url = urlparse.urlparse(url)
     return raw_route(parsed_url.path, parsed_url.query, cookies, method)
 
 
@@ -86,7 +89,7 @@ def url_less_or_equal_than(a, b):
 
 
 def query_less_than_or_equal(a, b):
-    a, b = map(partial(parse_qs, keep_blank_values=True), (a, b))
+    a, b = map(partial(urlparse.parse_qs, keep_blank_values=True), (a, b))
     for i in a:
         bi = b.get(i)
         if bi is None or bi != a[i]:
@@ -109,14 +112,14 @@ class ServiceMock(object):
 
         raise NotImplementedError(
             "No route in service mock matches request '{0} {1}', tried to match following:\n'{2}'".format(
-                req.method, unquote(req.url), "';\n'".join([unquote(str(r)) for r in self.routes])
+                req.method, unquote_plus(req.url), "';\n'".join([unquote_plus(str(r)) for r in self.routes])
             )
         )
 
     def get_result(self, request, handler):
         if callable(handler):
             return self.get_result(request, handler(request))
-        elif isinstance(handler, basestring):
+        elif isinstance(handler, basestring_type):
             code, body = 200, handler
         elif isinstance(handler, tuple):
             try:
@@ -124,7 +127,7 @@ class ServiceMock(object):
             except ValueError:
                 raise ValueError(
                     'Could not unpack {0!s} to (code, body) tuple that is a result to request {1} {2!s}'.format(
-                        handler, unquote(request.url), request)
+                        handler, unquote_plus(request.url), request)
                 )
         elif isinstance(handler, HTTPResponse):
             return handler
@@ -165,7 +168,7 @@ class EmptyEnvironment(object):
         self._response_text = None
 
     def expect(self, **kwargs):
-        for name, routes in kwargs.iteritems():
+        for name, routes in iteritems(kwargs):
             service = self._registry.setdefault(name, ServiceMock({}))
             service.routes.update(routes)
             setattr(self._config, name, 'http://' + name + '/')
@@ -180,10 +183,10 @@ class EmptyEnvironment(object):
             return False
 
     def _get_candidate_service(self, url):
-        return self._registry[urlparse(url).netloc]
+        return self._registry[urlparse.urlparse(url).netloc]
 
     def configure(self, **kwargs):
-        for name, val in kwargs.iteritems():
+        for name, val in iteritems(kwargs):
             setattr(self._config, name, val)
         return self
 
@@ -192,8 +195,8 @@ class EmptyEnvironment(object):
         return self
 
     def add_arguments(self, arguments):
-        for key, val in arguments.iteritems():
-            self._request.arguments[key] = [val] if isinstance(val, basestring) else val
+        for key, val in iteritems(arguments):
+            self._request.arguments[key] = [val] if isinstance(val, basestring_type) else val
         return self
 
     def get_arguments(self, name):

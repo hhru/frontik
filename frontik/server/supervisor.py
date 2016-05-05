@@ -29,7 +29,6 @@ All exit codes returned by commands are trying to be compatible with LSB standar
 
 import signal
 import sys
-import urllib2
 import logging
 import subprocess
 import time
@@ -43,6 +42,14 @@ from functools import partial
 from tornado.log import LogFormatter
 import tornado.options
 from tornado.options import options
+
+from frontik.compat import PY3
+
+if PY3:
+    from urllib.error import URLError
+    from urllib.request import urlopen
+else:
+    from urllib2 import urlopen, URLError
 
 tornado.options.define('start_port', 8000, int)
 tornado.options.define('workers_count', 4, int)
@@ -71,12 +78,12 @@ def worker_is_alive(port, config):
 
 def worker_is_running(port):
     try:
-        response = urllib2.urlopen('http://localhost:{}/status/'.format(port), timeout=1)
+        response = urlopen('http://localhost:{}/status/'.format(port), timeout=1)
         for (header, value) in response.info().items():
             if header == 'server' and value.startswith('TornadoServer'):
                 return True
         return False
-    except urllib2.URLError:
+    except URLError:
         return False
     except socket.error as e:
         logging.warn('socket error ({}) on port {}'.format(e, port))

@@ -10,6 +10,7 @@ import sys
 import time
 
 from lxml import etree
+from tornado.escape import utf8
 import requests
 
 from . import FRONTIK_ROOT
@@ -46,7 +47,7 @@ def run_supervisor_command(supervisor_script, port, command):
 
 
 def find_free_port(from_port=9000, to_port=10000):
-    for port in xrange(from_port, to_port):
+    for port in range(from_port, to_port):
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind(('', port))
@@ -61,7 +62,7 @@ def find_free_port(from_port=9000, to_port=10000):
 
 
 def create_basic_auth_header(credentials):
-    return 'Basic {}'.format(base64.encodestring(credentials)).strip()
+    return 'Basic {}'.format(base64.b64encode(utf8(credentials)))
 
 
 class FrontikTestInstance(object):
@@ -86,7 +87,7 @@ class FrontikTestInstance(object):
 
     @staticmethod
     def wait_for(fun, steps):
-        for i in xrange(steps):
+        for i in range(steps):
             if fun():
                 return
             time.sleep(0.1)  # up to 5 seconds with steps=50

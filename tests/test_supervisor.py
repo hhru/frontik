@@ -1,9 +1,9 @@
 # coding=utf-8
 
-import signal
 import unittest
 
-from .instances import find_free_port, frontik_broken_app, FrontikTestInstance, run_supervisor_command
+from . import py3_skip
+from .instances import find_free_port, frontik_broken_app, run_supervisor_command
 
 
 class TestSupervisor(unittest.TestCase):
@@ -21,6 +21,7 @@ class TestSupervisor(unittest.TestCase):
         self.assertIn(b'incorrect action', stderr)
         self.assertEqual(1, process.poll())
 
+    @py3_skip
     def test_start_restart_stop_status(self):
         port = find_free_port()
         supervisor_script = 'supervisor-superapp'
@@ -76,5 +77,6 @@ class TestSupervisor(unittest.TestCase):
         self.assertIn(b'all workers are stopped', stderr)
         self.assertEqual(3, process.poll())
 
+    @py3_skip
     def test_broken(self):
         self.assertRaises(AssertionError, frontik_broken_app.start)

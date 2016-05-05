@@ -1,13 +1,13 @@
 # coding=utf-8
 
-import mimetools
+from email.generator import _make_boundary
 import mimetypes
 import re
-import urlparse
-from urllib import urlencode
 
 from tornado.httpclient import HTTPRequest
 from tornado.httputil import HTTPHeaders
+
+from frontik.compat import iteritems, unicode_type, urlencode, urlparse
 
 
 def list_unique(l):
@@ -15,7 +15,7 @@ def list_unique(l):
 
 
 def _encode(s):
-    if isinstance(s, unicode):
+    if isinstance(s, unicode_type):
         return s.encode('utf-8')
     else:
         return s
@@ -23,7 +23,7 @@ def _encode(s):
 
 def make_qs(query_args):
     kv_pairs = []
-    for key, val in query_args.iteritems():
+    for key, val in iteritems(query_args):
         if val is not None:
             encoded_key = _encode(key)
             if isinstance(val, (set, frozenset, list, tuple)):
@@ -56,7 +56,7 @@ def make_url(base, **query_args):
 
 
 def decode_string_from_charset(string, charsets=('cp1251',)):
-    if isinstance(string, unicode):
+    if isinstance(string, unicode_type):
         return string
 
     decoded_body = None
@@ -78,7 +78,7 @@ def get_query_parameters(url):
     return urlparse.parse_qs(urlparse.urlparse(url).query, True)
 
 
-BOUNDARY = mimetools.choose_boundary()
+BOUNDARY = _make_boundary()
 ENCODE_TEMPLATE = '--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{data}\r\n'
 ENCODE_TEMPLATE_FILE = ('--{boundary}\r\nContent-Disposition: form-data; name="{name}"; '
                         'filename="{filename}"\r\nContent-Type: {contenttype}\r\n\r\n{data}\r\n')
@@ -96,9 +96,9 @@ def make_mfd(fields, files):
     files :: { field_name: [{ "filename" : fn, "body" : bytes }]}
     """
 
-    body = ""
+    body = []
 
-    for name, data in fields.iteritems():
+    for name, data in iteritems(fields):
 
         if data is None:
             continue
@@ -107,31 +107,33 @@ def make_mfd(fields, files):
             for value in data:
                 if data is None:
                     continue
-                body += ENCODE_TEMPLATE.format(
+
+                body.append(ENCODE_TEMPLATE.format(
                     boundary=BOUNDARY,
                     name=str(name),
                     data=_encode(value)
-                )
+                ))
         else:
-            body += ENCODE_TEMPLATE.format(
+            body.append(ENCODE_TEMPLATE.format(
                 boundary=BOUNDARY,
                 name=str(name),
                 data=_encode(data)
-            )
+            ))
 
-    for name, files in files.iteritems():
+    for name, files in iteritems(files):
         for file in files:
-            body += ENCODE_TEMPLATE_FILE.format(
+            body.append(ENCODE_TEMPLATE_FILE.format(
                 boundary=BOUNDARY,
-                data=_encode(file["body"]),
+                data=_encode(file['body']),
                 name=name,
-                filename=_encode(file["filename"]),
-                contenttype=get_content_type(file["filename"])
-            )
+                filename=_encode(file['filename']),
+                contenttype=get_content_type(file['filename'])
+            ))
 
-    body += '--%s--\r\n' % BOUNDARY
-    content_type = 'multipart/form-data; boundary=%s' % BOUNDARY
-    return body, content_type
+    body.append('--{}--\r\n'.format(BOUNDARY))
+    content_type = 'multipart/form-data; boundary={}'.format(BOUNDARY)
+
+    return ''.join(body), content_type
 
 
 def make_get_request(url, data=None, headers=None, connect_timeout=None, request_timeout=None, follow_redirects=True):

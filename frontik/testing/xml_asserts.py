@@ -4,6 +4,8 @@ import itertools
 
 from lxml import etree
 
+from frontik.compat import iteritems
+
 
 def _describe_element(elem):
     root = elem.getroottree()
@@ -51,7 +53,7 @@ def _xml_compare_tag_attribs_text(xml1, xml2, reporter, compare_xml2_attribs=Tru
                  .format(tag1=xml1.tag, tag2=xml2.tag, path=_describe_element(xml1)))
         return False
 
-    for attrib, value in xml1.attrib.iteritems():
+    for attrib, value in iteritems(xml1.attrib):
         if xml2.attrib.get(attrib) != value:
             reporter('Attributes do not match: {attr}={v1!r}, {attr}={v2!r} (path: {path})'
                      .format(attr=attrib, v1=value, v2=xml2.attrib.get(attrib), path=_describe_element(xml1)))
@@ -146,7 +148,7 @@ def _xml_check_compatibility(old_xml, new_xml, reporter=lambda x: None):
             if tag not in new_children_index:
                 new_children_index[tag] = []
             new_children_index[tag].append(child)
-        for tag in new_children_index.iterkeys():
+        for tag in new_children_index:
             new_children_index[tag].sort(_xml_tags_compare)
 
         old_children.sort(_xml_tags_compare)

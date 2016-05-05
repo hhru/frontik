@@ -5,6 +5,7 @@ import logging
 
 from tornado.concurrent import Future
 
+from frontik.compat import basestring_type, iteritems
 from frontik.http_client import RequestResult
 
 future_logger = logging.getLogger('frontik.future')
@@ -14,7 +15,7 @@ class JsonBuilder(object):
     __slots__ = ('_data', '_encoder', 'root_node', 'logger')
 
     def __init__(self, root_node=None, json_encoder=None, logger=None):
-        if root_node is not None and not isinstance(root_node, basestring):
+        if root_node is not None and not isinstance(root_node, basestring_type):
             raise TypeError('Cannot set {} as root node'.format(root_node))
 
         self._data = []
@@ -36,7 +37,7 @@ class JsonBuilder(object):
     @staticmethod
     def get_error_node(exception):
         return {
-            'error': {k: v for k, v in exception.attrs.iteritems()}
+            'error': {k: v for k, v in iteritems(exception.attrs)}
         }
 
     def _check_value(self, v):
@@ -44,7 +45,7 @@ class JsonBuilder(object):
             return [self._check_value(v) for v in l]
 
         def _check_dict(d):
-            return dict((k, self._check_value(v)) for k, v in d.iteritems())
+            return {k: self._check_value(v) for k, v in iteritems(d)}
 
         if isinstance(v, dict):
             return _check_dict(v)

@@ -1,6 +1,9 @@
+# coding=utf-8
+
 from collections import namedtuple
 from functools import partial
 
+from frontik.compat import iteritems
 from frontik.handler import BaseHandler, HTTPError
 
 
@@ -73,7 +76,7 @@ class MicroHandler(BaseHandler):
 
         if isinstance(return_value, dict):
             futures = {}
-            for name, req in return_value.iteritems():
+            for name, req in iteritems(return_value):
                 req_type = getattr(req, 'method', None)
                 if req_type not in self._METHODS_MAPPING:
                     raise Exception('Invalid request object: {!r}'.format(req))

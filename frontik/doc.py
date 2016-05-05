@@ -6,6 +6,7 @@ import lxml.etree as etree
 
 from tornado.concurrent import Future
 
+from frontik.compat import basestring_type, iteritems
 from frontik.http_client import RequestResult
 
 future_logger = logging.getLogger('frontik.future')
@@ -25,7 +26,7 @@ class Doc(object):
     __slots__ = ('root_node', 'data', 'logger')
 
     def __init__(self, root_node='doc', logger=None):
-        if isinstance(root_node, basestring):
+        if isinstance(root_node, basestring_type):
             root_node = etree.Element(root_node)
 
         if not (_is_valid_element(root_node) or isinstance(root_node, Doc)):
@@ -51,7 +52,7 @@ class Doc(object):
 
     @staticmethod
     def get_error_node(exception):
-        return etree.Element('error', **{k: str(v) for k, v in exception.attrs.iteritems()})
+        return etree.Element('error', **{k: str(v) for k, v in iteritems(exception.attrs)})
 
     def to_etree_element(self):
         res = self.root_node.to_etree_element() if isinstance(self.root_node, Doc) else self.root_node
@@ -82,7 +83,7 @@ class Doc(object):
             elif isinstance(chunk, etree._Element):
                 yield chunk
 
-            elif isinstance(chunk, basestring):
+            elif isinstance(chunk, basestring_type):
                 yield chunk
 
             elif chunk is not None:
@@ -91,7 +92,7 @@ class Doc(object):
         last_element = None
         for chunk_element in chunk_to_element(self.data):
 
-            if isinstance(chunk_element, basestring):
+            if isinstance(chunk_element, basestring_type):
                 if last_element is not None:
                     if last_element.tail:
                         last_element.tail += chunk_element
