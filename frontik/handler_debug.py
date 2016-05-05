@@ -2,31 +2,30 @@
 
 import base64
 import copy
-import cStringIO
+from datetime import datetime
 import inspect
 import logging
 import os
 import pprint
 import time
 import traceback
-import urlparse
 import weakref
-from datetime import datetime
 
-import simplejson as json
 import lxml.etree as etree
 from lxml.builder import E
+import simplejson as json
 from tornado.escape import to_unicode, utf8
 from tornado.httpclient import HTTPResponse
 from tornado.httputil import HTTPHeaders
 
-try:
-    from tornado.httputil import SimpleCookie  # Tornado with patched cookies (https://github.com/hhru/tornado)
-except ImportError:
-    from Cookie import SimpleCookie
-
+from frontik.compat import basestring_type, iteritems, PY3, SimpleCookie, unicode_type, urlparse
 import frontik.util
 import frontik.xml_util
+
+if PY3:
+    from io import StringIO
+else:
+    from cStringIO import StringIO
 
 debug_log = logging.getLogger('frontik.debug')
 
@@ -67,7 +66,7 @@ def response_to_xml(response):
         body = repr(response.body)
 
     try:
-        for name, value in response.time_info.iteritems():
+        for name, value in iteritems(response.time_info):
             time_info.append(E.time(str(value), name=name))
     except Exception:
         debug_log.exception('cannot append time info')
@@ -101,7 +100,7 @@ def request_to_xml(request):
                 body.text = repr(request.body)
             else:
                 body_query = urlparse.parse_qs(str(request.body), True)
-                for name, values in body_query.iteritems():
+                for name, values in iteritems(body_query):
                     for value in values:
                         body.append(E.param(to_unicode(value), name=to_unicode(name)))
         except Exception:
@@ -148,7 +147,7 @@ def response_from_debug(request, response):
 
         fake_response = HTTPResponse(
             request, int(response_info['code']), headers=headers,
-            buffer=cStringIO.StringIO(utf8(original_buffer)),
+            buffer=StringIO(utf8(original_buffer)),
             effective_url=response.effective_url, request_time=response.request_time,
             time_info=response.time_info
         )
@@ -195,7 +194,7 @@ def request_to_curl_string(request):
 def _params_to_xml(url, logger=debug_log):
     params = etree.Element('params')
     query = frontik.util.get_query_parameters(url)
-    for name, values in query.iteritems():
+    for name, values in iteritems(query):
         for value in values:
             try:
                 params.append(E.param(to_unicode(value), name=to_unicode(name)))
@@ -207,9 +206,9 @@ def _params_to_xml(url, logger=debug_log):
 
 def _headers_to_xml(request_or_response_headers):
     headers = etree.Element('headers')
-    for name, value in request_or_response_headers.iteritems():
+    for name, value in iteritems(request_or_response_headers):
         if name != 'Cookie':
-            str_value = value if isinstance(value, basestring) else str(value)
+            str_value = value if isinstance(value, basestring_type) else str(value)
             headers.append(E.header(to_unicode(str_value), name=name))
     return headers
 
@@ -263,7 +262,7 @@ _format_number = '{:.4f}'.format
 
 
 def _pretty_print_xml(node):
-    return etree.tostring(node, pretty_print=True, encoding=unicode)
+    return etree.tostring(node, pretty_print=True, encoding='unicode')
 
 
 def _pretty_print_json(node):
@@ -320,10 +319,10 @@ class DebugLogBulkHandler(object):
             entry.append(record._xslt_profile)
 
         if getattr(record, '_xml', None) is not None:
-            entry.append(E.text(etree.tostring(record._xml, encoding=unicode)))
+            entry.append(E.text(etree.tostring(record._xml, encoding='unicode')))
 
         if getattr(record, '_protobuf', None) is not None:
-            entry.append(E.text(unicode(record._protobuf)))
+            entry.append(E.text(unicode_type(record._protobuf)))
 
         if getattr(record, '_text', None) is not None:
             entry.append(E.text(to_unicode(record._text)))
@@ -393,7 +392,7 @@ class PageHandlerDebug(object):
 
         try:
             debug_log_data.append(E.versions(
-                etree.tostring(frontik.app.get_frontik_and_apps_versions(self.handler.application), encoding=unicode)
+                etree.tostring(frontik.app.get_frontik_and_apps_versions(self.handler.application), encoding='unicode')
             ))
         except:
             debug_log.exception('cannot add version information')

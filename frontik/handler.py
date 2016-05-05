@@ -12,14 +12,14 @@ import tornado.web
 
 from frontik.async import AsyncGroup
 import frontik.auth
+from frontik.compat import iteritems
 import frontik.handler_active_limit
 from frontik.handler_debug import PageHandlerDebug
 from frontik.http_client import HttpClient
-import frontik.util
+from frontik.http_codes import process_status_code
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
-from frontik.http_codes import process_status_code
-import frontik.loggers.sentry
+import frontik.util
 
 
 class HTTPError(tornado.web.HTTPError):
@@ -325,7 +325,7 @@ class BaseHandler(tornado.web.RequestHandler):
         )
 
         if headers:
-            for (name, value) in headers.iteritems():
+            for (name, value) in iteritems(headers):
                 self.set_header(name, value)
 
         if finish_with_exception:

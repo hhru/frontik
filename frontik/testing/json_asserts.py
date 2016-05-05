@@ -1,12 +1,12 @@
 # coding=utf-8
 
-import types
-
 from tornado.escape import recursive_unicode
+
+from frontik.compat import basestring_type, iteritems, long_type
 
 
 def _is_json_scalar_type(val):
-    return isinstance(val, (unicode, str, bool, int, float, long, types.NoneType))
+    return isinstance(val, (basestring_type, bool, int, float, long_type, type(None)))
 
 
 def _is_json_non_scalar_type(val):
@@ -14,7 +14,7 @@ def _is_json_non_scalar_type(val):
 
 
 def _is_json_key_type(val):
-    return isinstance(val, (unicode, str))
+    return isinstance(val, basestring_type)
 
 
 class JsonTestCaseMixin(object):
@@ -39,7 +39,7 @@ class JsonTestCaseMixin(object):
                 self._assertIsJson(list_item, path + '[{}]'.format(i), msg)
 
         elif isinstance(data, dict):
-            for key, dict_item in data.iteritems():
+            for key, dict_item in iteritems(data):
                 self._assertIsJsonKeyType(
                     key, self._format_msg_and_path('Wrong key type ({!r})'.format(key), msg, path)
                 )
@@ -66,7 +66,7 @@ class JsonTestCaseMixin(object):
                 self._format_msg_and_path('Lists lengths are not equal: {} != {}'.format(len(a), len(b)), msg, path)
             )
 
-            for i in xrange(len(a)):
+            for i in range(len(a)):
                 self._assertJsonStructuresEqualsRecursive(a[i], b[i], path + '[{}]'.format(i), msg)
 
         elif isinstance(a, dict):

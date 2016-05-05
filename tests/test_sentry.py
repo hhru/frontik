@@ -10,12 +10,13 @@ import requests
 
 from frontik.loggers.sentry import has_raven
 
+from . import py3_skip
 from .instances import frontik_re_app, frontik_test_app
 
 
 @unittest.skipIf(not has_raven, 'raven library not found')
 class TestSentry(unittest.TestCase):
-
+    @py3_skip
     def test_sentry_exception(self):
         frontik_test_app.get_page('api/sentry/store', method=requests.delete)
         frontik_test_app.get_page('sentry_error')
@@ -29,6 +30,7 @@ class TestSentry(unittest.TestCase):
         else:
             self.fail('Exception not sent to Sentry')
 
+    @py3_skip
     def test_sentry_message(self):
         frontik_test_app.get_page('api/sentry/store', method=requests.delete)
         frontik_test_app.get_page('sentry_error', method=requests.put)
@@ -45,6 +47,7 @@ class TestSentry(unittest.TestCase):
         else:
             self.fail('Message not sent to Sentry')
 
+    @py3_skip
     def test_sentry_http_error(self):
         frontik_test_app.get_page('api/sentry/store', method=requests.delete)
         frontik_test_app.get_page('sentry_error', method=requests.post)
@@ -53,6 +56,7 @@ class TestSentry(unittest.TestCase):
             if 'HTTPError for Sentry' in exception['message']:
                 self.fail('HTTPError must not be sent to Sentry')
 
+    @py3_skip
     def test_sentry_not_configured(self):
         self.assertEqual(200, frontik_re_app.get_page('sentry_not_configured').status_code)
 

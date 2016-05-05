@@ -13,6 +13,7 @@ from tornado.options import options
 
 from frontik.async import AsyncGroup
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
+from frontik.compat import iteritems
 from frontik.globals import global_stats
 from frontik.handler_debug import PageHandlerDebug, response_from_debug
 from frontik.loggers.request import logger as request_logger
@@ -38,7 +39,7 @@ class HttpClient(object):
             def future_callback(name, future):
                 results_holder[name] = future.result()
 
-            for name, future in futures.iteritems():
+            for name, future in iteritems(futures):
                 if future.done():
                     future_callback(name, future)
                 else:
@@ -69,14 +70,7 @@ class HttpClient(object):
                  add_to_finish_group=True):
 
         future = Future()
-        request = frontik.util.make_head_request(
-            url,
-            data,
-            headers,
-            connect_timeout,
-            request_timeout,
-            follow_redirects
-        )
+        request = frontik.util.make_head_request(url, data, headers, connect_timeout, request_timeout, follow_redirects)
         request._frontik_labels = labels
 
         self.fetch(
@@ -221,7 +215,7 @@ class HttpClient(object):
                 data = response.body
             elif response.code != 204:
                 content_type = response.headers.get('Content-Type', '')
-                for k, v in DEFAULT_REQUEST_TYPES.iteritems():
+                for k, v in iteritems(DEFAULT_REQUEST_TYPES):
                     if k.search(content_type):
                         data = v(response, logger=self.handler.log)
                         break
