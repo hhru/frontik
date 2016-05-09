@@ -40,4 +40,4 @@ script:
 sudo: false
 after_success:
   - ./coverage-run.sh
-  - codecov
+  - bash <(curl -s https://codecov.io/bash)

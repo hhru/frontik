@@ -120,7 +120,7 @@ def start_worker(script, config=None, port=None, app=None):
 
     logging.debug('start worker %s', port)
 
-    args = [sys.executable] + script.split() + [
+    args = script.split() + [
         '--config={}'.format(config),
         '--port={}'.format(port),
         '--pidfile={}'.format(options.pidfile_template % dict(port=port))
@@ -134,6 +134,8 @@ def start_worker(script, config=None, port=None, app=None):
 
     if options.with_coverage:
         args = ['coverage', 'run'] + args
+    else:
+        args = [sys.executable] + args
 
     STARTER_SCRIPTS[port] = subprocess.Popen(args)
     return STARTER_SCRIPTS[port]
