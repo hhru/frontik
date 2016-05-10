@@ -62,7 +62,7 @@ def find_free_port(from_port=9000, to_port=10000):
 
 
 def create_basic_auth_header(credentials):
-    return 'Basic {}'.format(base64.b64encode(utf8(credentials)))
+    return 'Basic {}'.format(to_unicode(base64.b64encode(utf8(credentials))))
 
 
 class FrontikTestInstance(object):

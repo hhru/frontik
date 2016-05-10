@@ -1,5 +1,9 @@
 # coding=utf-8
 
+import base64
+
+from tornado.escape import to_unicode
+
 from frontik import http_codes
 
 DEBUG_AUTH_HEADER_NAME = 'Frontik-Debug-Auth'
@@ -10,7 +14,7 @@ def passed_basic_auth(handler, login, passwd):
     if auth_header and auth_header.startswith('Basic '):
         method, auth_b64 = auth_header.split(' ')
         try:
-            decoded_value = auth_b64.decode('base64')
+            decoded_value = to_unicode(base64.b64decode(auth_b64))
         except ValueError:
             return False
         given_login, _, given_passwd = decoded_value.partition(':')

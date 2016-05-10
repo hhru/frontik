@@ -93,7 +93,6 @@ class DebugTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, expected_code)
         return response
 
-    @py3_skip
     def test_debug_by_basic_auth(self):
         for param in ('debug', 'noxsl', 'notpl'):
             response = self.assertDebugResponseCode(page='app/simple_xml?{}'.format(param),
@@ -105,7 +104,6 @@ class DebugTestCase(unittest.TestCase):
                                          headers={'Authorization': self.DEBUG_BASIC_AUTH},
                                          expected_code=http_codes.OK)
 
-    @py3_skip
     def test_debug_by_basic_auth_with_invalid_header(self):
         invalid_headers = (
             'Token user:god',
@@ -116,7 +114,7 @@ class DebugTestCase(unittest.TestCase):
             create_basic_auth_header(':'),
             create_basic_auth_header(''),
             create_basic_auth_header('not:pass'),
-            'BASIC {}'.format(base64.encodestring('user:god').strip())
+            'BASIC {}'.format(to_unicode(base64.b64encode(b'user:god')))
         )
 
         for h in invalid_headers:
@@ -147,7 +145,6 @@ class DebugTestCase(unittest.TestCase):
             self.assertIn('Www-Authenticate', response.headers)
             self.assertEqual('Frontik-Debug-Auth-Header realm="Secure Area"', response.headers['Www-Authenticate'])
 
-    @py3_skip
     def test_debug_by_cookie(self):
         for param in ('debug', 'noxsl', 'notpl'):
             self.assertDebugResponseCode(
