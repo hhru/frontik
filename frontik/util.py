@@ -3,6 +3,7 @@
 import mimetypes
 import re
 
+from tornado.escape import to_unicode, utf8
 from tornado.httpclient import HTTPRequest
 from tornado.httputil import HTTPHeaders
 
@@ -20,7 +21,7 @@ def list_unique(l):
 
 def _encode(s):
     if isinstance(s, unicode_type):
-        return s.encode('utf-8')
+        return utf8(s)
     else:
         return s
 
@@ -36,9 +37,7 @@ def make_qs(query_args):
             else:
                 kv_pairs.append((encoded_key, _encode(val)))
 
-    qs = urlencode(kv_pairs)
-
-    return qs
+    return urlencode(kv_pairs)
 
 
 def make_body(data):
@@ -47,16 +46,15 @@ def make_body(data):
 
 def make_url(base, **query_args):
     """
-    построить URL из базового урла и набора CGI-параметров
-    параметры с пустым значением пропускаются, удобно для последовательности:
-    make_url(base, hhtoken=request.cookies.get('hhtoken'))
+    Builds URL from base part and query arguments passed as kwargs.
+    Returns unicode string
     """
     qs = make_qs(query_args)
 
     if qs:
-        return base + ('&' if '?' in base else '?') + qs
+        return to_unicode(base) + ('&' if '?' in base else '?') + qs
     else:
-        return base
+        return to_unicode(base)
 
 
 def decode_string_from_charset(string, charsets=('cp1251',)):
@@ -145,7 +143,7 @@ def make_get_request(url, data=None, headers=None, connect_timeout=None, request
     headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
 
     return HTTPRequest(
-        url=_encode(make_url(url, **data)),
+        url=make_url(url, **data),
         follow_redirects=follow_redirects,
         headers=headers,
         connect_timeout=connect_timeout,
@@ -167,7 +165,7 @@ def make_post_request(url, data='', headers=None, files=None, content_type=None,
     headers.update({'Content-Type': content_type, 'Content-Length': str(len(body))})
 
     return HTTPRequest(
-        url=_encode(url),
+        url=url,
         body=body,
         method='POST',
         headers=headers,
@@ -183,7 +181,7 @@ def make_put_request(url, data='', headers=None, content_type=None, connect_time
         headers['Content-Type'] = content_type
 
     return HTTPRequest(
-        url=_encode(url),
+        url=url,
         body=make_body(data),
         method='PUT',
         headers=headers,
@@ -199,7 +197,7 @@ def make_delete_request(url, data=None, headers=None, content_type=None, connect
         headers['Content-Type'] = content_type
 
     return HTTPRequest(
-        url=_encode(make_url(url, **data)),
+        url=make_url(url, **data),
         method='DELETE',
         headers=headers,
         connect_timeout=connect_timeout,
@@ -212,7 +210,7 @@ def make_head_request(url, data=None, headers=None, connect_timeout=None, reques
     headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
 
     return HTTPRequest(
-        url=_encode(make_url(url, **data)),
+        url=make_url(url, **data),
         follow_redirects=follow_redirects,
         method='HEAD',
         headers=headers,

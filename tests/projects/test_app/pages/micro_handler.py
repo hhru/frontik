@@ -20,7 +20,6 @@ class Page(MicroHandler):
 
         return {
             'post': self.POST(self.request.host, self.request.path, data={'param': 'post'}),
-            'unicode': self.GET(u'http://фронтик.рф', u'проверка'),
             'put': self.PUT(self.request.host, self.request.path + '?code=401', fail_on_error=fail_on_error),
             'delete': self.DELETE(self.request.host, self.request.path, data={'invalid_dict_value': 'true'})
         }
