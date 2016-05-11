@@ -3,12 +3,10 @@
 import requests
 import unittest
 
-from . import py3_skip
 from .instances import frontik_non_debug, frontik_test_app
 
 
 class TestHandler(unittest.TestCase):
-    @py3_skip
     def test_active_limit(self):
         text = frontik_non_debug.get_page_text('app/recursion?n=6')
         self.assertEqual(text, '200 200 200 200 200 503')
