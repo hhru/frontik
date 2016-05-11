@@ -380,12 +380,10 @@ class BaseHandler(tornado.web.RequestHandler):
             try:
                 self._response_size = sum(map(len, self._write_buffer))
                 original_headers = {'Content-Length': str(self._response_size)}
-                response_headers = dict(
-                    getattr(self, '_DEFAULT_HEADERS', {}).items() + self._headers.items(), **original_headers
-                )
+                response_headers = dict(self._headers, **original_headers)
 
                 original_response = {
-                    'buffer': base64.encodestring(''.join(self._write_buffer)),
+                    'buffer': base64.b64encode(b''.join(self._write_buffer)),
                     'headers': response_headers,
                     'code': self._status_code
                 }
