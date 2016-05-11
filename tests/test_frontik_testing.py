@@ -77,7 +77,7 @@ class TestServiceMock(unittest.TestCase):
         }
         expecting_handler = EmptyEnvironment().expect(**routes)
         self.assertRaises(NotImplementedError, expecting_handler.route_request, HTTPRequest('http://test.ru/404'))
-        self.assertEquals(expecting_handler.route_request(HTTPRequest('http://test.ru/handler')).body, test_handler)
+        self.assertEqual(expecting_handler.route_request(HTTPRequest('http://test.ru/handler')).body, test_handler)
 
     @py3_skip
     def test_call_function(self):

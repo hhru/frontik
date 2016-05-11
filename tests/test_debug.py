@@ -20,7 +20,7 @@ class DebugTestCase(unittest.TestCase):
             'app/debug?debug', headers={'Authorization': self.DEBUG_BASIC_AUTH}
         )
 
-        self.assertEquals(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
 
         # Basic debug messages
 
