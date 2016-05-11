@@ -19,11 +19,18 @@ def list_unique(l):
     return list(set(l))
 
 
+def any_to_unicode(s):
+    if isinstance(s, bytes):
+        return to_unicode(s)
+
+    return unicode_type(s)
+
+
 def _encode(s):
     if isinstance(s, unicode_type):
         return utf8(s)
-    else:
-        return s
+
+    return s
 
 
 def make_qs(query_args):

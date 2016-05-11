@@ -14,7 +14,7 @@ import weakref
 import lxml.etree as etree
 from lxml.builder import E
 import simplejson as json
-from tornado.escape import recursive_unicode, to_unicode, utf8
+from tornado.escape import to_unicode, utf8
 from tornado.httpclient import HTTPResponse
 from tornado.httputil import HTTPHeaders
 
@@ -180,7 +180,7 @@ def request_to_curl_string(request):
         curl_data_string = u"--data '{}'".format(request_body) if request_body else ''
 
     def _format_header(key):
-        header_value = unicode_type(recursive_unicode(curl_headers[key]))
+        header_value = frontik.util.any_to_unicode(curl_headers[key])
         return u"-H '{0}: {1}'".format(key, _escape_apos(header_value))
 
     return u"{echo} curl -X {method} '{url}' {headers} {data}".format(
@@ -420,7 +420,7 @@ class PageHandlerDebug(object):
         if frontik.util.get_cookie_or_url_param_value(self.handler, 'noxsl') is None and not self.debug_mode.inherited:
             try:
                 transform = etree.XSLT(etree.parse(self.DEBUG_XSL))
-                log_document = str(transform(debug_log_data))
+                log_document = utf8(str(transform(debug_log_data)))
                 self.handler.set_header('Content-Type', 'text/html; charset=UTF-8')
             except Exception:
                 self.handler.log.exception('XSLT debug file error')
