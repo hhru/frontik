@@ -6,7 +6,6 @@ from tornado.escape import to_unicode
 
 from frontik.util import make_url
 
-from . import py3_skip
 from .instances import frontik_test_app
 
 
@@ -23,9 +22,8 @@ class TestUnicode(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(to_unicode(response.content), u'{"тест": "тест"}')
 
-    @py3_skip
     def test_argument_with_invalid_chars(self):
-        arg_with_invalid_chars = u'≤'.encode('koi8_r') + 'тест'
+        arg_with_invalid_chars = u'≤'.encode('koi8_r') + u'тест'.encode('utf-8')
         response = frontik_test_app.get_page(make_url('arguments', param=arg_with_invalid_chars))
 
         self.assertEqual(response.status_code, 200)
