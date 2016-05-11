@@ -4,12 +4,10 @@ import unittest
 
 import requests
 
-from . import py3_skip
 from .instances import frontik_test_app
 
 
 class TestMicroHandler(unittest.TestCase):
-    @py3_skip
     def test_simple(self):
         json = frontik_test_app.get_page_json('micro_handler')
 
@@ -18,7 +16,6 @@ class TestMicroHandler(unittest.TestCase):
         self.assertEqual(json['preprocessor'], True)
         self.assertEqual(json['delete'], None)
 
-    @py3_skip
     def test_fail_on_error(self):
         response = frontik_test_app.get_page('micro_handler?fail_on_error=true')
 
