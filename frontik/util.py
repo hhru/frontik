@@ -1,13 +1,17 @@
 # coding=utf-8
 
-from email.generator import _make_boundary
 import mimetypes
 import re
 
 from tornado.httpclient import HTTPRequest
 from tornado.httputil import HTTPHeaders
 
-from frontik.compat import iteritems, unicode_type, urlencode, urlparse
+from frontik.compat import iteritems, PY3, unicode_type, urlencode, urlparse
+
+if PY3:
+    from email.generator import _make_boundary as choose_boundary
+else:
+    from mimetools import choose_boundary
 
 
 def list_unique(l):
@@ -78,7 +82,7 @@ def get_query_parameters(url):
     return urlparse.parse_qs(urlparse.urlparse(url).query, True)
 
 
-BOUNDARY = _make_boundary()
+BOUNDARY = choose_boundary()
 ENCODE_TEMPLATE = '--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{data}\r\n'
 ENCODE_TEMPLATE_FILE = ('--{boundary}\r\nContent-Disposition: form-data; name="{name}"; '
                         'filename="{filename}"\r\nContent-Type: {contenttype}\r\n\r\n{data}\r\n')
