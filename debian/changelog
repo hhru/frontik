@@ -1,3 +1,9 @@
+frontik (2.25.18) unstable; urgency=low
+
+  * Bump version up to 2.25.18
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 12 May 2016 18:26:37 +0300
+
 frontik (2.25.17) unstable; urgency=low
 
   * HH-59605 update travis config
