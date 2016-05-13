@@ -2,17 +2,13 @@
 
 import mimetypes
 import re
+from uuid import uuid4
 
 from tornado.escape import to_unicode, utf8
 from tornado.httpclient import HTTPRequest
 from tornado.httputil import HTTPHeaders
 
-from frontik.compat import iteritems, PY3, unicode_type, urlencode, urlparse
-
-if PY3:
-    from email.generator import _make_boundary as choose_boundary
-else:
-    from mimetools import choose_boundary
+from frontik.compat import iteritems, unicode_type, urlencode, urlparse
 
 
 def list_unique(l):
@@ -86,6 +82,13 @@ def get_query_parameters(url):
     url = 'http://' + url if not re.match(r'[a-z]+://.+\??.*', url, re.IGNORECASE) else url
     return urlparse.parse_qs(urlparse.urlparse(url).query, True)
 
+
+def choose_boundary():
+    """
+    Our embarassingly-simple replacement for mimetools.choose_boundary.
+    See https://github.com/kennethreitz/requests/blob/master/requests/packages/urllib3/filepost.py
+    """
+    return uuid4().hex
 
 BOUNDARY = choose_boundary()
 ENCODE_TEMPLATE = '--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{data}\r\n'
