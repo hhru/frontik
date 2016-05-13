@@ -96,7 +96,6 @@ class TestServiceMock(unittest.TestCase):
             '<?xml version=\'1.0\' encoding=\'utf-8\'?>\n<doc><result>3</result></doc>'
         )
 
-    @py3_skip
     def test_call_get(self):
         result = EmptyEnvironment().add_arguments({'param': 'world'}).call_get(Page)
         self.assertEqual(result.get_json_response()['Hello'], 'world')
