@@ -2,7 +2,7 @@
 
 from tornado.escape import recursive_unicode
 
-from frontik.compat import basestring_type, iteritems, long_type
+from frontik.compat import basestring_type, iteritems, long_type, unicode_type
 
 
 def _is_json_scalar_type(val):
@@ -52,8 +52,10 @@ class JsonTestCaseMixin(object):
             )
 
     def _assertJsonStructuresEqualsRecursive(self, a, b, path, msg):
-        a_type = unicode if type(a) == str else type(a)
-        b_type = unicode if type(b) == str else type(b)
+        # Python 2 implicitly converts bytes strings to unicode, so b'abc' == u'abc'
+        # In Python 3 JSON cannot hold byte strings anyway (should fail in _assertIsJson)
+        a_type = unicode_type if isinstance(a, basestring_type) else type(a)
+        b_type = unicode_type if isinstance(b, basestring_type) else type(b)
 
         self.assertEqual(
             a_type, b_type,
