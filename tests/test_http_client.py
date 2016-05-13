@@ -11,7 +11,6 @@ from .instances import frontik_test_app
 
 
 class TestHttpClient(unittest.TestCase, json_asserts.JsonTestCaseMixin):
-    @py3_skip
     def test_post_url_simple(self):
         xml = frontik_test_app.get_page_xml('http_client/post_simple')
         self.assertEqual(xml.text, '42')
@@ -22,32 +21,26 @@ class TestHttpClient(unittest.TestCase, json_asserts.JsonTestCaseMixin):
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(etree.fromstring(response.content.encode('utf-8')).text)
 
-    @py3_skip
     def test_delete_query_arguments(self):
         json = frontik_test_app.get_page_json('handler/delete')
         self.assertEqual(json['delete'], 'true')
 
-    @py3_skip
     def test_fib0(self):
         xml = frontik_test_app.get_page_xml('http_client/fibonacci?n=0')
         self.assertEqual(xml.text, '1')
 
-    @py3_skip
     def test_fib2(self):
         xml = frontik_test_app.get_page_xml('http_client/fibonacci?n=2')
         self.assertEqual(xml.text, '2')
 
-    @py3_skip
     def test_fib6(self):
         xml = frontik_test_app.get_page_xml('http_client/fibonacci?n=6')
         self.assertEqual(xml.text, '13')
 
-    @py3_skip
     def test_timeout(self):
         xml = frontik_test_app.get_page_xml('http_client/long_page_request')
         self.assertEqual(xml.text, 'error')
 
-    @py3_skip
     def test_parse_error(self):
         """ If json or xml parsing error occurs, we must send None into callback. """
         xml = frontik_test_app.get_page_xml('http_client/parse_error')
@@ -60,12 +53,10 @@ class TestHttpClient(unittest.TestCase, json_asserts.JsonTestCaseMixin):
             json, {'post': True, 'delete': 'deleted', 'error': {'reason': 'HTTP 400: Bad Request', 'code': 400}}
         )
 
-    @py3_skip
     def test_custom_headers(self):
         json = frontik_test_app.get_page_json('http_client/custom_headers')
         self.assertEqual(json['X-Foo'], 'Bar')
 
-    @py3_skip
     def test_http_client_method_future(self):
         json = frontik_test_app.get_page_json('http_client/future')
         self.assertJsonEqual(json, {'main_callback_called': True, 'additional_callback_called': True})

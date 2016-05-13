@@ -88,7 +88,6 @@ class DebugTestCase(unittest.TestCase):
         for msg in assert_not_found:
             self.assertNotIn(msg, response.content)
 
-    @py3_skip
     def assertDebugResponseCode(self, page, expected_code, headers=None):
         response = frontik_non_debug.get_page(page, headers=headers)
         self.assertEqual(response.status_code, expected_code)

@@ -23,9 +23,8 @@ class TestMicroHandler(unittest.TestCase):
         response = frontik_test_app.get_page('micro_handler?fail_on_error=true')
 
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.content, '{"fail_on_error": true}')
+        self.assertEqual(response.content, b'{"fail_on_error": true}')
 
-    @py3_skip
     def test_fail_on_error_default(self):
         response = frontik_test_app.get_page('micro_handler?fail_on_error_default=true&code=400', method=requests.post)
         self.assertEqual(response.status_code, 400)
@@ -33,7 +32,6 @@ class TestMicroHandler(unittest.TestCase):
         response = frontik_test_app.get_page('micro_handler?fail_on_error_default=true&code=500', method=requests.post)
         self.assertEqual(response.status_code, 502)
 
-    @py3_skip
     def test_invalid_return_value(self):
         response = frontik_test_app.get_page('micro_handler?invalid_return_value=true', method=requests.delete)
         self.assertEqual(response.status_code, 500)

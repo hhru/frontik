@@ -4,12 +4,10 @@ import unittest
 
 from frontik.testing.xml_asserts import XmlTestCaseMixin
 
-from . import py3_skip
 from .instances import frontik_test_app
 
 
 class TestDoc(unittest.TestCase, XmlTestCaseMixin):
-    @py3_skip
     def test_doc_page(self):
         xml = frontik_test_app.get_page_xml('compose_doc')
 
@@ -21,7 +19,6 @@ class TestDoc(unittest.TestCase, XmlTestCaseMixin):
         self.assertIsNotNone(xml.find('c'))
         self.assertIn(xml.findtext('c'), (None, ''))
 
-    @py3_skip
     def test_doc_invalid_xml(self):
         xml = frontik_test_app.get_page_xml('compose_doc?invalid=true')
 

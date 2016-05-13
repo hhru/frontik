@@ -7,11 +7,10 @@ from .instances import frontik_test_app
 
 
 class TestXsl(unittest.TestCase):
-    @py3_skip
     def test_xsl_transformation(self):
         response = frontik_test_app.get_page('xsl/simple')
         self.assertTrue(response.headers['content-type'].startswith('text/html'))
-        self.assertEqual(response.content, '<html><body><h1>ok</h1></body></html>\n')
+        self.assertEqual(response.content, b'<html><body><h1>ok</h1></body></html>\n')
 
     @py3_skip
     def test_xsl_apply_error(self):
@@ -45,7 +44,6 @@ class TestXsl(unittest.TestCase):
         html = frontik_test_app.get_page_text('xsl/simple?template=no.xsl&debug')
         self.assertIn('failed loading XSL file no.xsl', html)
 
-    @py3_skip
     def test_no_xsl_mode(self):
         response = frontik_test_app.get_page('xsl/simple', notpl=True)
         self.assertTrue(response.headers['content-type'].startswith('application/xml'))
@@ -56,12 +54,10 @@ class TestXsl(unittest.TestCase):
         self.assertIn('test', html)
         self.assertIn('CDATA', html)
 
-    @py3_skip
     def test_xml_include(self):
         xml = frontik_test_app.get_page_xml('include_xml')
         self.assertEqual(xml.findtext('a'), 'aaa')
 
-    @py3_skip
     def test_root_node_frontik_attribute(self):
         xml = frontik_test_app.get_page_xml('simple_xml')
         self.assertEqual(xml.find('element').get('name'), 'Test element')
