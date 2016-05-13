@@ -3,41 +3,37 @@
 import json
 import unittest
 
-from . import py3_skip
+from tornado.escape import to_unicode
+
 from .instances import frontik_re_app, frontik_test_app
 
 
 class TestJsonResponse(unittest.TestCase):
-    @py3_skip
     def test_json(self):
         response = frontik_test_app.get_page('json_page', notpl=True)
         self.assertTrue(response.headers['content-type'].startswith('application/json'))
 
-        data = json.loads(response.content)
+        data = json.loads(to_unicode(response.content))
         self.assertEqual(data['req1']['result'], '1')
         self.assertEqual(data['req2']['result'], '2')
 
-    @py3_skip
     def test_invalid_json(self):
         response = frontik_test_app.get_page('json_page?invalid=true', notpl=True)
         self.assertTrue(response.headers['content-type'].startswith('application/json'))
 
-        data = json.loads(response.content)
+        data = json.loads(to_unicode(response.content))
         self.assertEqual(data['req1']['result'], '1')
         self.assertEqual(data['req2']['error']['reason'], 'invalid JSON')
 
-    @py3_skip
     def test_jinja(self):
         response = frontik_test_app.get_page('json_page')
         self.assertTrue(response.headers['content-type'].startswith('text/html'))
-        self.assertEqual(response.content, '<html><body><b>1</b><i>2</i></body></html>')
+        self.assertEqual(response.content, b'<html><body><b>1</b><i>2</i></body></html>')
 
-    @py3_skip
     def test_no_template_root(self):
         response = frontik_re_app.get_page('json_no_tpl_root')
         self.assertEqual(response.status_code, 500)
 
-    @py3_skip
     def test_no_template_exists(self):
         response = frontik_test_app.get_page('json_page?template=no.html')
         self.assertEqual(response.status_code, 500)
@@ -46,7 +42,6 @@ class TestJsonResponse(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.headers['content-type'].startswith('application/json'))
 
-    @py3_skip
     def test_broken_template(self):
         response = frontik_test_app.get_page('json_page?break=true')
         self.assertEqual(response.status_code, 500)

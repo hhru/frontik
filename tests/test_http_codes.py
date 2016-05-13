@@ -6,7 +6,6 @@ from frontik import http_codes
 
 
 class ProcessStatusCodeTestCase(unittest.TestCase):
-
     def test_python_supported_code(self):
         self.assertEqual((404, None), http_codes.process_status_code(status_code=404, reason=None))
         self.assertEqual((404, 'My reason'), http_codes.process_status_code(status_code=404, reason='My reason'))
