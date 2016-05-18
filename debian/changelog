@@ -1,3 +1,9 @@
+frontik (2.25.19) unstable; urgency=low
+
+  * HH-59866 Ubuntu Trusty support
+
+ -- Automated Build <a.mishurov@hh.ru>  Wed, 18 May 2016 18:56:06 +0300
+
 frontik (2.25.18) unstable; urgency=low
 
   * Bump version up to 2.25.18
