@@ -4,13 +4,11 @@ import unittest
 
 from lxml import etree
 
-from frontik.testing import json_asserts
-
 from . import py3_skip
 from .instances import frontik_test_app
 
 
-class TestHttpClient(unittest.TestCase, json_asserts.JsonTestCaseMixin):
+class TestHttpClient(unittest.TestCase):
     def test_post_url_simple(self):
         xml = frontik_test_app.get_page_xml('http_client/post_simple')
         self.assertEqual(xml.text, '42')
@@ -48,7 +46,7 @@ class TestHttpClient(unittest.TestCase, json_asserts.JsonTestCaseMixin):
 
     def test_parse_response(self):
         json = frontik_test_app.get_page_json('http_client/parse_response')
-        self.assertJsonEqual(
+        self.assertEqual(
             json, {'post': True, 'delete': 'deleted', 'error': {'reason': 'HTTP 400: Bad Request', 'code': 400}}
         )
 
@@ -58,4 +56,4 @@ class TestHttpClient(unittest.TestCase, json_asserts.JsonTestCaseMixin):
 
     def test_http_client_method_future(self):
         json = frontik_test_app.get_page_json('http_client/future')
-        self.assertJsonEqual(json, {'main_callback_called': True, 'additional_callback_called': True})
+        self.assertEqual(json, {'main_callback_called': True, 'additional_callback_called': True})

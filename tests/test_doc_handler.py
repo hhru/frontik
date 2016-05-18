@@ -2,12 +2,12 @@
 
 import unittest
 
-from frontik.testing.xml_asserts import XmlTestCaseMixin
+from lxml_asserts.testcase import LxmlTestCaseMixin
 
 from .instances import frontik_test_app
 
 
-class TestDoc(unittest.TestCase, XmlTestCaseMixin):
+class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
     def test_doc_page(self):
         xml = frontik_test_app.get_page_xml('compose_doc')
 

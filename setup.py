@@ -61,6 +61,7 @@ setup(
         'nose',
         'pep8',
         'requests >= 0.8.2',
+        'lxml-asserts',
     ],
     dependency_links=[
         'https://github.com/hhru/tornado/archive/fix-version.zip',
