@@ -33,12 +33,10 @@ class TestHttpError(unittest.TestCase):
             b'<html><title>429: Too Many Requests</title><body>429: Too Many Requests</body></html>'
         )
 
-    @py3_skip
     def test_raise_with_unknown_code(self):
         response = frontik_test_app.get_page('http_error?code=599')
         self.assertEqual(response.status_code, 503)
 
-    @py3_skip
     def test_finish_with_unknown_code(self):
         response = frontik_test_app.get_page('http_error?code=599&throw=false')
         self.assertEqual(response.status_code, 503)
