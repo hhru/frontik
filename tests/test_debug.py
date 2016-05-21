@@ -122,7 +122,6 @@ class DebugTestCase(unittest.TestCase):
         for h in invalid_headers:
             self.assertDebugResponseCode('app/simple_xml?debug', http_codes.UNAUTHORIZED, headers={'Authorization': h})
 
-    @py3_skip
     def test_debug_by_header(self):
         for param in ('debug', 'noxsl', 'notpl'):
             response = self.assertDebugResponseCode('app/simple_xml?{}'.format(param), http_codes.UNAUTHORIZED)
@@ -139,7 +138,6 @@ class DebugTestCase(unittest.TestCase):
                 headers={'Frontik-Debug-Auth': 'user:god', 'Authorization': 'Basic bad'}
             )
 
-    @py3_skip
     def test_debug_by_header_with_wrong_header(self):
         for value in ('', 'not:pass', 'user: god', self.DEBUG_BASIC_AUTH):
             response = self.assertDebugResponseCode(
