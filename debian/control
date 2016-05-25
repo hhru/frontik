@@ -27,7 +27,7 @@ Architecture: all
 Depends:
   ${python:Depends},
   ${misc:Depends},
-  libcurl3 (=7.22.0-3ubuntu4.14+hh1),
+  libcurl3 (=7.22.0-3ubuntu4.14+hh1) | libcurl3 (=7.35.0-1ubuntu3~hh1),
   libcurl3-gnutls (=7.22.0-3ubuntu4.14+hh1) | libcurl3-gnutls(=7.35.0-1ubuntu3~hh1),
   python,
   python-lxml,
