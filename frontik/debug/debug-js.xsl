@@ -83,7 +83,8 @@
 
                 var xml = document.getElementsByClassName('xml highlighted-code');
                 Array.prototype.forEach.call(xml, function(el) {
-                    el.innerHTML = vkbeautify.xml(el.textContent).replace(/</g, '&lt;');
+                    el.innerHTML = vkbeautify.xml(el.textContent.replace(/\&quot\;/g, '\&amp\;quot\;'))
+                                             .replace(/</g, '&lt;');
                 });
 
                 var json = document.getElementsByClassName('javascript highlighted-code');
