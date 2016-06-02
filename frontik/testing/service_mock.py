@@ -11,13 +11,14 @@ from logging import getLogger
 import sys
 
 from lxml import etree
-import tornado.httpserver
-import tornado.options
-import tornado.web
+from tornado.escape import to_unicode
 from tornado.httpclient import HTTPResponse
+import tornado.httpserver
 from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
+import tornado.options
 from tornado.util import raise_exc_info
+import tornado.web
 
 import frontik.app
 from frontik.compat import basestring_type, iteritems, PY3, unquote_plus, urlparse
@@ -284,13 +285,13 @@ class TestResult(object):
         self._response_text = response_text
 
     def get_xml_response(self):
-        return etree.fromstring(self.get_text_response())
+        return etree.fromstring(self._response_text)
 
     def get_json_response(self):
         return json.loads(self.get_text_response())
 
     def get_text_response(self):
-        return self._response_text
+        return to_unicode(self._response_text)
 
     def get_headers(self):
         return self._handler._headers

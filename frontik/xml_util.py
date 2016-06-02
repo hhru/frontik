@@ -4,14 +4,14 @@ import time
 
 from lxml import etree
 
-import frontik.util
+from frontik.util import any_to_unicode, asciify_url
 
 parser = etree.XMLParser()
 
 
 def xml_from_file(filename, log):
     def _source_comment(src):
-        return etree.Comment('Source: {0}'.format(frontik.util.asciify_url(src).replace('--', '%2D%2D')))
+        return etree.Comment('Source: {0}'.format(asciify_url(src).replace('--', '%2D%2D')))
 
     try:
         res = etree.parse(filename).getroot()
@@ -34,7 +34,7 @@ def xsl_from_file(filename, log):
 def dict_to_xml(dict_value, element_name):
     element = etree.Element(element_name)
     if not isinstance(dict_value, dict):
-        element.text = str(dict_value).decode('utf-8')
+        element.text = any_to_unicode(dict_value)
         return element
 
     for k, v in dict_value.items():

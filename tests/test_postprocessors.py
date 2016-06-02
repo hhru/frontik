@@ -2,50 +2,42 @@
 
 import unittest
 
-from . import py3_skip
 from .instances import frontik_test_app
 
 POSTPROCESS_URL = 'postprocess/?{}'
 
 
 class TestPostprocessors(unittest.TestCase):
-    @py3_skip
     def test_no_postprocessors(self):
         response = frontik_test_app.get_page(POSTPROCESS_URL.format(''))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, '<html><h1>%%header%%</h1>%%content%%</html>')
+        self.assertEqual(response.content, b'<html><h1>%%header%%</h1>%%content%%</html>')
 
-    @py3_skip
     def test_early_postprocessors(self):
         response = frontik_test_app.get_page(POSTPROCESS_URL.format('fail_early'))
         self.assertEqual(response.status_code, 400)
 
-    @py3_skip
     def test_template_postprocessors_single(self):
         response = frontik_test_app.get_page(POSTPROCESS_URL.format('header'))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, '<html><h1>HEADER</h1>%%content%%</html>')
+        self.assertEqual(response.content, b'<html><h1>HEADER</h1>%%content%%</html>')
 
-    @py3_skip
     def test_template_postprocessors_multiple(self):
         response = frontik_test_app.get_page(POSTPROCESS_URL.format('header&content'))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, '<html><h1>HEADER</h1>CONTENT</html>')
+        self.assertEqual(response.content, b'<html><h1>HEADER</h1>CONTENT</html>')
 
-    @py3_skip
     def test_template_postprocessors_with_json(self):
         response = frontik_test_app.get_page(POSTPROCESS_URL.format('content&notpl'))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, '{"content": "CONTENT"}')
+        self.assertEqual(response.content, b'{"content": "CONTENT"}')
 
-    @py3_skip
     def test_late_postprocessors(self):
         response = frontik_test_app.get_page(POSTPROCESS_URL.format('nocache&addserver'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers['cache-control'], 'no-cache')
         self.assertEqual(response.headers['server'], 'Frontik')
 
-    @py3_skip
     def test_late_postprocessors_after_error(self):
         response = frontik_test_app.get_page(POSTPROCESS_URL.format('fail_early&nocache&addserver'))
         self.assertEqual(response.status_code, 400)

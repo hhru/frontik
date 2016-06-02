@@ -55,7 +55,7 @@ class AssertsTestCase(unittest.TestCase, json_asserts.JsonTestCaseMixin):
             self.assertIsJson(json, msg='Pre words')
             self.fail('AssertionError must be raised')
         except AssertionError as e:
-            self.assertEquals(e.args[0], "Pre words: [2].b - Wrong value type (<type 'object'>)")
+            self.assertEqual(e.args[0], "Pre words: [2].b - Wrong value type (<type 'object'>)")
 
     @py3_skip
     def test_assert_is_json_message_for_root(self):
@@ -63,7 +63,7 @@ class AssertsTestCase(unittest.TestCase, json_asserts.JsonTestCaseMixin):
             self.assertIsJson(object(), 'Pre words')
             self.fail('AssertionError must be raised')
         except AssertionError as e:
-            self.assertEquals(e.args[0], "Pre words: <ROOT> - Wrong value type (<type 'object'>)")
+            self.assertEqual(e.args[0], "Pre words: <ROOT> - Wrong value type (<type 'object'>)")
 
     @py3_skip
     def test_assert_is_json_message_key_type(self):
@@ -71,9 +71,8 @@ class AssertsTestCase(unittest.TestCase, json_asserts.JsonTestCaseMixin):
             self.assertIsJson({'val': [{None: '123'}]}, 'Pre words')
             self.fail('AssertionError must be raised')
         except AssertionError as e:
-            self.assertEquals(e.args[0], 'Pre words: val[0] - Wrong key type (None)')
+            self.assertEqual(e.args[0], 'Pre words: val[0] - Wrong key type (None)')
 
-    @py3_skip
     def test_assert_json_equal(self):
         equal_json = (
             (
@@ -101,7 +100,6 @@ class AssertsTestCase(unittest.TestCase, json_asserts.JsonTestCaseMixin):
         for a, b in equal_json:
             self.assertJsonEqual(a, b)
 
-    @py3_skip
     def test_assert_json_not_equal(self):
         not_equal_json = (
             ([5], ['5']),

@@ -4,11 +4,9 @@ import unittest
 
 from frontik.handler_debug import request_to_curl_string
 from frontik.util import make_get_request, make_post_request, make_put_request
-from . import py3_skip
 
 
 class CurlStringTestCase(unittest.TestCase):
-    @py3_skip
     def test_curl_string_get(self):
         request = make_get_request(
             'http://test.com/path',
@@ -21,7 +19,6 @@ class CurlStringTestCase(unittest.TestCase):
             "curl -X GET 'http://test.com/path?param=value' -H 'Accept: application/json'"
         )
 
-    @py3_skip
     def test_curl_string_post(self):
         request = make_post_request('http://test.com/path', data={'param': 'value'})
 
@@ -31,7 +28,6 @@ class CurlStringTestCase(unittest.TestCase):
             "-H 'Content-Type: application/x-www-form-urlencoded' --data 'param=value'"
         )
 
-    @py3_skip
     def test_curl_string_put(self):
         request = make_put_request('http://test.com/path', data='DATA', content_type='text/plain')
 
@@ -40,7 +36,6 @@ class CurlStringTestCase(unittest.TestCase):
             "curl -X PUT 'http://test.com/path' -H 'Content-Length: 4' -H 'Content-Type: text/plain' --data 'DATA'"
         )
 
-    @py3_skip
     def test_curl_string_binary(self):
         request = make_post_request('http://test.com/path', data=u'тест', content_type='text/plain')
 
