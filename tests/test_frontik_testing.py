@@ -4,20 +4,19 @@ import sys
 import traceback
 import unittest
 
-import lxml.etree
+from lxml import etree
 from tornado.httpclient import HTTPRequest
 
 from frontik.async import AsyncGroup
 from frontik.handler import HTTPError, PageHandler
 from frontik.testing.service_mock import route, route_less_or_equal_than, EmptyEnvironment
 from frontik.testing.pages import Page
-from . import py3_skip
 
 
 class TestPage(PageHandler):
     def get_page(self):
         def finished():
-            res = lxml.etree.Element('result')
+            res = etree.Element('result')
             res.text = str(self.result)
             self.doc.put(res)
             self.set_header('X-Foo', 'Bar')
@@ -77,9 +76,8 @@ class TestServiceMock(unittest.TestCase):
         }
         expecting_handler = EmptyEnvironment().expect(**routes)
         self.assertRaises(NotImplementedError, expecting_handler.route_request, HTTPRequest('http://test.ru/404'))
-        self.assertEquals(expecting_handler.route_request(HTTPRequest('http://test.ru/handler')).body, test_handler)
+        self.assertEqual(expecting_handler.route_request(HTTPRequest('http://test.ru/handler')).body, test_handler)
 
-    @py3_skip
     def test_call_function(self):
         result = EmptyEnvironment().expect(
             serviceHost={
@@ -90,18 +88,16 @@ class TestServiceMock(unittest.TestCase):
 
         self.assertEqual(result.get_xml_response().findtext('result'), '3')
         self.assertEqual(result.get_status(), 400)
-        self.assertEqual(result.get_headers().get('X-Foo'), 'Bar')
+        self.assertEqual(result.get_headers().get('X-Foo'), b'Bar')
         self.assertEqual(
             result.get_text_response(),
             '<?xml version=\'1.0\' encoding=\'utf-8\'?>\n<doc><result>3</result></doc>'
         )
 
-    @py3_skip
     def test_call_get(self):
-        result = EmptyEnvironment().add_arguments({'param': 'world'}).call_get(Page)
-        self.assertEqual(result.get_json_response()['Hello'], 'world')
+        result = EmptyEnvironment().add_arguments({'param': u'тест'}).call_get(Page)
+        self.assertEqual(result.get_json_response()['Hello'], u'тест')
 
-    @py3_skip
     def test_exception(self):
         class ExceptionHandler(PageHandler):
             def get_page(self):
@@ -115,7 +111,7 @@ class TestServiceMock(unittest.TestCase):
             self.assertEqual(e.status_code, 500)
             self.assertEqual(e.log_message, 'fail')
 
-            tb = ''.join(traceback.format_tb(sys.exc_traceback))
+            tb = ''.join(traceback.format_tb(sys.exc_info()[2]))
             self.assertIn('_inner()', tb)
         else:
             self.fail('HTTPError must be raised')

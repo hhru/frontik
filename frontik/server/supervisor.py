@@ -27,18 +27,19 @@ All exit codes returned by commands are trying to be compatible with LSB standar
 [1] http://refspecs.linuxbase.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/iniscrptact.html
 """
 
-import signal
-import sys
+from functools import partial
+import glob
 import logging
+import os
+import re
+import resource
+import signal
+import socket
+import sys
 import subprocess
 import time
-import glob
-import re
-import socket
-import os
-import resource
-from functools import partial
 
+from tornado.escape import to_unicode
 from tornado.log import LogFormatter
 import tornado.options
 from tornado.options import options
@@ -65,12 +66,15 @@ STARTER_SCRIPTS = {}
 def worker_is_alive(port, config):
     try:
         path_beginning, _, path_ending = options.pidfile_template.partition('%(port)s')
-        pidfile_regex = '{0}([0-9]+){1}'.format(re.escape(path_beginning), re.escape(path_ending))
-        for pid in subprocess.check_output('pgrep -f "{}"'.format(pidfile_regex), shell=True).strip().split('\n'):
+        pidfile_grep_command = u'pgrep -f "{0}([0-9]+){1}"'.format(re.escape(path_beginning), re.escape(path_ending))
+        pidfile_grep_result = to_unicode(subprocess.check_output(pidfile_grep_command, shell=True)).strip().split('\n')
+
+        for pid in pidfile_grep_result:
             with open('/proc/{}/cmdline'.format(pid.strip()), 'r') as cmdline_file:
                 cmdline = cmdline_file.readline()
                 if cmdline is not None and str(port) in cmdline and config in cmdline and 'python' in cmdline:
                     return True
+
         return False
     except (IOError, subprocess.CalledProcessError):
         return False
@@ -80,13 +84,13 @@ def worker_is_running(port):
     try:
         response = urlopen('http://localhost:{}/status/'.format(port), timeout=1)
         for (header, value) in response.info().items():
-            if header == 'server' and value.startswith('TornadoServer'):
+            if header.lower() == 'server' and value.startswith('TornadoServer'):
                 return True
         return False
     except URLError:
         return False
     except socket.error as e:
-        logging.warn('socket error ({}) on port {}'.format(e, port))
+        logging.warning('socket error ({}) on port {}'.format(e, port))
         return False
 
 
@@ -111,7 +115,7 @@ def worker_is_started(port, config):
 
 def start_worker(script, config=None, port=None, app=None):
     if worker_is_alive(port, config):
-        logging.warn('another worker already started on %s', port)
+        logging.warning('another worker already started on %s', port)
         return None
 
     logging.debug('start worker %s', port)
@@ -130,6 +134,8 @@ def start_worker(script, config=None, port=None, app=None):
 
     if options.with_coverage:
         args = ['coverage', 'run'] + args
+    else:
+        args = [sys.executable] + args
 
     STARTER_SCRIPTS[port] = subprocess.Popen(args)
     return STARTER_SCRIPTS[port]
@@ -158,7 +164,7 @@ def cleanup_worker(port):
 
 
 def map_workers(f):
-    return map(f, [options.start_port + p for p in range(options.workers_count)])
+    return [f(x) for x in range(options.start_port, options.start_port + options.workers_count)]
 
 
 def map_stale_workers(f):
@@ -174,7 +180,7 @@ def map_stale_workers(f):
             if port_match and not port_match.group(1) in ports:
                 stale_ports.append(port_match.group(1))
 
-    return map(f, stale_ports)
+    return [f(x) for x in stale_ports]
 
 
 def map_all_workers(f):
@@ -216,21 +222,21 @@ def start(script, app, config):
 
 
 def status(expect=None):
-    res = map_stale_workers(worker_is_running)
-    if any(res):
-        logging.warn('some stale workers are running!')
+    running_stale_workers = map_stale_workers(worker_is_running)
+    if any(running_stale_workers):
+        logging.warning('some stale workers are running!')
 
-    res = map_workers(worker_is_running)
+    running_workers = map_workers(worker_is_running)
 
-    if all(res):
+    if all(running_workers):
         if expect == 'stopped':
             logging.error('all workers are running')
             return 1
         else:
             logging.info('all workers are running')
             return 0
-    elif any(res):
-        logging.warn('some workers are running!')
+    elif any(running_workers):
+        logging.warning('some workers are running!')
         return 1
     else:
         if expect == 'started':

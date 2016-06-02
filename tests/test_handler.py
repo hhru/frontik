@@ -3,17 +3,14 @@
 import requests
 import unittest
 
-from . import py3_skip
 from .instances import frontik_non_debug, frontik_test_app
 
 
 class TestHandler(unittest.TestCase):
-    @py3_skip
     def test_active_limit(self):
         text = frontik_non_debug.get_page_text('app/recursion?n=6')
         self.assertEqual(text, '200 200 200 200 200 503')
 
-    @py3_skip
     def test_check_finished(self):
         text = frontik_test_app.get_page_text('handler/check_finished')
         self.assertEqual(text, 'Callback not called')
@@ -23,36 +20,30 @@ class TestHandler(unittest.TestCase):
         text = frontik_test_app.get_page_text('handler/check_finished')
         self.assertEqual(text, 'Callback not called')
 
-    @py3_skip
     def test_head(self):
         response = frontik_test_app.get_page('handler/head', method=requests.head)
         self.assertEqual(response.headers['X-Foo'], 'Bar')
-        self.assertEqual(response.content, '')
+        self.assertEqual(response.content, b'')
 
-    @py3_skip
     def test_head_url(self):
         response = frontik_test_app.get_page('handler/head_url')
-        self.assertEqual(response.content, 'OK')
+        self.assertEqual(response.content, b'OK')
 
-    @py3_skip
     def test_no_method(self):
         response = frontik_test_app.get_page('handler/head', method=requests.post)
         self.assertEqual(response.status_code, 405)
         self.assertEqual(response.headers['Allow'], 'get')
 
-    @py3_skip
     def test_set_status(self):
         response = frontik_test_app.get_page('http_error?code=401&throw=false')
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.content, 'success')
+        self.assertEqual(response.content, b'success')
 
-    @py3_skip
     def test_set_extended_status(self):
         response = frontik_test_app.get_page('http_error?code=429&throw=false')
         self.assertEqual(response.status_code, 429)
-        self.assertEqual(response.content, 'success')
+        self.assertEqual(response.content, b'success')
 
-    @py3_skip
     def test_delete_post_arguments(self):
         response = frontik_test_app.get_page('handler/delete', method=requests.delete)
         self.assertEqual(response.status_code, 400)

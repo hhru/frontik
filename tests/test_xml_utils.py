@@ -58,5 +58,5 @@ dictionary_after = {
 class TestXmlUtils(unittest.TestCase):
     @py3_skip
     def test_xml_to_dict_and_back_again(self):
-        self.assertEquals(xml_to_dict(etree.XML(xml)), dictionary_after)
-        self.assertEquals(xml_to_dict(dict_to_xml(dictionary_before, 'root')), dictionary_after)
+        self.assertEqual(xml_to_dict(etree.XML(xml)), dictionary_after)
+        self.assertEqual(xml_to_dict(dict_to_xml(dictionary_before, 'root')), dictionary_after)

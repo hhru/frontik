@@ -2,27 +2,31 @@
 
 import mimetypes
 import re
+from uuid import uuid4
 
+from tornado.escape import to_unicode, utf8
 from tornado.httpclient import HTTPRequest
 from tornado.httputil import HTTPHeaders
 
-from frontik.compat import iteritems, PY3, unicode_type, urlencode, urlparse
-
-if PY3:
-    from email.generator import _make_boundary as choose_boundary
-else:
-    from mimetools import choose_boundary
+from frontik.compat import iteritems, unicode_type, urlencode, urlparse
 
 
 def list_unique(l):
     return list(set(l))
 
 
+def any_to_unicode(s):
+    if isinstance(s, bytes):
+        return to_unicode(s)
+
+    return unicode_type(s)
+
+
 def _encode(s):
     if isinstance(s, unicode_type):
-        return s.encode('utf-8')
-    else:
-        return s
+        return utf8(s)
+
+    return s
 
 
 def make_qs(query_args):
@@ -36,9 +40,7 @@ def make_qs(query_args):
             else:
                 kv_pairs.append((encoded_key, _encode(val)))
 
-    qs = urlencode(kv_pairs)
-
-    return qs
+    return urlencode(kv_pairs)
 
 
 def make_body(data):
@@ -47,16 +49,15 @@ def make_body(data):
 
 def make_url(base, **query_args):
     """
-    построить URL из базового урла и набора CGI-параметров
-    параметры с пустым значением пропускаются, удобно для последовательности:
-    make_url(base, hhtoken=request.cookies.get('hhtoken'))
+    Builds URL from base part and query arguments passed as kwargs.
+    Returns unicode string
     """
     qs = make_qs(query_args)
 
     if qs:
-        return base + ('&' if '?' in base else '?') + qs
+        return to_unicode(base) + ('&' if '?' in base else '?') + qs
     else:
-        return base
+        return to_unicode(base)
 
 
 def decode_string_from_charset(string, charsets=('cp1251',)):
@@ -81,6 +82,13 @@ def get_query_parameters(url):
     url = 'http://' + url if not re.match(r'[a-z]+://.+\??.*', url, re.IGNORECASE) else url
     return urlparse.parse_qs(urlparse.urlparse(url).query, True)
 
+
+def choose_boundary():
+    """
+    Our embarassingly-simple replacement for mimetools.choose_boundary.
+    See https://github.com/kennethreitz/requests/blob/master/requests/packages/urllib3/filepost.py
+    """
+    return uuid4().hex
 
 BOUNDARY = choose_boundary()
 ENCODE_TEMPLATE = '--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{data}\r\n'
@@ -145,7 +153,7 @@ def make_get_request(url, data=None, headers=None, connect_timeout=None, request
     headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
 
     return HTTPRequest(
-        url=_encode(make_url(url, **data)),
+        url=make_url(url, **data),
         follow_redirects=follow_redirects,
         headers=headers,
         connect_timeout=connect_timeout,
@@ -167,7 +175,7 @@ def make_post_request(url, data='', headers=None, files=None, content_type=None,
     headers.update({'Content-Type': content_type, 'Content-Length': str(len(body))})
 
     return HTTPRequest(
-        url=_encode(url),
+        url=url,
         body=body,
         method='POST',
         headers=headers,
@@ -183,7 +191,7 @@ def make_put_request(url, data='', headers=None, content_type=None, connect_time
         headers['Content-Type'] = content_type
 
     return HTTPRequest(
-        url=_encode(url),
+        url=url,
         body=make_body(data),
         method='PUT',
         headers=headers,
@@ -199,7 +207,7 @@ def make_delete_request(url, data=None, headers=None, content_type=None, connect
         headers['Content-Type'] = content_type
 
     return HTTPRequest(
-        url=_encode(make_url(url, **data)),
+        url=make_url(url, **data),
         method='DELETE',
         headers=headers,
         connect_timeout=connect_timeout,
@@ -212,7 +220,7 @@ def make_head_request(url, data=None, headers=None, connect_timeout=None, reques
     headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
 
     return HTTPRequest(
-        url=_encode(make_url(url, **data)),
+        url=make_url(url, **data),
         follow_redirects=follow_redirects,
         method='HEAD',
         headers=headers,

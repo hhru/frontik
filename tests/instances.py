@@ -10,7 +10,7 @@ import sys
 import time
 
 from lxml import etree
-from tornado.escape import utf8
+from tornado.escape import to_unicode, utf8
 import requests
 
 from . import FRONTIK_ROOT
@@ -62,7 +62,7 @@ def find_free_port(from_port=9000, to_port=10000):
 
 
 def create_basic_auth_header(credentials):
-    return 'Basic {}'.format(base64.b64encode(utf8(credentials)))
+    return 'Basic {}'.format(to_unicode(base64.b64encode(utf8(credentials))))
 
 
 class FrontikTestInstance(object):
@@ -113,10 +113,10 @@ class FrontikTestInstance(object):
         return method(url, **kwargs)
 
     def get_page_xml(self, page, notpl=False):
-        content = self.get_page_text(page, notpl)
+        content = utf8(self.get_page(page, notpl).content)
 
         try:
-            return etree.fromstring(content.encode('utf-8'))
+            return etree.fromstring(content)
         except Exception as e:
             raise Exception('failed to parse xml ({}): "{}"'.format(e, content))
 
@@ -124,12 +124,12 @@ class FrontikTestInstance(object):
         content = self.get_page_text(page, notpl)
 
         try:
-            return json.loads(content.encode('utf-8'))
+            return json.loads(content)
         except Exception as e:
             raise Exception('failed to parse json ({}): "{}"'.format(e, content))
 
     def get_page_text(self, page, notpl=False):
-        return self.get_page(page, notpl).content
+        return to_unicode(self.get_page(page, notpl).content)
 
 
 frontik_broken_app = FrontikTestInstance('supervisor-brokenapp')
