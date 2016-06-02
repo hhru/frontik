@@ -113,7 +113,7 @@ class FrontikTestInstance(object):
         return method(url, **kwargs)
 
     def get_page_xml(self, page, notpl=False):
-        content = self.get_page(page, notpl).content
+        content = utf8(self.get_page(page, notpl).content)
 
         try:
             return etree.fromstring(content)
