@@ -1,3 +1,11 @@
+frontik (2.25.22) unstable; urgency=low
+
+  * HH-59805 fix .content type for different requests package version
+  * HH-59805 fix mime message boundary generation
+  * HH-59805 fix py3 issues in tests.test_frontik_testing
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 02 Jun 2016 19:32:14 +0300
+
 frontik (2.25.21) unstable; urgency=low
 
   * HH-57034 fix unencoded characters issue
