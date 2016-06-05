@@ -7,18 +7,18 @@ from tornado.escape import to_unicode
 
 from frontik import http_codes
 
-from . import py3_skip
 from .instances import create_basic_auth_header, frontik_non_debug
 
 
 class DebugTestCase(unittest.TestCase):
     DEBUG_BASIC_AUTH = create_basic_auth_header('user:god')
 
-    @py3_skip
     def test_complex_debug_page(self):
         response = frontik_non_debug.get_page(
             'app/debug?debug', headers={'Authorization': self.DEBUG_BASIC_AUTH}
         )
+
+        response_content = to_unicode(response.content)
 
         self.assertEqual(response.status_code, 200)
 
@@ -34,7 +34,7 @@ class DebugTestCase(unittest.TestCase):
         )
 
         for msg in basic_messages:
-            self.assertIn(msg, response.content)
+            self.assertIn(msg, response_content)
 
         # Extra output and different types of content
 
@@ -49,15 +49,15 @@ class DebugTestCase(unittest.TestCase):
         )
 
         for msg in extra_output:
-            self.assertIn(msg, to_unicode(response.content))
+            self.assertIn(msg, response_content)
 
         # Iframes
 
-        self.assertEqual(response.content.count("doiframe('"), 3)
+        self.assertEqual(response_content.count("doiframe('"), 3)
 
         # Check that all http requests are present
 
-        self.assertEqual(response.content.count('<div class="timebar">'), 15)
+        self.assertEqual(response_content.count('<div class="timebar">'), 15)
 
         # Inherited debug
 
@@ -70,7 +70,7 @@ class DebugTestCase(unittest.TestCase):
         )
 
         for msg in assert_occurs_twice:
-            self.assertEqual(response.content.count(msg), 2)
+            self.assertEqual(response_content.count(msg), 2)
 
         # Check that everything went right
 
@@ -86,7 +86,7 @@ class DebugTestCase(unittest.TestCase):
         )
 
         for msg in assert_not_found:
-            self.assertNotIn(msg, response.content)
+            self.assertNotIn(msg, response_content)
 
     def assertDebugResponseCode(self, page, expected_code, headers=None):
         response = frontik_non_debug.get_page(page, headers=headers)

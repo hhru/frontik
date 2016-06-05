@@ -4,6 +4,7 @@ import base64
 import copy
 from datetime import datetime
 import inspect
+from io import BytesIO
 import logging
 import os
 import pprint
@@ -18,14 +19,9 @@ from tornado.escape import to_unicode, utf8
 from tornado.httpclient import HTTPResponse
 from tornado.httputil import HTTPHeaders
 
-from frontik.compat import basestring_type, iteritems, PY3, SimpleCookie, unicode_type, urlparse
+from frontik.compat import basestring_type, iteritems, SimpleCookie, unicode_type, urlparse
 import frontik.util
 import frontik.xml_util
-
-if PY3:
-    from io import StringIO
-else:
-    from cStringIO import StringIO
 
 debug_log = logging.getLogger('frontik.debug')
 
@@ -139,7 +135,7 @@ def response_from_debug(request, response):
         response_info = frontik.xml_util.xml_to_dict(original_response)
         original_response.getparent().remove(original_response)
 
-        original_buffer = base64.decodestring(response_info['buffer'])
+        original_buffer = base64.b64decode(response_info['buffer'])
 
         headers = dict(response.headers)
         if response_info['headers']:
@@ -147,7 +143,7 @@ def response_from_debug(request, response):
 
         fake_response = HTTPResponse(
             request, int(response_info['code']), headers=headers,
-            buffer=StringIO(utf8(original_buffer)),
+            buffer=BytesIO(original_buffer),
             effective_url=response.effective_url, request_time=response.request_time,
             time_info=response.time_info
         )
