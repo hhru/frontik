@@ -25,7 +25,7 @@ LOGGERS = (sentry, )
 
 
 def bootstrap_app_loggers(app):
-    return filter(None, [logger.bootstrap_logger(app) for logger in LOGGERS])
+    return [logger.bootstrap_logger(app) for logger in LOGGERS if logger is not None]
 
 
 def bootstrap_core_logging():
