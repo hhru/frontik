@@ -10,7 +10,6 @@ __all__ = [
 PY3 = sys.version_info >= (3,)
 
 if PY3:
-
     import urllib.parse as urlparse
     from urllib.parse import unquote_plus
     from urllib.parse import urlencode
