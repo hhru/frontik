@@ -49,7 +49,6 @@ setup(
         'frontik': ['debug/*.xsl'],
     },
     install_requires=[
-        'nose',
         'python-daemon',
         'lxml >= 2.3.2',
         'simplejson >= 2.3.2',
@@ -59,6 +58,7 @@ setup(
     ],
     test_suite='tests',
     tests_require=[
+        'nose',
         'pep8',
         'requests >= 0.8.2',
     ],
