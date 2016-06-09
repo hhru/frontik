@@ -214,6 +214,11 @@ class FrontikApplication(tornado.web.Application):
         version.text = 'unknown'
         return [version]
 
+    def init_async(self):
+        init_future = tornado.concurrent.Future()
+        init_future.set_result(None)
+        return init_future
+
     @staticmethod
     def next_request_id():
         FrontikApplication.request_id += 1
