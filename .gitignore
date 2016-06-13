@@ -16,6 +16,7 @@ debian/pycompat
 debian/python-module-stampdir/
 dist/
 frontik.egg-info/
+.eggs/
 
 *.log
 *.pid

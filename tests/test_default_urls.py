@@ -35,7 +35,4 @@ class TestDefaultUrls(unittest.TestCase):
         self.assertEqual(response.headers['Content-Type'], 'application/json; charset=UTF-8')
 
         json_response = json.loads(to_unicode(response.content))
-        self.assertIn('pages served', json_response)
-        self.assertIn('http requests made', json_response)
-        self.assertIn('bytes from http requests', json_response)
         self.assertIn('uptime', json_response)
