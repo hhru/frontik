@@ -46,7 +46,6 @@ class TestHttpClient(unittest.TestCase, json_asserts.JsonTestCaseMixin):
         xml = frontik_test_app.get_page_xml('http_client/parse_error')
         self.assertEqual(xml.text, '4242')
 
-    @py3_skip
     def test_parse_response(self):
         json = frontik_test_app.get_page_json('http_client/parse_response')
         self.assertJsonEqual(

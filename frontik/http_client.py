@@ -14,7 +14,6 @@ from tornado.options import options
 from frontik.async import AsyncGroup
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.compat import iteritems
-from frontik.globals import global_stats
 from frontik.handler_debug import PageHandlerDebug, response_from_debug
 from frontik.loggers.request import logger as request_logger
 import frontik.util
@@ -134,8 +133,6 @@ class HttpClient(object):
     def fetch(self, request, callback, add_to_finish_group=True):
         """ Tornado HTTP client compatible method """
         if not self.handler._finished:
-            global_stats.http_reqs_count += 1
-
             if self.handler._prepared and self.handler.debug.debug_mode.pass_debug:
                 request.headers[PageHandlerDebug.DEBUG_HEADER_NAME] = True
                 request.url = frontik.util.make_url(request.url, hh_debug_param=int(time.time()))
@@ -171,12 +168,6 @@ class HttpClient(object):
         self.handler.log.warning('attempted to make http request to %s when page is finished, ignoring', request.url)
 
     def _log_response(self, request, callback, response):
-        try:
-            if response.body is not None:
-                global_stats.http_reqs_size_sum += len(response.body)
-        except TypeError:
-            self.handler.log.warning('got strange response.body of type %s', type(response.body))
-
         try:
             debug_extra = {}
             if response.headers.get(PageHandlerDebug.DEBUG_HEADER_NAME):
