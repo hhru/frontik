@@ -1,3 +1,7 @@
+# coding=utf-8
+
+from tornado.escape import to_unicode
+
 import frontik.handler
 
 
@@ -10,8 +14,7 @@ class Page(frontik.handler.PageHandler):
         self.delete_url(self_uri, parse_response=False, callback=self.delete_callback)
 
     def delete_callback(self, data, response):
-        self.log.debug(data)
-        self.json.put({'delete': data})
+        self.json.put({'delete': to_unicode(data)})
 
     def post_page(self):
         raise frontik.handler.HTTPError(400, json={'post': True})

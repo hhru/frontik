@@ -7,10 +7,7 @@ There are some service urls available for an any frontik app.
   Response contains json with information about the server and some useful counters:
 ```json
 {
-    "uptime": "99.28 hours and 16.53 minutes",
-    "pages served": 2386542,
-    "bytes from http requests": 25379492996,
-    "http requests made": 5811649
+    "uptime": "99.28 hours and 16.53 minutes"
 }
 ```
 * `/version` – xml with app version and versions of some dependencies

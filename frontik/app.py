@@ -13,7 +13,6 @@ import tornado.curl_httpclient
 from tornado.options import options
 
 from frontik.compat import iteritems
-from frontik.globals import global_stats
 from frontik.handler import ErrorHandler
 import frontik.loggers
 from frontik.loggers.request import RequestLogger
@@ -55,13 +54,7 @@ class StatusHandler(tornado.web.RequestHandler):
     def get(self):
         self.set_header('Content-Type', 'application/json; charset=UTF-8')
 
-        result = {
-            'pages served': global_stats.page_count,
-            'http requests made': global_stats.http_reqs_count,
-            'bytes from http requests': global_stats.http_reqs_size_sum,
-        }
-
-        cur_uptime = time.time() - global_stats.start_time
+        cur_uptime = time.time() - self.application.start_time
         if cur_uptime < 60:
             uptime_value = '{:.2f} seconds'.format(cur_uptime)
         elif cur_uptime < 3600:
@@ -69,7 +62,10 @@ class StatusHandler(tornado.web.RequestHandler):
         else:
             uptime_value = '{:.2f} hours and {:.2f} minutes'.format(cur_uptime / 3600, (cur_uptime % 3600) / 60)
 
-        result['uptime'] = uptime_value
+        result = {
+            'uptime': uptime_value
+        }
+
         self.finish(result)
 
 
@@ -163,7 +159,7 @@ class RegexpDispatcher(object):
 
 
 def app_dispatcher(tornado_app, request, **kwargs):
-    request_id = request.headers.get('X-Request-Id', str(global_stats.next_request_id()))
+    request_id = request.headers.get('X-Request-Id', FrontikApplication.next_request_id())
     request_logger = RequestLogger(request, request_id)
 
     def add_leading_slash(value):
@@ -177,6 +173,8 @@ def app_dispatcher(tornado_app, request, **kwargs):
 
 
 class FrontikApplication(tornado.web.Application):
+    request_id = 0
+
     class DefaultConfig(object):
         pass
 
@@ -185,6 +183,8 @@ class FrontikApplication(tornado.web.Application):
 
         if tornado_settings is None:
             tornado_settings = {}
+
+        self.start_time = time.time()
 
         super(FrontikApplication, self).__init__([
             (r'/version/?', VersionHandler),
@@ -213,6 +213,11 @@ class FrontikApplication(tornado.web.Application):
         version = etree.Element('version')
         version.text = 'unknown'
         return [version]
+
+    @staticmethod
+    def next_request_id():
+        FrontikApplication.request_id += 1
+        return str(FrontikApplication.request_id)
 
 # Temporary for backward compatibility
 App = FrontikApplication
