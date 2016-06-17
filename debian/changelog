@@ -1,3 +1,9 @@
+frontik (2.25.24) unstable; urgency=low
+
+  * Bump version up to 2.25.24
+
+ -- Automated Build <an.sumin@hh.ru>  Fri, 17 Jun 2016 17:51:08 +0300
+
 frontik (2.25.23) unstable; urgency=low
 
   * HH-60297 fix sentry test
