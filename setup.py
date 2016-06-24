@@ -59,7 +59,7 @@ setup(
     test_suite='tests',
     tests_require=[
         'nose',
-        'pep8',
+        'pycodestyle == 2.0.0',
         'requests >= 0.8.2',
         'lxml-asserts',
     ],
