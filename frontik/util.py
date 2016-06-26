@@ -22,6 +22,15 @@ def any_to_unicode(s):
     return unicode_type(s)
 
 
+def any_to_bytes(s):
+    if isinstance(s, unicode_type):
+        return utf8(s)
+    elif isinstance(s, bytes):
+        return s
+
+    return utf8(str(s))
+
+
 def _encode(s):
     if isinstance(s, unicode_type):
         return utf8(s)
@@ -88,16 +97,9 @@ def choose_boundary():
     Our embarassingly-simple replacement for mimetools.choose_boundary.
     See https://github.com/kennethreitz/requests/blob/master/requests/packages/urllib3/filepost.py
     """
-    return uuid4().hex
+    return _encode(uuid4().hex)
 
 BOUNDARY = choose_boundary()
-ENCODE_TEMPLATE = '--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{data}\r\n'
-ENCODE_TEMPLATE_FILE = ('--{boundary}\r\nContent-Disposition: form-data; name="{name}"; '
-                        'filename="{filename}"\r\nContent-Type: {contenttype}\r\n\r\n{data}\r\n')
-
-
-def get_content_type(filename):
-    return mimetypes.guess_type(filename)[0] or 'application/octet-stream'
 
 
 def make_mfd(fields, files):
@@ -108,44 +110,45 @@ def make_mfd(fields, files):
     files :: { field_name: [{ "filename" : fn, "body" : bytes }]}
     """
 
+    def create_field(name, data):
+        return [
+            b'--', BOUNDARY,
+            b'\r\nContent-Disposition: form-data; name="', any_to_bytes(name),
+            b'"\r\n\r\n', any_to_bytes(data), b'\r\n'
+        ]
+
+    def create_file_field(name, filename, data):
+        content_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+
+        return [
+            b'--', BOUNDARY,
+            b'\r\nContent-Disposition: form-data; name="', any_to_bytes(name),
+            b'"; filename="', any_to_bytes(filename),
+            b'"\r\nContent-Type: ', any_to_bytes(content_type),
+            b'\r\n\r\n', any_to_bytes(data), b'\r\n'
+        ]
+
     body = []
 
     for name, data in iteritems(fields):
-
         if data is None:
             continue
 
         if isinstance(data, list):
             for value in data:
-                if data is None:
-                    continue
-
-                body.append(ENCODE_TEMPLATE.format(
-                    boundary=BOUNDARY,
-                    name=str(name),
-                    data=_encode(value)
-                ))
+                if value is not None:
+                    body.extend(create_field(name, value))
         else:
-            body.append(ENCODE_TEMPLATE.format(
-                boundary=BOUNDARY,
-                name=str(name),
-                data=_encode(data)
-            ))
+            body.extend(create_field(name, data))
 
     for name, files in iteritems(files):
         for file in files:
-            body.append(ENCODE_TEMPLATE_FILE.format(
-                boundary=BOUNDARY,
-                data=_encode(file['body']),
-                name=name,
-                filename=_encode(file['filename']),
-                contenttype=get_content_type(file['filename'])
-            ))
+            body.extend(create_file_field(name, file['filename'], file['body']))
 
-    body.append('--{}--\r\n'.format(BOUNDARY))
-    content_type = 'multipart/form-data; boundary={}'.format(BOUNDARY)
+    body.extend([b'--', BOUNDARY, b'--\r\n'])
+    content_type = b'multipart/form-data; boundary=' + BOUNDARY
 
-    return ''.join(body), content_type
+    return b''.join(body), content_type
 
 
 def make_get_request(url, data=None, headers=None, connect_timeout=None, request_timeout=None, follow_redirects=True):

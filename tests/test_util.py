@@ -3,7 +3,7 @@
 from collections import OrderedDict
 import unittest
 
-from frontik.util import make_qs, make_url
+from frontik.util import any_to_bytes, any_to_unicode, make_qs, make_url
 
 
 class TestUtil(unittest.TestCase):
@@ -60,3 +60,15 @@ class TestUtil(unittest.TestCase):
         qs1_list = sorted(qs1.split('&'))
         qs2_list = sorted(qs2.split('&'))
         self.assertEqual(qs1_list, qs2_list)
+
+    def test_any_to_unicode(self):
+        self.assertEqual(any_to_unicode(5), u'5')
+        self.assertEqual(any_to_unicode(None), u'None')
+        self.assertEqual(any_to_unicode(u'тест'), u'тест')
+        self.assertEqual(any_to_unicode(u'тест'.encode('utf-8')), u'тест')
+
+    def test_any_to_bytes(self):
+        self.assertEqual(any_to_bytes(5), b'5')
+        self.assertEqual(any_to_bytes(None), b'None')
+        self.assertEqual(any_to_bytes(u'тест'), u'тест'.encode('utf-8'))
+        self.assertEqual(any_to_bytes(u'тест'.encode('utf-8')), u'тест'.encode('utf-8'))
