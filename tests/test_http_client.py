@@ -3,8 +3,8 @@
 import unittest
 
 from lxml import etree
+from tornado.escape import utf8
 
-from . import py3_skip
 from .instances import frontik_test_app
 
 
@@ -13,11 +13,10 @@ class TestHttpClient(unittest.TestCase):
         xml = frontik_test_app.get_page_xml('http_client/post_simple')
         self.assertEqual(xml.text, '42')
 
-    @py3_skip
     def test_post_url_mfd(self):
         response = frontik_test_app.get_page('http_client/post_url')
         self.assertEqual(response.status_code, 200)
-        self.assertIsNone(etree.fromstring(response.content.encode('utf-8')).text)
+        self.assertIsNone(etree.fromstring(utf8(response.content)).text)
 
     def test_delete_query_arguments(self):
         json = frontik_test_app.get_page_json('handler/delete')
