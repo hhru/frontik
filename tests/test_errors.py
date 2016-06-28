@@ -2,7 +2,6 @@
 
 import unittest
 
-from . import py3_skip
 from .instances import frontik_test_app
 
 
