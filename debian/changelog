@@ -1,3 +1,11 @@
+frontik (2.25.25) unstable; urgency=low
+
+  * HH-60593 use pycodestyle
+  * HH-60593 fix xml_to_dict and debug page tests for py3
+  * HH-60593 remove json_asserts and xml_asserts
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 28 Jun 2016 12:27:50 +0300
+
 frontik (2.25.24) unstable; urgency=low
 
   * Bump version up to 2.25.24
