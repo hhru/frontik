@@ -7,10 +7,9 @@ from tornado.concurrent import Future
 
 from frontik.json_builder import JsonBuilder
 from frontik.http_client import RequestResult, FailedRequestException
-from frontik.testing import json_asserts
 
 
-class TestJsonBuilder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
+class TestJsonBuilder(unittest.TestCase):
     def test_simple(self):
         j = JsonBuilder()
 
@@ -72,15 +71,15 @@ class TestJsonBuilder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
         j.put({'a': 'b'})
         j.put({'c': 'd'})
 
-        self.assertJsonEqual(j.to_dict(), {'a': 'b', 'c': 'd'})
+        self.assertEqual(j.to_dict(), {'a': 'b', 'c': 'd'})
 
         j.put({'a': 'x'}, {'e': 'f'})
 
-        self.assertJsonEqual(j.to_dict(), {'a': 'x', 'c': 'd', 'e': 'f'})
+        self.assertEqual(j.to_dict(), {'a': 'x', 'c': 'd', 'e': 'f'})
 
         j.put(e='x')
 
-        self.assertJsonEqual(j.to_dict(), {'a': 'x', 'c': 'd', 'e': 'x'})
+        self.assertEqual(j.to_dict(), {'a': 'x', 'c': 'd', 'e': 'x'})
 
     def test_future(self):
         j = JsonBuilder()
@@ -103,7 +102,7 @@ class TestJsonBuilder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
         f.set_result(result)
         j.put(f)
 
-        self.assertJsonEqual(j.to_dict(), {'error': {'reason': 'error', 'code': 'code'}})
+        self.assertEqual(j.to_dict(), {'error': {'reason': 'error', 'code': 'code'}})
 
     def test_nested_future(self):
         j = JsonBuilder()
@@ -137,7 +136,7 @@ class TestJsonBuilder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
             {'a': result}
         )
 
-        self.assertJsonEqual(
+        self.assertEqual(
             j.to_dict(), {'nested': {'a': {'error': {'reason': 'error', 'code': 'code'}}}}
         )
 
@@ -150,7 +149,7 @@ class TestJsonBuilder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
 
         j1.put(j2)
 
-        self.assertJsonEqual(
+        self.assertEqual(
             j1.to_dict(), {'k2': 'v2', 'k1': 'v1'}
         )
 
@@ -173,6 +172,6 @@ class TestJsonBuilder(unittest.TestCase, json_asserts.JsonTestCaseMixin):
         j = JsonBuilder()
         j.put(Serializable('some', ['test1', 'test2', 'test3']))
 
-        self.assertJsonEqual(
+        self.assertEqual(
             j.to_dict(), {'some': ['test1', 'test2', 'test3']}
         )

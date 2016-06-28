@@ -3,60 +3,68 @@
 import unittest
 
 from lxml import etree
+from lxml_asserts.testcase import LxmlTestCaseMixin
 
-from . import py3_skip
 from frontik.xml_util import xml_to_dict, dict_to_xml
 
-xml = '''
+XML = etree.XML('''
     <root>
         <key1>value</key1>
         <key2></key2>
         <nested>
-            <key>русский текст</key>
+            <key1>русский текст в utf-8</key1>
+            <key2>русский текст в unicode</key2>
         </nested>
         <complexNested>
             <nested>
                 <key>value</key>
                 <otherKey>otherValue</otherKey>
             </nested>
-            <other>123</other>
+            <int>123</int>
+            <bool>True</bool>
         </complexNested>
     </root>
-    '''
+    ''')
 
-dictionary_before = {
+DICT_BEFORE = {
     'key1': 'value',
     'key2': '',
     'nested': {
-        'key': 'русский текст'
+        'key1': 'русский текст в utf-8',
+        'key2': u'русский текст в unicode'
     },
     'complexNested': {
         'nested': {
             'key': 'value',
             'otherKey': 'otherValue'
         },
-        'other': 123
+        'int': 123,
+        'bool': True
     }
 }
 
-dictionary_after = {
+DICT_AFTER = {
     'key1': 'value',
     'key2': '',
     'nested': {
-        'key': '&#1088;&#1091;&#1089;&#1089;&#1082;&#1080;&#1081; &#1090;&#1077;&#1082;&#1089;&#1090;'
+        'key1': u'русский текст в utf-8',
+        'key2': u'русский текст в unicode'
     },
     'complexNested': {
         'nested': {
             'key': 'value',
             'otherKey': 'otherValue'
         },
-        'other': '123'
+        'int': '123',
+        'bool': 'True'
     }
 }
 
 
-class TestXmlUtils(unittest.TestCase):
-    @py3_skip
+class TestXmlUtils(unittest.TestCase, LxmlTestCaseMixin):
     def test_xml_to_dict_and_back_again(self):
-        self.assertEqual(xml_to_dict(etree.XML(xml)), dictionary_after)
-        self.assertEqual(xml_to_dict(dict_to_xml(dictionary_before, 'root')), dictionary_after)
+        self.assertEqual(xml_to_dict(XML), DICT_AFTER)
+        self.assertXmlEqual(dict_to_xml(DICT_BEFORE, 'root'), XML)
+
+        self.assertEqual(xml_to_dict(dict_to_xml(DICT_BEFORE, 'root')), DICT_AFTER)
+        self.assertXmlEqual(dict_to_xml(xml_to_dict(XML), 'root'), XML)

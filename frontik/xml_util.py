@@ -44,9 +44,6 @@ def dict_to_xml(dict_value, element_name):
 
 def xml_to_dict(xml):
     if len(xml) == 0:
-        return xml.text.encode('ascii', 'xmlcharrefreplace') if xml.text is not None else ''
+        return xml.text if xml.text is not None else ''
 
-    dictionary = {}
-    for e in xml:
-        dictionary[e.tag] = xml_to_dict(e)
-    return dictionary
+    return {e.tag: xml_to_dict(e) for e in xml}
