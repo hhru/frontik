@@ -1,3 +1,9 @@
+frontik (2.25.26) unstable; urgency=low
+
+  * HH-60358 Start frontik application asynchronously
+
+ -- Automated Build <a.khalikov@hh.ru>  Fri, 01 Jul 2016 13:36:59 +0300
+
 frontik (2.25.25) unstable; urgency=low
 
   * HH-60593 use pycodestyle
