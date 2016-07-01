@@ -60,7 +60,7 @@ def parse_configs_and_start(config_files):
         tornado.autoreload.watch(config)
 
 
-def run_server(app, on_stop_request=lambda: None, on_ioloop_stop=lambda: None):
+def run_server(app):
     """
     — run server on host:port
     — launch autoreload on file changes
@@ -102,18 +102,13 @@ def run_server(app, on_stop_request=lambda: None, on_ioloop_stop=lambda: None):
                         log.info('stopping IOLoop')
                         tornado.ioloop.IOLoop.instance().stop()
                         log.info('stopped')
-                        on_ioloop_stop()
 
                 tornado.ioloop.IOLoop.instance().add_timeout(time.time() + options.stop_timeout, ioloop_stop)
-
-            on_stop_request()
 
         if tornado.options.options.log_blocked_ioloop_timeout > 0:
             io_loop.set_blocking_signal_threshold(tornado.options.options.log_blocked_ioloop_timeout, log_ioloop_block)
 
         signal.signal(signal.SIGTERM, sigterm_handler)
-
-        io_loop.start()
     except Exception:
         log.exception('failed to start Tornado application')
 
@@ -142,8 +137,20 @@ def main(config_file=None):
 
     try:
         tornado_app = application(**options.as_dict())
+
+        def _async_init_cb():
+            def _run_server_cb(data):
+                if data.exception() is not None:
+                    log.exception('failed to start: %s', data.exception())
+                    sys.exit(1)
+
+                run_server(tornado_app)
+
+            future = tornado_app.init_async()
+            tornado.ioloop.IOLoop.instance().add_future(future, _run_server_cb)
+
+        tornado.ioloop.IOLoop.instance().add_callback(_async_init_cb)
+        tornado.ioloop.IOLoop.instance().start()
     except:
         log.exception('failed to initialize frontik application, quitting')
         sys.exit(1)
-
-    run_server(tornado_app)
