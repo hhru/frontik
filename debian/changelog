@@ -1,3 +1,9 @@
+frontik (2.25.27) unstable; urgency=low
+
+  * HH-60796 add application_kwargs to testing environment
+
+ -- Automated Build <an.ivanov@hh.ru>  Tue, 05 Jul 2016 13:40:02 +0300
+
 frontik (2.25.26) unstable; urgency=low
 
   * HH-60358 Start frontik application asynchronously
