@@ -158,7 +158,7 @@ class EmptyEnvironment(object):
     class LocalHandlerConfig(object):
         pass
 
-    def __init__(self):
+    def __init__(self, **application_kwargs):
         self.log = getLogger('service_mock')
         self._config = EmptyEnvironment.LocalHandlerConfig()
 
@@ -167,6 +167,10 @@ class EmptyEnvironment(object):
 
         self._registry = {}
         self._response_text = None
+
+        self.application_kwargs = application_kwargs
+        for (key, value) in iteritems(application_kwargs):
+            setattr(self, key, value)
 
     def expect(self, **kwargs):
         for name, routes in iteritems(kwargs):
@@ -229,6 +233,8 @@ class EmptyEnvironment(object):
             'app': 'frontik.testing',
             'app_root_url': '/',
         })
+        for (key, value) in iteritems(self.application_kwargs):
+            setattr(application, key, value)
 
         # Mock methods
 
