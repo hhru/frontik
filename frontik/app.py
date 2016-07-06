@@ -7,10 +7,11 @@ import time
 from lxml import etree
 
 import tornado.autoreload
-import tornado.web
-import tornado.ioloop
+from tornado.concurrent import Future
 import tornado.curl_httpclient
+import tornado.ioloop
 from tornado.options import options
+import tornado.web
 
 from frontik.compat import iteritems
 from frontik.handler import ErrorHandler
@@ -165,9 +166,14 @@ def app_dispatcher(tornado_app, request, **kwargs):
     def add_leading_slash(value):
         return value if value.startswith('/') else '/' + value
 
-    app_root_url_len = len(options.app_root_url)
-    set_rewritten_request_attribute(request, 'uri', add_leading_slash(request.uri[app_root_url_len:]))
-    set_rewritten_request_attribute(request, 'path', add_leading_slash(request.path[app_root_url_len:]))
+    app_root_url = add_leading_slash(options.app_root_url)
+    request_uri = add_leading_slash(request.uri)
+    request_path = add_leading_slash(request.path)
+
+    if app_root_url != '/' and request_uri.startswith(app_root_url) and request_path.startswith(app_root_url):
+        app_root_url_len = len(app_root_url)
+        set_rewritten_request_attribute(request, 'uri', request_uri[app_root_url_len:])
+        set_rewritten_request_attribute(request, 'path', request_path[app_root_url_len:])
 
     return tornado_app.dispatcher(tornado_app, request, request_logger, request_id=request_id, **kwargs)
 
@@ -190,6 +196,7 @@ class FrontikApplication(tornado.web.Application):
             (r'/version/?', VersionHandler),
             (r'/status/?', StatusHandler),
             (r'{}.*'.format(settings.get('app_root_url')), app_dispatcher),
+            (r'.*', app_dispatcher),
         ], **tornado_settings)
 
         self.app_settings = settings
@@ -215,7 +222,7 @@ class FrontikApplication(tornado.web.Application):
         return [version]
 
     def init_async(self):
-        init_future = tornado.concurrent.Future()
+        init_future = Future()
         init_future.set_result(None)
         return init_future
 
