@@ -174,6 +174,7 @@ def app_dispatcher(tornado_app, request, **kwargs):
         app_root_url_len = len(app_root_url)
         set_rewritten_request_attribute(request, 'uri', request_uri[app_root_url_len:])
         set_rewritten_request_attribute(request, 'path', request_path[app_root_url_len:])
+        request_logger.warning('using deprecated path: %s', request_path)
 
     return tornado_app.dispatcher(tornado_app, request, request_logger, request_id=request_id, **kwargs)
 
