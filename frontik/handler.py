@@ -60,7 +60,7 @@ class BaseHandler(tornado.web.RequestHandler):
         self.config = application.config
 
         self.log = logger
-        self.log.register_handler(self)
+        self.log.register_page_handler(self)
         self._exception_hooks = []
 
         for initializer in application.loggers_initializers:

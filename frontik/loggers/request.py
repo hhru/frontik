@@ -51,7 +51,7 @@ class RequestLogger(logging.LoggerAdapter):
     Stage = namedtuple('Stage', ('name', 'delta', 'start_delta'))
 
     def __init__(self, request, request_id):
-        self._handler = None
+        self._page_handler = None
         self._last_stage_time = self._start_time = request._start_time
 
         super(RequestLogger, self).__init__(PerRequestLogBufferHandler('frontik.handler'), {'request_id': request_id})
@@ -62,9 +62,9 @@ class RequestLogger(logging.LoggerAdapter):
         self.warn = self.warning
         self.addHandler = self.logger.addHandler
 
-    def register_handler(self, handler):
-        self._handler = handler
-        self.extra['handler'] = handler
+    def register_page_handler(self, page_handler):
+        self._page_handler = page_handler
+        self.extra['handler'] = page_handler
 
     def stage_tag(self, stage_name):
         stage_end_time = time.time()
@@ -90,7 +90,7 @@ class RequestLogger(logging.LoggerAdapter):
         self.info(
             'timings for %(page)s : %(stages)s',
             {
-                'page': repr(self._handler),
+                'page': repr(self._page_handler),
                 'stages': '{0} total={1:.2f} code={2}'.format(stages_str, total, status_code)
             },
         )
