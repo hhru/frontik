@@ -142,7 +142,9 @@ def response_from_debug(request, response):
             headers.update(response_info['headers'])
 
         fake_response = HTTPResponse(
-            request, int(response_info['code']), headers=headers,
+            request,
+            int(response_info['code']),
+            headers=HTTPHeaders(headers),
             buffer=BytesIO(original_buffer),
             effective_url=response.effective_url, request_time=response.request_time,
             time_info=response.time_info
