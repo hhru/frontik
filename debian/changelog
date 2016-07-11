@@ -1,3 +1,10 @@
+frontik (2.25.28) unstable; urgency=low
+
+  * HH-60993 add fallback for apps with app_root_url
+  * HH-60750 let's use httpheaders in debug
+
+ -- Automated Build <an.sumin@hh.ru>  Mon, 11 Jul 2016 12:16:21 +0300
+
 frontik (2.25.27) unstable; urgency=low
 
   * HH-60796 add application_kwargs to testing environment
