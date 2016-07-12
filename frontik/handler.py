@@ -60,7 +60,6 @@ class BaseHandler(tornado.web.RequestHandler):
         self.config = application.config
 
         self.log = logger
-        self.log.register_page_handler(self)
         self._exception_hooks = []
 
         for initializer in application.loggers_initializers:
@@ -68,6 +67,7 @@ class BaseHandler(tornado.web.RequestHandler):
 
         super(BaseHandler, self).__init__(application, request, logger=self.log, **kwargs)
 
+        self.log.register_page_handler(self)
         self._debug_access = None
 
         self._template_postprocessors = []
@@ -358,13 +358,7 @@ class BaseHandler(tornado.web.RequestHandler):
         def _finish_with_async_hook():
             self.log.stage_tag('postprocess')
             super(BaseHandler, self).finish(chunk)
-
             self.cleanup()
-
-            IOLoop.instance().add_timeout(
-                time.time() + 0.1,
-                partial(self.log.request_finish_hook, self._status_code, self.request.method, self.request.uri)
-            )
 
         try:
             self._call_postprocessors(self._late_postprocessors, _finish_with_async_hook)

@@ -1,7 +1,6 @@
 # coding=utf-8
 
 from collections import namedtuple
-from functools import partial
 import logging
 import time
 
@@ -10,40 +9,22 @@ logger = logging.getLogger('frontik.handler')
 
 class ContextFilter(logging.Filter):
     def filter(self, record):
-        handler = getattr(record, 'handler', None)
-        handler_id = repr(handler) if handler is not None else None
+        handler_name = getattr(record, 'handler_name', None)
         request_id = getattr(record, 'request_id', None)
-        record.name = '.'.join(filter(None, [record.name, handler_id, request_id]))
+        record.name = '.'.join(filter(None, [record.name, handler_name, request_id]))
         return True
 
 logger.addFilter(ContextFilter())
 
 
-class PerRequestLogBufferHandler(logging.Logger):
+class ProxyLogger(logging.Logger):
     """
-    Handler for storing all LogRecords for current request in a buffer until finish
+    Proxies everything to "frontik.handler" logger, but allows to add additional per-request handlers
     """
-    def __init__(self, name, level=logging.NOTSET):
-        super(PerRequestLogBufferHandler, self).__init__(name, level)
-        self.records_list = []
-        self.bulk_handlers = []
 
     def handle(self, record):
         logger.handle(record)
-        self.records_list.append(record)
-
-    def add_bulk_handler(self, handler, auto_flush=True):
-        self.bulk_handlers.append((handler, auto_flush))
-        if not auto_flush:
-            handler.flush = partial(self.flush_bulk_handler, handler)
-
-    def flush_bulk_handler(self, handler, **kwargs):
-        handler.handle_bulk(self.records_list, **kwargs)
-
-    def flush(self, **kwargs):
-        for handler, auto_flush in self.bulk_handlers:
-            if auto_flush:
-                self.flush_bulk_handler(handler, **kwargs)
+        super(ProxyLogger, self).handle(record)
 
 
 class RequestLogger(logging.LoggerAdapter):
@@ -51,20 +32,20 @@ class RequestLogger(logging.LoggerAdapter):
     Stage = namedtuple('Stage', ('name', 'delta', 'start_delta'))
 
     def __init__(self, request, request_id):
-        self._page_handler = None
+        self._page_handler_name = None
         self._last_stage_time = self._start_time = request._start_time
-
-        super(RequestLogger, self).__init__(PerRequestLogBufferHandler('frontik.handler'), {'request_id': request_id})
-
+        self._handlers = []
         self.stages = []
+
+        super(RequestLogger, self).__init__(ProxyLogger('frontik.handler'), {'request_id': request_id})
 
         # backcompatibility with logger
         self.warn = self.warning
         self.addHandler = self.logger.addHandler
 
     def register_page_handler(self, page_handler):
-        self._page_handler = page_handler
-        self.extra['handler'] = page_handler
+        self._page_handler_name = repr(page_handler)
+        self.extra['handler_name'] = self._page_handler_name
 
     def stage_tag(self, stage_name):
         stage_end_time = time.time()
@@ -90,7 +71,7 @@ class RequestLogger(logging.LoggerAdapter):
         self.info(
             'timings for %(page)s : %(stages)s',
             {
-                'page': repr(self._page_handler),
+                'page': self._page_handler_name,
                 'stages': '{0} total={1:.2f} code={2}'.format(stages_str, total, status_code)
             },
         )
@@ -100,10 +81,5 @@ class RequestLogger(logging.LoggerAdapter):
             kwargs['extra'].update(self.extra)
         else:
             kwargs['extra'] = self.extra
+
         return msg, kwargs
-
-    def add_bulk_handler(self, handler, auto_flush=True):
-        self.logger.add_bulk_handler(handler, auto_flush)
-
-    def request_finish_hook(self, status_code, request_method, request_uri):
-        self.logger.flush(status_code=status_code, stages=self.stages, method=request_method, uri=request_uri)
