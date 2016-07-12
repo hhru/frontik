@@ -24,6 +24,18 @@ for this request handler (for example, add some specific methods for the handler
 LOGGERS = (sentry, )
 
 
+class BufferedHandler(logging.Logger):
+    def __init__(self, name, level=logging.NOTSET):
+        super(BufferedHandler, self).__init__(name, level)
+        self.records = []
+
+    def handle(self, record):
+        self.records.append(record)
+
+    def produce_all(self):
+        raise NotImplementedError()
+
+
 def bootstrap_app_loggers(app):
     return [logger.bootstrap_logger(app) for logger in LOGGERS if logger is not None]
 
