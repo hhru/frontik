@@ -231,8 +231,8 @@ class EmptyEnvironment(object):
         # Create application with the only route — handler_class
         application = application_mock([('', handler_class)], self._config)(**{
             'app': 'frontik.testing',
-            'app_root_url': '/',
         })
+
         for (key, value) in iteritems(self.application_kwargs):
             setattr(application, key, value)
 
