@@ -16,7 +16,6 @@ These options can be set for each Frontik instance (see [options.py](/frontik/op
 | `log_blocked_ioloop_timeout` | `float` | `0`           | Enables logging of long-running IOLoop iterations                      |
 | `app`                        | `str`   | `None`        | Application package name (see [Frontik application structure](/docs/frontik-app.md)) |
 | `app_class`                  | `str`   | `None`        | Application class name defined in application root module (by default `FrontikApplication` class is used) |
-| `app_root_url`               | `str`   | `''`          | <a name="app_root_url"></a>Root url for the application                |
 | `tornado_settings`           | `dict`  | `None`        | tornado.web.Application settings                                       |
 | `autoreload`                 | `bool`  | `True`        | Restart Frontik after changes in application sources or config files   |
 | `debug`                      | `bool`  | `False`       | Enable debug mode                                                      |
