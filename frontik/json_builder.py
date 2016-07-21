@@ -37,14 +37,8 @@ def _encode_value(v):
         future_logger.info('unresolved Future in JsonBuilder')
         return None
 
-    elif isinstance(v, datetime.date):
-        return v.isoformat()
-
     elif hasattr(v, 'to_dict'):
         return _encode_dict(v.to_dict())
-
-    elif hasattr(v, 'to_json_value'):
-        return _encode_value(v.to_json_value())
 
     return v
 
@@ -112,8 +106,10 @@ class JsonBuilder(object):
 
     def to_string(self):
         if self._encoder is None:
-            # Using FrontikJsonEncoder to generate strings directly is much faster
             return json.dumps(self._concat_chunks(), cls=FrontikJsonEncoder, ensure_ascii=False)
+
+        if isinstance(self._encoder, FrontikJsonEncoder):
+            return json.dumps(self._concat_chunks(), cls=self._encoder, ensure_ascii=False)
 
         # For backwards compatibility, remove when all encoders extend FrontikJsonEncoder
         return json.dumps(self.to_dict(), cls=self._encoder, ensure_ascii=False)
