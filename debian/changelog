@@ -1,3 +1,9 @@
+frontik (2.25.30) unstable; urgency=low
+
+  * HH-61102 revert additional encoders
+
+ -- Automated Build <an.sumin@hh.ru>  Fri, 22 Jul 2016 14:28:06 +0300
+
 frontik (2.25.28) unstable; urgency=low
 
   * HH-60993 add fallback for apps with app_root_url
