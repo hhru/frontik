@@ -1,5 +1,6 @@
 # coding=utf-8
 
+import datetime
 import json
 import unittest
 
@@ -14,6 +15,7 @@ class TestJsonBuilder(unittest.TestCase):
         j = JsonBuilder()
 
         self.assertTrue(j.is_empty())
+        self.assertEqual(j.to_string(), '{}')
 
         j.put({})
         self.assertFalse(j.is_empty())
@@ -46,6 +48,18 @@ class TestJsonBuilder(unittest.TestCase):
         j.put({'a': {'b': [1, 2, 3]}})
 
         self.assertEqual(j.to_string(), """{"a": {"b": [1, 2, 3]}}""")
+
+    def test_set(self):
+        j = JsonBuilder()
+        j.put({'a': {'b': {1, 2, 3}}})
+
+        self.assertSetEqual(set(j.to_dict()['a']['b']), {1, 2, 3})
+
+    def test_frozenset(self):
+        j = JsonBuilder()
+        j.put({'a': {'b': frozenset([1, 2, 3])}})
+
+        self.assertSetEqual(set(j.to_dict()['a']['b']), {1, 2, 3})
 
     def test_encoder(self):
         class CustomValue(object):
@@ -160,7 +174,7 @@ class TestJsonBuilder(unittest.TestCase):
 
         self.assertRaises(ValueError, j.to_dict)
 
-    def test_serializable(self):
+    def test_to_dict(self):
         class Serializable(object):
             def __init__(self, name, values):
                 self.name = name
