@@ -83,3 +83,6 @@ def bootstrap_core_logging():
 
     for logger_name in options.suppressed_loggers:
         logging.getLogger(logger_name).setLevel(logging.WARN)
+
+    if not root_logger.handlers:
+        root_logger.addHandler(logging.NullHandler())
