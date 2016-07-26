@@ -108,7 +108,7 @@ class JsonBuilder(object):
         if self._encoder is None:
             return json.dumps(self._concat_chunks(), cls=FrontikJsonEncoder, ensure_ascii=False)
 
-        if isinstance(self._encoder, FrontikJsonEncoder):
+        if issubclass(self._encoder, FrontikJsonEncoder):
             return json.dumps(self._concat_chunks(), cls=self._encoder, ensure_ascii=False)
 
         # For backwards compatibility, remove when all encoders extend FrontikJsonEncoder
