@@ -33,6 +33,7 @@ These options can be set for each Frontik instance (see [options.py](/frontik/op
 Logging options:
 
 | Option name                  | Type    | Default value | Description                                                            |
+|------------------------------|---------|---------------|------------------------------------------------------------------------|
 | `loglevel`                   | `str`   | `info`        | Python log level                                                       |
 | `logformat`                  | `str`   | see code      | Log entry format for files and syslog                                  |
 | `logfile`                    | `str`   | `None`        | Log file location (set to `None` to disable logging to file)           |
