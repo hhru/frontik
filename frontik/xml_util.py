@@ -17,7 +17,7 @@ def xml_from_file(filename, log):
         res = etree.parse(filename).getroot()
         return [_source_comment(filename), res]
     except IOError:
-        log.error('failed to read xml file: %s', filename)
+        log.error('failed to read xml file %s', filename)
         raise
     except:
         log.error('failed to parse xml file %s', filename)
