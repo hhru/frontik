@@ -205,7 +205,8 @@ class FrontikApplication(tornado.web.Application):
         self.app = settings.get('app')
         self.xml = frontik.producers.xml_producer.ApplicationXMLGlobals(self.config)
         self.json = frontik.producers.json_producer.ApplicationJsonGlobals(self.config)
-        self.curl_http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(max_clients=200)
+        self.curl_http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(
+            max_clients=tornado.options.options.max_http_clients)
         self.dispatcher = RegexpDispatcher(self.application_urls(), self.app)
         self.loggers_initializers = frontik.loggers.bootstrap_app_loggers(self)
 
