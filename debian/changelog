@@ -1,3 +1,9 @@
+frontik (2.25.32) unstable; urgency=low
+
+  * Bump version up to 2.25.32
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 27 Jul 2016 10:33:52 +0300
+
 frontik (2.25.31) unstable; urgency=low
 
   * Bump version up to 2.25.31
