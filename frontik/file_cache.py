@@ -4,6 +4,7 @@ import os
 import tornado.options
 
 
+# This implementation is broken in so many ways
 class LimitedDict(dict):
     def __init__(self, max_len=None, step=None, deepcopy=False):
         dict.__init__(self)
