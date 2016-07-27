@@ -64,7 +64,11 @@ class StatusHandler(tornado.web.RequestHandler):
             uptime_value = '{:.2f} hours and {:.2f} minutes'.format(cur_uptime / 3600, (cur_uptime % 3600) / 60)
 
         result = {
-            'uptime': uptime_value
+            'uptime': uptime_value,
+            'workers': {
+                'total': tornado.options.options.max_http_clients,
+                'free':  len(self.application.curl_http_client._free_list)
+            }
         }
 
         self.finish(result)
