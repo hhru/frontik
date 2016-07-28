@@ -70,14 +70,6 @@ class StatusHandler(tornado.web.RequestHandler):
         self.finish(result)
 
 
-def get_rewritten_request_attribute(request, field):
-    return getattr(request, 're_' + field, getattr(request, field))
-
-
-def set_rewritten_request_attribute(request, field, value):
-    setattr(request, 're_' + field, value)
-
-
 def extend_request_arguments(request, match):
     arguments = match.groupdict()
     for name, value in iteritems(arguments):
@@ -92,7 +84,7 @@ class FileMappingDispatcher(object):
         app_logger.info('initialized %r', self)
 
     def __call__(self, application, request, logger, **kwargs):
-        url_parts = get_rewritten_request_attribute(request, 'path').strip('/').split('/')
+        url_parts = request.path.strip('/').split('/')
 
         if any('.' in part for part in url_parts):
             logger.info('url contains "." character, using 404 page')
@@ -135,11 +127,10 @@ class RegexpDispatcher(object):
         app_logger.info('initialized %r', self)
 
     def __call__(self, application, request, logger, **kwargs):
-        relative_url = get_rewritten_request_attribute(request, 'uri')
-        logger.info('requested url: %s (%s)', relative_url, request.uri)
+        logger.info('requested url: %s', request.uri)
 
         for pattern, handler in self.handlers:
-            match = pattern.match(relative_url)
+            match = pattern.match(request.uri)
             if match:
                 logger.debug('using %r', handler)
                 extend_request_arguments(request, match)
@@ -162,20 +153,6 @@ class RegexpDispatcher(object):
 def app_dispatcher(tornado_app, request, **kwargs):
     request_id = request.headers.get('X-Request-Id', FrontikApplication.next_request_id())
     request_logger = RequestLogger(request, request_id)
-
-    def add_leading_slash(value):
-        return value if value.startswith('/') else '/' + value
-
-    app_root_url = add_leading_slash(options.app_root_url)
-    request_uri = add_leading_slash(request.uri)
-    request_path = add_leading_slash(request.path)
-
-    if app_root_url != '/' and request_uri.startswith(app_root_url) and request_path.startswith(app_root_url):
-        app_root_url_len = len(app_root_url)
-        set_rewritten_request_attribute(request, 'uri', request_uri[app_root_url_len:])
-        set_rewritten_request_attribute(request, 'path', request_path[app_root_url_len:])
-        request_logger.warning('using deprecated path: %s', request_path)
-
     return tornado_app.dispatcher(tornado_app, request, request_logger, request_id=request_id, **kwargs)
 
 
@@ -196,7 +173,6 @@ class FrontikApplication(tornado.web.Application):
         super(FrontikApplication, self).__init__([
             (r'/version/?', VersionHandler),
             (r'/status/?', StatusHandler),
-            (r'{}.*'.format(settings.get('app_root_url')), app_dispatcher),
             (r'.*', app_dispatcher),
         ], **tornado_settings)
 
