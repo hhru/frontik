@@ -49,11 +49,12 @@ setup(
         'frontik': ['debug/*.xsl'],
     },
     install_requires=[
-        'python-daemon',
-        'lxml >= 2.3.2',
-        'simplejson >= 2.3.2',
-        'pycurl >= 7.19.0',
+        'futures',
         'jinja2 >= 2.6',
+        'lxml >= 2.3.2',
+        'pycurl >= 7.19.0',
+        'python-daemon',
+        'simplejson >= 2.3.2',
         'tornado >= 3.2.2, < 4',
     ],
     test_suite='tests',
@@ -64,7 +65,7 @@ setup(
         'lxml-asserts',
     ],
     dependency_links=[
-        'https://github.com/hhru/tornado/archive/fix-version.zip',
+        'https://github.com/hhru/tornado/archive/master.zip',
     ],
     extras_require={
         'futures': ['futures'],

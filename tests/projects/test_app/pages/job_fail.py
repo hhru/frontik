@@ -1,4 +1,5 @@
 from lxml import etree
+from tornado.ioloop import IOLoop
 
 import frontik.handler
 
@@ -6,16 +7,11 @@ import frontik.handler
 class Page(frontik.handler.PageHandler):
     def get_page(self):
 
-        end = self.finish_group.add(lambda: None)
-
         def job():
-            self.get_argument('nofail')
+            return self.get_argument('nofail')
 
-        def success_cb(res):
-            self.doc.put(etree.Element('ok'))
-            end()
+        @self.finish_group.add
+        def job_cb(future):
+            self.doc.put(etree.Element('ok', result=future.result()))
 
-        def exception_cb(e):
-            raise e
-
-        self.xml.executor.add_job(job, self.check_finished(success_cb), self.check_finished(exception_cb))
+        IOLoop.current().add_future(self.xml.executor.submit(job), self.check_finished(job_cb))
