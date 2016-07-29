@@ -62,3 +62,5 @@ tornado.options.define('template_cache_limit', default=50, type=int)
 tornado.options.define('debug_labels', default=None, type=dict)
 
 tornado.options.define('sentry_dsn', default=None, type=str, metavar='http://public:secret@example.com/1')
+
+tornado.options.define('max_http_clients', default=200, type=int)

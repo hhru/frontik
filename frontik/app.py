@@ -64,7 +64,11 @@ class StatusHandler(tornado.web.RequestHandler):
             uptime_value = '{:.2f} hours and {:.2f} minutes'.format(cur_uptime / 3600, (cur_uptime % 3600) / 60)
 
         result = {
-            'uptime': uptime_value
+            'uptime': uptime_value,
+            'workers': {
+                'total': tornado.options.options.max_http_clients,
+                'free':  len(self.application.curl_http_client._free_list)
+            }
         }
 
         self.finish(result)
@@ -181,7 +185,8 @@ class FrontikApplication(tornado.web.Application):
         self.app = settings.get('app')
         self.xml = frontik.producers.xml_producer.ApplicationXMLGlobals(self.config)
         self.json = frontik.producers.json_producer.ApplicationJsonGlobals(self.config)
-        self.curl_http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(max_clients=200)
+        self.curl_http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(
+            max_clients=tornado.options.options.max_http_clients)
         self.dispatcher = RegexpDispatcher(self.application_urls(), self.app)
         self.loggers_initializers = frontik.loggers.bootstrap_app_loggers(self)
 
