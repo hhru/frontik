@@ -66,14 +66,14 @@ STARTER_SCRIPTS = {}
 def worker_is_alive(port, config):
     try:
         path_beginning, _, path_ending = options.pidfile_template.partition('%(port)s')
-        pidfile_grep_command = u'pgrep -f "{0}([0-9]+){1}"'.format(re.escape(path_beginning), re.escape(path_ending))
+        pidfile_grep_command = u'pgrep -fl "{0}([0-9]+){1}"'.format(re.escape(path_beginning), re.escape(path_ending))
         pidfile_grep_result = to_unicode(subprocess.check_output(pidfile_grep_command, shell=True)).strip().split('\n')
 
-        for pid in pidfile_grep_result:
-            with open('/proc/{}/cmdline'.format(pid.strip()), 'r') as cmdline_file:
-                cmdline = cmdline_file.readline()
-                if cmdline is not None and str(port) in cmdline and config in cmdline and 'python' in cmdline:
-                    return True
+        for line in pidfile_grep_result:
+            pid, _, cmdline = line.partition(' ')
+
+            if cmdline is not None and str(port) in cmdline and config in cmdline and 'python' in cmdline:
+                return True
 
         return False
     except (IOError, subprocess.CalledProcessError):
