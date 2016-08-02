@@ -70,10 +70,11 @@ def worker_is_alive(port, config):
         pidfile_grep_result = to_unicode(subprocess.check_output(pidfile_grep_command, shell=True)).strip().split('\n')
 
         for pid in pidfile_grep_result:
-            with open('/proc/{}/cmdline'.format(pid.strip()), 'r') as cmdline_file:
-                cmdline = cmdline_file.readline()
-                if cmdline is not None and str(port) in cmdline and config in cmdline and 'python' in cmdline:
-                    return True
+            ps_command = u'ps -p {} -o command='.format(pid)
+            cmdline = to_unicode(subprocess.check_output(ps_command, shell=True)).strip()
+
+            if cmdline is not None and str(port) in cmdline and config in cmdline and 'python' in cmdline:
+                return True
 
         return False
     except (IOError, subprocess.CalledProcessError):
