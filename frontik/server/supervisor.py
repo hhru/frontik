@@ -66,12 +66,11 @@ STARTER_SCRIPTS = {}
 def worker_is_alive(port, config):
     try:
         path_beginning, _, path_ending = options.pidfile_template.partition('%(port)s')
-        pidfile_grep_command = u'pgrep -f "{0}([0-9]+){1}"'.format(re.escape(path_beginning), re.escape(path_ending))
-        pidfile_grep_result = to_unicode(subprocess.check_output(pidfile_grep_command, shell=True)).strip().split('\n')
+        pidfile_pattern = '{}([0-9]+){}'.format(re.escape(path_beginning), re.escape(path_ending))
+        pidfile_grep_result = to_unicode(subprocess.check_output(['pgrep', '-f', pidfile_pattern])).strip().split('\n')
 
         for pid in pidfile_grep_result:
-            ps_command = u'ps -p {} -o command='.format(pid)
-            cmdline = to_unicode(subprocess.check_output(ps_command, shell=True)).strip()
+            cmdline = to_unicode(subprocess.check_output(['ps', '-p', pid, '-o', 'command='])).strip()
 
             if cmdline is not None and str(port) in cmdline and config in cmdline and 'python' in cmdline:
                 return True
