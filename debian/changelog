@@ -1,3 +1,9 @@
+frontik (2.25.36) unstable; urgency=low
+
+  * HH-61614 shell=False and escape cmd with check_output
+
+ -- Automated Build <a.inozemtsev@hh.ru>  Wed, 03 Aug 2016 09:23:54 +0300
+
 frontik (2.25.34) unstable; urgency=low
 
   * Bump version up to 2.25.34
