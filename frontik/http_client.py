@@ -165,7 +165,7 @@ class HttpClient(object):
                 request.proxy_host = options.http_proxy_host
                 request.proxy_port = options.http_proxy_port
 
-            if isinstance(self.http_client_impl, CurlAsyncHTTPClient):
+            if isinstance(self.http_client_impl, CurlAsyncHTTPClient) and not options.http_client_allow_keep_alive:
                 _forbid_keep_alive(request)
 
             return self.http_client_impl.fetch(self.modify_http_request_hook(request), req_callback)
