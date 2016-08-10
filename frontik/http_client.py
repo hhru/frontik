@@ -19,6 +19,17 @@ from frontik.loggers.request import logger as request_logger
 import frontik.util
 
 
+def _get_time_info_log(response):
+    if response.time_info:
+        queue = round(response.time_info['queue'] * 1000, 2)
+        connect = round(((response.time_info['connect'] - response.time_info['namelookup']) * 1000), 2)
+        total = round((response.time_info['total'] - response.time_info['connect']) * 1000, 2)
+    else:
+        queue = connect = total = 'UNKNOWN'
+
+    return ' (q={}, c={}, t={}ms)'.format(queue, connect, total)
+
+
 class HttpClient(object):
     def __init__(self, handler, http_client_impl, modify_http_request_hook):
         self.handler = handler
@@ -181,14 +192,16 @@ class HttpClient(object):
                 debug_extra['_labels'] = request._frontik_labels
 
             self.handler.log.info(
-                'got {code}{size} {url} in {time:.2f}ms'.format(
+                'got {code}{size} {url} in {time:.2f}ms{time_info}'.format(
                     code=response.code,
                     url=response.effective_url,
                     size=' {0} bytes'.format(len(response.body)) if response.body is not None else '',
-                    time=response.request_time * 1000
+                    time=response.request_time * 1000,
+                    time_info=_get_time_info_log(response)
                 ),
                 extra=debug_extra
             )
+            self.handler.log.info(response.time_info)
         except Exception:
             self.handler.log.exception('Cannot log response info')
 
