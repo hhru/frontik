@@ -6,8 +6,10 @@ import re
 import time
 
 from lxml import etree
+import pycurl
 import simplejson
 from tornado.concurrent import Future
+from tornado.curl_httpclient import CurlAsyncHTTPClient
 from tornado.ioloop import IOLoop
 from tornado.options import options
 
@@ -163,6 +165,9 @@ class HttpClient(object):
                 request.proxy_host = options.http_proxy_host
                 request.proxy_port = options.http_proxy_port
 
+            if isinstance(self.http_client_impl, CurlAsyncHTTPClient):
+                _forbid_keep_alive(request)
+
             return self.http_client_impl.fetch(self.modify_http_request_hook(request), req_callback)
 
         self.handler.log.warning('attempted to make http request to %s when page is finished, ignoring', request.url)
@@ -228,6 +233,19 @@ class HttpClient(object):
         )
 
         raise FailedRequestException(reason=str(response.error), code=response.code)
+
+
+def _forbid_keep_alive(request):
+
+    def prepare_curl_callback(curl, next_callback):
+        # HHA-27397 fix previous responses transfer from failed requests to new ones
+        curl.setopt(pycurl.FRESH_CONNECT, 1)
+        # HH-51907 always close socket after response
+        curl.setopt(pycurl.FORBID_REUSE, 1)
+        if next_callback is not None:
+            next_callback(curl)
+
+    request.prepare_curl_callback = partial(prepare_curl_callback, next_callback=request.prepare_curl_callback)
 
 
 class FailedRequestException(Exception):
