@@ -6,8 +6,11 @@ import re
 import time
 
 from lxml import etree
+import pycurl
 import simplejson
 from tornado.concurrent import Future
+from tornado.curl_httpclient import CurlAsyncHTTPClient
+from tornado.httpclient import HTTPError
 from tornado.ioloop import IOLoop
 from tornado.options import options
 
@@ -154,20 +157,32 @@ class HttpClient(object):
 
             if add_to_finish_group:
                 req_callback = self.handler.finish_group.add(
-                    self.handler.check_finished(self._log_response, request, callback)
+                    self.handler.check_finished(self._post_process_response, request, callback)
                 )
             else:
-                req_callback = partial(self._log_response, request, callback)
+                req_callback = partial(self._post_process_response, request, callback)
 
             if options.http_proxy_host is not None:
                 request.proxy_host = options.http_proxy_host
                 request.proxy_port = options.http_proxy_port
 
+            if isinstance(self.http_client_impl, CurlAsyncHTTPClient) and not options.http_client_allow_keep_alive:
+                _forbid_keep_alive(request)
+
             return self.http_client_impl.fetch(self.modify_http_request_hook(request), req_callback)
 
         self.handler.log.warning('attempted to make http request to %s when page is finished, ignoring', request.url)
 
-    def _log_response(self, request, callback, response):
+    def _post_process_response(self, request, callback, response):
+        if options.http_client_check_response_request_id:
+            _check_response_request_id(request, response)
+
+        self._log_response(request, response)
+
+        if callable(callback):
+            callback(response)
+
+    def _log_response(self, request, response):
         try:
             debug_extra = {}
             if response.headers.get(PageHandlerDebug.DEBUG_HEADER_NAME):
@@ -191,9 +206,6 @@ class HttpClient(object):
             )
         except Exception:
             self.handler.log.exception('Cannot log response info')
-
-        if callable(callback):
-            callback(response)
 
     def _parse_response(self, future, callback, error_callback, parse_response, parse_on_error, response):
         data = None
@@ -230,6 +242,19 @@ class HttpClient(object):
         raise FailedRequestException(reason=str(response.error), code=response.code)
 
 
+def _forbid_keep_alive(request):
+
+    def prepare_curl_callback(curl, next_callback):
+        # fix previous responses transfer from failed requests to new ones
+        curl.setopt(pycurl.FRESH_CONNECT, 1)
+        # always close socket after response
+        curl.setopt(pycurl.FORBID_REUSE, 1)
+        if next_callback is not None:
+            next_callback(curl)
+
+    request.prepare_curl_callback = partial(prepare_curl_callback, next_callback=request.prepare_curl_callback)
+
+
 class FailedRequestException(Exception):
     def __init__(self, **kwargs):
         self.attrs = kwargs
@@ -254,6 +279,28 @@ class RequestResult(object):
 
     def set_exception(self, exception):
         self.exception = exception
+
+
+def _check_response_request_id(request, response):
+    response_req_id = response.headers.get('X-Request-Id')
+    if response_req_id is None:
+        return
+
+    cache_control = response.headers.get('Cache-control')
+    if cache_control is not None and 'no-store' not in cache_control.lower():
+        # consider this response as returned from cache, thus response request_id will not match request request_id
+        return
+
+    expires = response.headers.get('Expires')
+    if expires is not None and ' 1970 ' not in expires:
+        # not RFC at all, but better not to check request_id at all than check cached request_id
+        return
+
+    request_req_id = request.headers['X-Request-Id']
+    if response_req_id != request_req_id:
+        response.code = 599
+        message = 'response request id {0} != {1}'.format(response_req_id, request_req_id)
+        response.error = HTTPError(599, message, response)
 
 
 def _parse_response(response, logger=request_logger, parser=None, response_type=None):
