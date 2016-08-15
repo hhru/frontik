@@ -1,3 +1,9 @@
+frontik (2.25.37) unstable; urgency=low
+
+  * HH-61746 move prohibition of keep-alive to backends from tornado
+
+ -- Automated Build <a.akhmetshin@hh.ru>  Mon, 15 Aug 2016 17:27:32 +0300
+
 frontik (2.25.36) unstable; urgency=low
 
   * HH-61614 shell=False and escape cmd with check_output
