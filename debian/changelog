@@ -1,3 +1,10 @@
+frontik (2.25.38) unstable; urgency=low
+
+  * HH-61841 check response request id
+  * HH-61841 add http_client_allow_keep_alive option
+
+ -- Automated Build <an.ivanov@hh.ru>  Thu, 18 Aug 2016 15:25:32 +0300
+
 frontik (2.25.37) unstable; urgency=low
 
   * HH-61746 move prohibition of keep-alive to backends from tornado
