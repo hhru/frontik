@@ -41,6 +41,8 @@ tornado.options.define('debug_password', default=None, type=str)
 
 tornado.options.define('http_client_default_connect_timeout', default=0.2, type=float)
 tornado.options.define('http_client_default_request_timeout', default=2.0, type=float)
+tornado.options.define('http_client_allow_keep_alive', default=False, type=bool)
+tornado.options.define('http_client_check_response_request_id', default=False, type=bool)
 tornado.options.define('http_proxy_host', default=None, type=str)
 tornado.options.define('http_proxy_port', default=3128, type=int)
 
