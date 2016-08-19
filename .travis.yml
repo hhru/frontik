@@ -57,7 +57,7 @@ matrix:
         - virtualenv venv -p python2
         - source venv/bin/activate
 install:
-  - if [[ $TORNADO_VERSION == 'HH' ]]; then pip install https://github.com/hhru/tornado/archive/fix-version.zip; else pip install tornado==$TORNADO_VERSION; fi
+  - if [[ $TORNADO_VERSION == 'HH' ]]; then pip install https://github.com/hhru/tornado/archive/master.zip; else pip install tornado==$TORNADO_VERSION; fi
   - if [[ $WITH_RAVEN == 1 ]]; then pip install "raven < 5.2"; fi
   - if [[ $WITH_FUTURES == 1 ]]; then pip install futures; fi
   - pip install codecov
