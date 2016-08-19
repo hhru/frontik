@@ -31,7 +31,7 @@ class HTTPClientKeepAliveTestCase(unittest.TestCase):
 
         self._frontik_client.send_request(self._backend.port)
 
-        with closing(self._backend.accept()) as backend_socket:
+        with self._backend.accept() as backend_socket:
 
             _handle_request_to_backend(backend_socket, '204', 'No content')
             response1 = self._frontik_client.get_response()
@@ -47,28 +47,28 @@ class HTTPClientKeepAliveTestCase(unittest.TestCase):
 
         self._frontik_client.send_request(self._backend.port)
 
-        with closing(self._backend.accept()) as backend_socket:
+        with self._backend.accept() as backend_socket:
             backend_socket.recv(1024)
 
             response = self._frontik_client.get_response()
             self.assertEqual('599', response.split('\r\n')[-1])
 
             backend_socket.setblocking(0)
-            self.assertEqual('', backend_socket.recv(1024), 'backend socket is not closed')
+            self.assertEqual(b'', backend_socket.recv(1024), 'backend socket is not closed')
 
     def test_http_client_closes_connection_if_read_timeout_after_partial_response(self):
 
         self._frontik_client.send_request(self._backend.port)
 
-        with closing(self._backend.accept()) as backend_socket:
+        with self._backend.accept() as backend_socket:
             backend_socket.recv(1024)
-            backend_socket.send('HTTP/1.1')
+            backend_socket.send(b'HTTP/1.1')
 
             response = self._frontik_client.get_response()
             self.assertEqual('599', response.split('\r\n')[-1])
 
             backend_socket.setblocking(0)
-            self.assertEqual('', backend_socket.recv(1024), 'backend socket is not closed')
+            self.assertEqual(b'', backend_socket.recv(1024), 'backend socket is not closed')
 
 
 class HTTPClientCheckRequestIdTestCase(unittest.TestCase):
@@ -89,7 +89,7 @@ class HTTPClientCheckRequestIdTestCase(unittest.TestCase):
 
         self._frontik_client.send_request(self._backend.port, 'some_request_id')
 
-        with closing(self._backend.accept()) as backend_socket:
+        with self._backend.accept() as backend_socket:
 
             _handle_request_to_backend(backend_socket, '204', 'No content', ['X-Request-ID: some_request_id'])
             response = self._frontik_client.get_response()
@@ -99,7 +99,7 @@ class HTTPClientCheckRequestIdTestCase(unittest.TestCase):
 
         self._frontik_client.send_request(self._backend.port, 'some_request_id')
 
-        with closing(self._backend.accept()) as backend_socket:
+        with self._backend.accept() as backend_socket:
 
             _handle_request_to_backend(backend_socket, '204', 'No content', ['X-Request-ID: wrong_request_id'])
             response = self._frontik_client.get_response()
@@ -109,7 +109,7 @@ class HTTPClientCheckRequestIdTestCase(unittest.TestCase):
 
         self._frontik_client.send_request(self._backend.port, 'some_request_id')
 
-        with closing(self._backend.accept()) as backend_socket:
+        with self._backend.accept() as backend_socket:
 
             backend_response_headers = ['X-Request-ID: wrong_request_id', 'Cache-Control: max-age=300']
             _handle_request_to_backend(backend_socket, '204', 'No content', backend_response_headers)
@@ -120,7 +120,7 @@ class HTTPClientCheckRequestIdTestCase(unittest.TestCase):
 
         self._frontik_client.send_request(self._backend.port, 'some_request_id')
 
-        with closing(self._backend.accept()) as backend_socket:
+        with self._backend.accept() as backend_socket:
 
             backend_response_headers = ['X-Request-ID: wrong_request_id', 'Cache-Control: no-store']
             _handle_request_to_backend(backend_socket, '204', 'No content', backend_response_headers)
@@ -131,7 +131,7 @@ class HTTPClientCheckRequestIdTestCase(unittest.TestCase):
 
         self._frontik_client.send_request(self._backend.port, 'some_request_id')
 
-        with closing(self._backend.accept()) as backend_socket:
+        with self._backend.accept() as backend_socket:
 
             backend_response_headers = ['X-Request-ID: wrong_request_id', 'Expires: Thu, 11 Aug 2027 08:49:37 GMT']
             _handle_request_to_backend(backend_socket, '204', 'No content', backend_response_headers)
@@ -142,7 +142,7 @@ class HTTPClientCheckRequestIdTestCase(unittest.TestCase):
 
         self._frontik_client.send_request(self._backend.port, 'some_request_id')
 
-        with closing(self._backend.accept()) as backend_socket:
+        with self._backend.accept() as backend_socket:
 
             backend_response_headers = ['X-Request-ID: wrong_request_id', 'Expires: Thu, 11 Aug 1970 08:49:37 GMT']
             _handle_request_to_backend(backend_socket, '204', 'No content', backend_response_headers)
@@ -157,14 +157,14 @@ class FrontikClient(object):
         self._socket.connect(('127.0.0.1', frontik_port))
 
     def send_request(self, backend_port, request_id=None):
-        self._socket.send('GET /proxy_code?port=' + str(backend_port) + ' HTTP/1.1\r\n')
-        self._socket.send('Host: 127.0.0.1:' + str(self._frontik_port) + '\r\n')
+        self._socket.send(b'GET /proxy_code?port=' + str(backend_port).encode() + b' HTTP/1.1\r\n')
+        self._socket.send(b'Host: 127.0.0.1:' + str(self._frontik_port).encode() + b'\r\n')
         if request_id:
-            self._socket.send('X-Request-Id: ' + request_id + '\r\n')
-        self._socket.send('\r\n')
+            self._socket.send(b'X-Request-Id: ' + request_id.encode() + b'\r\n')
+        self._socket.send(b'\r\n')
 
     def get_response(self):
-        return self._socket.recv(1024)
+        return self._socket.recv(1024).decode()
 
     def close(self):
         self._socket.close()
@@ -183,7 +183,7 @@ class Backend(object):
 
     def accept(self):
         socket, _ = self._server_socket.accept()
-        return socket
+        return closing(socket)
 
     def close(self):
         self._server_socket.close()
@@ -191,11 +191,11 @@ class Backend(object):
 
 def _handle_request_to_backend(backend_socket, code, reason, headers=None):
     backend_socket.recv(1024)
-    backend_socket.send('HTTP/1.1 ' + code + ' ' + reason + '\r\n')
+    backend_socket.send(b'HTTP/1.1 ' + code.encode() + b' ' + reason.encode() + b'\r\n')
     if headers is not None:
         for header in headers:
-            backend_socket.send(header + '\r\n')
-    backend_socket.send('\r\n')
+            backend_socket.send(header.encode() + b'\r\n')
+    backend_socket.send(b'\r\n')
 
 
 frontik_keep_alive_app = FrontikTestInstance('supervisor-keepaliveapp')
