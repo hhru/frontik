@@ -64,7 +64,7 @@ setup(
         'lxml-asserts',
     ],
     dependency_links=[
-        'https://github.com/hhru/tornado/archive/fix-version.zip',
+        'https://github.com/hhru/tornado/archive/master.zip',
     ],
     extras_require={
         'futures': ['futures'],
