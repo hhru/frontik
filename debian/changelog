@@ -1,3 +1,9 @@
+frontik (2.25.39) unstable; urgency=low
+
+  * Bump version up to 2.25.39
+
+ -- Automated Build <an.ivanov@hh.ru>  Thu, 25 Aug 2016 15:03:59 +0300
+
 frontik (2.25.38) unstable; urgency=low
 
   * HH-61841 check response request id
