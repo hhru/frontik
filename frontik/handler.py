@@ -117,7 +117,8 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def set_default_headers(self):
         self._headers = tornado.httputil.HTTPHeaders({
-            'Server': 'Frontik/{0}'.format(frontik.version)
+            'Server': 'Frontik/{0}'.format(frontik.version),
+            'X-Request-Id': self.request_id,
         })
 
     def decode_argument(self, value, name=None):
