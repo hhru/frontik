@@ -137,20 +137,22 @@ def main(config_file=None):
 
     try:
         tornado_app = application(**options.as_dict())
+        ioloop = tornado.ioloop.IOLoop.instance()
 
         def _async_init_cb():
-            def _run_server_cb(data):
-                if data.exception() is not None:
-                    log.exception('failed to start: %s', data.exception())
+            def _run_server_cb(future):
+                if future.exception() is not None:
+                    log.exception('failed to start: %s', future.exception())
                     sys.exit(1)
 
                 run_server(tornado_app)
 
-            future = tornado_app.init_async()
-            tornado.ioloop.IOLoop.instance().add_future(future, _run_server_cb)
+            ioloop.add_future(
+                tornado_app.init_async(), _run_server_cb
+            )
 
-        tornado.ioloop.IOLoop.instance().add_callback(_async_init_cb)
-        tornado.ioloop.IOLoop.instance().start()
+        ioloop.add_callback(_async_init_cb)
+        ioloop.start()
     except:
         log.exception('failed to initialize frontik application, quitting')
         sys.exit(1)

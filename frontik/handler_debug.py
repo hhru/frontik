@@ -20,6 +20,7 @@ from tornado.httpclient import HTTPResponse
 from tornado.httputil import HTTPHeaders
 
 from frontik.compat import basestring_type, iteritems, SimpleCookie, unicode_type, urlparse
+from frontik.loggers import BufferedHandler
 import frontik.util
 import frontik.xml_util
 
@@ -268,18 +269,22 @@ def _pretty_print_json(node):
     return json.dumps(node, sort_keys=True, indent=4, ensure_ascii=False)
 
 
-class DebugLogBulkHandler(object):
+class DebugBufferedHandler(BufferedHandler):
     FIELDS = ['created', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs',
               'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
 
     def __init__(self):
-        self.log_data = etree.Element('log')
+        super(DebugBufferedHandler, self).__init__('frontik.debug_buffered_handler')
 
-    def handle_bulk(self, record_list, **kwargs):
-        for record in record_list:
-            self.handle(record)
+    def produce_all(self):
+        log_data = etree.Element('log')
 
-    def handle(self, record):
+        for record in self.records:
+            log_data.append(self._produce_one(record))
+
+        return copy.deepcopy(log_data)
+
+    def _produce_one(self, record):
         entry_attrs = {}
         for field in self.FIELDS:
             val = getattr(record, field)
@@ -289,12 +294,12 @@ class DebugLogBulkHandler(object):
         entry_attrs['msg'] = to_unicode(record.getMessage())
 
         try:
-            entry = etree.Element("entry", **entry_attrs)
+            entry = etree.Element('entry', **entry_attrs)
         except ValueError:
             debug_log.exception('error creating log entry with attrs: %s', entry_attrs)
-            entry = etree.Element("entry")
+            entry = etree.Element('entry')
 
-        entry.set("asctime", str(datetime.fromtimestamp(record.created)))
+        entry.set('asctime', str(datetime.fromtimestamp(record.created)))
 
         if record.exc_info is not None:
             entry.append(_exception_to_xml(record.exc_info))
@@ -333,7 +338,7 @@ class DebugLogBulkHandler(object):
                 E.start_delta(_format_number(record._stage.start_delta))
             ))
 
-        self.log_data.append(entry)
+        return entry
 
 
 class PageHandlerDebug(object):
@@ -362,8 +367,8 @@ class PageHandlerDebug(object):
 
         if self.debug_mode.enabled:
             self.handler.require_debug_access()
-            self.debug_log_handler = DebugLogBulkHandler()
-            self.handler.log.add_bulk_handler(self.debug_log_handler, auto_flush=False)
+            self.debug_log_handler = DebugBufferedHandler()
+            self.handler.log.addHandler(self.debug_log_handler)
             self.handler.log.debug('debug mode is ON')
 
         if self.debug_mode.inherited:
@@ -373,13 +378,11 @@ class PageHandlerDebug(object):
             self.handler.log.debug('%s header will be passed to all requests', self.DEBUG_HEADER_NAME)
 
     def get_debug_page(self, status_code, response_headers, original_response, stages_total):
-
         import frontik.app
 
         start_time = time.time()
-        self.debug_log_handler.flush()
 
-        debug_log_data = copy.deepcopy(self.debug_log_handler.log_data)
+        debug_log_data = self.debug_log_handler.produce_all()
         debug_log_data.set('code', str(status_code))
         debug_log_data.set('mode', ','.join(self.debug_mode.mode_values))
         debug_log_data.set('started', _format_number(self.handler.request._start_time))
