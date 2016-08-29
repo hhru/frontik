@@ -1,3 +1,11 @@
+frontik (2.26.0) unstable; urgency=low
+
+  * HH-61554 refactor and simplify logging ingrastructure
+  * HH-61554 rename register_handler -> register_page_handler
+  * HH-61554 rename data -> future in frontik.server
+
+ -- Automated Build <an.sumin@hh.ru>  Mon, 29 Aug 2016 11:55:17 +0300
+
 frontik (2.25.39) unstable; urgency=low
 
   * Bump version up to 2.25.39
