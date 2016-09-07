@@ -4,6 +4,7 @@ import time
 import weakref
 
 import jinja2
+import tornado.ioloop
 import tornado.options
 
 import frontik.jobs
@@ -31,6 +32,7 @@ class JsonProducer(object):
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
         self.executor = frontik.jobs.get_executor(tornado.options.options.json_executor)
+        self.ioloop = tornado.ioloop.IOLoop.instance()
 
         self.json = frontik.json_builder.JsonBuilder(json_encoder=json_encoder, logger=self.log)
         self.template_filename = None
@@ -63,19 +65,21 @@ class JsonProducer(object):
             result = template.render(self.json.to_dict())
             return start_time, result
 
-        def success_cb(result):
-            start_time, result = result
+        def job_callback(future):
+            if future.exception() is not None:
+                self.log.error('failed applying template %s', self.template_filename)
+                raise future.exception()
+
+            start_time, result = future.result()
 
             self.log.stage_tag('tpl')
             self.log.info('applied template %s in %.2fms', self.template_filename, (time.time() - start_time) * 1000)
 
             callback(result)
 
-        def exception_cb(exception):
-            self.log.error('failed applying template %s', self.template_filename)
-            raise exception
-
-        self.executor.add_job(job, self.handler.check_finished(success_cb), self.handler.check_finished(exception_cb))
+        future = self.executor.submit(job)
+        self.ioloop.add_future(future, self.handler.check_finished(job_callback))
+        return future
 
     def _finish_with_json(self, callback):
         self.log.debug('finishing without templating')
