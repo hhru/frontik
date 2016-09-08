@@ -3,52 +3,49 @@ matrix:
   include:
     - os: linux
       python: "2.7"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=1 ; WITH_FUTURES=1
+      env: TORNADO_VERSION=HH ; WITH_RAVEN=1
     - os: linux
       python: "2.7"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=0 ; WITH_FUTURES=0
+      env: TORNADO_VERSION=HH ; WITH_RAVEN=0
     - os: linux
       python: "2.7"
-      env: TORNADO_VERSION=3.2.2 ; WITH_RAVEN=1 ; WITH_FUTURES=1
-    - os: linux
-      python: "2.7"
-      env: TORNADO_VERSION=3.2.2 ; WITH_RAVEN=1 ; WITH_FUTURES=0
+      env: TORNADO_VERSION=3.2.2 ; WITH_RAVEN=1
     - os: linux
       python: "3.3"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=1 ; WITH_FUTURES=0
+      env: TORNADO_VERSION=HH ; WITH_RAVEN=1
     - os: linux
       python: "3.3"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=0 ; WITH_FUTURES=0
+      env: TORNADO_VERSION=HH ; WITH_RAVEN=0
     - os: linux
       python: "3.3"
-      env: TORNADO_VERSION=3.2.2 ; WITH_RAVEN=1 ; WITH_FUTURES=0
+      env: TORNADO_VERSION=3.2.2 ; WITH_RAVEN=1
     - os: linux
       python: "3.4"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=1 ; WITH_FUTURES=0
+      env: TORNADO_VERSION=HH ; WITH_RAVEN=1
     - os: linux
       python: "3.4"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=0 ; WITH_FUTURES=0
+      env: TORNADO_VERSION=HH ; WITH_RAVEN=0
     - os: linux
       python: "3.4"
-      env: TORNADO_VERSION=3.2.2 ; WITH_RAVEN=1 ; WITH_FUTURES=0
+      env: TORNADO_VERSION=3.2.2 ; WITH_RAVEN=1
     - os: linux
       python: "3.5"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=1 ; WITH_FUTURES=0
+      env: TORNADO_VERSION=HH ; WITH_RAVEN=1
     - os: linux
       python: "3.5"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=0 ; WITH_FUTURES=0
+      env: TORNADO_VERSION=HH ; WITH_RAVEN=0
     - os: linux
       python: "3.5"
-      env: TORNADO_VERSION=3.2.2 ; WITH_RAVEN=1 ; WITH_FUTURES=0
+      env: TORNADO_VERSION=3.2.2 ; WITH_RAVEN=1
     - os: linux
       sudo: required
       dist: trusty
       python: "2.7"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=1 ; WITH_FUTURES=1
+      env: TORNADO_VERSION=HH ; WITH_RAVEN=1
     - os: osx
       osx_image: xcode7.3
       language: generic
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=1 ; WITH_FUTURES=1
+      env: TORNADO_VERSION=HH ; WITH_RAVEN=1
       before_install:
         - brew update
         - brew install python
@@ -59,7 +56,6 @@ matrix:
 install:
   - if [[ $TORNADO_VERSION == 'HH' ]]; then pip install https://github.com/hhru/tornado/archive/master.zip; else pip install tornado==$TORNADO_VERSION; fi
   - if [[ $WITH_RAVEN == 1 ]]; then pip install "raven < 5.2"; fi
-  - if [[ $WITH_FUTURES == 1 ]]; then pip install futures; fi
   - pip install codecov
   - python setup.py install
   - mkdir ~/.python-eggs

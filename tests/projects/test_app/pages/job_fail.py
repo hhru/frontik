@@ -1,3 +1,5 @@
+# coding=utf-8
+
 from lxml import etree
 
 import frontik.handler
@@ -9,10 +11,10 @@ class Page(frontik.handler.PageHandler):
         end = self.finish_group.add(lambda: None)
 
         def job():
-            self.get_argument('nofail')
+            return self.get_argument('nofail')
 
         def success_cb(res):
-            self.doc.put(etree.Element('ok'))
+            self.doc.put(etree.Element('ok', result=res))
             end()
 
         def exception_cb(e):
