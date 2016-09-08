@@ -1,3 +1,9 @@
+frontik (2.26.1) unstable; urgency=low
+
+  * Bump version up to 2.26.1
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 08 Sep 2016 14:24:45 +0300
+
 frontik (2.26.0) unstable; urgency=low
 
   * HH-61554 refactor and simplify logging ingrastructure
