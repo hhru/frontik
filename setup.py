@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import os
+import sys
 
 from setuptools import setup
 from setuptools.command.build_py import build_py
@@ -31,6 +32,18 @@ class TestHook(test):
         logging.disable(logging.CRITICAL)
         nose.main(argv=['tests', '-v'])
 
+install_requires = [
+    'jinja2 >= 2.6',
+    'lxml >= 2.3.2',
+    'pycurl >= 7.19.0',
+    'python-daemon',
+    'simplejson >= 2.3.2',
+    'tornado >= 3.2.2, < 4',
+]
+
+if sys.version_info < (3, 2):
+    install_requires.append('futures')
+
 setup(
     name='frontik',
     version=__import__('frontik').__version__,
@@ -48,14 +61,7 @@ setup(
     package_data={
         'frontik': ['debug/*.xsl'],
     },
-    install_requires=[
-        'python-daemon',
-        'lxml >= 2.3.2',
-        'simplejson >= 2.3.2',
-        'pycurl >= 7.19.0',
-        'jinja2 >= 2.6',
-        'tornado >= 3.2.2, < 4',
-    ],
+    install_requires=install_requires,
     test_suite='tests',
     tests_require=[
         'nose',
@@ -67,7 +73,6 @@ setup(
         'https://github.com/hhru/tornado/archive/master.zip',
     ],
     extras_require={
-        'futures': ['futures'],
         'sentry': ['raven']
     },
     zip_safe=False

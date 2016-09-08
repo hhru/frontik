@@ -5,6 +5,7 @@ import time
 import weakref
 
 from lxml import etree
+import tornado.ioloop
 import tornado.options
 
 import frontik.doc
@@ -39,6 +40,7 @@ class XmlProducer(object):
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
         self.executor = frontik.jobs.get_executor(tornado.options.options.xsl_executor)
+        self.ioloop = tornado.ioloop.IOLoop.instance()
 
         self.xml_cache = xml_globals.xml_cache
         self.xsl_cache = xml_globals.xsl_cache
@@ -87,8 +89,13 @@ class XmlProducer(object):
                                     profile_run=self.handler.debug.debug_mode.profile_xslt)
             return start_time, str(result), result.xslt_profile
 
-        def success_cb(result):
-            start_time, xml_result, xslt_profile = result
+        def job_callback(future):
+            if future.exception() is not None:
+                self.log.error('failed transformation with XSL %s', self.transform_filename)
+                self.log.error(get_xsl_log())
+                raise future.exception()
+
+            start_time, xml_result, xslt_profile = future.result()
 
             self.log.info('applied XSL %s in %.2fms', self.transform_filename, (time.time() - start_time) * 1000)
 
@@ -101,16 +108,13 @@ class XmlProducer(object):
             self.log.stage_tag('xsl')
             callback(xml_result)
 
-        def exception_cb(exception):
-            self.log.error('failed transformation with XSL %s', self.transform_filename)
-            self.log.error(get_xsl_log())
-            raise exception
-
         def get_xsl_log():
             xsl_line = 'XSLT {0.level_name} in file "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
             return '\n'.join(map(xsl_line.format, self.transform.error_log))
 
-        self.executor.add_job(job, self.handler.check_finished(success_cb), self.handler.check_finished(exception_cb))
+        future = self.executor.submit(job)
+        self.ioloop.add_future(future, self.handler.check_finished(job_callback))
+        return future
 
     def _finish_with_xml(self, callback):
         self.log.debug('finishing without XSLT')

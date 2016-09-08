@@ -19,6 +19,7 @@ Build-Depends:
   libxml2-dev,
   libxslt1-dev,
   python-daemon,
+  python-concurrent.futures,
 Standards-Version: 3.9.3
 X-Python-Version: >= 2.7
 
@@ -36,6 +37,7 @@ Depends:
   python-jinja2,
   python-pycurl,
   python-daemon,
+  python-concurrent.futures,
 Suggests:
   python-raven (>= 5.2.0+hh1),
 Description: Tornado-based application server
