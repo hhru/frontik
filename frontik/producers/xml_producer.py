@@ -9,15 +9,18 @@ import tornado.ioloop
 import tornado.options
 
 import frontik.doc
-import frontik.file_cache
 import frontik.jobs
 import frontik.util
+from frontik import file_cache
+from frontik.producers import ProducerFactory
 from frontik.xml_util import xml_from_file, xsl_from_file
 
 
-class ApplicationXMLGlobals(object):
-    def __init__(self, config):
-        self.xml_cache = frontik.file_cache.make_file_cache(
+class XMLProducerFactory(ProducerFactory):
+    def __init__(self, application):
+        config = application.config
+
+        self.xml_cache = file_cache.make_file_cache(
             'XML', 'XML_root',
             getattr(config, 'XML_root', None),
             xml_from_file,
@@ -26,7 +29,7 @@ class ApplicationXMLGlobals(object):
             deepcopy=True
         )
 
-        self.xsl_cache = frontik.file_cache.make_file_cache(
+        self.xsl_cache = file_cache.make_file_cache(
             'XSL', 'XSL_root',
             getattr(config, 'XSL_root', None),
             xsl_from_file,
@@ -34,16 +37,19 @@ class ApplicationXMLGlobals(object):
             getattr(config, 'XSL_cache_step', None)
         )
 
+    def get_producer(self, handler):
+        return XmlProducer(handler, xml_cache=self.xml_cache, xsl_cache=self.xsl_cache)
+
 
 class XmlProducer(object):
-    def __init__(self, handler, xml_globals):
+    def __init__(self, handler, xml_cache=None, xsl_cache=None):
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
         self.executor = frontik.jobs.get_executor(tornado.options.options.xsl_executor)
         self.ioloop = tornado.ioloop.IOLoop.instance()
 
-        self.xml_cache = xml_globals.xml_cache
-        self.xsl_cache = xml_globals.xsl_cache
+        self.xml_cache = xml_cache
+        self.xsl_cache = xsl_cache
 
         self.doc = frontik.doc.Doc(logger=self.log)
         self.transform = None

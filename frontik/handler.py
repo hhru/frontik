@@ -89,15 +89,15 @@ class BaseHandler(tornado.web.RequestHandler):
     def prepare(self):
         self.active_limit = frontik.handler_active_limit.PageHandlerActiveLimit(self)
         self.debug = PageHandlerDebug(self)
+        self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish', logger=self.log)
 
-        self.json_producer = frontik.producers.json_producer.JsonProducer(
-            self, self.application.json, getattr(self, 'json_encoder', None))
+        self.json_producer = self.application.json.get_producer(self)
         self.json = self.json_producer.json
 
-        self.xml_producer = frontik.producers.xml_producer.XmlProducer(self, self.application.xml)
+        self.xml_producer = self.application.xml.get_producer(self)
         self.xml = self.xml_producer  # deprecated synonym
         self.doc = self.xml_producer.doc
-        self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish', logger=self.log)
+
         self._prepared = True
 
     def require_debug_access(self, login=None, passwd=None):
