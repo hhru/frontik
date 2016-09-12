@@ -87,7 +87,7 @@ class JsonProducer(object):
                 exception = future.exception()
                 if isinstance(exception, jinja2.TemplateSyntaxError):
                     self.log.error(
-                        'jinja %s in file "%s", line %d\n\t$s',
+                        'jinja %s in file "%s", line %d\n\t%s',
                         exception.__class__.__name__, exception.filename, exception.lineno, exception.message
                     )
                 elif isinstance(exception, jinja2.TemplateError):
