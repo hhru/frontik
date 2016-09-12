@@ -51,7 +51,6 @@ tornado.options.define('timeout_multiplier', default=1.0, type=float)
 tornado.options.define('xsl_executor', default='threaded', type=str, metavar='threaded|ioloop')
 tornado.options.define('json_executor', default='ioloop', type=str, metavar='threaded|ioloop')
 tornado.options.define('executor_pool_size', default=1, type=int)
-tornado.options.define('warn_no_jobs', default=True, type=bool)
 
 tornado.options.define('xml_root', default=None, type=str)
 tornado.options.define('xml_cache_limit', default=None, type=int)
