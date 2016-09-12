@@ -5,7 +5,7 @@ import unittest
 
 from tornado.escape import to_unicode
 
-from .instances import frontik_re_app, frontik_test_app
+from .instances import frontik_test_app
 
 
 class TestJsonResponse(unittest.TestCase):
@@ -24,24 +24,3 @@ class TestJsonResponse(unittest.TestCase):
         data = json.loads(to_unicode(response.content))
         self.assertEqual(data['req1']['result'], '1')
         self.assertEqual(data['req2']['error']['reason'], 'invalid JSON')
-
-    def test_jinja(self):
-        response = frontik_test_app.get_page('json_page')
-        self.assertTrue(response.headers['content-type'].startswith('text/html'))
-        self.assertEqual(response.content, b'<html><body><b>1</b><i>2</i></body></html>')
-
-    def test_no_template_root(self):
-        response = frontik_re_app.get_page('json_no_tpl_root')
-        self.assertEqual(response.status_code, 500)
-
-    def test_no_template_exists(self):
-        response = frontik_test_app.get_page('json_page?template=no.html')
-        self.assertEqual(response.status_code, 500)
-
-        response = frontik_test_app.get_page('json_page?template=no.html', notpl=True)
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.headers['content-type'].startswith('application/json'))
-
-    def test_broken_template(self):
-        response = frontik_test_app.get_page('json_page?break=true')
-        self.assertEqual(response.status_code, 500)
