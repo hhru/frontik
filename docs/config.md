@@ -23,7 +23,6 @@ These options can be set for each Frontik instance (see [options.py](/frontik/op
 | `debug_password`             | `str`   | `None`        | Debug mode password for basic authentication (when `debug=False`)      |
 | `xsl_executor`               | `str`   | `'threaded'`  | Executor type for XSL templating (alternative: `'ioloop'`)             |
 | `json_executor`              | `str`   | `'ioloop'`    | Executor type for JSON templating                                      |
-| `warn_no_jobs`               | `bool`  | `True`        | Write a warning if no jobs were found in executor queue                |
 | `timeout_multiplier`         | `float` | `1.0`         | Generic timeout multiplier for get_xxx calls (useful for testing)      |
 | `handlers_count`             | `int`   | `100`         | Limit for number of simultaneous requests handled by Frontik instance  |
 | `http_proxy_host`            | `str`   | `None`        | HTTP proxy host for Curl HTTP client                                   |
