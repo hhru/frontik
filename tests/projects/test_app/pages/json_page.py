@@ -4,6 +4,18 @@ import frontik.handler
 
 
 class Page(frontik.handler.PageHandler):
+    def prepare(self):
+        if self.get_argument('custom_render', 'false') == 'true':
+            def jinja_render_kwargs(handler):
+                return {
+                    'req1': {'result': 'custom1'},
+                    'req2': {'result': 'custom2'},
+                }
+
+            self.jinja_render_kwargs = jinja_render_kwargs
+
+        super(Page, self).prepare()
+
     def get_page(self):
         self_uri = self.request.host + self.request.path
         invalid_json = self.get_argument('invalid', 'false')
@@ -13,7 +25,7 @@ class Page(frontik.handler.PageHandler):
             'req2': self.post_url(self_uri, data={'param': 2, 'invalid': invalid_json})
         }
 
-        if self.get_argument('break', 'false') == 'true':
+        if self.get_argument('template_error', 'false') == 'true':
             del data['req1']
 
         self.set_template(self.get_argument('template', 'jinja.html'))
