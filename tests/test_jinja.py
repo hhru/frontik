@@ -1,6 +1,8 @@
+# coding=utf-8
+
 import unittest
 
-from .instances import frontik_re_app, frontik_test_app
+from .instances import frontik_no_debug_app, frontik_re_app, frontik_test_app
 
 
 class TestJinja(unittest.TestCase):
@@ -14,8 +16,12 @@ class TestJinja(unittest.TestCase):
         self.assertTrue(response.headers['content-type'].startswith('text/html'))
         self.assertEqual(response.content, b'<html><body><b>custom1</b><i>custom2</i></body></html>')
 
-    def test_jinja_no_template_root(self):
-        response = frontik_re_app.get_page('json_no_tpl_root')
+    def test_jinja_custom_environment(self):
+        response = frontik_re_app.get_page('jinja_custom_environment')
+        self.assertEqual(response.content, b'<html><body>custom_env_function_value</body></html>')
+
+    def test_jinja_no_environment(self):
+        response = frontik_no_debug_app.get_page('jinja_no_environment')
         self.assertEqual(response.status_code, 500)
 
     def test_jinja_no_template_exists(self):
