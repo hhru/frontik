@@ -24,7 +24,8 @@ class ProxyLogger(logging.Logger):
 
     def handle(self, record):
         logger.handle(record)
-        super(ProxyLogger, self).handle(record)
+        if self.handlers:
+            super(ProxyLogger, self).handle(record)
 
 
 class RequestLogger(logging.LoggerAdapter):
