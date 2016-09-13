@@ -63,7 +63,7 @@ class JsonProducer(object):
 
     def _finish_with_template(self, callback):
         if not self.environment:
-            raise Exception('Cannot apply template, option "template_root" is not set in application config')
+            raise Exception('Cannot apply template, no Jinja2 environment configured')
 
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', 'text/html; charset=utf-8')

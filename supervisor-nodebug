@@ -5,6 +5,6 @@ from frontik.server.supervisor import supervisor
 
 supervisor(
     script='./frontik-test',
-    app='tests.projects.test_app',
+    app='tests.projects.no_debug_app',
     config='tests/projects/frontik_no_debug.cfg'
 )

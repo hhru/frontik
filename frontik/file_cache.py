@@ -63,7 +63,7 @@ class InvalidOptionCache(object):
     def __init__(self, option):
         self.option = option
 
-    def load(self, filename):
+    def load(self, filename, *args, **kwargs):
         raise Exception('{0} option is undefined'.format(self.option))
 
 
