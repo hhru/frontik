@@ -44,7 +44,7 @@ class JsonProducer(object):
 
         self.json = frontik.json_builder.JsonBuilder(json_encoder=json_encoder, logger=self.log)
         self.template_filename = None
-        self.environment = environment
+        self.environment = getattr(environment, 'environment', environment)  # Temporary for transition period
         self.render_kwargs_provider = render_kwargs_provider
 
     def __call__(self, callback):
