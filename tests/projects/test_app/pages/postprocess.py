@@ -5,7 +5,7 @@ import frontik.handler
 
 class ContentPostprocessor(object):
     def __call__(self, handler, tpl, callback):
-        callback(tpl.replace('%%content%%', 'CONTENT'))
+        callback(tpl.replace(b'%%content%%', b'CONTENT'))
 
 
 class Page(frontik.handler.PageHandler):
@@ -36,7 +36,7 @@ class Page(frontik.handler.PageHandler):
         raise frontik.handler.HTTPError(500)
 
     def _header_pp(self, tpl, callback):
-        callback(tpl.replace('%%header%%', 'HEADER'))
+        callback(tpl.replace(b'%%header%%', b'HEADER'))
 
     def _nocache_pp(self, callback):
         self.set_header('Cache-Control', 'no-cache')
