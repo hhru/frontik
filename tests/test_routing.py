@@ -2,6 +2,8 @@
 
 import unittest
 
+from frontik.app import MAX_MODULE_NAME_LENGTH
+
 from .instances import frontik_re_app, frontik_test_app
 
 
@@ -26,6 +28,9 @@ class TestRouting(unittest.TestCase):
         """Routes specified as mappings to filesystem can contain extra slashes"""
         self.assertEqual(frontik_re_app.get_page('//simple').status_code, 200)
         self.assertEqual(frontik_test_app.get_page('//nested///nested//////nested').status_code, 200)
+
+    def test_module_name_too_large(self):
+        self.assertEqual(frontik_test_app.get_page('/' + 'a' * (MAX_MODULE_NAME_LENGTH + 1)).status_code, 404)
 
     def test_rewrite_single(self):
         html = frontik_re_app.get_page_text('id/some')
