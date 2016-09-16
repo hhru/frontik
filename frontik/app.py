@@ -2,25 +2,28 @@
 
 import importlib
 import logging
+import os
 import re
 import time
 from lxml import etree
 
 import tornado.autoreload
-from tornado.concurrent import Future
 import tornado.curl_httpclient
 import tornado.ioloop
-from tornado.options import options
 import tornado.web
+from tornado.concurrent import Future
+from tornado.options import options
 
-from frontik.compat import iteritems
-from frontik.handler import ErrorHandler
 import frontik.loggers
-from frontik.loggers.request import RequestLogger
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
+from frontik.compat import iteritems
+from frontik.handler import ErrorHandler
+from frontik.loggers.request import RequestLogger
 
 app_logger = logging.getLogger('frontik.app')
+
+MAX_MODULE_NAME_LENGTH = os.pathconf('/', 'PC_PATH_MAX') - 1
 
 
 def get_frontik_and_apps_versions(application):
@@ -97,6 +100,10 @@ class FileMappingDispatcher(object):
         page_name = '.'.join(filter(None, url_parts))
         page_module_name = '.'.join(filter(None, (self.name, page_name)))
         logger.debug('page module: %s', page_module_name)
+
+        if len(page_module_name) > MAX_MODULE_NAME_LENGTH:
+            logger.info('page module name exceeds PATH_MAX (%s), using 404 page', MAX_MODULE_NAME_LENGTH)
+            return self.handle_404(application, request, logger, **kwargs)
 
         try:
             page_module = importlib.import_module(page_module_name)
