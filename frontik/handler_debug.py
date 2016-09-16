@@ -247,7 +247,7 @@ def _exception_to_xml(exc_info, log=debug_log):
                 trace_lines.append(line_node)
 
             trace_step_node.append(trace_lines)
-            trace_step_node.append(E.file(inspect.getfile(frame)))
+            trace_step_node.append(E.file(to_unicode(inspect.getfile(frame))))
             trace_step_node.append(E.locals(pprint.pformat(frame.f_locals)))
             trace_node.append(trace_step_node)
             trace = trace.tb_next
@@ -289,7 +289,7 @@ class DebugBufferedHandler(BufferedHandler):
         for field in self.FIELDS:
             val = getattr(record, field)
             if val is not None:
-                entry_attrs[field] = str(val)
+                entry_attrs[field] = to_unicode(str(val))
 
         entry_attrs['msg'] = to_unicode(record.getMessage())
 
