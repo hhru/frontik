@@ -1,16 +1,18 @@
 # coding=utf-8
 
 import base64
-from functools import partial
+from functools import partial, wraps
 import time
 
 import tornado.curl_httpclient
 import tornado.httputil
-from tornado.ioloop import IOLoop
 import tornado.options
 import tornado.web
+from tornado.concurrent import Future
+from tornado.ioloop import IOLoop
+from tornado.util import raise_exc_info
 
-from frontik.async import AsyncGroup
+from frontik.async import AsyncGroup, dependency, DependencyChain
 import frontik.auth
 from frontik.compat import iteritems
 import frontik.handler_active_limit
@@ -23,9 +25,7 @@ import frontik.util
 
 
 class HTTPError(tornado.web.HTTPError):
-    """
-    Extends tornado.web.HTTPError with several keyword-only arguments.
-    Also allow using some extended HTTP codes
+    """Extends tornado.web.HTTPError with several keyword-only arguments and allows using some extended HTTP codes.
 
     :arg dict headers: Custom HTTP headers to pass along with the error response.
     :arg string text: Plain text override for error response.
@@ -73,7 +73,7 @@ class BaseHandler(tornado.web.RequestHandler):
         self._template_postprocessors = []
         self._early_postprocessors = []
         self._late_postprocessors = []
-        self._returned_methods = set()
+        self._dependency_scheduler = DependencyChain(bound_args=(self,))
 
         self._http_client = HttpClient(self, self.application.curl_http_client, self.modify_http_client_request)
 
@@ -154,47 +154,77 @@ class BaseHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     def get(self, *args, **kwargs):
         self.log.stage_tag('prepare')
-        self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.get_page))
-        self._finish_page()
+
+        self.add_future(
+            self._dependency_scheduler.resolve(
+                DependencyChain.get_dependencies(self.add_preprocessor(*self.preprocessors)(self.get_page.__func__))
+            ),
+            self._create_handler_method_wrapper(self.get_page)
+        )
 
     @tornado.web.asynchronous
     def post(self, *args, **kwargs):
         self.log.stage_tag('prepare')
-        self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.post_page))
-        self._finish_page()
+
+        self.add_future(
+            self._dependency_scheduler.resolve(
+                DependencyChain.get_dependencies(self.add_preprocessor(*self.preprocessors)(self.post_page.__func__))
+            ),
+            self._create_handler_method_wrapper(self.post_page)
+        )
 
     @tornado.web.asynchronous
     def head(self, *args, **kwargs):
         self.log.stage_tag('prepare')
-        self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.get_page))
-        self._finish_page()
+
+        self.add_future(
+            self._dependency_scheduler.resolve(
+                DependencyChain.get_dependencies(self.add_preprocessor(*self.preprocessors)(self.get_page.__func__))
+            ),
+            self._create_handler_method_wrapper(self.get_page)
+        )
 
     @tornado.web.asynchronous
     def delete(self, *args, **kwargs):
         self.log.stage_tag('prepare')
-        self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.delete_page))
-        self._finish_page()
+
+        self.add_future(
+            self._dependency_scheduler.resolve(
+                DependencyChain.get_dependencies(self.add_preprocessor(*self.preprocessors)(self.delete_page.__func__))
+            ),
+            self._create_handler_method_wrapper(self.delete_page)
+        )
 
     @tornado.web.asynchronous
     def put(self, *args, **kwargs):
         self.log.stage_tag('prepare')
-        self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.put_page))
-        self._finish_page()
+
+        self.add_future(
+            self._dependency_scheduler.resolve(
+                DependencyChain.get_dependencies(self.add_preprocessor(*self.preprocessors)(self.put_page.__func__))
+            ),
+            self._create_handler_method_wrapper(self.put_page)
+        )
+
+    def _create_handler_method_wrapper(self, handler_method):
+        notification = self.finish_group.add_notification()
+
+        def _handle_future(future):
+            if future.exception():
+                raise_exc_info(future.exc_info())
+
+            return_value = handler_method()
+
+            if hasattr(self, 'handle_return_value'):
+                method_name = handler_method.__name__
+                self.handle_return_value(method_name, return_value)
+
+            notification()
+
+        return _handle_future
 
     def options(self, *args, **kwargs):
         raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
-
-    def _save_return_value(self, handler_method, *args, **kwargs):
-        def is_handler_method(function_name):
-            return function_name in {'get_page', 'post_page', 'put_page', 'delete_page'}
-
-        return_value = handler_method(*args, **kwargs)
-
-        if hasattr(self, 'handle_return_value'):
-            method_name = handler_method.__name__
-            if is_handler_method(method_name) and method_name not in self._returned_methods:
-                self._returned_methods.add(method_name)
-                self.handle_return_value(method_name, return_value)
 
     def get_page(self):
         """ This method can be implemented in the subclass """
@@ -407,9 +437,6 @@ class BaseHandler(tornado.web.RequestHandler):
 
     # Preprocessors and postprocessors
 
-    def _call_preprocessors(self, preprocessors, callback):
-        self._chain_functions(iter(preprocessors), callback, 'preprocessor')
-
     def _call_postprocessors(self, postprocessors, callback, *args):
         self._chain_functions(iter(postprocessors), callback, 'postprocessor', *args)
 
@@ -429,12 +456,20 @@ class BaseHandler(tornado.web.RequestHandler):
 
     @staticmethod
     def add_preprocessor(*preprocessors_list):
-        def _method_wrapper(fn):
-            def _method(self, *args, **kwargs):
-                callback = partial(self._save_return_value, fn, self, *args, **kwargs)
-                return self._call_preprocessors(preprocessors_list, callback)
-            return _method
-        return _method_wrapper
+        def preprocessor_to_dependency(pp):
+            @wraps(pp)
+            def pp_replacement(handler):
+                future = Future()
+
+                def callback():
+                    future.set_result(None)
+
+                pp(handler, callback)
+                return future
+
+            return dependency(pp_replacement)
+
+        return dependency([preprocessor_to_dependency(pp) for pp in preprocessors_list])
 
     def add_template_postprocessor(self, postprocessor):
         self._template_postprocessors.append(postprocessor)

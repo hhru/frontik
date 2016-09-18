@@ -2,17 +2,19 @@
 
 import unittest
 
+from requests.exceptions import Timeout
+
 from .instances import frontik_test_app
 
 
 class TestPreprocessors(unittest.TestCase):
     def test_preprocessors(self):
-        text = frontik_test_app.get_page_text('preprocessors')
-        self.assertEqual(text, '1 2 3 4 5 6')
+        response = frontik_test_app.get_page('preprocessors')
+        self.assertEqual(response.content, b'1 2 3 (1 2 3 4) 5 6')
+        self.assertEqual(response.headers['Content-Type'], 'text/plain')
 
     def test_preprocessors_nocallback(self):
-        text = frontik_test_app.get_page_text('preprocessors?nocallback=true')
-        self.assertEqual(text, '1 2 3')
+        self.assertRaises(Timeout, lambda: frontik_test_app.get_page('preprocessors?nocallback=true', timeout=1))
 
     def test_preprocessors_fail(self):
         response = frontik_test_app.get_page('preprocessors?fail=true')
