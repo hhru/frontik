@@ -6,13 +6,13 @@ import frontik.handler
 class Page(frontik.handler.PageHandler):
     def prepare(self):
         if self.get_argument('custom_render', 'false') == 'true':
-            def jinja_render_kwargs(handler):
+            def jinja_context_provider(handler):
                 return {
                     'req1': {'result': 'custom1'},
                     'req2': {'result': 'custom2'},
                 }
 
-            self.jinja_render_kwargs = jinja_render_kwargs
+            self.jinja_context_provider = jinja_context_provider
 
         super(Page, self).prepare()
 
