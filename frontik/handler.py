@@ -61,6 +61,8 @@ class BaseHandler(tornado.web.RequestHandler):
 
         self.log = logger
         self._exception_hooks = []
+        self._finish_group_done_hooks = []
+        self._before_finish_hooks = []
 
         for initializer in application.loggers_initializers:
             initializer(self)
@@ -244,6 +246,9 @@ class BaseHandler(tornado.web.RequestHandler):
     def _finish_page_cb(self):
         if not self._finished:
             def _callback():
+                for finish_group_done_hook in self._finish_group_done_hooks:
+                    finish_group_done_hook()
+
                 self.log.stage_tag('page')
 
                 if self.text is not None:
@@ -260,18 +265,18 @@ class BaseHandler(tornado.web.RequestHandler):
         else:
             self.log.warning('trying to finish already finished page, probably bug in a workflow, ignoring')
 
-    def on_connection_close(self):
-        self.finish_group.abort()
-        self.log.stage_tag('page')
-        self.log.log_stages(408)
-        self.cleanup()
-
     def register_exception_hook(self, exception_hook):
         """
         Adds a function to the list of hooks, which are executed when `log_exception` is called.
         `exception_hook` must have the same signature as `log_exception`
         """
         self._exception_hooks.append(exception_hook)
+
+    def register_finish_group_done_hook(self, finish_group_done_hook):
+        self._finish_group_done_hooks.append(finish_group_done_hook)
+
+    def register_before_finish_hook(self, before_finish_hook):
+        self._before_finish_hooks.append(before_finish_hook)
 
     def log_exception(self, typ, value, tb):
         super(BaseHandler, self).log_exception(typ, value, tb)
@@ -354,18 +359,38 @@ class BaseHandler(tornado.web.RequestHandler):
         if hasattr(self, 'active_limit'):
             self.active_limit.release()
 
+    def on_finish(self):
+        self.cleanup()
+
+    def on_connection_close(self):
+        self.finish_group.abort()
+        self.log.stage_tag('page')
+        self.log.log_stages(408)
+        self.cleanup()
+
     def finish(self, chunk=None):
         def _finish_with_async_hook():
             self.log.stage_tag('postprocess')
             super(BaseHandler, self).finish(chunk)
-            self.cleanup()
 
         try:
+            for before_finish_hook in self._before_finish_hooks:
+                before_finish_hook()
+
             self._call_postprocessors(self._late_postprocessors, _finish_with_async_hook)
-        except:
+        except Exception as e:
+            self.log.stage_tag('postprocess')
             self.log.exception('error during late postprocessing stage, finishing with an exception')
-            self._status_code = 500
-            _finish_with_async_hook()
+
+            status_code = getattr(e, 'status_code', 500)
+            self.clear()
+            self.set_status(status_code)
+            super(BaseHandler, self).finish(
+                '<html><title>%(code)d: %(message)s</title>'
+                '<body>%(code)d: %(message)s</body></html>' % {
+                      'code': status_code,
+                      'message': self._reason,
+                })
 
     def flush(self, include_footers=False, **kwargs):
         self.log.stage_tag('finish')
