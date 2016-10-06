@@ -1,7 +1,7 @@
 # coding=utf-8
 
 from concurrent.futures import ThreadPoolExecutor
-from tornado.concurrent import chain_future, dummy_executor, Future
+from tornado.concurrent import chain_future, dummy_executor, TracebackFuture
 from tornado.ioloop import IOLoop
 from tornado.options import options
 
@@ -11,7 +11,7 @@ class IOLoopExecutor(object):
         self._executor = dummy_executor
 
     def submit(self, fn, *args, **kwargs):
-        future = Future()
+        future = TracebackFuture()
 
         def _cb():
             chain_future(self._executor.submit(fn, *args, **kwargs), future)

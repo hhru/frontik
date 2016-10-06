@@ -8,10 +8,10 @@ import time
 from lxml import etree
 
 import tornado.autoreload
-import tornado.curl_httpclient
 import tornado.ioloop
 import tornado.web
 from tornado.concurrent import Future
+from tornado.httpclient import AsyncHTTPClient
 from tornado.options import options
 
 import frontik.loggers
@@ -190,10 +190,13 @@ class FrontikApplication(tornado.web.Application):
         self.app_settings = settings
         self.config = self.application_config()
         self.app = settings.get('app')
-        self.xml = frontik.producers.xml_producer.ApplicationXMLGlobals(self.config)
-        self.json = frontik.producers.json_producer.ApplicationJsonGlobals(self.config)
-        self.curl_http_client = tornado.curl_httpclient.CurlAsyncHTTPClient(
-            max_clients=tornado.options.options.max_http_clients)
+
+        self.xml = frontik.producers.xml_producer.XMLProducerFactory(self)
+        self.json = frontik.producers.json_producer.JsonProducerFactory(self)
+
+        AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
+        self.http_client = self.curl_http_client = AsyncHTTPClient()
+
         self.dispatcher = RegexpDispatcher(self.application_urls(), self.app)
         self.loggers_initializers = frontik.loggers.bootstrap_app_loggers(self)
 

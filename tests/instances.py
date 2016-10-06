@@ -135,4 +135,4 @@ class FrontikTestInstance(object):
 frontik_broken_app = FrontikTestInstance('supervisor-brokenapp')
 frontik_test_app = FrontikTestInstance('supervisor-testapp')
 frontik_re_app = FrontikTestInstance('supervisor-reapp')
-frontik_non_debug = FrontikTestInstance('supervisor-nodebug')
+frontik_no_debug_app = FrontikTestInstance('supervisor-nodebug')
