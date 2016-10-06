@@ -1,3 +1,14 @@
+frontik (2.26.3) unstable; urgency=low
+
+  * HH-62844 fix producers backwards compatibility and review comments
+  * HH-62844 rewrite tests to check jinja better
+  * HH-62844 fix stderr logging
+  * HH-62844 add producers tests
+  * HH-62844 update docs and add doc.put('string') logging
+  * HH-62844 refactor producers
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 06 Oct 2016 11:22:44 +0300
+
 frontik (2.26.2) unstable; urgency=low
 
   * Bump version up to 2.26.2
