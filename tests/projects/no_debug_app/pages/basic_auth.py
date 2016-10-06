@@ -1,4 +1,5 @@
-import frontik.auth
+# coding=utf-8
+
 import frontik.handler
 
 

@@ -9,7 +9,7 @@ from tornado.concurrent import Future
 from frontik.compat import basestring_type, iteritems
 from frontik.http_client import RequestResult
 
-future_logger = logging.getLogger('frontik.future')
+doc_logger = logging.getLogger('frontik.doc')
 
 
 def _is_valid_element(node):
@@ -33,10 +33,19 @@ class Doc(object):
             raise TypeError('Cannot set {} as root node'.format(root_node))
 
         self.root_node = root_node
-        self.logger = logger if logger is not None else future_logger
+        self.logger = logger if logger is not None else doc_logger
         self.data = []
 
     def put(self, chunk):
+        if isinstance(chunk, basestring_type):
+            self.logger.warning('putting strings to Doc is deprecated')
+            try:
+                from inspect import getframeinfo, stack
+                caller = getframeinfo(stack()[1][0])
+                self.logger.warning('caller: %s:%d', caller.filename, caller.lineno)
+            except:
+                pass
+
         if isinstance(chunk, list):
             self.data.extend(chunk)
         else:

@@ -7,14 +7,14 @@ from tornado.escape import to_unicode
 
 from frontik import http_codes
 
-from .instances import create_basic_auth_header, frontik_non_debug
+from .instances import create_basic_auth_header, frontik_no_debug_app
 
 
 class DebugTestCase(unittest.TestCase):
     DEBUG_BASIC_AUTH = create_basic_auth_header('user:god')
 
     def test_complex_debug_page(self):
-        response = frontik_non_debug.get_page(
+        response = frontik_no_debug_app.get_page(
             'debug?debug', headers={'Authorization': self.DEBUG_BASIC_AUTH}
         )
 
@@ -89,18 +89,18 @@ class DebugTestCase(unittest.TestCase):
             self.assertNotIn(msg, response_content)
 
     def assertDebugResponseCode(self, page, expected_code, headers=None):
-        response = frontik_non_debug.get_page(page, headers=headers)
+        response = frontik_no_debug_app.get_page(page, headers=headers)
         self.assertEqual(response.status_code, expected_code)
         return response
 
     def test_debug_by_basic_auth(self):
         for param in ('debug', 'noxsl', 'notpl'):
-            response = self.assertDebugResponseCode(page='simple_xml?{}'.format(param),
+            response = self.assertDebugResponseCode(page='simple?{}'.format(param),
                                                     expected_code=http_codes.UNAUTHORIZED)
             self.assertIn('Www-Authenticate', response.headers)
             self.assertRegexpMatches(response.headers['Www-Authenticate'], 'Basic realm="[^"]+"')
 
-            self.assertDebugResponseCode(page='simple_xml?{}'.format(param),
+            self.assertDebugResponseCode(page='simple?{}'.format(param),
                                          headers={'Authorization': self.DEBUG_BASIC_AUTH},
                                          expected_code=http_codes.OK)
 
@@ -118,28 +118,28 @@ class DebugTestCase(unittest.TestCase):
         )
 
         for h in invalid_headers:
-            self.assertDebugResponseCode('simple_xml?debug', http_codes.UNAUTHORIZED, headers={'Authorization': h})
+            self.assertDebugResponseCode('simple?debug', http_codes.UNAUTHORIZED, headers={'Authorization': h})
 
     def test_debug_by_header(self):
         for param in ('debug', 'noxsl', 'notpl'):
-            response = self.assertDebugResponseCode('simple_xml?{}'.format(param), http_codes.UNAUTHORIZED)
+            response = self.assertDebugResponseCode('simple?{}'.format(param), http_codes.UNAUTHORIZED)
 
             self.assertIn('Www-Authenticate', response.headers)
             self.assertEqual('Basic realm="Secure Area"', response.headers['Www-Authenticate'])
 
             self.assertDebugResponseCode(
-                'simple_xml?{}'.format(param), http_codes.OK, headers={'Frontik-Debug-Auth': 'user:god'}
+                'simple?{}'.format(param), http_codes.OK, headers={'Frontik-Debug-Auth': 'user:god'}
             )
 
             self.assertDebugResponseCode(
-                'simple_xml?{}'.format(param), http_codes.OK,
+                'simple?{}'.format(param), http_codes.OK,
                 headers={'Frontik-Debug-Auth': 'user:god', 'Authorization': 'Basic bad'}
             )
 
     def test_debug_by_header_with_wrong_header(self):
         for value in ('', 'not:pass', 'user: god', self.DEBUG_BASIC_AUTH):
             response = self.assertDebugResponseCode(
-                'simple_xml?debug', http_codes.UNAUTHORIZED, headers={'Frontik-Debug-Auth': value}
+                'simple?debug', http_codes.UNAUTHORIZED, headers={'Frontik-Debug-Auth': value}
             )
 
             self.assertIn('Www-Authenticate', response.headers)
@@ -148,10 +148,10 @@ class DebugTestCase(unittest.TestCase):
     def test_debug_by_cookie(self):
         for param in ('debug', 'noxsl', 'notpl'):
             self.assertDebugResponseCode(
-                'simple_xml', http_codes.UNAUTHORIZED, headers={'Cookie': '{}=true'.format(param)}
+                'simple', http_codes.UNAUTHORIZED, headers={'Cookie': '{}=true'.format(param)}
             )
 
             self.assertDebugResponseCode(
-                'simple_xml', http_codes.OK,
+                'simple', http_codes.OK,
                 headers={'Cookie': '{}=true;'.format(param), 'Authorization': self.DEBUG_BASIC_AUTH}
             )
