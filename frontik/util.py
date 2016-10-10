@@ -110,7 +110,7 @@ def make_mfd(fields, files):
     files :: { field_name: [{ "filename" : fn, "body" : bytes }]}
     """
     def addslashes(text):
-        for s in (b'\\', b'"', b"'"):
+        for s in (b'\\', b'"'):
             if s in text:
                 text = text.replace(s, b'\\' + s)
         return text
@@ -128,7 +128,7 @@ def make_mfd(fields, files):
         if content_type == 'application/unknown':
             content_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
         else:
-            content_type = content_type.replace('\n\r', ' ')
+            content_type = content_type.replace('\n', ' ').replace('\r', ' ')
 
         name = addslashes(any_to_bytes(name))
         filename = addslashes(any_to_bytes(filename))
