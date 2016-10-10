@@ -109,21 +109,33 @@ def make_mfd(fields, files):
     fields :: { field_name : field_value }
     files :: { field_name: [{ "filename" : fn, "body" : bytes }]}
     """
+    def addslashes(text):
+        for s in (b'\\', b'"', b"'"):
+            if s in text:
+                text = text.replace(s, b'\\' + s)
+        return text
 
     def create_field(name, data):
+        name = addslashes(any_to_bytes(name))
+
         return [
             b'--', BOUNDARY,
-            b'\r\nContent-Disposition: form-data; name="', any_to_bytes(name),
+            b'\r\nContent-Disposition: form-data; name="', name,
             b'"\r\n\r\n', any_to_bytes(data), b'\r\n'
         ]
 
-    def create_file_field(name, filename, data):
-        content_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+    def create_file_field(name, filename, data, content_type):
+        if content_type == 'application/unknown':
+            content_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+        else:
+            content_type = content_type.replace('\n\r', ' ')
+
+        name = addslashes(any_to_bytes(name))
+        filename = addslashes(any_to_bytes(filename))
 
         return [
             b'--', BOUNDARY,
-            b'\r\nContent-Disposition: form-data; name="', any_to_bytes(name),
-            b'"; filename="', any_to_bytes(filename),
+            b'\r\nContent-Disposition: form-data; name="', name, b'"; filename="', filename,
             b'"\r\nContent-Type: ', any_to_bytes(content_type),
             b'\r\n\r\n', any_to_bytes(data), b'\r\n'
         ]
@@ -143,7 +155,9 @@ def make_mfd(fields, files):
 
     for name, files in iteritems(files):
         for file in files:
-            body.extend(create_file_field(name, file['filename'], file['body']))
+            body.extend(create_file_field(
+                name, file['filename'], file['body'], file.get('content_type', 'application/unknown')
+            ))
 
     body.extend([b'--', BOUNDARY, b'--\r\n'])
     content_type = b'multipart/form-data; boundary=' + BOUNDARY
