@@ -1,9 +1,12 @@
 # coding=utf-8
 
-from collections import OrderedDict
 import unittest
+from collections import OrderedDict
 
-from frontik.util import make_qs, make_url
+from tornado.escape import to_unicode
+from tornado.httputil import HTTPFile, parse_body_arguments
+
+from frontik.util import any_to_bytes, any_to_unicode, make_mfd, make_qs, make_url
 
 
 class TestUtil(unittest.TestCase):
@@ -60,3 +63,55 @@ class TestUtil(unittest.TestCase):
         qs1_list = sorted(qs1.split('&'))
         qs2_list = sorted(qs2.split('&'))
         self.assertEqual(qs1_list, qs2_list)
+
+    def test_any_to_unicode(self):
+        self.assertEqual(any_to_unicode(5), u'5')
+        self.assertEqual(any_to_unicode(None), u'None')
+        self.assertEqual(any_to_unicode(u'тест'), u'тест')
+        self.assertEqual(any_to_unicode(u'тест'.encode('utf-8')), u'тест')
+
+    def test_any_to_bytes(self):
+        self.assertEqual(any_to_bytes(5), b'5')
+        self.assertEqual(any_to_bytes(None), b'None')
+        self.assertEqual(any_to_bytes(u'тест'), u'тест'.encode('utf-8'))
+        self.assertEqual(any_to_bytes(u'тест'.encode('utf-8')), u'тест'.encode('utf-8'))
+
+    def test_make_mfd(self):
+        args, files = {}, {}
+        body, content_type = make_mfd(
+            {
+                'arg1': 'value1'
+            },
+            {
+                'file0': [HTTPFile(filename='file0.rar', body='ARCHIVE', content_type='some/type\r\n\r\nBAD DATA')],
+                'file1': [HTTPFile(filename='file1.png', body='CAT PICTURE', content_type='image/png')],
+                'file2': [HTTPFile(filename='file2.txt', body='TEXT')],
+                'file3': [
+                    HTTPFile(filename=r'file3-"part1".unknown', body='BODY1'),
+                    HTTPFile(filename=r'file3-\part2\.unknown', body='BODY2'),
+                ],
+            }
+        )
+
+        parse_body_arguments(to_unicode(content_type), body, args, files)
+
+        self.assertEqual(args['arg1'], [b'value1'])
+
+        self.assertEqual(files['file0'][0]['filename'], 'file0.rar')
+        self.assertEqual(files['file0'][0]['body'], b'ARCHIVE')
+        self.assertEqual(files['file0'][0]['content_type'], 'some/type    BAD DATA')
+
+        self.assertEqual(files['file1'][0]['filename'], 'file1.png')
+        self.assertEqual(files['file1'][0]['body'], b'CAT PICTURE')
+        self.assertEqual(files['file1'][0]['content_type'], 'image/png')
+
+        self.assertEqual(files['file2'][0]['filename'], 'file2.txt')
+        self.assertEqual(files['file2'][0]['body'], b'TEXT')
+        self.assertEqual(files['file2'][0]['content_type'], 'text/plain')
+
+        self.assertEqual(files['file3'][0]['filename'], r'file3-"part1".unknown')
+        self.assertEqual(files['file3'][0]['body'], b'BODY1')
+        self.assertEqual(files['file3'][0]['content_type'], 'application/octet-stream')
+        self.assertEqual(files['file3'][1]['filename'], r'file3-\part2\.unknown')
+        self.assertEqual(files['file3'][1]['body'], b'BODY2')
+        self.assertEqual(files['file3'][1]['content_type'], 'application/octet-stream')
