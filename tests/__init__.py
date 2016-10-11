@@ -1,13 +1,8 @@
 # coding=utf-8
 
 import os
-from unittest import skipIf
-
-from frontik.compat import PY3
 
 FRONTIK_ROOT = os.path.dirname(os.path.dirname(__file__))
-
-py3_skip = skipIf(PY3, 'test fails on Python 3')
 
 
 def tearDownModule():
