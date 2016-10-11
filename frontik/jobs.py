@@ -20,35 +20,15 @@ class IOLoopExecutor(object):
         return future
 
 
-# Support old interface until all usages are gone
-class LegacyMixin(object):
-    def add_job(self, func, cb, exception_cb):
-        def job_callback(future):
-            if future.exception() is not None:
-                exception_cb(future.exception())
-            else:
-                cb(future.result())
-
-        IOLoop.instance().add_future(self.submit(func), job_callback)
-
-
-class LegacyIOLoopExecutor(IOLoopExecutor, LegacyMixin):
-    pass
-
-
-class LegacyThreadPoolExecutor(ThreadPoolExecutor, LegacyMixin):
-    pass
-
-
 _threadpool_executor = None
-_ioloop_executor = LegacyIOLoopExecutor()
+_ioloop_executor = IOLoopExecutor()
 
 
 def get_executor(executor_type):
     if executor_type == 'threaded':
         global _threadpool_executor
         if _threadpool_executor is None:
-            _threadpool_executor = LegacyThreadPoolExecutor(options.executor_pool_size)
+            _threadpool_executor = ThreadPoolExecutor(options.executor_pool_size)
         return _threadpool_executor
     elif executor_type == 'ioloop':
         return _ioloop_executor
