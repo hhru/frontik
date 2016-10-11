@@ -12,13 +12,19 @@ from tornado.concurrent import Future
 from tornado.curl_httpclient import CurlAsyncHTTPClient
 from tornado.ioloop import IOLoop
 from tornado.options import options
+from tornado.httpclient import HTTPError
 
 from frontik.async import AsyncGroup
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.compat import iteritems
 from frontik.handler_debug import PageHandlerDebug, response_from_debug
-from frontik.loggers.request import logger as request_logger
 import frontik.util
+
+
+class HTTPResponseFuture(Future):
+    def __init__(self, fail_on_error=False):
+        super(HTTPResponseFuture, self).__init__()
+        self.fail_on_error = fail_on_error
 
 
 class HttpClient(object):
@@ -54,7 +60,7 @@ class HttpClient(object):
                 callback=None, error_callback=None, follow_redirects=True, labels=None,
                 add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
-        future = Future()
+        future = HTTPResponseFuture()
         request = frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout, follow_redirects)
         request._frontik_labels = labels
 
@@ -86,7 +92,7 @@ class HttpClient(object):
                  callback=None, error_callback=None, follow_redirects=True, content_type=None, labels=None,
                  add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
-        future = Future()
+        future = HTTPResponseFuture()
         request = frontik.util.make_post_request(
             url, data, headers, files, content_type, connect_timeout, request_timeout, follow_redirects
         )
@@ -104,7 +110,7 @@ class HttpClient(object):
                 callback=None, error_callback=None, content_type=None, labels=None,
                 add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
-        future = Future()
+        future = HTTPResponseFuture()
         request = frontik.util.make_put_request(url, data, headers, content_type, connect_timeout, request_timeout)
         request._frontik_labels = labels
 
@@ -120,7 +126,7 @@ class HttpClient(object):
                    callback=None, error_callback=None, content_type=None, labels=None,
                    add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
-        future = Future()
+        future = HTTPResponseFuture()
         request = frontik.util.make_delete_request(url, data, headers, content_type, connect_timeout, request_timeout)
         request._frontik_labels = labels
 
@@ -269,7 +275,29 @@ class RequestResult(object):
         self.exception = exception
 
 
-def _parse_response(response, logger=request_logger, parser=None, response_type=None):
+def _check_response_request_id(request, response):
+    response_req_id = response.headers.get('X-Request-Id')
+    if response_req_id is None:
+        return
+
+    cache_control = response.headers.get('Cache-control')
+    if cache_control is not None and 'no-store' not in cache_control.lower():
+        # consider this response as returned from cache, thus response request_id will not match request request_id
+        return
+
+    expires = response.headers.get('Expires')
+    if expires is not None and ' 1970 ' not in expires:
+        # not RFC at all, but better not to check request_id at all than check cached request_id
+        return
+
+    request_req_id = request.headers['X-Request-Id']
+    if response_req_id != request_req_id:
+        response.code = 599
+        message = 'response request id {0} != {1}'.format(response_req_id, request_req_id)
+        response.error = HTTPError(599, message, response)
+
+
+def _parse_response(response, logger, parser=None, response_type=None):
     try:
         return parser(response.body)
     except:
