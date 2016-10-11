@@ -1,3 +1,11 @@
+frontik (2.26.4) unstable; urgency=low
+
+  * HH-63215 add tests and fix content_type escaping for make_mfd
+  * HH-63215 sanitize mfd field names and filenames
+  * HH-63215 fix py3 compatibility in multipart form data generation
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 11 Oct 2016 12:21:23 +0300
+
 frontik (2.26.3) unstable; urgency=low
 
   * HH-62844 fix producers backwards compatibility and review comments
