@@ -47,8 +47,6 @@ matrix:
       language: generic
       env: TORNADO_VERSION=HH ; WITH_RAVEN=1
       before_install:
-        - brew update
-        - brew install python
         - easy_install pip
         - pip install virtualenv
         - virtualenv venv -p python2
