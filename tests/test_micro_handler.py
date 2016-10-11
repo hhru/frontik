@@ -9,12 +9,15 @@ from .instances import frontik_test_app
 
 class TestMicroHandler(unittest.TestCase):
     def test_simple(self):
-        json = frontik_test_app.get_page_json('micro_handler')
+        json = frontik_test_app.get_page_json('micro_handler?future_execution_time=0.5')
 
         self.assertEqual(json['put']['error'], 'forbidden')
         self.assertEqual(json['post'], {'POST': 'post'})
         self.assertEqual(json['preprocessor'], True)
         self.assertEqual(json['delete'], None)
+
+        future_result = json['future']
+        self.assertEqual(future_result, 'future_result')
 
     def test_fail_on_error(self):
         response = frontik_test_app.get_page('micro_handler?fail_on_error=true')
