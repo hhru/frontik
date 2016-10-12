@@ -1,3 +1,11 @@
+frontik (2.26.5) unstable; urgency=low
+
+  * HH-63342 update .travis.yml
+  * HH-63342 move Doc.put(str) logging
+  * HH-63342 remove legacy frontik.jobs interface
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 12 Oct 2016 11:37:38 +0300
+
 frontik (2.26.4) unstable; urgency=low
 
   * HH-63215 add tests and fix content_type escaping for make_mfd
