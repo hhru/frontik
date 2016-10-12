@@ -37,15 +37,6 @@ class Doc(object):
         self.data = []
 
     def put(self, chunk):
-        if isinstance(chunk, basestring_type):
-            self.logger.warning('putting strings to Doc is deprecated')
-            try:
-                from inspect import getframeinfo, stack
-                caller = getframeinfo(stack()[1][0])
-                self.logger.warning('caller: %s:%d', caller.filename, caller.lineno)
-            except:
-                pass
-
         if isinstance(chunk, list):
             self.data.extend(chunk)
         else:
@@ -102,6 +93,12 @@ class Doc(object):
         for chunk_element in chunk_to_element(self.data):
 
             if isinstance(chunk_element, basestring_type):
+                self.logger.warning('putting strings to Doc is deprecated')
+                try:
+                    self.logger.warning('chunk: %s...', chunk_element[:10])
+                except:
+                    pass
+
                 if last_element is not None:
                     if last_element.tail:
                         last_element.tail += chunk_element
