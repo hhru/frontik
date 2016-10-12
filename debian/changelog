@@ -1,3 +1,11 @@
+frontik (2.26.5.1) unstable; urgency=low
+
+  * HH-63342 update .travis.yml
+  * HH-63342 move Doc.put(str) logging
+  * HH-63342 remove legacy frontik.jobs interface
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 12 Oct 2016 11:44:24 +0300
+
 frontik (2.26.5) unstable; urgency=low
 
   * HH-63342 update .travis.yml
