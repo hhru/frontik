@@ -1,3 +1,10 @@
+frontik (2.26.6) unstable; urgency=low
+
+  * HH-63448 add future_fold and its two aliases - future_map,
+    future_map_exception
+
+ -- Automated Build <n.kovalev@hh.ru>  Tue, 18 Oct 2016 14:52:33 +0300
+
 frontik (2.26.5.1) unstable; urgency=low
 
   * HH-63342 update .travis.yml
