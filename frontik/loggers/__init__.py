@@ -1,11 +1,10 @@
 # coding=utf-8
 
 import logging
-from logging.handlers import SysLogHandler, WatchedFileHandler
+from logging.handlers import SysLogHandler
 import socket
 
 from tornado.log import LogFormatter
-import tornado.options
 from tornado.options import options
 
 from frontik.loggers import sentry
@@ -56,9 +55,7 @@ def bootstrap_core_logging():
     if options.stderr_log:
         handler = logging.StreamHandler()
         handler.setFormatter(
-            LogFormatter(
-                fmt=tornado.options.options.stderr_format, datefmt=tornado.options.options.stderr_dateformat
-            )
+            LogFormatter(fmt=options.stderr_format, datefmt=options.stderr_dateformat)
         )
 
         handler.setLevel(level)
@@ -71,11 +68,12 @@ def bootstrap_core_logging():
             syslog_address = options.syslog_address
 
         try:
+            syslog_formatter = logging.Formatter('{}: {}'.format(options.app, options.logformat))
             syslog_handler = SysLogHandler(
                 facility=SysLogHandler.facility_names[options.syslog_facility],
                 address=syslog_address
             )
-            syslog_handler.setFormatter(logging.Formatter(options.logformat))
+            syslog_handler.setFormatter(syslog_formatter)
             syslog_handler.setLevel(level)
             root_logger.addHandler(syslog_handler)
         except socket.error:
