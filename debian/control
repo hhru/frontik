@@ -11,8 +11,8 @@ Build-Depends:
   python3-setuptools,
   python-simplejson,
   python3-simplejson,
-  python-tornado (<< 4),
-  python3-tornado (<< 4),
+  python-tornado (= 4.5.3+hh1),
+  python3-tornado (= 4.5.3+hh1),
   python-jinja2,
   python3-jinja2,
   libcurl3,
@@ -43,7 +43,7 @@ Depends:
   python-pycurl (>= 7.19.5),
   python-lxml,
   python-simplejson,
-  python-tornado (<< 4),
+  python-tornado (= 4.5.3+hh1),
   python-jinja2,
   python-concurrent.futures,
 Suggests:
@@ -61,7 +61,7 @@ Depends:
   python3-pycurl,
   python3-lxml,
   python3-simplejson,
-  python3-tornado (<< 4),
+  python3-tornado (= 4.5.3+hh1),
   python3-jinja2,
 Suggests:
   python3-raven (>= 5.2.0+hh1),
