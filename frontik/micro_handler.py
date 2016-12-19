@@ -67,7 +67,7 @@ class MicroHandler(BaseHandler):
         return future
 
     def __init__(self, application, request, logger, request_id=None, **kwargs):
-        super(MicroHandler, self).__init__(application, request, logger, request_id, **kwargs)
+        super(MicroHandler, self).__init__(application, request, logger, **kwargs)
 
         self._METHODS_MAPPING = {
         }
