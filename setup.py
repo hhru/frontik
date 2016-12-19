@@ -36,7 +36,7 @@ install_requires = [
     'lxml >= 2.3.2',
     'pycurl >= 7.19.3',
     'simplejson >= 2.3.2',
-    'tornado >= 3.2.2, < 4',
+    'tornado >= 4.5, < 5',
 ]
 
 if sys.version_info < (3, 2):
@@ -68,7 +68,7 @@ setup(
         'tornado-httpclient-mock',
     ],
     dependency_links=[
-        'https://github.com/hhru/tornado/archive/master.zip',
+        'https://github.com/tornadoweb/tornado/archive/tornado4.zip',
     ],
     extras_require={
         'sentry': ['raven']

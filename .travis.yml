@@ -12,7 +12,7 @@ matrix:
     - os: linux
       dist: trusty
       python: "2.7"
-      env: TORNADO_VERSION=3.2.2 ; WITH_RAVEN=1
+      env: TORNADO_VERSION=4.5.3 ; WITH_RAVEN=1
     - os: linux
       dist: trusty
       python: "3.4"
@@ -24,7 +24,7 @@ matrix:
     - os: linux
       dist: trusty
       python: "3.4"
-      env: TORNADO_VERSION=3.2.2 ; WITH_RAVEN=1
+      env: TORNADO_VERSION=4.5.3 ; WITH_RAVEN=1
     - os: linux
       dist: trusty
       python: "3.5"
@@ -36,7 +36,7 @@ matrix:
     - os: linux
       dist: trusty
       python: "3.5"
-      env: TORNADO_VERSION=3.2.2 ; WITH_RAVEN=1
+      env: TORNADO_VERSION=4.5.3 ; WITH_RAVEN=1
     - os: linux
       dist: trusty
       python: "3.6"
@@ -44,7 +44,7 @@ matrix:
     - os: linux
       dist: trusty
       python: "3.6"
-      env: TORNADO_VERSION=3.2.2 ; WITH_RAVEN=1
+      env: TORNADO_VERSION=4.5.3 ; WITH_RAVEN=1
     - os: osx
       osx_image: xcode7.3
       language: generic
@@ -55,7 +55,7 @@ matrix:
         - virtualenv venv -p python2
         - source venv/bin/activate
 install:
-  - if [[ $TORNADO_VERSION == 'HH' ]]; then pip install https://github.com/hhru/tornado/archive/master.zip; else pip install tornado==$TORNADO_VERSION; fi
+  - if [[ $TORNADO_VERSION == 'HH' ]]; then pip install https://github.com/hhru/tornado/archive/tornado4.zip; else pip install tornado==$TORNADO_VERSION; fi
   - if [[ $WITH_RAVEN == 1 ]]; then pip install "raven < 5.2"; fi
   - python setup.py install
   - mkdir ~/.python-eggs
