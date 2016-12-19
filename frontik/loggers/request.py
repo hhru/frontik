@@ -35,8 +35,8 @@ class RequestLogger(logging.LoggerAdapter):
     def __init__(self, request, request_id):
         self._page_handler_name = None
         self._last_stage_time = self._start_time = request._start_time
-        self._handlers = []
         self.stages = []
+        self.request_id = request_id
 
         super(RequestLogger, self).__init__(ProxyLogger('frontik.handler'), {'request_id': request_id})
 
