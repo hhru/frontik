@@ -378,6 +378,10 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def finish(self, chunk=None):
         self.log.stage_tag('postprocess')
+
+        if self._status_code in (204, 304) or (100 <= self._status_code < 200):
+            chunk = None
+
         super(BaseHandler, self).finish(chunk)
         self.cleanup()
 

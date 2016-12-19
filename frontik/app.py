@@ -86,13 +86,26 @@ class FrontikApplication(Application):
 
         self.transforms.insert(0, partial(DebugTransform, self))
 
-    def __call__(self, request):
+    def find_handler(self, request, **kwargs):
         request_id = request.headers.get('X-Request-Id')
         if request_id is None:
             request_id = FrontikApplication.next_request_id()
 
-        with StackContext(partial(RequestContext, {'request_id': request_id})):
-            return super(FrontikApplication, self).__call__(request)
+        context = partial(RequestContext, {'request_id': request_id})
+
+        def wrapped_in_context(func):
+            def wrapper(*args, **kwargs):
+                with StackContext(context):
+                    return func(*args, **kwargs)
+            return wrapper
+
+        delegate = wrapped_in_context(super(FrontikApplication, self).find_handler)(request, **kwargs)
+        delegate.headers_received = wrapped_in_context(delegate.headers_received)
+        delegate.data_received = wrapped_in_context(delegate.data_received)
+        delegate.finish = wrapped_in_context(delegate.finish)
+        delegate.on_connection_close = wrapped_in_context(delegate.on_connection_close)
+
+        return delegate
 
     def reverse_url(self, name, *args, **kwargs):
         return self.router.reverse_url(name, *args, **kwargs)
