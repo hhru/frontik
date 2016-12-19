@@ -147,9 +147,6 @@ class RegexpDispatcher(object):
                 extend_request_arguments(request, match)
                 try:
                     return handler(application, request, logger, **kwargs)
-                except tornado.web.HTTPError as e:
-                    logger.exception('tornado error: %s in %r', e, handler)
-                    return ErrorHandler(application, request, logger, status_code=e.status_code, **kwargs)
                 except Exception as e:
                     logger.exception('error handling request: %s in %r', e, handler)
                     return ErrorHandler(application, request, logger, status_code=500, **kwargs)
@@ -164,7 +161,7 @@ class RegexpDispatcher(object):
 def app_dispatcher(tornado_app, request, **kwargs):
     request_id = request.headers.get('X-Request-Id', FrontikApplication.next_request_id())
     request_logger = RequestLogger(request, request_id)
-    return tornado_app.dispatcher(tornado_app, request, request_logger, request_id=request_id, **kwargs)
+    return tornado_app.dispatcher(tornado_app, request, request_logger, **kwargs)
 
 
 class FrontikApplication(tornado.web.Application):
