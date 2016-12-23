@@ -32,6 +32,7 @@ class TestHook(test):
         logging.disable(logging.CRITICAL)
         nose.main(argv=['tests', '-v'])
 
+
 install_requires = [
     'jinja2 >= 2.6',
     'lxml >= 2.3.2',
@@ -65,7 +66,7 @@ setup(
     test_suite='tests',
     tests_require=[
         'nose',
-        'pycodestyle == 2.0.0',
+        'pycodestyle == 2.2.0',
         'requests >= 0.8.2',
         'lxml-asserts',
     ],
