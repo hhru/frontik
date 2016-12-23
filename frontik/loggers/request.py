@@ -14,6 +14,7 @@ class ContextFilter(logging.Filter):
         record.name = '.'.join(filter(None, [record.name, handler_name, request_id]))
         return True
 
+
 logger.addFilter(ContextFilter())
 
 

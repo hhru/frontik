@@ -13,4 +13,5 @@ def parse_version_from_changelog():
     except (IOError, AttributeError):
         return 'unknown_version'
 
+
 version = parse_version_from_changelog()
