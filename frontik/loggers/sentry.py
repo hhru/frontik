@@ -48,6 +48,7 @@ def bootstrap_logger(app):
 
     return logger_initializer
 
+
 if has_raven:
     class AsyncSentryClient(OriginalAsyncSentryClient):
 

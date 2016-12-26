@@ -99,6 +99,7 @@ def choose_boundary():
     """
     return _encode(uuid4().hex)
 
+
 BOUNDARY = choose_boundary()
 
 
