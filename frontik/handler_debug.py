@@ -258,6 +258,7 @@ def _exception_to_xml(exc_info, log=debug_log):
     exc_node.append(E.text(''.join(map(to_unicode, traceback.format_exception(*exc_info)))))
     return exc_node
 
+
 _format_number = '{:.4f}'.format
 
 

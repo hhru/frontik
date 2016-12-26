@@ -223,5 +223,6 @@ class FrontikApplication(tornado.web.Application):
         FrontikApplication.request_id += 1
         return str(FrontikApplication.request_id)
 
+
 # Temporary for backward compatibility
 App = FrontikApplication
