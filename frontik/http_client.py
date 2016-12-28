@@ -199,15 +199,16 @@ class HttpClient(object):
             if getattr(request, '_frontik_labels', None) is not None:
                 debug_extra['_labels'] = request._frontik_labels
 
-            self.handler.log.info(
-                'got {code}{size} {url} in {time:.2f}ms'.format(
-                    code=response.code,
-                    url=response.effective_url,
-                    size=' {0} bytes'.format(len(response.body)) if response.body is not None else '',
-                    time=response.request_time * 1000
-                ),
-                extra=debug_extra
+            log_message = 'got {code}{size} {url} in {time:.2f}ms'.format(
+                code=response.code,
+                url=response.effective_url,
+                size=' {0} bytes'.format(len(response.body)) if response.body is not None else '',
+                time=response.request_time * 1000
             )
+
+            log_method = self.handler.log.warn if response.code >= 500 else self.handler.log.info
+            log_method(log_message, extra=debug_extra)
+
         except Exception:
             self.handler.log.exception('Cannot log response info')
 
