@@ -16,7 +16,7 @@ class IOLoopExecutor(object):
         def _cb():
             chain_future(self._executor.submit(fn, *args, **kwargs), future)
 
-        IOLoop.instance().add_callback(_cb)
+        IOLoop.current().add_callback(_cb)
         return future
 
 
