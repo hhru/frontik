@@ -58,7 +58,7 @@ class AsyncGroup(object):
     def try_finish_async(self):
         """Executes finish_cb in next IOLoop iteration"""
         if self._counter == 0:
-            IOLoop.instance().add_callback(self.finish)
+            IOLoop.current().add_callback(self.finish)
 
     def _inc(self):
         assert not self._finish_cb_called
