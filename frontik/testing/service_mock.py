@@ -10,15 +10,15 @@ import json
 from logging import getLogger
 import sys
 
+import tornado.httpserver
+import tornado.options
+import tornado.web
 from lxml import etree
 from tornado.escape import to_unicode
 from tornado.httpclient import HTTPResponse
-import tornado.httpserver
 from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
-import tornado.options
 from tornado.util import raise_exc_info
-import tornado.web
 
 import frontik.app
 from frontik.compat import basestring_type, iteritems, PY3, unquote_plus, urlparse
@@ -78,23 +78,18 @@ def route(url, cookies='', method='GET'):
     return raw_route(parsed_url.path, parsed_url.query, cookies, method)
 
 
-def route_less_or_equal_than(a, b):
-    # ignore cookies and headers for now
-    return a.method == b.method and url_less_or_equal_than(a, b)
+def routes_match(a, b):
+    if a.method != b.method:
+        return False
 
-
-def url_less_or_equal_than(a, b):
     if a.path.strip('/') != b.path.strip('/'):
         return False
-    return query_less_than_or_equal(a.query, b.query)
 
-
-def query_less_than_or_equal(a, b):
-    a, b = map(partial(urlparse.parse_qs, keep_blank_values=True), (a, b))
-    for i in a:
-        bi = b.get(i)
-        if bi is None or bi != a[i]:
+    a_qs, b_qs = map(partial(urlparse.parse_qs, keep_blank_values=True), (a.query, b.query))
+    for param, a_value in iteritems(a_qs):
+        if param not in b_qs or b_qs[param] != a_value:
             return False
+
     return True
 
 
@@ -106,7 +101,7 @@ class ServiceMock(object):
         route_of_incoming_request = route(req.url, method=req.method)
         for r in self.routes:
             destination_route = r if isinstance(r, raw_route) else route(r)
-            if route_less_or_equal_than(destination_route, route_of_incoming_request):
+            if routes_match(destination_route, route_of_incoming_request):
                 result = self.get_result(req, self.routes[r])
                 result.request = req
                 return result
