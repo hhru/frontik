@@ -1,3 +1,9 @@
+frontik (2.26.11) unstable; urgency=low
+
+  * HH-64453 change logging level on warn when response is failed
+
+ -- Automated Build <a.kapitonenko@hh.ru>  Tue, 10 Jan 2017 15:22:23 +0300
+
 frontik (2.26.10) unstable; urgency=low
 
   * HH-65293 fix pycodestyle issues + up version
