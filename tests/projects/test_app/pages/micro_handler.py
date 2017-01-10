@@ -73,5 +73,5 @@ class Page(MicroHandler):
         def _finish_future():
             future.set_result(result)
 
-        self.add_timeout(IOLoop.instance().time() + delay, _finish_future)
+        self.add_timeout(IOLoop.current().time() + delay, _finish_future)
         return future

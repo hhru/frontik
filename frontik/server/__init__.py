@@ -66,15 +66,12 @@ def run_server(app):
     — launch autoreload on file changes
     """
 
-    def ioloop_is_running():
-        return tornado.ioloop.IOLoop.instance()._running
-
     try:
         log.info('starting server on %s:%s', options.host, options.port)
         http_server = tornado.httpserver.HTTPServer(app, xheaders=options.xheaders)
         http_server.listen(options.port, options.host)
 
-        io_loop = tornado.ioloop.IOLoop.instance()
+        io_loop = tornado.ioloop.IOLoop.current()
 
         if options.autoreload:
             tornado.autoreload.start(io_loop, 1000)
@@ -91,6 +88,9 @@ def run_server(app):
             io_loop.add_callback_from_signal(server_stop)
             signal.signal(signal.SIGTERM, signal.SIG_IGN)
 
+        def ioloop_is_running():
+            return io_loop._running
+
         def server_stop():
             http_server.stop()
 
@@ -100,10 +100,10 @@ def run_server(app):
                 def ioloop_stop():
                     if ioloop_is_running():
                         log.info('stopping IOLoop')
-                        tornado.ioloop.IOLoop.instance().stop()
+                        io_loop.stop()
                         log.info('stopped')
 
-                tornado.ioloop.IOLoop.instance().add_timeout(time.time() + options.stop_timeout, ioloop_stop)
+                io_loop.add_timeout(time.time() + options.stop_timeout, ioloop_stop)
 
         if tornado.options.options.log_blocked_ioloop_timeout > 0:
             io_loop.set_blocking_signal_threshold(tornado.options.options.log_blocked_ioloop_timeout, log_ioloop_block)
@@ -137,7 +137,7 @@ def main(config_file=None):
 
     try:
         tornado_app = application(**options.as_dict())
-        ioloop = tornado.ioloop.IOLoop.instance()
+        ioloop = tornado.ioloop.IOLoop.current()
 
         def _async_init_cb():
             def _run_server_cb(future):

@@ -28,9 +28,7 @@ class TestHook(test):
 
     def run_tests(self):
         import nose
-        import logging
-        logging.disable(logging.CRITICAL)
-        nose.main(argv=['tests', '-v'])
+        nose.main(argv=['nosetests', 'tests/', '-v', '--logging-clear-handlers'])
 
 
 install_requires = [
@@ -56,7 +54,7 @@ setup(
         'test': TestHook
     },
     packages=[
-        'frontik', 'frontik/loggers', 'frontik/producers', 'frontik/server', 'frontik/testing', 'frontik/testing/pages'
+        'frontik', 'frontik/loggers', 'frontik/producers', 'frontik/server', 'frontik/testing'
     ],
     scripts=['scripts/frontik'],
     package_data={

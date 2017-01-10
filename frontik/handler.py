@@ -139,19 +139,19 @@ class BaseHandler(tornado.web.RequestHandler):
 
     @staticmethod
     def add_callback(callback):
-        IOLoop.instance().add_callback(callback)
+        IOLoop.current().add_callback(callback)
 
     @staticmethod
     def add_timeout(deadline, callback):
-        return IOLoop.instance().add_timeout(deadline, callback)
+        return IOLoop.current().add_timeout(deadline, callback)
 
     @staticmethod
     def remove_timeout(timeout):
-        IOLoop.instance().remove_timeout(timeout)
+        IOLoop.current().remove_timeout(timeout)
 
     @staticmethod
     def add_future(future, callback):
-        IOLoop.instance().add_future(future, callback)
+        IOLoop.current().add_future(future, callback)
 
     # Requests handling
 
