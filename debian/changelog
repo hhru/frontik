@@ -1,3 +1,9 @@
+frontik (2.26.12) unstable; urgency=low
+
+  * HH-64453 change logging level on warn when response is failed
+
+ -- Automated Build <a.kapitonenko@hh.ru>  Tue, 10 Jan 2017 15:28:44 +0300
+
 frontik (2.26.11) unstable; urgency=low
 
   * HH-64453 change logging level on warn when response is failed
