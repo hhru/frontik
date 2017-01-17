@@ -36,7 +36,7 @@ class TestHook(test):
 install_requires = [
     'jinja2 >= 2.6',
     'lxml >= 2.3.2',
-    'pycurl >= 7.19.0',
+    'pycurl >= 7.19.5',
     'python-daemon',
     'simplejson >= 2.3.2',
     'tornado >= 3.2.2, < 4',
