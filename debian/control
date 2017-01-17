@@ -2,7 +2,7 @@ Source: frontik
 Section: python
 Priority: extra
 Maintainer: Andrey Sumin <an.sumin@hh.ru>
-Build-Depends: 
+Build-Depends:
   debhelper (>= 8),
   python,
   python-support,
@@ -14,7 +14,7 @@ Build-Depends:
   libcurl3 (=7.22.0-3ubuntu4.14+hh1) | libcurl3(=7.35.0-1ubuntu3~hh1),
   libcurl3-gnutls (=7.22.0-3ubuntu4.14+hh1) | libcurl3-gnutls(=7.35.0-1ubuntu3~hh1),
   libgnutls-dev,
-  python-pycurl,
+  python-pycurl (>= 7.19.5),
   python-lxml,
   libxml2-dev,
   libxslt1-dev,
@@ -35,7 +35,7 @@ Depends:
   python-simplejson,
   python-tornado (>= 3.2.2+hh7),
   python-jinja2,
-  python-pycurl,
+  python-pycurl (>= 7.19.5),
   python-daemon,
   python-concurrent.futures,
 Suggests:
