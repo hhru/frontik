@@ -103,7 +103,7 @@
                 <xsl:apply-templates select="request/params"/>
                 <xsl:apply-templates select="request/headers"/>
                 <xsl:apply-templates select="request/cookies"/>
-                <xsl:apply-templates select="response/headers"/>
+                <xsl:apply-templates select="response/headers" mode="response-headers"/>
             </div>
         </div>
     </xsl:template>
@@ -423,6 +423,17 @@
             <div class="delimeter">request body</div>
             <xsl:apply-templates select="param"/>
         </div>
+    </xsl:template>
+
+    <xsl:template match="headers" mode="response-headers">
+        <div class="headers">
+            <div class="delimeter"><xsl:value-of select="name(parent::*)"/> headers</div>
+            <xsl:apply-templates select="header" mode="response-headers"/>
+        </div>
+    </xsl:template>
+
+    <xsl:template match="header" mode="response-headers">
+        <div><xsl:value-of select="."/></div>
     </xsl:template>
 
     <xsl:template match="headers[header]">
