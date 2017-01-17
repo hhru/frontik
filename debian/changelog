@@ -1,3 +1,9 @@
+frontik (2.27.0) unstable; urgency=low
+
+  * HH-65479 require pycurl >= 7.19.5
+
+ -- Automated Build <n.kovalev@hh.ru>  Tue, 17 Jan 2017 10:53:46 +0300
+
 frontik (2.26.13) unstable; urgency=low
 
   * HH-65376 xheaders httpserver option
