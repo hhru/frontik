@@ -47,3 +47,34 @@ class TestHandler(unittest.TestCase):
     def test_delete_post_arguments(self):
         response = frontik_test_app.get_page('handler/delete', method=requests.delete)
         self.assertEqual(response.status_code, 400)
+
+    def test_finish_group_done_hook(self):
+        response = frontik_test_app.get_page('handler/finish_group_done_hook')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'content')
+        self.assertEqual(response.headers['X-Custom-Header'], 'value')
+
+        response = frontik_test_app.get_page('handler/finish_group_done_hook?exception_in_handler=true')
+        self.assertEqual(response.status_code, 500)
+        self.assertIn(b'500: Internal Server Error', response.content)
+        self.assertNotIn('X-Custom-Header', response.headers)
+
+        response = frontik_test_app.get_page('handler/finish_group_done_hook?exception_in_hook=true')
+        self.assertIn(b'400: Bad Request', response.content)
+        self.assertEqual(response.status_code, 400)
+        self.assertNotIn('X-Custom-Header', response.headers)
+
+    def test_before_finish_hook(self):
+        response = frontik_test_app.get_page('handler/before_finish_hook')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'content')
+        self.assertEqual(response.headers['X-Custom-Header'], 'value')
+
+        response = frontik_test_app.get_page('handler/before_finish_hook?exception_in_handler=true')
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.headers['X-Custom-Header'], 'value')
+
+        response = frontik_test_app.get_page('handler/before_finish_hook?exception_in_hook=true')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b'400: Bad Request', response.content)
+        self.assertNotIn('X-Custom-Header', response.headers)
