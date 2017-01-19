@@ -83,36 +83,11 @@ class Doc(object):
             elif isinstance(chunk, etree._Element):
                 yield chunk
 
-            elif isinstance(chunk, basestring_type):
-                yield chunk
-
             elif chunk is not None:
-                yield str(chunk)
+                raise ValueError('Unexpected value of type {} in doc'.format(type(chunk)))
 
-        last_element = None
         for chunk_element in chunk_to_element(self.data):
-
-            if isinstance(chunk_element, basestring_type):
-                self.logger.warning('putting strings to Doc is deprecated')
-                try:
-                    self.logger.warning('chunk: %s...', chunk_element[:10])
-                except:
-                    pass
-
-                if last_element is not None:
-                    if last_element.tail:
-                        last_element.tail += chunk_element
-                    else:
-                        last_element.tail = chunk_element
-                else:
-                    if res.text:
-                        res.text += chunk_element
-                    else:
-                        res.text = chunk_element
-
-            else:
-                res.append(chunk_element)
-                last_element = chunk_element
+            res.append(chunk_element)
 
         return res
 
