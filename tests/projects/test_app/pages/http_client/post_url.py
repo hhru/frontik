@@ -26,14 +26,10 @@ FILES = {
 
 class Page(frontik.handler.PageHandler):
     def get_page(self):
-
-        def callback_post(element, response):
-            self.doc.put(element.text)
-
-        self_uri = self.request.host + self.request.path
-        self.post_url(self_uri, data=FIELDS, files=FILES, callback=callback_post)
+        self.json.put(self.post_url(self.request.host + self.request.path, data=FIELDS, files=FILES))
 
     def post_page(self):
+        errors_count = 0
         body_parts = self.request.body.split(b'\r\n--')
 
         for part in body_parts:
@@ -46,9 +42,9 @@ class Page(frontik.handler.PageHandler):
                 name = any_to_unicode(field_part.group('name'))
 
                 if isinstance(FIELDS[name], list) and all(val != any_to_bytes(x) for x in FIELDS[name]):
-                    self.doc.put('BAD')
+                    errors_count += 1
                 elif not isinstance(FIELDS[name], list) and any_to_bytes(FIELDS[name]) != val:
-                    self.doc.put('BAD')
+                    errors_count += 1
 
             elif file_part:
                 val = file_part.group('value')
@@ -57,7 +53,9 @@ class Page(frontik.handler.PageHandler):
 
                 for file in FILES[name]:
                     if any_to_bytes(file['filename']) == filename and any_to_bytes(file['body']) != val:
-                        self.doc.put('BAD')
+                        errors_count += 1
 
             elif re.search(b'name=', part):
-                self.doc.put('BAD')
+                errors_count += 1
+
+        self.json.put({'errors_count': errors_count})

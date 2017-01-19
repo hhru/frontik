@@ -10,38 +10,38 @@ from .instances import frontik_test_app
 
 class TestHttpClient(unittest.TestCase):
     def test_post_url_simple(self):
-        xml = frontik_test_app.get_page_xml('http_client/post_simple')
-        self.assertEqual(xml.text, '42')
+        text = frontik_test_app.get_page_text('http_client/post_simple')
+        self.assertEqual(text, 'post_url success')
 
     def test_post_url_mfd(self):
         response = frontik_test_app.get_page('http_client/post_url')
         self.assertEqual(response.status_code, 200)
-        self.assertIsNone(etree.fromstring(utf8(response.content)).text)
+        self.assertEqual(response.content, b'{"errors_count": 0}')
 
     def test_delete_query_arguments(self):
         json = frontik_test_app.get_page_json('handler/delete')
         self.assertEqual(json['delete'], 'true')
 
     def test_fib0(self):
-        xml = frontik_test_app.get_page_xml('http_client/fibonacci?n=0')
-        self.assertEqual(xml.text, '1')
+        text = frontik_test_app.get_page_text('http_client/fibonacci?n=0')
+        self.assertEqual(text, '1')
 
     def test_fib2(self):
-        xml = frontik_test_app.get_page_xml('http_client/fibonacci?n=2')
-        self.assertEqual(xml.text, '2')
+        text = frontik_test_app.get_page_text('http_client/fibonacci?n=2')
+        self.assertEqual(text, '2')
 
     def test_fib6(self):
-        xml = frontik_test_app.get_page_xml('http_client/fibonacci?n=6')
-        self.assertEqual(xml.text, '13')
+        text = frontik_test_app.get_page_text('http_client/fibonacci?n=6')
+        self.assertEqual(text, '13')
 
     def test_timeout(self):
-        xml = frontik_test_app.get_page_xml('http_client/long_page_request')
-        self.assertEqual(xml.text, 'error')
+        json = frontik_test_app.get_page_json('http_client/long_page_request')
+        self.assertEqual(json, {'error_received': True})
 
     def test_parse_error(self):
         """ If json or xml parsing error occurs, we must send None into callback. """
-        xml = frontik_test_app.get_page_xml('http_client/parse_error')
-        self.assertEqual(xml.text, '4242')
+        text = frontik_test_app.get_page_text('http_client/parse_error')
+        self.assertEqual(text, 'Parse error occured')
 
     def test_parse_response(self):
         json = frontik_test_app.get_page_json('http_client/parse_response')

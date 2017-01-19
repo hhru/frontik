@@ -11,7 +11,7 @@ class Page(frontik.handler.PageHandler):
         self_uri = self.request.host + self.request.path
         invalid_xml = self.get_argument('invalid', 'false')
 
-        self.doc.put(Doc('a').put('aaa'))
+        self.doc.put(etree.fromstring('<a>aaa</a>'))
         self.doc.put(self.post_url(self_uri, data={'invalid': invalid_xml}))
         self.doc.put(Doc('c'))
 
