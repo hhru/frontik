@@ -68,7 +68,6 @@ class BaseHandler(tornado.web.RequestHandler):
 
         self._template_postprocessors = []
         self._early_postprocessors = []
-        self._late_postprocessors = []
         self._returned_methods = set()
 
         self._http_client = HttpClient(self, self.application.curl_http_client, self.modify_http_client_request)
@@ -355,17 +354,9 @@ class BaseHandler(tornado.web.RequestHandler):
             self.active_limit.release()
 
     def finish(self, chunk=None):
-        def _finish_with_async_hook():
-            self.log.stage_tag('postprocess')
-            super(BaseHandler, self).finish(chunk)
-            self.cleanup()
-
-        try:
-            self._call_postprocessors(self._late_postprocessors, _finish_with_async_hook)
-        except:
-            self.log.exception('error during late postprocessing stage, finishing with an exception')
-            self._status_code = 500
-            _finish_with_async_hook()
+        self.log.stage_tag('postprocess')
+        super(BaseHandler, self).finish(chunk)
+        self.cleanup()
 
     def flush(self, include_footers=False, **kwargs):
         self.log.stage_tag('finish')
@@ -444,9 +435,6 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def add_early_postprocessor(self, postprocessor):
         self._early_postprocessors.append(postprocessor)
-
-    def add_late_postprocessor(self, postprocessor):
-        self._late_postprocessors.append(postprocessor)
 
     # Producers
 
