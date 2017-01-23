@@ -387,8 +387,11 @@ class BaseHandler(tornado.web.RequestHandler):
                     'code': self._status_code
                 }
 
+                response_headers_with_cookies = self._generate_headers().splitlines()
+                response_headers_with_cookies = filter(None, response_headers_with_cookies)
                 res = self.debug.get_debug_page(
-                    self._status_code, response_headers, original_response, self.log.get_current_total()
+                    self._status_code, response_headers_with_cookies,
+                    original_response, self.log.get_current_total()
                 )
 
                 if self.debug.debug_mode.inherited:
