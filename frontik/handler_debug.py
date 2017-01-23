@@ -408,7 +408,10 @@ class PageHandlerDebug(object):
             _cookies_to_xml(self.handler.request.headers)
         ))
 
-        debug_log_data.append(E.response(_headers_to_xml(response_headers)))
+        headers_node = E.headers()
+        for header in response_headers:
+            headers_node.append(E.header(to_unicode(header)))
+        debug_log_data.append(E.response(headers_node))
 
         if getattr(self.handler, "_response_size", None) is not None:
             debug_log_data.set("response-size", str(self.handler._response_size))
