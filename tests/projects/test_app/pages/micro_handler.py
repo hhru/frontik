@@ -1,6 +1,8 @@
 # coding=utf-8
 
-from tornado.concurrent import Future
+import sys
+
+from tornado.concurrent import Future, TracebackFuture
 from tornado.ioloop import IOLoop
 
 from frontik.handler import HTTPError
@@ -18,15 +20,18 @@ def get_page(handler, callback):
 class Page(MicroHandler):
     @MicroHandler.add_preprocessor(get_page)
     def get_page(self):
-        fail_on_error = self.get_argument('fail_on_error', 'false') == 'true'
+        fail_on_error_request = self.get_argument('fail_on_error_request', 'false') == 'true'
+        fail_future = self.get_argument('fail_future', 'false') == 'true'
 
-        future_execution_time = float(self.get_argument('future_execution_time', 1.0))
+        if self.get_argument('return_none', 'false') == 'true':
+            return
 
         return {
+            'get': self.GET(self.request.host, self.request.path, data={'return_none': 'true'}),
             'post': self.POST(self.request.host, self.request.path, data={'param': 'post'}),
-            'put': self.PUT(self.request.host, self.request.path + '?code=401', fail_on_error=fail_on_error),
+            'put': self.PUT(self.request.host, self.request.path + '?code=401', fail_on_error=fail_on_error_request),
             'delete': self.DELETE(self.request.host, self.request.path, data={'invalid_dict_value': 'true'}),
-            'future': self.get_future_with_timeout('future_result', future_execution_time)
+            'future': self.get_future('future_result', exception=fail_future)
         }
 
     @staticmethod
@@ -62,16 +67,20 @@ class Page(MicroHandler):
         raise HTTPError(int(self.get_argument('code')), json={'error': 'forbidden'})
 
     def delete_page(self):
+        # Testing invalid return values
         if self.get_argument('invalid_dict_value', 'false') == 'true':
             return {'invalid': 'value'}
         elif self.get_argument('invalid_return_value', 'false') == 'true':
             return object()
 
-    def get_future_with_timeout(self, result, delay):
+    def get_future(self, result, exception=False):
         future = Future()
 
         def _finish_future():
-            future.set_result(result)
+            if exception:
+                future.set_exception(ValueError('Some error'))
+            else:
+                future.set_result(result)
 
-        self.add_timeout(IOLoop.instance().time() + delay, _finish_future)
+        self.add_timeout(IOLoop.current().time() + 0.5, _finish_future)
         return future
