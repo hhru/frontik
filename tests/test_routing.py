@@ -50,12 +50,6 @@ class TestRouting(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.content, b'<html><title>404: Not Found</title><body>404: Not Found</body></html>')
 
-    def test_regex_exception_on_init(self):
-        self.assertEqual(frontik_re_app.get_page('exception_on_init').status_code, 500)
-
-    def test_regex_httperror_on_init(self):
-        self.assertEqual(frontik_re_app.get_page('httperror_on_init').status_code, 401)
-
     def test_filemapping_404(self):
         self.assertEqual(frontik_test_app.get_page('no_page').status_code, 404)
 

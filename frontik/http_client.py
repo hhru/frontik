@@ -142,7 +142,7 @@ class HttpClient(object):
         """ Tornado HTTP client compatible method """
         if not self.handler._finished:
             if self.handler._prepared and self.handler.debug.debug_mode.pass_debug:
-                request.headers[PageHandlerDebug.DEBUG_HEADER_NAME] = True
+                request.headers[PageHandlerDebug.DEBUG_HEADER_NAME] = 'true'
                 request.url = frontik.util.make_url(request.url, hh_debug_param=int(time.time()))
 
                 for header_name in ('Authorization', DEBUG_AUTH_HEADER_NAME):
