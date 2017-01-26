@@ -7,7 +7,6 @@ Postprocessor can be added at any moment before finishing the main AsyncGroup:
 
 ```python
 self.add_early_postprocessor(postprocessor)
-self.add_late_postprocessor(postprocessor)
 ```
 
 where `postprocessor` is a callable:
@@ -17,16 +16,12 @@ def postprocessor(handler, callback):
     callback()
 ```
 
-There are three types of postprocessors in Frontik:
+There are two types of postprocessors in Frontik:
 
 ![Postprocessing](/docs/postprocessing.png)
 
 __Early postprocessors__ are called just after all requests are done (the main AsyncGroup is finished). They are ideal
 for general checks that can immediately interrupt request handling (for example make redirect or throw HTTPError).
-
-__Late postprocessors__ are guaranteed to run at the very end of request handling (just before flushing the result).
-You could use them in order to make last-minute amends to the response (for example, add headers or write something
-useful to the log). They are executed even if there was an unhandled exception while executing main handler code.
 
 __Template postprocessors__ could be used for modifying the response text after the actual templating.
 One of the possible use-cases is replacing translation placeholders with real localized values.

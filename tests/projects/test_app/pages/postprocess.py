@@ -23,12 +23,6 @@ class Page(frontik.handler.PageHandler):
         if self.get_argument('content', None) is not None:
             self.add_template_postprocessor(ContentPostprocessor())
 
-        if self.get_argument('nocache', None) is not None:
-            self.add_late_postprocessor(Page._nocache_pp)
-
-        if self.get_argument('addserver', None) is not None:
-            self.add_late_postprocessor(Page._addserver_pp)
-
     def _early_pp_1(self, callback):
         raise frontik.handler.HTTPError(400)
 
@@ -37,11 +31,3 @@ class Page(frontik.handler.PageHandler):
 
     def _header_pp(self, tpl, callback):
         callback(tpl.replace(b'%%header%%', b'HEADER'))
-
-    def _nocache_pp(self, callback):
-        self.set_header('Cache-Control', 'no-cache')
-        callback()
-
-    def _addserver_pp(self, callback):
-        self.set_header('Server', 'Frontik')
-        callback()

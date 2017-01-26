@@ -31,15 +31,3 @@ class TestPostprocessors(unittest.TestCase):
         response = frontik_test_app.get_page(POSTPROCESS_URL.format('content&notpl'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'{"content": "CONTENT"}')
-
-    def test_late_postprocessors(self):
-        response = frontik_test_app.get_page(POSTPROCESS_URL.format('nocache&addserver'))
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.headers['cache-control'], 'no-cache')
-        self.assertEqual(response.headers['server'], 'Frontik')
-
-    def test_late_postprocessors_after_error(self):
-        response = frontik_test_app.get_page(POSTPROCESS_URL.format('fail_early&nocache&addserver'))
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.headers['cache-control'], 'no-cache')
-        self.assertEqual(response.headers['server'], 'Frontik')
