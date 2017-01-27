@@ -3,7 +3,7 @@
 from collections import namedtuple
 from functools import partial
 
-from tornado.concurrent import Future, TracebackFuture
+from tornado.concurrent import Future
 
 from frontik.compat import iteritems
 from frontik.handler import BaseHandler, HTTPError
@@ -66,21 +66,7 @@ class MicroHandler(BaseHandler):
         future.fail_on_error = fail_on_error
         return future
 
-    def __init__(self, application, request, logger, request_id=None, **kwargs):
-        super(MicroHandler, self).__init__(application, request, logger, **kwargs)
-
-        self._METHODS_MAPPING = {
-        }
-
     def handle_return_value(self, handler_method_name, return_value):
-        def _fail_on_error_wrapper(name, data, response):
-            error_method_name = handler_method_name + '_requests_failed'
-            if hasattr(self, error_method_name):
-                getattr(self, error_method_name)(name, data, response)
-
-            status_code = response.code if 300 <= response.code < 500 else 502
-            raise HTTPError(status_code, 'HTTP request failed with code {}'.format(response.code))
-
         def _future_fail_on_error_handler(name, future):
             result = future.result()
             if not isinstance(result, RequestResult):
@@ -98,23 +84,15 @@ class MicroHandler(BaseHandler):
 
         if isinstance(return_value, dict):
             futures = {}
-            for name, req in iteritems(return_value):
-                if isinstance(req, Future):
-                    if getattr(req, 'fail_on_error', False):
-                        self.add_future(req, partial(_future_fail_on_error_handler, name))
+            for name, future in iteritems(return_value):
+                # Use is_future with Tornado 4
+                if not isinstance(future, Future):
+                    raise Exception('Invalid MicroHandler return value: {!r}'.format(future))
 
-                    futures[name] = req
-                else:
-                    req_type = getattr(req, 'method', None)
-                    if req_type not in self._METHODS_MAPPING:
-                        raise Exception('Invalid request object: {!r}'.format(req))
+                if getattr(future, 'fail_on_error', False):
+                    self.add_future(future, partial(_future_fail_on_error_handler, name))
 
-                    if req.kwargs.pop('fail_on_error'):
-                        req.kwargs['error_callback'] = partial(_fail_on_error_wrapper, name)
-
-                    method = self._METHODS_MAPPING[req_type]
-                    url = self.make_url(req.host, req.uri)
-                    futures[name] = method(url, **req.kwargs)
+                futures[name] = future
 
             done_method_name = handler_method_name + '_requests_done'
             self._http_client.group(futures, getattr(self, done_method_name, None), name='MicroHandler')
