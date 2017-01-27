@@ -21,12 +21,6 @@ from frontik.handler_debug import PageHandlerDebug, response_from_debug
 import frontik.util
 
 
-class HTTPResponseFuture(Future):
-    def __init__(self, fail_on_error=False):
-        super(HTTPResponseFuture, self).__init__()
-        self.fail_on_error = fail_on_error
-
-
 class HttpClient(object):
     def __init__(self, handler, http_client_impl, modify_http_request_hook):
         self.handler = handler
@@ -60,7 +54,7 @@ class HttpClient(object):
                 callback=None, error_callback=None, follow_redirects=True, labels=None,
                 add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
-        future = HTTPResponseFuture()
+        future = Future()
         request = frontik.util.make_get_request(url, data, headers, connect_timeout, request_timeout, follow_redirects)
         request._frontik_labels = labels
 
@@ -92,7 +86,7 @@ class HttpClient(object):
                  callback=None, error_callback=None, follow_redirects=True, content_type=None, labels=None,
                  add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
-        future = HTTPResponseFuture()
+        future = Future()
         request = frontik.util.make_post_request(
             url, data, headers, files, content_type, connect_timeout, request_timeout, follow_redirects
         )
@@ -110,7 +104,7 @@ class HttpClient(object):
                 callback=None, error_callback=None, content_type=None, labels=None,
                 add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
-        future = HTTPResponseFuture()
+        future = Future()
         request = frontik.util.make_put_request(url, data, headers, content_type, connect_timeout, request_timeout)
         request._frontik_labels = labels
 
@@ -126,7 +120,7 @@ class HttpClient(object):
                    callback=None, error_callback=None, content_type=None, labels=None,
                    add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
-        future = HTTPResponseFuture()
+        future = Future()
         request = frontik.util.make_delete_request(url, data, headers, content_type, connect_timeout, request_timeout)
         request._frontik_labels = labels
 

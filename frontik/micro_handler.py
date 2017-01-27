@@ -3,11 +3,11 @@
 from collections import namedtuple
 from functools import partial
 
-from tornado.concurrent import Future
+from tornado.concurrent import Future, TracebackFuture
 
 from frontik.compat import iteritems
 from frontik.handler import BaseHandler, HTTPError
-from frontik.http_client import HTTPResponseFuture
+from frontik.http_client import RequestResult
 
 
 class MicroHandler(BaseHandler):
@@ -81,8 +81,11 @@ class MicroHandler(BaseHandler):
             status_code = response.code if 300 <= response.code < 500 else 502
             raise HTTPError(status_code, 'HTTP request failed with code {}'.format(response.code))
 
-        def _httpfuture_fail_on_error_result_check(name, future):
+        def _future_fail_on_error_handler(name, future):
             result = future.result()
+            if not isinstance(result, RequestResult):
+                return
+
             if not result.response.error and not result.exception:
                 return
 
@@ -97,10 +100,10 @@ class MicroHandler(BaseHandler):
             futures = {}
             for name, req in iteritems(return_value):
                 if isinstance(req, Future):
-                    if isinstance(req, HTTPResponseFuture) and req.fail_on_error:
-                        self.add_future(req, partial(_httpfuture_fail_on_error_result_check, name))
-                    futures[name] = req
+                    if getattr(req, 'fail_on_error', False):
+                        self.add_future(req, partial(_future_fail_on_error_handler, name))
 
+                    futures[name] = req
                 else:
                     req_type = getattr(req, 'method', None)
                     if req_type not in self._METHODS_MAPPING:
