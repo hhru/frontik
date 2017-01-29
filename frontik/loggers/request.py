@@ -18,18 +18,7 @@ class ContextFilter(logging.Filter):
 logger.addFilter(ContextFilter())
 
 
-class ProxyLogger(logging.Logger):
-    """
-    Proxies everything to "frontik.handler" logger, but allows to add additional per-request handlers
-    """
-
-    def handle(self, record):
-        logger.handle(record)
-        if self.handlers:
-            super(ProxyLogger, self).handle(record)
-
-
-class RequestLogger(logging.LoggerAdapter):
+class RequestLogger(logging.Logger):
 
     Stage = namedtuple('Stage', ('name', 'delta', 'start_delta'))
 
@@ -38,12 +27,10 @@ class RequestLogger(logging.LoggerAdapter):
         self._last_stage_time = self._start_time = request._start_time
         self.stages = []
         self.request_id = request_id
+        self.extra = {'request_id': request_id}
 
-        super(RequestLogger, self).__init__(ProxyLogger('frontik.handler'), {'request_id': request_id})
-
-        # backcompatibility with logger
-        self.warn = self.warning
-        self.addHandler = self.logger.addHandler
+        super(RequestLogger, self).__init__(logger.name)
+        self.addHandler(logger)
 
     def register_page_handler(self, page_handler):
         self._page_handler_name = repr(page_handler)
@@ -78,10 +65,12 @@ class RequestLogger(logging.LoggerAdapter):
             },
         )
 
-    def process(self, msg, kwargs):
-        if 'extra' in kwargs:
-            kwargs['extra'].update(self.extra)
-        else:
-            kwargs['extra'] = self.extra
+    def makeRecord(self, name, level, fn, lno, msg, args, exc_info, func=None, extra=None, **kwargs):
+        if extra is None:
+            extra = {}
 
-        return msg, kwargs
+        extra.update(self.extra)
+
+        return super(RequestLogger, self).makeRecord(
+            name, level, fn, lno, msg, args, exc_info, func=func, extra=extra, **kwargs
+        )
