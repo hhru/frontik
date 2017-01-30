@@ -132,6 +132,10 @@ class BaseHandler(tornado.web.RequestHandler):
         status_code, reason = process_status_code(status_code, reason)
         super(BaseHandler, self).set_status(status_code, reason=reason)
 
+    def redirect(self, url, *args, **kwargs):
+        self.log.info('redirecting to: %s', url)
+        return super(BaseHandler, self).redirect(url, *args, **kwargs)
+
     @staticmethod
     def add_callback(callback):
         IOLoop.instance().add_callback(callback)
