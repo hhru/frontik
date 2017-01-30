@@ -23,7 +23,6 @@ import tornado.web
 import frontik.app
 from frontik.compat import basestring_type, iteritems, PY3, unquote_plus, urlparse
 import frontik.handler
-import frontik.handler_active_limit
 import frontik.http_client
 import frontik.loggers
 import frontik.options
