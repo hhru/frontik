@@ -16,13 +16,18 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
 
         self.assertTrue(d.is_empty())
 
-        d.put('test')
-        d.put(u'тест')
+        d.put(None)
+
+        self.assertXmlEqual(d.to_etree_element(), b'<a/>')
+
+        node = etree.Element('b')
+        node.text = u'тест'
+        d.put(node)
 
         self.assertFalse(d.is_empty())
         self.assertXmlEqual(
             d.to_etree_element(),
-            b"""<?xml version='1.0' encoding='utf-8'?>\n<a>test\xd1\x82\xd0\xb5\xd1\x81\xd1\x82</a>"""
+            b"""<?xml version='1.0' encoding='utf-8'?>\n<a><b>\xd1\x82\xd0\xb5\xd1\x81\xd1\x82</b></a>"""
         )
 
     def test_future_simple(self):
@@ -32,9 +37,9 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
 
         self.assertXmlEqual(d.to_etree_element(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a/>""")
 
-        f.set_result('test')
+        f.set_result(etree.Element('test'))
 
-        self.assertXmlEqual(d.to_etree_element(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a>test</a>""")
+        self.assertXmlEqual(d.to_etree_element(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a><test/></a>""")
 
     def test_future_etree_element(self):
         d = Doc('a')
@@ -67,24 +72,10 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
     def test_doc_nested(self):
         a = Doc('a')
         b = Doc('b')
-        b.put('test')
         a.put(b)
 
         self.assertXmlEqual(
-            a.to_etree_element(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a><b>test</b></a>"""
-        )
-
-    def test_nodes_and_text(self):
-        a = Doc('a')
-        a.put('1')
-        a.put(Doc('b'))
-        a.put('2')
-        a.put(Doc('c'))
-        a.put('3')
-
-        self.assertXmlEqual(
-            a.to_etree_element(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a>1<b/>2<c/>3</a>""",
-            check_tags_order=True
+            a.to_etree_element(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a><b/></a>"""
         )
 
     def test_serializable(self):
@@ -107,11 +98,9 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
 
     def test_other_types(self):
         a = Doc('a')
-        a.put(1)
-        a.put(2.0)
-        a.put((3, 4, 5))
+        a.put('1')
 
-        self.assertEqual(a.to_string(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a>12.0(3, 4, 5)</a>""")
+        self.assertRaises(ValueError, a.to_string)
 
     def test_root_node(self):
         d = Doc(root_node=etree.Element('doc'))
