@@ -1,28 +1,28 @@
 # coding=utf-8
 
-import frontik.doc
-import frontik.handler
-import frontik.async
+from frontik.async import AsyncGroup
+from frontik.handler import PageHandler
 
 
-class Page(frontik.handler.PageHandler):
+class Page(PageHandler):
     def get_page(self):
         n = int(self.get_argument('n'))
         self_uri = self.request.host + self.request.path
 
-        if n >= 2:
-            self.acc = 0
+        self.add_header('Content-Type', 'text/plain')
 
-            def intermediate_cb(xml, response):
-                self.acc += int(xml.text)
+        if n < 2:
+            self.text = '1'
+            return
 
-            def final_cb():
-                self.log.debug('n=%s', self.acc)
-                self.doc.put(str(self.acc))
+        self.acc = 0
 
-            grp = frontik.async.AsyncGroup(final_cb, name='acc')
+        def intermediate_cb(text, response):
+            self.acc += int(text)
 
-            self.get_url(self_uri, {'n': str(n - 1)}, callback=grp.add(intermediate_cb))
-            self.get_url(self_uri, {'n': str(n - 2)}, callback=grp.add(intermediate_cb))
-        else:
-            self.doc.put('1')
+        def final_cb():
+            self.text = str(self.acc)
+
+        grp = AsyncGroup(final_cb, name='acc')
+        self.get_url(self_uri, {'n': str(n - 1)}, callback=grp.add(intermediate_cb))
+        self.get_url(self_uri, {'n': str(n - 2)}, callback=grp.add(intermediate_cb))

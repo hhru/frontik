@@ -8,7 +8,7 @@ class Page(frontik.handler.PageHandler):
 
         def callback_error(element, response):
             if element is None:
-                self.doc.put('42')
+                self.text = 'Parse error occured'
             else:
                 assert False
 

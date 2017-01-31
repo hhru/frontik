@@ -13,10 +13,7 @@ class Page(frontik.handler.PageHandler):
         )
 
     def request_callback(self, xml, response):
-        if response.error:
-            self.doc.put('error')
-        else:
-            self.doc.put('ok')
+        self.json.put({'error_received': bool(response.error)})
 
     def post_page(self):
         self.add_timeout(
@@ -24,4 +21,4 @@ class Page(frontik.handler.PageHandler):
         )
 
     def timeout_callback(self):
-        self.doc.put('ok!')
+        self.json.put({'timeout_callback': True})
