@@ -3,4 +3,4 @@
 
 class ProducerFactory(object):
     def get_producer(self, handler):
-        raise NotImplementedError()
+        raise NotImplementedError()  # pragma: no cover
