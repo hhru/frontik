@@ -1,3 +1,9 @@
+frontik (2.27.7) unstable; urgency=low
+
+  * HH-66340 remove error_callback from http_client interface
+
+ -- Automated Build <an.sumin@hh.ru>  Fri, 03 Feb 2017 14:15:26 +0300
+
 frontik (2.27.6) unstable; urgency=low
 
   * HH-65749 we need to log redirect url because it's cool
