@@ -54,7 +54,7 @@ setup(
         'test': TestHook
     },
     packages=[
-        'frontik', 'frontik/loggers', 'frontik/producers', 'frontik/server', 'frontik/testing'
+        'frontik', 'frontik/loggers', 'frontik/producers', 'frontik/server'
     ],
     scripts=['scripts/frontik'],
     package_data={
