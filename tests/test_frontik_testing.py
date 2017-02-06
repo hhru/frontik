@@ -10,33 +10,32 @@ from tornado.escape import to_unicode
 from frontik.app import FrontikApplication
 from frontik.async import AsyncGroup
 from frontik.handler import HTTPError, PageHandler
-from frontik.testing import get_response_stub, FrontikTestCase, patch_http_client
-from frontik.testing.service_mock import route, routes_match
+from frontik.testing import get_response_stub, FrontikTestCase, patch_http_client, routes_match, to_route
 from .projects.test_app.pages.arguments import Page
 
 
 class RoutesMatchTest(unittest.TestCase):
     def test_equal_route(self):
         self.assertTrue(
-            routes_match(route('/abc/?q=1'), route('/abc/?q=1')),
+            routes_match(to_route('/abc/?q=1'), to_route('/abc/?q=1')),
             'Equal routes must match'
         )
 
     def test_swapped(self):
         self.assertTrue(
-            routes_match(route('/abc/?a=2&q=1'), route('/abc/?q=1&a=2')),
+            routes_match(to_route('/abc/?a=2&q=1'), to_route('/abc/?q=1&a=2')),
             'Routes with different parameters order must match'
         )
 
     def test_different_paths(self):
         self.assertTrue(
-            routes_match(route('/abc?q=1'), route('/abc/?q=1')),
+            routes_match(to_route('/abc?q=1'), to_route('/abc/?q=1')),
             'Routes with and without trailing slash must match'
         )
 
     def test_right_query_is_less(self):
         self.assertFalse(
-            routes_match(route('/abc/?a=2&q=1'), route('/abc/?q=1')),
+            routes_match(to_route('/abc/?a=2&q=1'), to_route('/abc/?q=1')),
             'insufficient query parameters should not match'
         )
 

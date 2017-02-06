@@ -3,6 +3,8 @@
 import json
 import logging
 import os
+from collections import namedtuple
+from functools import partial
 
 from lxml import etree
 from tornado.escape import to_unicode, utf8
@@ -10,8 +12,8 @@ from tornado.httpclient import AsyncHTTPClient, HTTPResponse
 from tornado.httputil import HTTPHeaders
 from tornado.testing import AsyncHTTPTestCase
 
-from frontik.compat import basestring_type, iteritems, PY3, urlparse
-from frontik.testing.service_mock import application_mock, raw_route, route as to_route, ServiceMock
+import frontik.options
+from frontik.compat import basestring_type, iteritems, PY3, unquote_plus, urlparse
 from frontik.util import make_url
 
 if PY3:
@@ -161,3 +163,83 @@ def patch_http_client(http_client, stubs_path):
     http_client.set_stub = set_stub
 
     return http_client
+
+
+raw_route = namedtuple('raw_route', 'path query cookies method')
+
+
+class HTTPResponseStub(HTTPResponse):
+    def __init__(self, request=None, code=200, headers=None, buffer=None,
+                 effective_url='stub', error=None, request_time=1,
+                 time_info=None):
+
+        headers = {} if headers is None else headers
+        time_info = {} if time_info is None else time_info
+
+        super(HTTPResponseStub, self).__init__(
+            request, code, headers, StringIO(buffer), effective_url, error, request_time, time_info
+        )
+
+
+def to_route(url, cookies='', method='GET'):
+    parsed_url = urlparse.urlparse(url)
+    return raw_route(parsed_url.path, parsed_url.query, cookies, method)
+
+
+def routes_match(a, b):
+    if a.method != b.method:
+        return False
+
+    if a.path.strip('/') != b.path.strip('/'):
+        return False
+
+    a_qs, b_qs = map(partial(urlparse.parse_qs, keep_blank_values=True), (a.query, b.query))
+    for param, a_value in iteritems(a_qs):
+        if param not in b_qs or b_qs[param] != a_value:
+            return False
+
+    return True
+
+
+class ServiceMock(object):
+    def __init__(self, routes):
+        self.routes = routes
+
+    def fetch_request(self, req):
+        route_of_incoming_request = to_route(req.url, method=req.method)
+        for r in self.routes:
+            destination_route = r if isinstance(r, raw_route) else to_route(r)
+            if routes_match(destination_route, route_of_incoming_request):
+                result = self.get_result(req, self.routes[r])
+                result.request = req
+                return result
+
+        raise NotImplementedError(
+            "No route in service mock matches request '{0} {1}', tried to match following:\n'{2}'".format(
+                req.method, unquote_plus(req.url), "';\n'".join([unquote_plus(str(r)) for r in self.routes])
+            )
+        )
+
+    def get_result(self, request, handler):
+        if callable(handler):
+            return self.get_result(request, handler(request))
+        elif isinstance(handler, basestring_type):
+            code, body = 200, handler
+        elif isinstance(handler, tuple):
+            try:
+                code, body = handler
+            except ValueError:
+                raise ValueError(
+                    'Could not unpack {0!s} to (code, body) tuple that is a result to request {1} {2!s}'.format(
+                        handler, unquote_plus(request.url), request)
+                )
+        elif isinstance(handler, HTTPResponse):
+            return handler
+        else:
+            raise ValueError(
+                'Handler {0!s}\n that matched request {1} {2!s}\n is neither tuple nor HTTPResponse '
+                'nor basestring instance nor callable returning any of above.'.format(handler, request.url, request)
+            )
+
+        return HTTPResponseStub(request, buffer=body, code=code, effective_url=request.url,
+                                headers=HTTPHeaders({'Content-Type': 'xml'}))
