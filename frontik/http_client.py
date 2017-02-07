@@ -12,7 +12,6 @@ from tornado.concurrent import Future
 from tornado.curl_httpclient import CurlAsyncHTTPClient
 from tornado.ioloop import IOLoop
 from tornado.options import options
-from tornado.httpclient import HTTPError
 
 from frontik.async import AsyncGroup
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
@@ -134,45 +133,49 @@ class HttpClient(object):
 
     def fetch(self, request, callback, add_to_finish_group=True):
         """ Tornado HTTP client compatible method """
-        if not self.handler._finished:
-            if self.handler._prepared and self.handler.debug.debug_mode.pass_debug:
-                request.headers[PageHandlerDebug.DEBUG_HEADER_NAME] = 'true'
-                request.url = frontik.util.make_url(request.url, hh_debug_param=int(time.time()))
+        if self.handler._finished:
+            self.handler.log.warning(
+                'attempted to make http request to %s when page is finished, ignoring', request.url
+            )
 
-                for header_name in ('Authorization', DEBUG_AUTH_HEADER_NAME):
-                    authorization = self.handler.request.headers.get(header_name)
-                    if authorization is not None:
-                        request.headers[header_name] = authorization
+            return Future()
 
-            request.headers['X-Request-Id'] = self.handler.request_id
+        if self.handler._prepared and self.handler.debug.debug_mode.pass_debug:
+            request.headers[PageHandlerDebug.DEBUG_HEADER_NAME] = 'true'
+            request.url = frontik.util.make_url(request.url, hh_debug_param=int(time.time()))
 
-            if request.connect_timeout is None:
-                request.connect_timeout = options.http_client_default_connect_timeout
-            if request.request_timeout is None:
-                request.request_timeout = options.http_client_default_request_timeout
+            for header_name in ('Authorization', DEBUG_AUTH_HEADER_NAME):
+                authorization = self.handler.request.headers.get(header_name)
+                if authorization is not None:
+                    request.headers[header_name] = authorization
 
-            request.connect_timeout *= options.timeout_multiplier
-            request.request_timeout *= options.timeout_multiplier
+        request.headers['X-Request-Id'] = self.handler.request_id
 
-            if add_to_finish_group:
-                req_callback = self.handler.finish_group.add(
-                    self.handler.check_finished(self._log_response, request, callback)
-                )
-            else:
-                req_callback = partial(self._log_response, request, callback)
+        if request.connect_timeout is None:
+            request.connect_timeout = options.http_client_default_connect_timeout
+        if request.request_timeout is None:
+            request.request_timeout = options.http_client_default_request_timeout
 
-            if options.http_proxy_host is not None:
-                request.proxy_host = options.http_proxy_host
-                request.proxy_port = options.http_proxy_port
+        request.connect_timeout *= options.timeout_multiplier
+        request.request_timeout *= options.timeout_multiplier
 
-            if isinstance(self.http_client_impl, CurlAsyncHTTPClient):
-                request.prepare_curl_callback = partial(
-                    self._prepare_curl_callback, next_callback=request.prepare_curl_callback
-                )
+        if add_to_finish_group:
+            req_callback = self.handler.finish_group.add(
+                self.handler.check_finished(self._log_response, request, callback)
+            )
+        else:
+            req_callback = partial(self._log_response, request, callback)
 
-            return self.http_client_impl.fetch(self.modify_http_request_hook(request), req_callback)
+        if options.http_proxy_host is not None:
+            request.proxy_host = options.http_proxy_host
+            request.proxy_port = options.http_proxy_port
 
-        self.handler.log.warning('attempted to make http request to %s when page is finished, ignoring', request.url)
+        if isinstance(self.http_client_impl, CurlAsyncHTTPClient):
+            request.prepare_curl_callback = partial(
+                self._prepare_curl_callback, next_callback=request.prepare_curl_callback
+            )
+
+        return self.http_client_impl.fetch(self.modify_http_request_hook(request), req_callback)
 
     def _prepare_curl_callback(self, curl, next_callback):
         curl.setopt(pycurl.NOSIGNAL, 1)
@@ -261,33 +264,8 @@ class RequestResult(object):
         self.data = data
         self.response = response
 
-    def get(self):
-        return RequestResult.ResponseData(self.data, self.response)
-
     def set_exception(self, exception):
         self.exception = exception
-
-
-def _check_response_request_id(request, response):
-    response_req_id = response.headers.get('X-Request-Id')
-    if response_req_id is None:
-        return
-
-    cache_control = response.headers.get('Cache-control')
-    if cache_control is not None and 'no-store' not in cache_control.lower():
-        # consider this response as returned from cache, thus response request_id will not match request request_id
-        return
-
-    expires = response.headers.get('Expires')
-    if expires is not None and ' 1970 ' not in expires:
-        # not RFC at all, but better not to check request_id at all than check cached request_id
-        return
-
-    request_req_id = request.headers['X-Request-Id']
-    if response_req_id != request_req_id:
-        response.code = 599
-        message = 'response request id {0} != {1}'.format(response_req_id, request_req_id)
-        response.error = HTTPError(599, message, response)
 
 
 def _parse_response(response, logger, parser=None, response_type=None):
