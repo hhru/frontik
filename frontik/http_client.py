@@ -10,7 +10,6 @@ import simplejson
 from lxml import etree
 from tornado.concurrent import Future
 from tornado.curl_httpclient import CurlAsyncHTTPClient
-from tornado.ioloop import IOLoop
 from tornado.options import options
 
 from frontik.async import AsyncGroup
@@ -29,12 +28,9 @@ class HttpClient(object):
     def group(self, futures, callback=None, name=None):
         if callable(callback):
             results_holder = {}
-            group_callback = self.handler.finish_group.add(partial(callback, results_holder))
+            group_callback = self.handler.finish_group.add(self.handler.check_finished(callback, results_holder))
 
-            def delay_cb():
-                IOLoop.instance().add_callback(self.handler.check_finished(group_callback))
-
-            async_group = AsyncGroup(delay_cb, logger=self.handler.log, name=name)
+            async_group = AsyncGroup(group_callback, logger=self.handler.log, name=name)
 
             def future_callback(name, future):
                 results_holder[name] = future.result()
@@ -45,7 +41,7 @@ class HttpClient(object):
                 else:
                     self.handler.add_future(future, async_group.add(partial(future_callback, name)))
 
-            async_group.try_finish()
+            async_group.try_finish_async()
 
         return futures
 
@@ -159,12 +155,14 @@ class HttpClient(object):
         request.connect_timeout *= options.timeout_multiplier
         request.request_timeout *= options.timeout_multiplier
 
+        def req_callback(response):
+            response = self._log_response(request, response)
+
+            if callable(callback):
+                callback(response)
+
         if add_to_finish_group:
-            req_callback = self.handler.finish_group.add(
-                self.handler.check_finished(self._log_response, request, callback)
-            )
-        else:
-            req_callback = partial(self._log_response, request, callback)
+            req_callback = self.handler.finish_group.add(self.handler.check_finished(req_callback))
 
         if options.http_proxy_host is not None:
             request.proxy_host = options.http_proxy_host
@@ -183,7 +181,7 @@ class HttpClient(object):
         if callable(next_callback):
             next_callback(curl)
 
-    def _log_response(self, request, callback, response):
+    def _log_response(self, request, response):
         try:
             debug_extra = {}
             if response.headers.get(PageHandlerDebug.DEBUG_HEADER_NAME):
@@ -209,8 +207,7 @@ class HttpClient(object):
         except Exception:
             self.handler.log.exception('Cannot log response info')
 
-        if callable(callback):
-            callback(response)
+        return response
 
     def _parse_response(self, future, callback, parse_response, parse_on_error, response):
         data = None
