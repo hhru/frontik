@@ -68,7 +68,7 @@ class JsonBuilder(object):
         self.root_node = root_node
 
     def put(self, *args, **kwargs):
-        """ Append a chunk of data to JsonBuilder """
+        """Append a chunk of data to JsonBuilder."""
         self._data.extend(args)
         if kwargs:
             self._data.append(kwargs)
@@ -78,6 +78,10 @@ class JsonBuilder(object):
 
     def clear(self):
         self._data = []
+
+    def replace(self, *args, **kwargs):
+        self.clear()
+        self.put(*args, **kwargs)
 
     @staticmethod
     def get_error_node(exception):
