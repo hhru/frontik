@@ -90,7 +90,7 @@ class MicroHandler(BaseHandler):
                     raise Exception('Invalid MicroHandler return value: {!r}'.format(future))
 
                 if getattr(future, 'fail_on_error', False):
-                    self.add_future(future, partial(_future_fail_on_error_handler, name))
+                    self.add_future(future, self.finish_group.add(partial(_future_fail_on_error_handler, name)))
 
                 futures[name] = future
 

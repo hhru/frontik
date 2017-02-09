@@ -1,10 +1,5 @@
 # coding=utf-8
 
-import sys
-
-from tornado.concurrent import Future, TracebackFuture
-from tornado.ioloop import IOLoop
-
 from frontik.handler import HTTPError
 from frontik.micro_handler import MicroHandler
 
@@ -20,9 +15,7 @@ def get_page(handler, callback):
 class Page(MicroHandler):
     @MicroHandler.add_preprocessor(get_page)
     def get_page(self):
-        fail_on_error_request = self.get_argument('fail_on_error_request', 'false') == 'true'
-        fail_on_error_future = self.get_argument('fail_on_error_future', 'false') == 'true'
-        fail_future = self.get_argument('fail_future', 'false') == 'true'
+        fail_on_error = self.get_argument('fail_on_error', 'false') == 'true'
 
         if self.get_argument('return_none', 'false') == 'true':
             return
@@ -30,9 +23,8 @@ class Page(MicroHandler):
         return {
             'get': self.GET(self.request.host, self.request.path, data={'return_none': 'true'}, fail_on_error=True),
             'post': self.POST(self.request.host, self.request.path, data={'param': 'post'}),
-            'put': self.PUT(self.request.host, self.request.path + '?code=401', fail_on_error=fail_on_error_request),
+            'put': self.PUT(self.request.host, self.request.path + '?code=401', fail_on_error=fail_on_error),
             'delete': self.DELETE(self.request.host, self.request.path, data={'invalid_dict_value': 'true'}),
-            'future': self.get_future('future_result', exception=fail_future, fail_on_error=fail_on_error_future)
         }
 
     @staticmethod
@@ -43,7 +35,6 @@ class Page(MicroHandler):
         assert results['post'].response.code == 200
         assert results['put'].response.code == 401
         assert results['delete'].response.code == 500
-        assert results.get('future') is not None
 
         self.json.put(results)
 
@@ -73,16 +64,3 @@ class Page(MicroHandler):
             return {'invalid': 'value'}
         elif self.get_argument('invalid_return_value', 'false') == 'true':
             return object()
-
-    def get_future(self, result, exception=False, fail_on_error=False):
-        future = Future()
-        future.fail_on_error = fail_on_error
-
-        def _finish_future():
-            if exception:
-                future.set_exception(ValueError('Some error'))
-            else:
-                future.set_result(result)
-
-        self.add_timeout(IOLoop.current().time() + 0.5, _finish_future)
-        return future
