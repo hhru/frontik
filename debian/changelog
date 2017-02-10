@@ -1,3 +1,9 @@
+frontik (2.27.9) unstable; urgency=low
+
+  * HH-66579 wait for fail_on_error handler and all requests in group
+
+ -- Automated Build <an.sumin@hh.ru>  Fri, 10 Feb 2017 15:13:19 +0300
+
 frontik (2.27.8) unstable; urgency=low
 
   * HH-66396 reformat http_client.fetch and remove dead code
