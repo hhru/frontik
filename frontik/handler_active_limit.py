@@ -14,12 +14,7 @@ class PageHandlerActiveLimit(object):
         self.handler = weakref.proxy(handler)
         self.acquired = False
 
-        if PageHandlerActiveLimit.working_handlers_count <= tornado.options.options.handlers_count:
-            self.handler.log.info(
-                'started %s %s (handlers count = %d)',
-                self.handler.request.method, self.handler.request.uri, PageHandlerActiveLimit.working_handlers_count
-            )
-        else:
+        if PageHandlerActiveLimit.working_handlers_count > tornado.options.options.handlers_count:
             self.handler.log.warning(
                 'dropping %s %s: too many handlers (%d)',
                 self.handler.request.method, self.handler.request.uri, PageHandlerActiveLimit.working_handlers_count
