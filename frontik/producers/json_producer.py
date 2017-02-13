@@ -43,7 +43,7 @@ class JsonProducer(object):
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
         self.executor = frontik.jobs.get_executor(options.json_executor)
-        self.ioloop = tornado.ioloop.IOLoop.instance()
+        self.ioloop = tornado.ioloop.IOLoop.current()
 
         self.json = frontik.json_builder.JsonBuilder(json_encoder=json_encoder, logger=self.log)
         self.template_filename = None
