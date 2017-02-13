@@ -46,7 +46,7 @@ class XmlProducer(object):
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
         self.executor = frontik.jobs.get_executor(tornado.options.options.xsl_executor)
-        self.ioloop = tornado.ioloop.IOLoop.instance()
+        self.ioloop = tornado.ioloop.IOLoop.current()
 
         self.xml_cache = xml_cache
         self.xsl_cache = xsl_cache
