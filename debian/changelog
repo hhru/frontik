@@ -1,3 +1,9 @@
+frontik (2.27.11) unstable; urgency=low
+
+  * HH-66550 http_client cleanup
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 14 Feb 2017 14:53:20 +0300
+
 frontik (2.27.10) unstable; urgency=low
 
   * HH-66099 frontik.testing using tornado.testing
