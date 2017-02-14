@@ -13,7 +13,6 @@ import tornado.web
 from frontik.async import AsyncGroup
 import frontik.auth
 from frontik.compat import iteritems
-import frontik.handler_active_limit
 from frontik.handler_debug import PageHandlerDebug
 from frontik.http_client import HttpClient
 from frontik.http_codes import process_status_code
@@ -82,7 +81,6 @@ class BaseHandler(tornado.web.RequestHandler):
         super(BaseHandler, self).initialize(**kwargs)
 
     def prepare(self):
-        self.active_limit = frontik.handler_active_limit.PageHandlerActiveLimit(self)
         self.debug = PageHandlerDebug(self)
         self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish', logger=self.log)
 
@@ -267,7 +265,6 @@ class BaseHandler(tornado.web.RequestHandler):
         self.finish_group.abort()
         self.log.stage_tag('page')
         self.log.log_stages(408)
-        self.cleanup()
 
     def register_exception_hook(self, exception_hook):
         """
@@ -353,14 +350,9 @@ class BaseHandler(tornado.web.RequestHandler):
         self.set_header('Content-Type', 'text/html; charset=UTF-8')
         return super(BaseHandler, self).write_error(status_code, **kwargs)
 
-    def cleanup(self):
-        if hasattr(self, 'active_limit'):
-            self.active_limit.release()
-
     def finish(self, chunk=None):
         self.log.stage_tag('postprocess')
         super(BaseHandler, self).finish(chunk)
-        self.cleanup()
 
     def flush(self, include_footers=False, **kwargs):
         self.log.stage_tag('finish')
