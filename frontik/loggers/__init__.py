@@ -32,7 +32,7 @@ class BufferedHandler(logging.Logger):
         self.records.append(record)
 
     def produce_all(self):
-        raise NotImplementedError()
+        raise NotImplementedError()  # pragma: no cover
 
 
 def bootstrap_app_loggers(app):
