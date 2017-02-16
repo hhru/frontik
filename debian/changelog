@@ -1,3 +1,9 @@
+frontik (2.27.12) unstable; urgency=low
+
+  * HH-66638 remove set_plaintext_response
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 16 Feb 2017 15:03:51 +0300
+
 frontik (2.27.11) unstable; urgency=low
 
   * HH-66550 http_client cleanup
