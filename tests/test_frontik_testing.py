@@ -7,11 +7,11 @@ from functools import partial
 from lxml import etree
 from tornado.escape import to_unicode
 
-from frontik.async import AsyncGroup
+from frontik.app import FrontikApplication
 from frontik.handler import HTTPError, PageHandler
-from frontik.testing import get_app_class, get_response_stub, FrontikTestCase, patch_http_client
-from frontik.testing.service_mock import route, routes_match
-from .projects.test_app.pages.arguments import Page
+from frontik.testing import get_response_stub, FrontikTestCase, patch_http_client, route, routes_match
+from tests.projects.test_app.pages import arguments
+from tests.projects.test_app.pages.handler import delete
 
 
 class RoutesMatchTest(unittest.TestCase):
@@ -40,31 +40,36 @@ class RoutesMatchTest(unittest.TestCase):
         )
 
 
-class TestPage(PageHandler):
+class TestHandler(PageHandler):
     def get_page(self):
-        def finished():
+        self.result = 0
+
+        def finished(_):
             res = etree.Element('result')
             res.text = str(self.result)
             self.doc.put(res)
+
             self.set_header('X-Foo', self.request.headers.get('X-Foo'))
             self.set_status(400)
 
-        self.result = 0
-        ag = AsyncGroup(finished)
-
         def accumulate(xml, response):
-            if response.code >= 400 or xml is None:
+            if response.error or xml is None:
                 raise HTTPError(503)
 
-            self.result += int(xml.findtext('id'))
+            try:
+                self.result += int(xml.findtext('val'))
+            except ValueError:
+                pass
 
-        self.get_url(self.config.serviceHost + '/vacancy/1', callback=ag.add(accumulate))
-        self.get_url(self.config.serviceHost + '/employer/2', callback=ag.add(accumulate))
+        self.group({
+            'val1': self.get_url(self.config.serviceHost + '/val1/1', callback=accumulate),
+            'val2': self.get_url(self.config.serviceHost + '/val2/2', callback=accumulate)
+        }, callback=finished)
 
 
 class CheckConfigHandler(PageHandler):
     def get_page(self):
-        assert self.config.config_param
+        self.text = self.config.config_param
 
 
 class ExceptionHandler(PageHandler):
@@ -79,49 +84,53 @@ class TestFrontikTesting(FrontikTestCase):
         self.add_common_headers({'X-Foo': 'Bar'})
 
     def get_app(self):
-        handlers = [
-            ('/config', CheckConfigHandler),
-            ('/sum_ids', TestPage),
-            ('/proxy_arg', Page),
-            ('/exception', ExceptionHandler),
-        ]
+        class TestApplication(FrontikApplication):
+            def application_urls(self):
+                return [
+                    ('/config', CheckConfigHandler),
+                    ('/sum_values', TestHandler),
+                    ('/exception', ExceptionHandler),
+                    ('/arguments', arguments.Page),
+                    ('/delete', delete.Page),
+                ]
 
-        app = get_app_class(handlers)(app='test_app')
+        app = TestApplication(app='test_app')
         patch_http_client(app.http_client, os.path.dirname(__file__))
 
         return app
 
     def test_config(self):
-        self.configure_app(config_param=True)
+        self.configure_app(config_param='param_value')
         response = self.fetch('/config')
 
-        self.assertEqual(200, response.code)
+        self.assertEqual(response.code, 200)
+        self.assertEqual(response.body, b'param_value')
 
     def test_stubs_no_stub(self):
-        response = self.fetch('/sum_ids')
+        response = self.fetch('/sum_values')
         self.assertEqual(response.code, 500)
 
     def test_stubs_response_code(self):
-        self.set_stub(('service.host', '/vacancy/1'), response_code=404)
-        self.set_stub(('service.host', '/employer/2'), response_code=404)
+        self.set_stub(('service.host', '/val1/1'), response_code=404)
+        self.set_stub(('service.host', '/val2/2'), response_code=404)
 
-        response = self.fetch('/sum_ids')
+        response = self.fetch('/sum_values')
 
         self.assertEqual(response.code, 503)
 
     def test_stubs_raw_response(self):
         self.set_stub(
-            ('service.host', '/vacancy/1'),
-            raw_response='<root><id>3</id></root>', headers={'Content-Type': 'application/xml'}
+            ('service.host', '/val1/1'),
+            raw_response='<root><val>3</val></root>', headers={'Content-Type': 'application/xml'}
         )
 
         self.set_stub(
-            ('service.host', '/employer/{employer_id}'),
-            raw_response='<root><id>4</id></root>', headers={'Content-Type': 'application/xml'},
-            employer_id='2'
+            ('service.host', '/val2/{id}'),
+            raw_response='<root><val>4</val></root>', headers={'Content-Type': 'application/xml'},
+            id='2'
         )
 
-        response = self.fetch('/sum_ids')
+        response = self.fetch('/sum_values')
 
         self.assertEqual(response.code, 400)
         self.assertEqual(response.headers.get('X-Foo'), 'Bar')
@@ -131,42 +140,51 @@ class TestFrontikTesting(FrontikTestCase):
         )
 
     def test_stubs_response_file(self):
-        self.set_stub(('service.host', '/vacancy/{id}'), response_file='stub.xml', id='1')
-        self.set_stub(('service.host', '/employer/{id}'), response_file='stub.xml', id='2')
+        self.set_stub(('service.host', '/val1/{id}'), response_file='stub.xml', id='1')
+        self.set_stub(('service.host', '/val2/{id}'), response_file='stub.xml', id='2')
 
-        doc = self.fetch_xml('/sum_ids')
+        doc = self.fetch_xml('/sum_values')
 
         self.assertEqual(doc.findtext('result'), '3')
 
     def test_stubs_response_file_missing_template(self):
-        self.set_stub(('service.host', '/vacancy/1'), response_file='stub_missing.xml', param='param')
-        self.set_stub(('service.host', '/employer/2'), response_file='stub_missing.xml')
+        self.set_stub(('service.host', '/val1/{id}'), response_file='stub.xml', id='1')
+        self.set_stub(('service.host', '/val2/2'), response_file='stub.xml')
 
-        doc = self.fetch_xml('/sum_ids')
+        doc = self.fetch_xml('/sum_values')
 
-        self.assertEqual(doc.findtext('result'), '0')
+        self.assertEqual(doc.findtext('result'), '1')
 
     def test_stubs_response_function(self):
         self.set_stub(
-            ('service.host', '/vacancy/1'),
+            ('service.host', '/val1/1'),
             response_function=partial(
-                get_response_stub, buffer='<root><id>0</id></root>', headers={'Content-Type': 'application/xml'}
+                get_response_stub, buffer='<root><val>0</val></root>', headers={'Content-Type': 'application/xml'}
             )
         )
 
         self.set_stub(
-            ('service.host', '/employer/2'),
+            ('service.host', '/val2/2'),
             response_function=partial(
-                get_response_stub, buffer='<root><id>0</id></root>', headers={'Content-Type': 'application/xml'}
+                get_response_stub, buffer='<root><val>4</val></root>', headers={'Content-Type': 'application/xml'}
             )
         )
 
-        doc = self.fetch_xml('/sum_ids')
+        doc = self.fetch_xml('/sum_values')
 
-        self.assertEqual(doc.findtext('result'), '0')
+        self.assertEqual(doc.findtext('result'), '4')
 
-    def test_call_get(self):
-        json = self.fetch_json('/proxy_arg', {'param': 'тест'})
+    def test_json_stub(self):
+        self.set_stub(
+            ('localhost:{}'.format(self.get_http_port()), route('/delete', method='DELETE')),
+            response_file='stub.json', param='param'
+        )
+
+        json = self.fetch_json('/delete')
+        self.assertEqual(json, {'result': 'param'})
+
+    def test_arguments(self):
+        json = self.fetch_json('/arguments', {'param': 'тест'})
         self.assertEqual(to_unicode(json[u'тест']), u'тест')
 
     def test_exception(self):
