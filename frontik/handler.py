@@ -446,10 +446,6 @@ class BaseHandler(tornado.web.RequestHandler):
         self.log.debug('finishing plaintext')
         callback(self.text)
 
-    # Deprecated, use self.text directly
-    def set_plaintext_response(self, text):
-        self.text = text
-
     def xml_from_file(self, filename):
         return self.xml_producer.xml_from_file(filename)
 
