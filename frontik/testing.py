@@ -224,24 +224,12 @@ class ServiceMock(object):
 
     def get_result(self, request, handler):
         if callable(handler):
-            return self.get_result(request, handler(request))
-        elif isinstance(handler, basestring_type):
-            code, body = 200, handler
-        elif isinstance(handler, tuple):
-            try:
-                code, body = handler
-            except ValueError:
-                raise ValueError(
-                    'Could not unpack {0!s} to (code, body) tuple that is a result to request {1} {2!s}'.format(
-                        handler, unquote_plus(request.url), request)
-                )
+            return handler(request)
         elif isinstance(handler, HTTPResponse):
             return handler
-        else:
-            raise ValueError(
-                'Handler {0!s}\n that matched request {1} {2!s}\n is neither tuple nor HTTPResponse '
-                'nor basestring instance nor callable returning any of above.'.format(handler, request.url, request)
-            )
 
-        return get_response_stub(request, buffer=body, code=code, effective_url=request.url,
-                                 headers=HTTPHeaders({'Content-Type': 'xml'}))
+        raise ValueError(
+            'Stub {} for url {} must be an instance of HTTPResponse or a callable returning HTTPResponse'.format(
+                handler, request.url
+            )
+        )

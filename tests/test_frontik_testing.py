@@ -10,8 +10,8 @@ from tornado.escape import to_unicode
 from frontik.app import FrontikApplication
 from frontik.handler import HTTPError, PageHandler
 from frontik.testing import get_response_stub, FrontikTestCase, patch_http_client, route, routes_match
-from tests.projects.test_app.pages import arguments
-from tests.projects.test_app.pages.handler import delete
+from .projects.test_app.pages import arguments
+from .projects.test_app.pages.handler import delete
 
 
 class RoutesMatchTest(unittest.TestCase):
@@ -36,7 +36,13 @@ class RoutesMatchTest(unittest.TestCase):
     def test_right_query_is_less(self):
         self.assertFalse(
             routes_match(route('/abc/?a=2&q=1'), route('/abc/?q=1')),
-            'insufficient query parameters should not match'
+            'Less specific route must not match more specific'
+        )
+
+    def test_routes_with_different_methods(self):
+        self.assertFalse(
+            routes_match(route('/abc'), route('/abc', method='POST')),
+            'Routes with different methods must not match'
         )
 
 
