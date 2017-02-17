@@ -1,3 +1,9 @@
+frontik (2.28.1) unstable; urgency=low
+
+  * HH-66853 remove some unused code
+
+ -- Automated Build <an.sumin@hh.ru>  Fri, 17 Feb 2017 14:57:22 +0300
+
 frontik (2.28.0) unstable; urgency=low
 
   * HH-66784 remove frontik.testing.service_mock
