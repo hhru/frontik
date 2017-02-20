@@ -67,6 +67,7 @@ setup(
         'pycodestyle == 2.2.0',
         'requests >= 0.8.2',
         'lxml-asserts',
+        'tornado-httpclient-mock',
     ],
     dependency_links=[
         'https://github.com/hhru/tornado/archive/master.zip',
