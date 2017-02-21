@@ -8,6 +8,7 @@ import tornado.httputil
 import tornado.options
 import tornado.web
 from tornado import gen
+from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 
 import frontik.auth
@@ -18,7 +19,7 @@ import frontik.util
 from frontik.async import AsyncGroup
 from frontik.compat import iteritems
 from frontik.debug import DebugMode
-from frontik.http_client import HttpClient
+from frontik.http_client import HttpClient, RequestResult
 from frontik.http_codes import process_status_code
 from frontik.loggers.request import RequestLogger
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors
@@ -229,11 +230,41 @@ class BaseHandler(tornado.web.RequestHandler):
 
         return_value = handler_method(*args, **kwargs)
 
-        if hasattr(self, 'handle_return_value'):
-            method_name = handler_method.__name__
-            if is_handler_method(method_name) and method_name not in self._returned_methods:
-                self._returned_methods.add(method_name)
-                self.handle_return_value(method_name, return_value)
+        method_name = handler_method.__name__
+        if is_handler_method(method_name) and method_name not in self._returned_methods:
+            self._returned_methods.add(method_name)
+            self.handle_return_value(method_name, return_value)
+
+    def handle_return_value(self, handler_method_name, return_value):
+        def _future_fail_on_error_handler(name, future):
+            result = future.result()
+            if not isinstance(result, RequestResult):
+                return
+
+            if not result.response.error and not result.exception:
+                return
+
+            error_method_name = handler_method_name + '_requests_failed'
+            if hasattr(self, error_method_name):
+                getattr(self, error_method_name)(name, result.data, result.response)
+
+            status_code = result.response.code if 300 <= result.response.code < 500 else 502
+            raise HTTPError(status_code, 'HTTP request failed with code {}'.format(result.response.code))
+
+        if isinstance(return_value, dict):
+            futures = {}
+            for name, future in iteritems(return_value):
+                # Use is_future with Tornado 4
+                if not isinstance(future, Future):
+                    raise Exception('Invalid MicroHandler return value: {!r}'.format(future))
+
+                if getattr(future, 'fail_on_error', False):
+                    self.add_future(future, self.finish_group.add(partial(_future_fail_on_error_handler, name)))
+
+                futures[name] = future
+
+            done_method_name = handler_method_name + '_requests_done'
+            self._http_client.group(futures, getattr(self, done_method_name, None), name='MicroHandler')
 
     def _create_handler_method_wrapper(self, handler_method):
         notification = self.finish_group.add_notification()
@@ -243,10 +274,7 @@ class BaseHandler(tornado.web.RequestHandler):
                 raise_future_exception(future)
 
             return_value = handler_method()
-
-            if hasattr(self, 'handle_return_value'):
-                method_name = handler_method.__name__
-                self.handle_return_value(method_name, return_value)
+            self.handle_return_value(handler_method.__name__, return_value)
 
             notification()
 

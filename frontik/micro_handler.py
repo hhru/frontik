@@ -1,13 +1,8 @@
 # coding=utf-8
 
 from collections import namedtuple
-from functools import partial
 
-from tornado.concurrent import Future
-
-from frontik.compat import iteritems
-from frontik.handler import BaseHandler, HTTPError
-from frontik.http_client import RequestResult
+from frontik.handler import BaseHandler
 
 
 class MicroHandler(BaseHandler):
@@ -65,37 +60,3 @@ class MicroHandler(BaseHandler):
         )
         future.fail_on_error = fail_on_error
         return future
-
-    def handle_return_value(self, handler_method_name, return_value):
-        def _future_fail_on_error_handler(name, future):
-            result = future.result()
-            if not isinstance(result, RequestResult):
-                return
-
-            if not result.response.error and not result.exception:
-                return
-
-            error_method_name = handler_method_name + '_requests_failed'
-            if hasattr(self, error_method_name):
-                getattr(self, error_method_name)(name, result.data, result.response)
-
-            status_code = result.response.code if 300 <= result.response.code < 500 else 502
-            raise HTTPError(status_code, 'HTTP request failed with code {}'.format(result.response.code))
-
-        if isinstance(return_value, dict):
-            futures = {}
-            for name, future in iteritems(return_value):
-                # Use is_future with Tornado 4
-                if not isinstance(future, Future):
-                    raise Exception('Invalid MicroHandler return value: {!r}'.format(future))
-
-                if getattr(future, 'fail_on_error', False):
-                    self.add_future(future, self.finish_group.add(partial(_future_fail_on_error_handler, name)))
-
-                futures[name] = future
-
-            done_method_name = handler_method_name + '_requests_done'
-            self._http_client.group(futures, getattr(self, done_method_name, None), name='MicroHandler')
-
-        elif return_value is not None:
-            raise Exception('Invalid return type: {}'.format(type(return_value)))
