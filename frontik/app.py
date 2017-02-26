@@ -5,14 +5,16 @@ import logging
 import os
 import re
 import time
-from lxml import etree
+from functools import partial
 
 import tornado.autoreload
 import tornado.ioloop
 import tornado.web
+from lxml import etree
 from tornado.concurrent import Future
 from tornado.httpclient import AsyncHTTPClient
 from tornado.options import options
+from tornado.stack_context import StackContext
 
 import frontik.loggers
 import frontik.producers.json_producer
@@ -20,6 +22,7 @@ import frontik.producers.xml_producer
 from frontik.compat import iteritems
 from frontik.handler import ErrorHandler
 from frontik.loggers.request import RequestLogger
+from frontik.request_context import RequestContext
 
 app_logger = logging.getLogger('frontik.app')
 
@@ -159,7 +162,7 @@ class RegexpDispatcher(object):
 
 
 def app_dispatcher(tornado_app, request, **kwargs):
-    request_id = request.headers.get('X-Request-Id', FrontikApplication.next_request_id())
+    request_id = RequestContext.get_data().get('request_id')
     request_logger = RequestLogger(request, request_id)
     return tornado_app.dispatcher(tornado_app, request, request_logger, **kwargs)
 
@@ -196,6 +199,14 @@ class FrontikApplication(tornado.web.Application):
 
         self.dispatcher = RegexpDispatcher(self.application_urls(), self.app)
         self.loggers_initializers = frontik.loggers.bootstrap_app_loggers(self)
+
+    def __call__(self, request):
+        request_id = request.headers.get('X-Request-Id')
+        if request_id is None:
+            request_id = FrontikApplication.next_request_id()
+
+        with StackContext(partial(RequestContext, {'request_id': request_id})):
+            return super(FrontikApplication, self).__call__(request)
 
     def application_urls(self):
         return [

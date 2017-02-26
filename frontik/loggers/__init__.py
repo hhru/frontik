@@ -1,13 +1,14 @@
 # coding=utf-8
 
 import logging
-from logging.handlers import SysLogHandler
 import socket
+from logging.handlers import SysLogHandler
 
 from tornado.log import LogFormatter
 from tornado.options import options
 
 from frontik.loggers import sentry
+from frontik.request_context import RequestContext
 
 """Contains a list of all available third-party loggers, that can be used in the request handler.
 
@@ -22,6 +23,8 @@ for this request handler (for example, add some specific methods for the handler
 """
 LOGGERS = (sentry, )
 
+ROOT_LOGGER = logging.getLogger()
+
 
 class BufferedHandler(logging.Logger):
     def __init__(self, name, level=logging.NOTSET):
@@ -35,6 +38,14 @@ class BufferedHandler(logging.Logger):
         raise NotImplementedError()  # pragma: no cover
 
 
+class ContextFilter(logging.Filter):
+    def filter(self, record):
+        handler_name = RequestContext.get_data().get('handler_name')
+        request_id = RequestContext.get_data().get('request_id')
+        record.name = '.'.join(filter(None, [record.name, handler_name, request_id]))
+        return True
+
+
 def bootstrap_app_loggers(app):
     return [logger.bootstrap_logger(app) for logger in LOGGERS if logger is not None]
 
@@ -42,24 +53,24 @@ def bootstrap_app_loggers(app):
 def bootstrap_core_logging():
     """This is a replacement for standard Tornado logging configuration."""
 
-    root_logger = logging.getLogger()
+    handlers = []
     level = getattr(logging, options.loglevel.upper())
-    root_logger.setLevel(logging.NOTSET)
+    ROOT_LOGGER.setLevel(logging.NOTSET)
+
+    context_filter = ContextFilter()
 
     if options.logfile:
-        handler = logging.handlers.WatchedFileHandler(options.logfile)
-        handler.setFormatter(logging.Formatter(options.logformat))
-        handler.setLevel(level)
-        root_logger.addHandler(handler)
+        file_handler = logging.handlers.WatchedFileHandler(options.logfile)
+        file_handler.setFormatter(logging.Formatter(options.logformat))
+        handlers.append(file_handler)
 
     if options.stderr_log:
-        handler = logging.StreamHandler()
-        handler.setFormatter(
+        stderr_handler = logging.StreamHandler()
+        stderr_handler.setFormatter(
             LogFormatter(fmt=options.stderr_format, datefmt=options.stderr_dateformat)
         )
 
-        handler.setLevel(level)
-        root_logger.addHandler(handler)
+        handlers.append(stderr_handler)
 
     if options.syslog:
         if options.syslog_port is not None:
@@ -74,13 +85,17 @@ def bootstrap_core_logging():
                 address=syslog_address
             )
             syslog_handler.setFormatter(syslog_formatter)
-            syslog_handler.setLevel(level)
-            root_logger.addHandler(syslog_handler)
+            handlers.append(syslog_handler)
         except socket.error:
             logging.getLogger('frontik.logging').exception('cannot initialize syslog')
+
+    for handler in handlers:
+        handler.setLevel(level)
+        handler.addFilter(context_filter)
+        ROOT_LOGGER.addHandler(handler)
 
     for logger_name in options.suppressed_loggers:
         logging.getLogger(logger_name).setLevel(logging.WARN)
 
-    if not root_logger.handlers:
-        root_logger.addHandler(logging.NullHandler())
+    if not ROOT_LOGGER.handlers:
+        ROOT_LOGGER.addHandler(logging.NullHandler())
