@@ -235,8 +235,11 @@ def _exception_to_xml(exc_info, log=debug_log):
 
             try:
                 lines, starting_line = inspect.getsourcelines(frame)
-            except IOError:
-                lines, starting_line = [], None
+            except Exception:
+                try:
+                    lines, starting_line = inspect.findsource(frame)
+                except Exception:
+                    lines, starting_line = [], None
 
             for i, l in enumerate(lines):
                 line_node = etree.Element('line')

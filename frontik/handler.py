@@ -1,25 +1,26 @@
 # coding=utf-8
 
 import base64
-from functools import partial
 import time
+from functools import partial
 
 import tornado.curl_httpclient
 import tornado.httputil
-from tornado.ioloop import IOLoop
 import tornado.options
 import tornado.web
+from tornado.ioloop import IOLoop
 
-from frontik.async import AsyncGroup
 import frontik.auth
-from frontik.compat import iteritems
 import frontik.handler_active_limit
-from frontik.handler_debug import PageHandlerDebug
-from frontik.http_client import HttpClient
-from frontik.http_codes import process_status_code
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
 import frontik.util
+from frontik.async import AsyncGroup
+from frontik.compat import iteritems
+from frontik.handler_debug import PageHandlerDebug
+from frontik.http_client import HttpClient
+from frontik.http_codes import process_status_code
+from frontik.request_context import RequestContext
 
 
 class HTTPError(tornado.web.HTTPError):
@@ -63,7 +64,6 @@ class BaseHandler(tornado.web.RequestHandler):
 
         super(BaseHandler, self).__init__(application, request, logger=self.log, **kwargs)
 
-        self.log.register_page_handler(self)
         self._debug_access = None
 
         self._template_postprocessors = []
@@ -153,6 +153,12 @@ class BaseHandler(tornado.web.RequestHandler):
         IOLoop.current().add_future(future, callback)
 
     # Requests handling
+
+    def _execute(self, transforms, *args, **kwargs):
+        data = RequestContext.get_data()
+        data.update({'handler_name': repr(self)})
+
+        return super(BaseHandler, self)._execute(transforms, *args, **kwargs)
 
     @tornado.web.asynchronous
     def get(self, *args, **kwargs):
