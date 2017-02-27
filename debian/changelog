@@ -1,3 +1,9 @@
+frontik (2.28.3) unstable; urgency=low
+
+  * HH-66651 remove unnecessary log entries
+
+ -- Automated Build <an.sumin@hh.ru>  Mon, 27 Feb 2017 11:45:53 +0300
+
 frontik (2.28.2) unstable; urgency=low
 
   * HH-66949 use tornado_mock.httpclient
