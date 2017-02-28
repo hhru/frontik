@@ -4,9 +4,10 @@ import copy
 import time
 import weakref
 
-from lxml import etree
 import tornado.ioloop
 import tornado.options
+from lxml import etree
+from tornado import stack_context
 
 import frontik.doc
 import frontik.jobs
@@ -91,16 +92,18 @@ class XmlProducer(object):
 
         def job():
             start_time = time.time()
-            result = self.transform(copy.deepcopy(self.doc.to_etree_element()),
-                                    profile_run=self.handler.debug.debug_mode.profile_xslt)
+
+            try:
+                result = self.transform(copy.deepcopy(self.doc.to_etree_element()),
+                                        profile_run=self.handler.debug.debug_mode.profile_xslt)
+            except:
+                self.log.error('failed transformation with XSL %s', self.transform_filename)
+                self.log.error(get_xsl_log())
+                raise
+
             return start_time, str(result), result.xslt_profile
 
         def job_callback(future):
-            if future.exception() is not None:
-                self.log.error('failed transformation with XSL %s', self.transform_filename)
-                self.log.error(get_xsl_log())
-                raise future.exception()
-
             start_time, xml_result, xslt_profile = future.result()
 
             self.log.info('applied XSL %s in %.2fms', self.transform_filename, (time.time() - start_time) * 1000)
@@ -118,7 +121,7 @@ class XmlProducer(object):
             xsl_line = 'XSLT {0.level_name} in file "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
             return '\n'.join(map(xsl_line.format, self.transform.error_log))
 
-        future = self.executor.submit(job)
+        future = self.executor.submit(stack_context.wrap(job))
         self.ioloop.add_future(future, self.handler.check_finished(job_callback))
         return future
 
