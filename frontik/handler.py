@@ -328,6 +328,16 @@ class BaseHandler(tornado.web.RequestHandler):
             override_content
         )
 
+        if exception is not None and 199 < status_code < 400:
+            self.log.warning(
+                'Deprecated write_error behaviour: exception %s raised with 2xx/3xx status_code', exception
+            )
+
+        if finish_with_exception and not isinstance(exception, HTTPError):
+            self.log.warning(
+                'Deprecated write_error behaviour: exception %s is not an HTTPError, but overrides content', exception
+            )
+
         if headers:
             for (name, value) in iteritems(headers):
                 self.set_header(name, value)
