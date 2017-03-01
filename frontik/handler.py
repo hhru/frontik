@@ -283,6 +283,10 @@ class BaseHandler(tornado.web.RequestHandler):
             exception_hook(typ, value, tb)
 
     def send_error(self, status_code=500, **kwargs):
+        """`send_error` is adapted to support `write_error` that can call
+        `finish` asynchronously.
+        """
+
         self.log.stage_tag('page')
 
         if self._headers_written:
@@ -306,14 +310,9 @@ class BaseHandler(tornado.web.RequestHandler):
                 self.finish()
 
     def write_error(self, status_code=500, **kwargs):
-        # write_error in Frontik must be asynchronous when handling custom errors (due to XSLT)
-        # e.g. raise HTTPError(503) is syncronous and generates a standard Tornado error page,
-        # whereas raise HTTPError(503, xml=...) will call finish_with_postprocessors()
-
-        # the solution is to move self.finish() from send_error to write_error
-        # so any write_error override must call either finish() or finish_with_postprocessors() in the end
-
-        # in Tornado 3 it may be better to rewrite this mechanism with futures
+        """`write_error` can call `finish` asynchronously.
+        This allows, for example, asynchronous templating on error pages.
+        """
 
         if 'exc_info' in kwargs:
             exception = kwargs['exc_info'][1]
