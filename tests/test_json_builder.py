@@ -34,6 +34,13 @@ class TestJsonBuilder(unittest.TestCase):
         self.assertTrue(j.is_empty())
         self.assertEqual(j.to_string(), '{}')
 
+    def test_replace(self):
+        j = JsonBuilder()
+        j.put({'a': 'b'})
+        j.replace({'c': 'd'})
+
+        self.assertEqual(j.to_string(), '{"c": "d"}')
+
     def test_root_node_name(self):
         j = JsonBuilder(root_node='root')
         j.put({'a': 'b'})
