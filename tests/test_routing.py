@@ -60,3 +60,18 @@ class TestRouting(unittest.TestCase):
         response = frontik_re_app.get_page('inexistent_page')
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.content, b'404')
+
+    def test_reverse_url(self):
+        json = frontik_re_app.get_page_json('reverse_url')
+        self.assertEqual(json, {
+            'args': '/id/1/2',
+            'args_and_kwargs': '/id/1/2',
+            'kwargs': '/id/1/2',
+        })
+
+    def test_reverse_url_fail(self):
+        response = frontik_re_app.get_page('reverse_url?fail_args=true')
+        self.assertEqual(response.status_code, 500)
+
+        response = frontik_re_app.get_page('reverse_url?fail_missing=true')
+        self.assertEqual(response.status_code, 500)

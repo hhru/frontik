@@ -5,11 +5,11 @@ import logging
 import os
 import re
 import time
-from lxml import etree
 
 import tornado.autoreload
 import tornado.ioloop
 import tornado.web
+from lxml import etree
 from tornado.concurrent import Future
 from tornado.httpclient import AsyncHTTPClient
 from tornado.options import options
@@ -20,6 +20,7 @@ import frontik.producers.xml_producer
 from frontik.compat import iteritems
 from frontik.handler import ErrorHandler
 from frontik.loggers.request import RequestLogger
+from frontik.util import reverse_regex_named_groups
 
 app_logger = logging.getLogger('frontik.app')
 
@@ -131,9 +132,21 @@ class FileMappingDispatcher(object):
 
 
 class RegexpDispatcher(object):
-    def __init__(self, app_list, name='RegexpDispatcher'):
-        self.name = name
-        self.handlers = [(re.compile(pattern), handler) for pattern, handler in app_list]
+    def __init__(self, handlers, *args, **kwargs):
+        self.handlers = []
+        self.handler_names = {}
+
+        for handler_spec in handlers:
+            if len(handler_spec) > 2:
+                pattern, handler, handler_name = handler_spec
+            else:
+                handler_name = None
+                pattern, handler = handler_spec
+
+            self.handlers.append((re.compile(pattern), handler))
+
+            if handler_name is not None:
+                self.handler_names[handler_name] = pattern
 
         app_logger.info('initialized %r', self)
 
@@ -154,6 +167,12 @@ class RegexpDispatcher(object):
         logger.error('match for request url "%s" not found', request.uri)
         return ErrorHandler(application, request, logger, status_code=404, **kwargs)
 
+    def reverse(self, name, *args, **kwargs):
+        if name not in self.handler_names:
+            raise KeyError('%s not found in named urls' % name)
+
+        return reverse_regex_named_groups(self.handler_names[name], *args, **kwargs)
+
     def __repr__(self):
         return '{}.{}(<{} routes>)'.format(__package__, self.__class__.__name__, len(self.handlers))
 
@@ -161,7 +180,7 @@ class RegexpDispatcher(object):
 def app_dispatcher(tornado_app, request, **kwargs):
     request_id = request.headers.get('X-Request-Id', FrontikApplication.next_request_id())
     request_logger = RequestLogger(request, request_id)
-    return tornado_app.dispatcher(tornado_app, request, request_logger, **kwargs)
+    return tornado_app._dispatcher(tornado_app, request, request_logger, **kwargs)
 
 
 class FrontikApplication(tornado.web.Application):
@@ -171,12 +190,11 @@ class FrontikApplication(tornado.web.Application):
         pass
 
     def __init__(self, **settings):
-        tornado_settings = settings.get('tornado_settings')
+        self.start_time = time.time()
 
+        tornado_settings = settings.get('tornado_settings')
         if tornado_settings is None:
             tornado_settings = {}
-
-        self.start_time = time.time()
 
         super(FrontikApplication, self).__init__([
             (r'/version/?', VersionHandler),
@@ -194,8 +212,11 @@ class FrontikApplication(tornado.web.Application):
         AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
         self.http_client = self.curl_http_client = AsyncHTTPClient()
 
-        self.dispatcher = RegexpDispatcher(self.application_urls(), self.app)
+        self._dispatcher = RegexpDispatcher(self.application_urls(), self.app)
         self.loggers_initializers = frontik.loggers.bootstrap_app_loggers(self)
+
+    def reverse_url(self, name, *args, **kwargs):
+        return self._dispatcher.reverse(name, *args, **kwargs)
 
     def application_urls(self):
         return [
