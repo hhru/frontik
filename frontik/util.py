@@ -260,3 +260,29 @@ def asciify_url(url):
 
 def get_cookie_or_url_param_value(handler, param_name):
     return handler.get_argument(param_name, handler.get_cookie(param_name, None))
+
+
+def reverse_regex_named_groups(pattern, *args, **kwargs):
+    class GroupReplacer(object):
+        def __init__(self, args, kwargs):
+            self.args, self.kwargs = args, kwargs
+            self.current_arg = 0
+
+        def __call__(self, match):
+            value = ''
+            named_group = re.search(r'^\?P<(\w+)>(.*?)$', match.group(1))
+
+            if named_group:
+                group_name = named_group.group(1)
+                if group_name in self.kwargs:
+                    value = self.kwargs[group_name]
+                elif self.current_arg < len(self.args):
+                    value = self.args[self.current_arg]
+                    self.current_arg += 1
+                else:
+                    raise ValueError('Cannot reverse regex: required number of arguments not found')
+
+            return any_to_unicode(value)
+
+    result = re.sub(r'\(([^)]+)\)', GroupReplacer(args, kwargs), to_unicode(pattern))
+    return result.replace('^', '').replace('$', '')
