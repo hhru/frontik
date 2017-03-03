@@ -9,7 +9,7 @@ class TestHttpError(unittest.TestCase):
     def test_raise_200(self):
         response = frontik_test_app.get_page('http_error')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'success')
+        self.assertEqual(response.content, b'<html><title>200: OK</title><body>200: OK</body></html>')
 
     def test_raise_401(self):
         response = frontik_test_app.get_page('http_error?code=401')
