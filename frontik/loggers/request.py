@@ -4,6 +4,8 @@ from collections import namedtuple
 import logging
 import time
 
+from frontik.request_context import RequestContext
+
 logger = logging.getLogger('frontik.handler')
 
 
@@ -11,6 +13,20 @@ class ContextFilter(logging.Filter):
     def filter(self, record):
         handler_name = getattr(record, 'handler_name', None)
         request_id = getattr(record, 'request_id', None)
+
+        context_handler_name = RequestContext.get('handler_name')
+        context_request_id = RequestContext.get('request_id')
+
+        if handler_name is not None and handler_name != context_handler_name:
+            logging.getLogger('frontik.request_handler').warning(
+                'RequestContext is inconsistent: %s != %s', context_handler_name, handler_name
+            )
+
+        if request_id is not None and request_id != context_request_id:
+            logging.getLogger('frontik.request_handler').warning(
+                'RequestContext is inconsistent: %s != %s', context_request_id, request_id
+            )
+
         record.name = '.'.join(filter(None, [record.name, handler_name, request_id]))
         return True
 

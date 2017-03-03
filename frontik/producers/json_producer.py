@@ -5,10 +5,9 @@ import weakref
 
 import jinja2
 import tornado.ioloop
-from tornado.concurrent import TracebackFuture
 from tornado.escape import to_unicode, utf8
 from tornado.options import options
-from tornado.util import raise_exc_info
+from tornado import stack_context
 
 import frontik.jobs
 import frontik.json_builder
@@ -73,21 +72,19 @@ class JsonProducer(object):
 
         def job():
             start_time = time.time()
-            template = self.environment.get_template(self.template_filename)
 
-            if callable(self.jinja_context_provider):
-                jinja_context = self.jinja_context_provider(self.handler)
-            else:
-                jinja_context = self.json.to_dict()
+            try:
+                template = self.environment.get_template(self.template_filename)
 
-            result = template.render(**jinja_context)
-            return start_time, result
+                if callable(self.jinja_context_provider):
+                    jinja_context = self.jinja_context_provider(self.handler)
+                else:
+                    jinja_context = self.json.to_dict()
 
-        def job_callback(future):
-            if future.exception() is not None:
+                result = template.render(**jinja_context)
+            except Exception as exception:
                 self.log.error('failed applying template %s', self.template_filename)
 
-                exception = future.exception()
                 if isinstance(exception, jinja2.TemplateSyntaxError):
                     self.log.error(
                         u'%s in file "%s", line %d\n\t%s',
@@ -97,11 +94,11 @@ class JsonProducer(object):
                 elif isinstance(exception, jinja2.TemplateError):
                     self.log.error(u'%s error\n\t%s', exception.__class__.__name__, to_unicode(exception.message))
 
-                if isinstance(future, TracebackFuture):
-                    raise_exc_info(future.exc_info())
-                else:
-                    raise exception
+                raise
 
+            return start_time, result
+
+        def job_callback(future):
             start_time, result = future.result()
 
             self.log.stage_tag('tpl')
@@ -109,7 +106,7 @@ class JsonProducer(object):
 
             callback(utf8(result))
 
-        future = self.executor.submit(job)
+        future = self.executor.submit(stack_context.wrap(job))
         self.ioloop.add_future(future, self.handler.check_finished(job_callback))
         return future
 
