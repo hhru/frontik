@@ -1,14 +1,14 @@
 # coding=utf-8
 
 import base64
-from functools import partial
 import time
+from functools import partial
 
 import tornado.curl_httpclient
 import tornado.httputil
-from tornado.ioloop import IOLoop
 import tornado.options
 import tornado.web
+from tornado.ioloop import IOLoop
 
 import frontik.auth
 import frontik.handler_active_limit
@@ -49,43 +49,44 @@ class BaseHandler(tornado.web.RequestHandler):
 
     preprocessors = ()
 
-    # to restore tornado.web.RequestHandler compatibility
-    def __init__(self, application, request, logger, **kwargs):
+    def __init__(self, application, request, **kwargs):
         self._prepared = False
         self.name = self.__class__.__name__
-        self.request_id = logger.request_id
+        self.request_id = RequestContext.get('request_id')
         self.config = application.config
+        self.text = None
 
-        self.log = logger
-        self._exception_hooks = []
+        # For patched Tornado
+        self.log = kwargs.get('logger')
 
-        for initializer in application.loggers_initializers:
-            initializer(self)
-
-        super(BaseHandler, self).__init__(application, request, logger=self.log, **kwargs)
-
-        self.log.register_page_handler(self)
         self._debug_access = None
 
         self._template_postprocessors = []
         self._early_postprocessors = []
         self._returned_methods = set()
+        self._exception_hooks = []
+
+        super(BaseHandler, self).__init__(application, request, **kwargs)
 
         self._http_client = HttpClient(self, self.application.curl_http_client, self.modify_http_client_request)
-
-        self.text = None
 
     def __repr__(self):
         return '.'.join([self.__module__, self.__class__.__name__])
 
-    def initialize(self, logger=None, **kwargs):
-        # Hides logger keyword argument from incompatible tornado versions
-        super(BaseHandler, self).initialize(**kwargs)
+    def initialize(self, logger=None, *args, **kwargs):
+        # For Tornado without patch
+        if logger is not None:
+            self.log = logger
+
+        for initializer in self.application.loggers_initializers:
+            initializer(self)
+
+        super(BaseHandler, self).initialize(*args, **kwargs)
 
     def prepare(self):
         self.active_limit = frontik.handler_active_limit.PageHandlerActiveLimit(self)
         self.debug = PageHandlerDebug(self)
-        self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish', logger=self.log)
+        self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish')
 
         self.json_producer = self.application.json.get_producer(self)
         self.json = self.json_producer.json
@@ -95,6 +96,8 @@ class BaseHandler(tornado.web.RequestHandler):
         self.doc = self.xml_producer.doc
 
         self._prepared = True
+
+        super(BaseHandler, self).prepare()
 
     def require_debug_access(self, login=None, passwd=None):
         if self._debug_access is None:
@@ -523,13 +526,9 @@ class PageHandler(BaseHandler):
         )
 
 
-class ErrorHandler(tornado.web.ErrorHandler, PageHandler):
-    def initialize(self, status_code, logger=None):
-        # Hides logger keyword argument from incompatible tornado versions
-        super(ErrorHandler, self).initialize(status_code)
+class ErrorHandler(PageHandler, tornado.web.ErrorHandler):
+    pass
 
 
-class RedirectHandler(tornado.web.RedirectHandler, PageHandler):
-    def initialize(self, url, permanent=True, logger=None):
-        # Hides logger keyword argument from incompatible tornado versions
-        super(RedirectHandler, self).initialize(url, permanent)
+class RedirectHandler(PageHandler, tornado.web.RedirectHandler):
+    pass

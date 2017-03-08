@@ -116,21 +116,21 @@ class FileMappingDispatcher(object):
             return self.handle_404(application, request, logger, **kwargs)
         except:
             logger.exception('error while importing %s module', page_module_name)
-            return ErrorHandler(application, request, logger, status_code=500, **kwargs)
+            return ErrorHandler(application, request, logger=logger, status_code=500, **kwargs)
 
         if not hasattr(page_module, 'Page'):
             logger.error('%s.Page class not found', page_module_name)
             return self.handle_404(application, request, logger, **kwargs)
 
-        return page_module.Page(application, request, logger, **kwargs)
+        return page_module.Page(application, request, logger=logger, **kwargs)
 
     def __repr__(self):
         return '{}.{}(<{}, handler_404={}>)'.format(__package__, self.__class__.__name__, self.name, self.handler_404)
 
     def handle_404(self, application, request, logger, **kwargs):
         if self.handler_404 is not None:
-            return self.handler_404(application, request, logger, **kwargs)
-        return ErrorHandler(application, request, logger, status_code=404, **kwargs)
+            return self.handler_404(application, request, logger=logger, **kwargs)
+        return ErrorHandler(application, request, logger=logger, status_code=404, **kwargs)
 
 
 class RegexpDispatcher(object):
@@ -149,33 +149,20 @@ class RegexpDispatcher(object):
                 logger.debug('using %r', handler)
                 extend_request_arguments(request, match)
                 try:
-                    return handler(application, request, logger, **kwargs)
+                    return handler(application, request, logger=logger, **kwargs)
                 except Exception as e:
                     logger.exception('error handling request: %s in %r', e, handler)
-                    return ErrorHandler(application, request, logger, status_code=500, **kwargs)
+                    return ErrorHandler(application, request, logger=logger, status_code=500, **kwargs)
 
         logger.error('match for request url "%s" not found', request.uri)
-        return ErrorHandler(application, request, logger, status_code=404, **kwargs)
+        return ErrorHandler(application, request, logger=logger, status_code=404, **kwargs)
 
     def __repr__(self):
         return '{}.{}(<{} routes>)'.format(__package__, self.__class__.__name__, len(self.handlers))
 
 
 def app_dispatcher(tornado_app, request, **kwargs):
-    request_id = request.headers.get('X-Request-Id')
-    context_request_id = RequestContext.get('request_id')
-
-    if context_request_id is None or (request_id is not None and request_id != context_request_id):
-        logging.getLogger('frontik.request_handler').warning(
-            'RequestContext is inconsistent: %s != %s', context_request_id, request_id
-        )
-
-        if request_id is None:
-            request_id = FrontikApplication.next_request_id()
-    else:
-        request_id = context_request_id
-
-    request_logger = RequestLogger(request, request_id)
+    request_logger = RequestLogger(request)  # Left for compatibility with patched Tornado
     return tornado_app.dispatcher(tornado_app, request, request_logger, **kwargs)
 
 
