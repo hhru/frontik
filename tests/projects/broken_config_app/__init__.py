@@ -4,4 +4,6 @@ from frontik.app import FrontikApplication
 
 
 class TestApplication(FrontikApplication):
-    pass
+    def application_config(self):
+        from . import config
+        return config

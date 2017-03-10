@@ -1,20 +1,19 @@
 # coding=utf-8
 
 import base64
-from distutils.spawn import find_executable
 import json
 import os
 import socket
 import subprocess
 import sys
 import time
+from distutils.spawn import find_executable
 
+import requests
 from lxml import etree
 from tornado.escape import to_unicode, utf8
-import requests
 
 from . import FRONTIK_ROOT
-from frontik.server import supervisor
 
 try:
     import coverage
@@ -23,27 +22,25 @@ except ImportError:
     USE_COVERAGE = False
 
 
-def run_supervisor_command(supervisor_script, port, command):
+def run_command(command, port):
     if USE_COVERAGE:
-        template = '{exe} {coverage} run {supervisor} --with-coverage {args} {command}'
+        template = '{exe} {coverage} run {command} {args}'
     else:
-        template = '{exe} {supervisor} {args} {command}'
+        template = '{exe} {command} {args}'
 
-    args = '--start_port={port} --workers_count=1 --pidfile_template={pidfile} --logfile_template={logfile}'.format(
+    args = '--port={port} --logfile={logfile}'.format(
         port=port,
-        pidfile=os.path.join(FRONTIK_ROOT, '{}.%(port)s.pid'.format(supervisor_script)),
         logfile=os.path.join(FRONTIK_ROOT, 'frontik_test.log')
     )
 
     executable = template.format(
         exe=sys.executable,
         coverage=find_executable('coverage'),
-        supervisor=supervisor_script,
+        command=command,
         args=args,
-        command=command
     )
 
-    return subprocess.Popen(executable.split(), stderr=subprocess.PIPE)
+    return subprocess.Popen(executable.split())
 
 
 def find_free_port(from_port=9000, to_port=10000):
@@ -66,33 +63,32 @@ def create_basic_auth_header(credentials):
 
 
 class FrontikTestInstance(object):
-    def __init__(self, supervisor_script):
-        self.supervisor_script = supervisor_script
+    def __init__(self, command=None):
+        self.command = command
+        self.popen = None
         self.port = None
 
     def start(self):
         self.port = find_free_port()
-        run_supervisor_command(self.supervisor_script, self.port, 'start')
-        self.wait_for(lambda: supervisor.worker_is_running(self.port), 50)
+        self.popen = run_command(self.command, self.port)
 
-        assert self.get_page('status').status_code == 200
+        for i in range(10):
+            try:
+                time.sleep(0.2)
+                response = self.get_page('status')
+                if response.status_code == 200:
+                    return
+            except:
+                pass
+
+        assert False, 'Failed to start Frontik instance'
 
     def stop(self):
         if not self.port:
             return
 
-        process = run_supervisor_command(self.supervisor_script, self.port, 'stop')
-        assert process.wait() == 0
+        self.popen.terminate()
         self.port = None
-
-    @staticmethod
-    def wait_for(fun, steps):
-        for i in range(steps):
-            if fun():
-                return
-            time.sleep(0.1)  # up to 5 seconds with steps=50
-
-        assert fun()
 
     def get_page(self, page, notpl=False, method=requests.get, **kwargs):
         if not self.port:
@@ -132,7 +128,22 @@ class FrontikTestInstance(object):
         return to_unicode(self.get_page(page, notpl).content)
 
 
-frontik_broken_app = FrontikTestInstance('supervisor-brokenapp')
-frontik_test_app = FrontikTestInstance('supervisor-testapp')
-frontik_re_app = FrontikTestInstance('supervisor-reapp')
-frontik_no_debug_app = FrontikTestInstance('supervisor-nodebug')
+frontik_test_app = FrontikTestInstance(
+    command='./frontik-test --app=tests.projects.test_app --config=tests/projects/frontik_debug.cfg'
+)
+
+frontik_re_app = FrontikTestInstance(
+    command='./frontik-test --app=tests.projects.re_app --config=tests/projects/frontik_debug.cfg'
+)
+
+frontik_no_debug_app = FrontikTestInstance(
+    command='./frontik-test --app=tests.projects.no_debug_app --config=tests/projects/frontik_no_debug.cfg'
+)
+
+frontik_broken_config_app = FrontikTestInstance(
+    command='./frontik-test --app=tests.projects.broken_config_app --config=tests/projects/frontik_debug.cfg'
+)
+
+frontik_broken_init_async_app = FrontikTestInstance(
+    command='./frontik-test --app=tests.projects.broken_async_init_app --config=tests/projects/frontik_debug.cfg'
+)
