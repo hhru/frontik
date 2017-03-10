@@ -11,10 +11,8 @@ tornado.options.define('xheaders', default=False, type=bool)
 tornado.options.define('config', None, str)
 tornado.options.define('host', '0.0.0.0', str)
 tornado.options.define('port', 8080, int)
-tornado.options.define('daemonize', False, bool)
-tornado.options.define('pidfile', default=None, help='Set the name of pidfile')
 
-tornado.options.define('autoreload', True, bool)
+tornado.options.define('autoreload', False, bool)
 tornado.options.define('stop_timeout', 3, int)
 tornado.options.define('log_blocked_ioloop_timeout', 0, float)
 

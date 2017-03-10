@@ -9,7 +9,7 @@ from tornado.web import HTTPError
 try:
     from raven.contrib.tornado import AsyncSentryClient as OriginalAsyncSentryClient
     has_raven = True
-except ImportError:
+except Exception:
     has_raven = False
 
 from frontik.compat import iteritems

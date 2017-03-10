@@ -11,13 +11,11 @@ These options can be set for each Frontik instance (see [options.py](/frontik/op
 | `host`                       | `str`   | `'0.0.0.0'`   | Host value for incoming connections                                    |
 | `port`                       | `int`   | `8000`        | Port to listen to                                                      |
 | `config`                     | `str`   | `None`        | Path to config file                                                    |
-| `daemonize`                  | `bool`  | `False`       | Start Frontik instance     as daemon                                   |
-| `pidfile`                    | `str`   | `None`        | Pidfile location (if `None`, pidfile won't be created)                 |
 | `log_blocked_ioloop_timeout` | `float` | `0`           | Enables logging of long-running IOLoop iterations                      |
 | `app`                        | `str`   | `None`        | Application package name (see [Frontik application structure](/docs/frontik-app.md)) |
 | `app_class`                  | `str`   | `None`        | Application class name defined in application root module (by default `FrontikApplication` class is used) |
 | `tornado_settings`           | `dict`  | `None`        | tornado.web.Application settings                                       |
-| `autoreload`                 | `bool`  | `True`        | Restart Frontik after changes in application sources or config files   |
+| `autoreload`                 | `bool`  | `False`       | Restart Frontik after changes in application sources or config files   |
 | `debug`                      | `bool`  | `False`       | Enable debug mode                                                      |
 | `debug_login`                | `str`   | `None`        | Debug mode login for basic authentication (when `debug=False`)         |
 | `debug_password`             | `str`   | `None`        | Debug mode password for basic authentication (when `debug=False`)      |
