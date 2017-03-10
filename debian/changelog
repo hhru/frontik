@@ -1,3 +1,10 @@
+frontik (2.28.6) unstable; urgency=low
+
+  * HH-67237 run travis builds on trusty
+  * HH-67237 remove deprecated write_error behaviour
+
+ -- Automated Build <an.sumin@hh.ru>  Fri, 10 Mar 2017 14:18:31 +0300
+
 frontik (2.28.5) unstable; urgency=low
 
   * HH-67114 introduce RequestContext in test mode
