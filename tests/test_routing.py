@@ -2,7 +2,7 @@
 
 import unittest
 
-from frontik.app import MAX_MODULE_NAME_LENGTH
+from frontik.routing import MAX_MODULE_NAME_LENGTH
 
 from .instances import frontik_re_app, frontik_test_app
 
