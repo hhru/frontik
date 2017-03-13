@@ -137,6 +137,9 @@ class BaseHandler(tornado.web.RequestHandler):
         self.log.info('redirecting to: %s', url)
         return super(BaseHandler, self).redirect(url, *args, **kwargs)
 
+    def reverse_url(self, name, *args, **kwargs):
+        return self.application.reverse_url(name, *args, **kwargs)
+
     @staticmethod
     def add_callback(callback):
         IOLoop.current().add_callback(callback)

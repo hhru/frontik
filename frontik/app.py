@@ -23,6 +23,7 @@ from frontik.compat import iteritems
 from frontik.handler import ErrorHandler
 from frontik.loggers.request import RequestLogger
 from frontik.request_context import RequestContext
+from frontik.util import reverse_regex_named_groups
 
 app_logger = logging.getLogger('frontik.app')
 
@@ -134,9 +135,21 @@ class FileMappingDispatcher(object):
 
 
 class RegexpDispatcher(object):
-    def __init__(self, app_list, name='RegexpDispatcher'):
-        self.name = name
-        self.handlers = [(re.compile(pattern), handler) for pattern, handler in app_list]
+    def __init__(self, handlers, *args, **kwargs):  # *args and **kwargs are left for compatibility
+        self.handlers = []
+        self.handler_names = {}
+
+        for handler_spec in handlers:
+            if len(handler_spec) > 2:
+                pattern, handler, handler_name = handler_spec
+            else:
+                handler_name = None
+                pattern, handler = handler_spec
+
+            self.handlers.append((re.compile(pattern), handler))
+
+            if handler_name is not None:
+                self.handler_names[handler_name] = pattern
 
         app_logger.info('initialized %r', self)
 
@@ -156,6 +169,12 @@ class RegexpDispatcher(object):
 
         logger.error('match for request url "%s" not found', request.uri)
         return ErrorHandler(application, request, logger, status_code=404, **kwargs)
+
+    def reverse(self, name, *args, **kwargs):
+        if name not in self.handler_names:
+            raise KeyError('%s not found in named urls' % name)
+
+        return reverse_regex_named_groups(self.handler_names[name], *args, **kwargs)
 
     def __repr__(self):
         return '{}.{}(<{} routes>)'.format(__package__, self.__class__.__name__, len(self.handlers))
@@ -186,12 +205,11 @@ class FrontikApplication(tornado.web.Application):
         pass
 
     def __init__(self, **settings):
-        tornado_settings = settings.get('tornado_settings')
+        self.start_time = time.time()
 
+        tornado_settings = settings.get('tornado_settings')
         if tornado_settings is None:
             tornado_settings = {}
-
-        self.start_time = time.time()
 
         super(FrontikApplication, self).__init__([
             (r'/version/?', VersionHandler),
@@ -219,6 +237,9 @@ class FrontikApplication(tornado.web.Application):
 
         with StackContext(partial(RequestContext, {'request_id': request_id})):
             return super(FrontikApplication, self).__call__(request)
+
+    def reverse_url(self, name, *args, **kwargs):
+        return self.dispatcher.reverse(name, *args, **kwargs)
 
     def application_urls(self):
         return [
