@@ -6,7 +6,7 @@ from collections import OrderedDict
 from tornado.escape import to_unicode
 from tornado.httputil import HTTPFile, parse_body_arguments
 
-from frontik.util import any_to_bytes, any_to_unicode, make_mfd, make_qs, make_url
+from frontik.util import any_to_bytes, any_to_unicode, make_mfd, make_qs, make_url, reverse_regex_named_groups
 
 
 class TestUtil(unittest.TestCase):
@@ -115,3 +115,21 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(files['file3'][1]['filename'], r'file3-\part2\.unknown')
         self.assertEqual(files['file3'][1]['body'], b'BODY2')
         self.assertEqual(files['file3'][1]['content_type'], 'application/octet-stream')
+
+    def test_reverse_regex_named_groups(self):
+        two_ids = '/id/(?P<id1>[^/]+)/(?P<id2>[^/]+)'
+        two_ids_with_ending = '/id/(?P<id1>[^/]+)/(?P<id2>[^/]+)(\?|$)'
+        two_ids_with_unnamed_groups = '/id/(?P<id1>[^/]+)/(\w+)/(?P<id2>[^/]+)(\?|$)'
+
+        self.assertEqual('/id/1/2', reverse_regex_named_groups(two_ids, 1, 2))
+        self.assertEqual('/id/1/2', reverse_regex_named_groups(two_ids_with_ending, 1, 2))
+        self.assertEqual('/id/1//2', reverse_regex_named_groups(two_ids_with_unnamed_groups, 1, 2))
+        self.assertEqual('/id/1/2', reverse_regex_named_groups(two_ids, 1, id2=2, id3=3))
+        self.assertEqual('/id/1/2', reverse_regex_named_groups(two_ids_with_ending, 2, 3, id1='1'))
+        self.assertEqual('/id/1//2', reverse_regex_named_groups(two_ids_with_unnamed_groups, '1', id2=2))
+        self.assertEqual('/id/1/2', reverse_regex_named_groups(two_ids, id1=1, id2=2))
+        self.assertEqual('/id/1/2', reverse_regex_named_groups(two_ids_with_ending, id1='1', id2=2))
+        self.assertEqual('/id/1//2', reverse_regex_named_groups(two_ids_with_unnamed_groups, id1=1, id2='2'))
+
+        self.assertRaises(ValueError, reverse_regex_named_groups, two_ids, 1)
+        self.assertRaises(ValueError, reverse_regex_named_groups, two_ids, id1=1)
