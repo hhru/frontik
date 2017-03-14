@@ -2,8 +2,6 @@
 
 import importlib
 import logging
-import os
-import re
 import time
 from functools import partial
 
@@ -19,15 +17,13 @@ from tornado.stack_context import StackContext
 import frontik.loggers
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
-from frontik.compat import iteritems
-from frontik.handler import ErrorHandler
+from frontik import routing
 from frontik.loggers.request import RequestLogger
 from frontik.request_context import RequestContext
-from frontik.util import reverse_regex_named_groups
 
-app_logger = logging.getLogger('frontik.app')
-
-MAX_MODULE_NAME_LENGTH = os.pathconf('/', 'PC_PATH_MAX') - 1
+# Temporary for backwards compatibility
+FileMappingDispatcher = routing.FileMappingRouter
+RegexpDispatcher = routing.FrontikRouter
 
 
 def get_frontik_and_apps_versions(application):
@@ -73,111 +69,12 @@ class StatusHandler(tornado.web.RequestHandler):
         result = {
             'uptime': uptime_value,
             'workers': {
-                'total': tornado.options.options.max_http_clients,
+                'total': options.max_http_clients,
                 'free':  len(self.application.curl_http_client._free_list)
             }
         }
 
         self.finish(result)
-
-
-def extend_request_arguments(request, match):
-    arguments = match.groupdict()
-    for name, value in iteritems(arguments):
-        if value:
-            request.arguments.setdefault(name, []).append(value)
-
-
-class FileMappingDispatcher(object):
-    def __init__(self, module, handler_404=None):
-        self.name = module.__name__
-        self.handler_404 = handler_404
-        app_logger.info('initialized %r', self)
-
-    def __call__(self, application, request, logger, **kwargs):
-        url_parts = request.path.strip('/').split('/')
-
-        if any('.' in part for part in url_parts):
-            logger.info('url contains "." character, using 404 page')
-            return self.handle_404(application, request, logger, **kwargs)
-
-        page_name = '.'.join(filter(None, url_parts))
-        page_module_name = '.'.join(filter(None, (self.name, page_name)))
-        logger.debug('page module: %s', page_module_name)
-
-        if len(page_module_name) > MAX_MODULE_NAME_LENGTH:
-            logger.info('page module name exceeds PATH_MAX (%s), using 404 page', MAX_MODULE_NAME_LENGTH)
-            return self.handle_404(application, request, logger, **kwargs)
-
-        try:
-            page_module = importlib.import_module(page_module_name)
-            logger.debug('using %s from %s', page_module_name, page_module.__file__)
-        except ImportError:
-            logger.warning('%s module not found', (self.name, page_module_name))
-            return self.handle_404(application, request, logger, **kwargs)
-        except:
-            logger.exception('error while importing %s module', page_module_name)
-            return ErrorHandler(application, request, logger, status_code=500, **kwargs)
-
-        if not hasattr(page_module, 'Page'):
-            logger.error('%s.Page class not found', page_module_name)
-            return self.handle_404(application, request, logger, **kwargs)
-
-        return page_module.Page(application, request, logger, **kwargs)
-
-    def __repr__(self):
-        return '{}.{}(<{}, handler_404={}>)'.format(__package__, self.__class__.__name__, self.name, self.handler_404)
-
-    def handle_404(self, application, request, logger, **kwargs):
-        if self.handler_404 is not None:
-            return self.handler_404(application, request, logger, **kwargs)
-        return ErrorHandler(application, request, logger, status_code=404, **kwargs)
-
-
-class RegexpDispatcher(object):
-    def __init__(self, handlers, *args, **kwargs):  # *args and **kwargs are left for compatibility
-        self.handlers = []
-        self.handler_names = {}
-
-        for handler_spec in handlers:
-            if len(handler_spec) > 2:
-                pattern, handler, handler_name = handler_spec
-            else:
-                handler_name = None
-                pattern, handler = handler_spec
-
-            self.handlers.append((re.compile(pattern), handler))
-
-            if handler_name is not None:
-                self.handler_names[handler_name] = pattern
-
-        app_logger.info('initialized %r', self)
-
-    def __call__(self, application, request, logger, **kwargs):
-        logger.info('requested url: %s', request.uri)
-
-        for pattern, handler in self.handlers:
-            match = pattern.match(request.uri)
-            if match:
-                logger.debug('using %r', handler)
-                extend_request_arguments(request, match)
-                try:
-                    return handler(application, request, logger, **kwargs)
-                except Exception as e:
-                    logger.exception('error handling request: %s in %r', e, handler)
-                    return ErrorHandler(application, request, logger, status_code=500, **kwargs)
-
-        logger.error('match for request url "%s" not found', request.uri)
-        return ErrorHandler(application, request, logger, status_code=404, **kwargs)
-
-    def reverse(self, name, *args, **kwargs):
-        if name not in self.handler_names:
-            raise KeyError('%s not found in named urls' % name)
-
-        return reverse_regex_named_groups(self.handler_names[name], *args, **kwargs)
-
-    def __repr__(self):
-        return '{}.{}(<{} routes>)'.format(__package__, self.__class__.__name__, len(self.handlers))
 
 
 def app_dispatcher(tornado_app, request, **kwargs):
