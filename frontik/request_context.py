@@ -30,5 +30,4 @@ class RequestContext(object):
 
     def __exit__(self, *exc):
         self.__class__._state.data = self._prev_data
-        del self._prev_data
         return False
