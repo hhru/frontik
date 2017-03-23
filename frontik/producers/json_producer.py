@@ -7,11 +7,10 @@ import jinja2
 import tornado.ioloop
 from tornado.escape import to_unicode, utf8
 from tornado.options import options
-from tornado import stack_context
 
 import frontik.jobs
 import frontik.json_builder
-import frontik.util
+from frontik.util import get_cookie_or_url_param_value, raise_future_exception
 from frontik.producers import ProducerFactory
 
 
@@ -44,13 +43,13 @@ class JsonProducer(object):
         self.executor = frontik.jobs.get_executor(options.json_executor)
         self.ioloop = tornado.ioloop.IOLoop.current()
 
-        self.json = frontik.json_builder.JsonBuilder(json_encoder=json_encoder, logger=self.log)
+        self.json = frontik.json_builder.JsonBuilder(json_encoder=json_encoder)
         self.template_filename = None
         self.environment = getattr(environment, 'environment', environment)  # Temporary for transition period
         self.jinja_context_provider = jinja_context_provider
 
     def __call__(self, callback):
-        if frontik.util.get_cookie_or_url_param_value(self.handler, 'notpl') is not None:
+        if get_cookie_or_url_param_value(self.handler, 'notpl') is not None:
             self.handler.require_debug_access()
             self.log.debug('ignoring templating because notpl parameter is passed')
             return self._finish_with_json(callback)
@@ -72,19 +71,21 @@ class JsonProducer(object):
 
         def job():
             start_time = time.time()
+            template = self.environment.get_template(self.template_filename)
 
-            try:
-                template = self.environment.get_template(self.template_filename)
+            if callable(self.jinja_context_provider):
+                jinja_context = self.jinja_context_provider(self.handler)
+            else:
+                jinja_context = self.json.to_dict()
 
-                if callable(self.jinja_context_provider):
-                    jinja_context = self.jinja_context_provider(self.handler)
-                else:
-                    jinja_context = self.json.to_dict()
+            result = template.render(**jinja_context)
+            return start_time, result
 
-                result = template.render(**jinja_context)
-            except Exception as exception:
+        def job_callback(future):
+            if future.exception() is not None:
                 self.log.error('failed applying template %s', self.template_filename)
 
+                exception = future.exception()
                 if isinstance(exception, jinja2.TemplateSyntaxError):
                     self.log.error(
                         u'%s in file "%s", line %d\n\t%s',
@@ -94,11 +95,9 @@ class JsonProducer(object):
                 elif isinstance(exception, jinja2.TemplateError):
                     self.log.error(u'%s error\n\t%s', exception.__class__.__name__, to_unicode(exception.message))
 
-                raise
+                raise_future_exception(future)
+                return
 
-            return start_time, result
-
-        def job_callback(future):
             start_time, result = future.result()
 
             self.log.stage_tag('tpl')
@@ -106,7 +105,7 @@ class JsonProducer(object):
 
             callback(utf8(result))
 
-        future = self.executor.submit(stack_context.wrap(job))
+        future = self.executor.submit(job)
         self.ioloop.add_future(future, self.handler.check_finished(job_callback))
         return future
 
