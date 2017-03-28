@@ -7,23 +7,19 @@ from functools import partial
 
 import tornado.autoreload
 import tornado.ioloop
-import tornado.web
 from lxml import etree
 from tornado.concurrent import Future
 from tornado.httpclient import AsyncHTTPClient
 from tornado.options import options
 from tornado.stack_context import StackContext
+from tornado.web import Application, asynchronous, RequestHandler
 
 import frontik.loggers
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
-from frontik import routing
 from frontik.loggers.request import RequestLogger
 from frontik.request_context import RequestContext
-
-# Temporary for backwards compatibility
-FileMappingDispatcher = routing.FileMappingRouter
-RegexpDispatcher = routing.FrontikRouter
+from frontik.routing import FileMappingRouter, FrontikRouter
 
 
 def get_frontik_and_apps_versions(application):
@@ -45,16 +41,16 @@ def get_frontik_and_apps_versions(application):
     return versions
 
 
-class VersionHandler(tornado.web.RequestHandler):
+class VersionHandler(RequestHandler):
     def get(self):
         self.set_header('Content-Type', 'text/xml')
         self.write(
             etree.tostring(get_frontik_and_apps_versions(self.application), encoding='utf-8', xml_declaration=True))
 
 
-class StatusHandler(tornado.web.RequestHandler):
+class StatusHandler(RequestHandler):
 
-    @tornado.web.asynchronous
+    @asynchronous
     def get(self):
         self.set_header('Content-Type', 'application/json; charset=UTF-8')
 
@@ -92,10 +88,10 @@ def app_dispatcher(tornado_app, request, **kwargs):
         request_id = context_request_id
 
     request_logger = RequestLogger(request, request_id)
-    return tornado_app.dispatcher(tornado_app, request, request_logger, **kwargs)
+    return tornado_app.router(tornado_app, request, request_logger, **kwargs)
 
 
-class FrontikApplication(tornado.web.Application):
+class FrontikApplication(Application):
     request_id = 0
 
     class DefaultConfig(object):
@@ -124,7 +120,7 @@ class FrontikApplication(tornado.web.Application):
         AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
         self.http_client = self.curl_http_client = AsyncHTTPClient()
 
-        self.dispatcher = RegexpDispatcher(self.application_urls(), self.app)
+        self.router = FrontikRouter(self.application_urls(), self.app)
         self.loggers_initializers = frontik.loggers.bootstrap_app_loggers(self)
 
     def __call__(self, request):
@@ -136,12 +132,15 @@ class FrontikApplication(tornado.web.Application):
             return super(FrontikApplication, self).__call__(request)
 
     def reverse_url(self, name, *args, **kwargs):
-        return self.dispatcher.reverse(name, *args, **kwargs)
+        return self.router.reverse_url(name, *args, **kwargs)
 
     def application_urls(self):
         return [
-            ('', FileMappingDispatcher(importlib.import_module('{}.pages'.format(self.app))))
+            ('', FileMappingRouter(importlib.import_module('{}.pages'.format(self.app))))
         ]
+
+    def application_404_handler(self):
+        return None
 
     def application_config(self):
         return FrontikApplication.DefaultConfig()
@@ -160,7 +159,3 @@ class FrontikApplication(tornado.web.Application):
     def next_request_id():
         FrontikApplication.request_id += 1
         return str(FrontikApplication.request_id)
-
-
-# Temporary for backward compatibility
-App = FrontikApplication

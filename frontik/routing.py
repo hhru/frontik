@@ -52,11 +52,16 @@ class FileMappingRouter(object):
         return page_module.Page(application, request, logger, **kwargs)
 
     def __repr__(self):
-        return '{}.{}(<{}, handler_404={}>)'.format(__package__, self.__class__.__name__, self.name, self.handler_404)
+        return '{}.{}(<{}>)'.format(__package__, self.__class__.__name__, self.name)
 
     def handle_404(self, application, request, logger, **kwargs):
         if self.handler_404 is not None:
             return self.handler_404(application, request, logger, **kwargs)
+
+        if application.application_404_handler() is not None:
+            handler_class, kwargs = application.application_404_handler()
+            return handler_class(application, request, logger=logger, **kwargs)
+
         return ErrorHandler(application, request, logger, status_code=404, **kwargs)
 
 
@@ -96,7 +101,7 @@ class FrontikRouter(object):
         logger.error('match for request url "%s" not found', request.uri)
         return ErrorHandler(application, request, logger, status_code=404, **kwargs)
 
-    def reverse(self, name, *args, **kwargs):
+    def reverse_url(self, name, *args, **kwargs):
         if name not in self.handler_names:
             raise KeyError('%s not found in named urls' % name)
 
