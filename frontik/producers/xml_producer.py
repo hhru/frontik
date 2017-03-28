@@ -7,13 +7,13 @@ import weakref
 import tornado.ioloop
 import tornado.options
 from lxml import etree
-from tornado import stack_context
 
 import frontik.doc
 import frontik.jobs
 import frontik.util
 from frontik import file_cache
 from frontik.producers import ProducerFactory
+from frontik.util import raise_future_exception
 from frontik.xml_util import xml_from_file, xsl_from_file
 
 
@@ -52,7 +52,7 @@ class XmlProducer(object):
         self.xml_cache = xml_cache
         self.xsl_cache = xsl_cache
 
-        self.doc = frontik.doc.Doc(logger=self.log)
+        self.doc = frontik.doc.Doc()
         self.transform = None
         self.transform_filename = None
 
@@ -92,18 +92,18 @@ class XmlProducer(object):
 
         def job():
             start_time = time.time()
-
-            try:
-                result = self.transform(copy.deepcopy(self.doc.to_etree_element()),
-                                        profile_run=self.handler.debug.debug_mode.profile_xslt)
-            except:
-                self.log.error('failed transformation with XSL %s', self.transform_filename)
-                self.log.error(get_xsl_log())
-                raise
-
+            result = self.transform(copy.deepcopy(self.doc.to_etree_element()),
+                                    profile_run=self.handler.debug.debug_mode.profile_xslt)
             return start_time, str(result), result.xslt_profile
 
         def job_callback(future):
+            if future.exception() is not None:
+                self.log.error('failed transformation with XSL %s', self.transform_filename)
+                self.log.error(get_xsl_log())
+
+                raise_future_exception(future)
+                return
+
             start_time, xml_result, xslt_profile = future.result()
 
             self.log.info('applied XSL %s in %.2fms', self.transform_filename, (time.time() - start_time) * 1000)
@@ -121,7 +121,7 @@ class XmlProducer(object):
             xsl_line = 'XSLT {0.level_name} in file "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
             return '\n'.join(map(xsl_line.format, self.transform.error_log))
 
-        future = self.executor.submit(stack_context.wrap(job))
+        future = self.executor.submit(job)
         self.ioloop.add_future(future, self.handler.check_finished(job_callback))
         return future
 

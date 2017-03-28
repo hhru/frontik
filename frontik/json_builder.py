@@ -1,14 +1,11 @@
 # coding=utf-8
 
 import json
-import logging
 
 from tornado.concurrent import Future
 
 from frontik.compat import basestring_type, iteritems
 from frontik.http_client import RequestResult
-
-future_logger = logging.getLogger('frontik.future')
 
 
 def _encode_value(v):
@@ -33,7 +30,6 @@ def _encode_value(v):
         if v.done():
             return _encode_value(v.result())
 
-        future_logger.info('unresolved Future in JsonBuilder')
         return None
 
     elif hasattr(v, 'to_dict'):
@@ -56,15 +52,14 @@ class FrontikJsonEncoder(json.JSONEncoder):
 
 
 class JsonBuilder(object):
-    __slots__ = ('_data', '_encoder', 'root_node', 'logger')
+    __slots__ = ('_data', '_encoder', 'root_node')
 
-    def __init__(self, root_node=None, json_encoder=None, logger=None):
+    def __init__(self, root_node=None, json_encoder=None):
         if root_node is not None and not isinstance(root_node, basestring_type):
             raise TypeError('Cannot set {} as root node'.format(root_node))
 
         self._data = []
         self._encoder = json_encoder
-        self.logger = logger if logger is not None else future_logger
         self.root_node = root_node
 
     def put(self, *args, **kwargs):
