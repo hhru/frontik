@@ -1,15 +1,11 @@
 # coding=utf-8
 
-import logging
-
 import lxml.etree as etree
 
 from tornado.concurrent import Future
 
 from frontik.compat import basestring_type, iteritems
 from frontik.http_client import RequestResult
-
-doc_logger = logging.getLogger('frontik.doc')
 
 
 def _is_valid_element(node):
@@ -23,9 +19,9 @@ def _is_valid_element(node):
 
 
 class Doc(object):
-    __slots__ = ('root_node', 'data', 'logger')
+    __slots__ = ('root_node', 'data')
 
-    def __init__(self, root_node='doc', logger=None):
+    def __init__(self, root_node='doc'):
         if isinstance(root_node, basestring_type):
             root_node = etree.Element(root_node)
 
@@ -33,7 +29,6 @@ class Doc(object):
             raise TypeError('Cannot set {} as root node'.format(root_node))
 
         self.root_node = root_node
-        self.logger = logger if logger is not None else doc_logger
         self.data = []
 
     def put(self, chunk):
@@ -77,8 +72,6 @@ class Doc(object):
                 if chunk.done():
                     for i in chunk_to_element(chunk.result()):
                         yield i
-                else:
-                    self.logger.info('unresolved Future in Doc')
 
             elif isinstance(chunk, etree._Element):
                 yield chunk
