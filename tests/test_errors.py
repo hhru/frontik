@@ -55,9 +55,6 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.content, b'{"reason": "bad argument"}')
 
-    def test_exception_on_init(self):
-        self.assertEqual(frontik_re_app.get_page('exception_on_init').status_code, 500)
-
     def test_exception_on_prepare(self):
         self.assertEqual(frontik_re_app.get_page('exception_on_prepare').status_code, 500)
         self.assertEqual(frontik_re_app.get_page('exception_on_prepare_regex').status_code, 500)
