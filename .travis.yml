@@ -69,7 +69,6 @@ matrix:
 install:
   - if [[ $TORNADO_VERSION == 'HH' ]]; then pip install https://github.com/hhru/tornado/archive/master.zip; else pip install tornado==$TORNADO_VERSION; fi
   - if [[ $WITH_RAVEN == 1 ]]; then pip install "raven < 5.2"; fi
-  - pip install codecov
   - pip install python-daemon
   - python setup.py install
   - mkdir ~/.python-eggs
@@ -77,6 +76,3 @@ install:
 script:
   - python setup.py test
 sudo: false
-after_success:
-  - ./coverage-run.sh
-  - bash <(curl -s https://codecov.io/bash)
