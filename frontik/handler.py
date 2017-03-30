@@ -1,14 +1,14 @@
 # coding=utf-8
 
 import base64
-from functools import partial
 import time
+from functools import partial
 
 import tornado.curl_httpclient
 import tornado.httputil
-from tornado.ioloop import IOLoop
 import tornado.options
 import tornado.web
+from tornado.ioloop import IOLoop
 
 import frontik.auth
 import frontik.handler_active_limit
@@ -253,23 +253,20 @@ class BaseHandler(tornado.web.RequestHandler):
         self.finish_group.finish()
 
     def _finish_page_cb(self):
-        if not self._finished:
-            def _callback():
-                self.log.stage_tag('page')
+        def _callback():
+            self.log.stage_tag('page')
 
-                if self.text is not None:
-                    producer = self._generic_producer
-                elif not self.json.is_empty():
-                    producer = self.json_producer
-                else:
-                    producer = self.xml_producer
+            if self.text is not None:
+                producer = self._generic_producer
+            elif not self.json.is_empty():
+                producer = self.json_producer
+            else:
+                producer = self.xml_producer
 
-                self.log.debug('using %s producer', producer)
-                producer(partial(self._call_postprocessors, self._template_postprocessors, self.finish))
+            self.log.debug('using %s producer', producer)
+            producer(partial(self._call_postprocessors, self._template_postprocessors, self.finish))
 
-            self._call_postprocessors(self._early_postprocessors, _callback)
-        else:
-            self.log.warning('trying to finish already finished page, probably bug in a workflow, ignoring')
+        self._call_postprocessors(self._early_postprocessors, _callback)
 
     def on_connection_close(self):
         self.finish_group.abort()
