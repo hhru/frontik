@@ -23,7 +23,4 @@ You could launch your application using [/usr/bin/frontik](/scripts/frontik) scr
 For an example of a simple launcher that can be used in development environment, see [example-run.py](/examples/example-run.py).
 It uses [examples/frontik.cfg](/examples/frontik.cfg) config file to launch a simple application.
 
-A supervisor from [frontik.server.supervisor](/frontik/server/supervisor.py) module can be used to run and control
-Frontik instances in production. For more information on the supervisor see [Using built-in supervisor](/docs/supervisor.md).
-
 For information about Frontik applications, refer to [Frontik application structure](/docs/frontik-app.md).

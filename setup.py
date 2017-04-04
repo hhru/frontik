@@ -35,7 +35,6 @@ install_requires = [
     'jinja2 >= 2.6',
     'lxml >= 2.3.2',
     'pycurl >= 7.19.5',
-    'python-daemon',
     'simplejson >= 2.3.2',
     'tornado >= 3.2.2, < 4',
 ]
@@ -54,7 +53,7 @@ setup(
         'test': TestHook
     },
     packages=[
-        'frontik', 'frontik/loggers', 'frontik/producers', 'frontik/server'
+        'frontik', 'frontik/loggers', 'frontik/producers'
     ],
     scripts=['scripts/frontik'],
     package_data={
