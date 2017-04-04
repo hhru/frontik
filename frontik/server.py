@@ -2,7 +2,6 @@
 
 import importlib
 import logging
-import os
 import signal
 import sys
 import time
@@ -20,10 +19,8 @@ from frontik.loggers import bootstrap_core_logging
 log = logging.getLogger('frontik.server')
 
 
-def parse_configs_and_start(config_files):
-    """
-    — read command line options and config file
-    — daemonize
+def parse_configs(config_files):
+    """Reads command line options / config file and bootstraps logging.
     """
 
     tornado.options.parse_command_line(final=False)
@@ -43,21 +40,12 @@ def parse_configs_and_start(config_files):
     # override options from config with command line options
     tornado.options.parse_command_line(final=False)
 
-    if options.daemonize:
-        import daemon
-        ctx = daemon.DaemonContext()
-        ctx.initgroups = False  # For python-daemon >= 2
-        ctx.open()
-
-    if options.pidfile:
-        with open(options.pidfile, 'w+') as pidfile:
-            pidfile.write(str(os.getpid()))
-
     bootstrap_core_logging()
 
     for config in configs_to_read:
         log.debug('using config: %s', config)
-        tornado.autoreload.watch(config)
+        if options.autoreload:
+            tornado.autoreload.watch(config)
 
 
 def run_server(app):
@@ -105,8 +93,8 @@ def run_server(app):
 
                 io_loop.add_timeout(time.time() + options.stop_timeout, ioloop_stop)
 
-        if tornado.options.options.log_blocked_ioloop_timeout > 0:
-            io_loop.set_blocking_signal_threshold(tornado.options.options.log_blocked_ioloop_timeout, log_ioloop_block)
+        if options.log_blocked_ioloop_timeout > 0:
+            io_loop.set_blocking_signal_threshold(options.log_blocked_ioloop_timeout, log_ioloop_block)
 
         signal.signal(signal.SIGTERM, sigterm_handler)
     except Exception:
@@ -117,7 +105,7 @@ def main(config_file=None):
     # noinspection PyUnresolvedReferences
     import frontik.options
 
-    parse_configs_and_start(config_files=config_file)
+    parse_configs(config_files=config_file)
 
     if options.app is None:
         log.exception('no frontik application present (`app` option is not specified)')
@@ -139,20 +127,22 @@ def main(config_file=None):
         tornado_app = application(**options.as_dict())
         ioloop = tornado.ioloop.IOLoop.current()
 
+        def _run_server_cb(future):
+            if future.exception() is not None:
+                log.error('failed to initialize application, init_async returned: %s', future.exception())
+                sys.exit(1)
+
+            run_server(tornado_app)
+
         def _async_init_cb():
-            def _run_server_cb(future):
-                if future.exception() is not None:
-                    log.exception('failed to start: %s', future.exception())
-                    sys.exit(1)
-
-                run_server(tornado_app)
-
-            ioloop.add_future(
-                tornado_app.init_async(), _run_server_cb
-            )
+            try:
+                ioloop.add_future(tornado_app.init_async(), _run_server_cb)
+            except Exception:
+                log.exception('failed to initialize application')
+                sys.exit(1)
 
         ioloop.add_callback(_async_init_cb)
         ioloop.start()
     except:
-        log.exception('failed to initialize frontik application, quitting')
+        log.exception('frontik application exited with exception')
         sys.exit(1)
