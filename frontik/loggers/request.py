@@ -1,8 +1,8 @@
 # coding=utf-8
 
-from collections import namedtuple
 import logging
 import time
+from collections import namedtuple
 
 from frontik.request_context import RequestContext
 
@@ -11,22 +11,8 @@ logger = logging.getLogger('frontik.handler')
 
 class ContextFilter(logging.Filter):
     def filter(self, record):
-        handler_name = getattr(record, 'handler_name', None)
-        request_id = getattr(record, 'request_id', None)
-
-        context_handler_name = RequestContext.get('handler_name')
-        context_request_id = RequestContext.get('request_id')
-
-        if handler_name is not None and handler_name != context_handler_name:
-            logging.getLogger('frontik.request_handler').warning(
-                'RequestContext is inconsistent: %s != %s', context_handler_name, handler_name
-            )
-
-        if request_id is not None and request_id != context_request_id:
-            logging.getLogger('frontik.request_handler').warning(
-                'RequestContext is inconsistent: %s != %s', context_request_id, request_id
-            )
-
+        handler_name = RequestContext.get('handler_name')
+        request_id = RequestContext.get('request_id')
         record.name = '.'.join(filter(None, [record.name, handler_name, request_id]))
         return True
 
@@ -49,21 +35,16 @@ class RequestLogger(logging.LoggerAdapter):
 
     Stage = namedtuple('Stage', ('name', 'delta', 'start_delta'))
 
-    def __init__(self, request, request_id):
+    def __init__(self, request, request_id=None):
         self._page_handler_name = None
         self._last_stage_time = self._start_time = request._start_time
         self.stages = []
-        self.request_id = request_id
 
-        super(RequestLogger, self).__init__(ProxyLogger('frontik.handler'), {'request_id': request_id})
+        super(RequestLogger, self).__init__(ProxyLogger('frontik.handler'), {})
 
         # backcompatibility with logger
         self.warn = self.warning
         self.addHandler = self.logger.addHandler
-
-    def register_page_handler(self, page_handler):
-        self._page_handler_name = repr(page_handler)
-        self.extra['handler_name'] = self._page_handler_name
 
     def stage_tag(self, stage_name):
         stage_end_time = time.time()
@@ -89,7 +70,7 @@ class RequestLogger(logging.LoggerAdapter):
         self.info(
             'timings for %(page)s : %(stages)s',
             {
-                'page': self._page_handler_name,
+                'page': RequestContext.get('handler_name'),
                 'stages': '{0} total={1:.2f} code={2}'.format(stages_str, total, status_code)
             },
         )

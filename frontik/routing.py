@@ -43,13 +43,13 @@ class FileMappingRouter(object):
             return self.handle_404(application, request, logger, **kwargs)
         except:
             logger.exception('error while importing %s module', page_module_name)
-            return ErrorHandler(application, request, logger, status_code=500, **kwargs)
+            return ErrorHandler(application, request, logger=logger, status_code=500, **kwargs)
 
         if not hasattr(page_module, 'Page'):
             logger.error('%s.Page class not found', page_module_name)
             return self.handle_404(application, request, logger, **kwargs)
 
-        return page_module.Page(application, request, logger, **kwargs)
+        return page_module.Page(application, request, logger=logger, **kwargs)
 
     def __repr__(self):
         return '{}.{}(<{}>)'.format(__package__, self.__class__.__name__, self.name)
@@ -63,7 +63,7 @@ class FileMappingRouter(object):
             handler_class, kwargs = handler_class_and_kwargs
             return handler_class(application, request, logger=logger, **kwargs)
 
-        return ErrorHandler(application, request, logger, status_code=404, **kwargs)
+        return ErrorHandler(application, request, logger=logger, status_code=404, **kwargs)
 
 
 class FrontikRouter(object):
@@ -94,13 +94,13 @@ class FrontikRouter(object):
                 logger.debug('using %r', handler)
                 extend_request_arguments(request, match)
                 try:
-                    return handler(application, request, logger, **kwargs)
+                    return handler(application, request, logger=logger, **kwargs)
                 except Exception as e:
                     logger.exception('error handling request: %s in %r', e, handler)
-                    return ErrorHandler(application, request, logger, status_code=500, **kwargs)
+                    return ErrorHandler(application, request, logger=logger, status_code=500, **kwargs)
 
         logger.error('match for request url "%s" not found', request.uri)
-        return ErrorHandler(application, request, logger, status_code=404, **kwargs)
+        return ErrorHandler(application, request, logger=logger, status_code=404, **kwargs)
 
     def reverse_url(self, name, *args, **kwargs):
         if name not in self.handler_names:
