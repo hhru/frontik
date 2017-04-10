@@ -74,20 +74,7 @@ class StatusHandler(RequestHandler):
 
 
 def app_dispatcher(tornado_app, request, **kwargs):
-    request_id = request.headers.get('X-Request-Id')
-    context_request_id = RequestContext.get('request_id')
-
-    if context_request_id is None or (request_id is not None and request_id != context_request_id):
-        logging.getLogger('frontik.request_handler').warning(
-            'RequestContext is inconsistent: %s != %s', context_request_id, request_id
-        )
-
-        if request_id is None:
-            request_id = FrontikApplication.next_request_id()
-    else:
-        request_id = context_request_id
-
-    request_logger = RequestLogger(request, request_id)
+    request_logger = RequestLogger(request)
     return tornado_app.router(tornado_app, request, request_logger, **kwargs)
 
 

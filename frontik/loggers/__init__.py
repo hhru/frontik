@@ -1,8 +1,8 @@
 # coding=utf-8
 
 import logging
-from logging.handlers import SysLogHandler
 import socket
+from logging.handlers import SysLogHandler
 
 from tornado.log import LogFormatter
 from tornado.options import options
@@ -21,6 +21,8 @@ request handler. It will be called when a request handler is starting and should
 for this request handler (for example, add some specific methods for the handler or register hooks).
 """
 LOGGERS = (sentry, )
+
+ROOT_LOGGER = logging.root
 
 
 class BufferedHandler(logging.Logger):
@@ -42,24 +44,22 @@ def bootstrap_app_loggers(app):
 def bootstrap_core_logging():
     """This is a replacement for standard Tornado logging configuration."""
 
-    root_logger = logging.getLogger()
+    handlers = []
     level = getattr(logging, options.loglevel.upper())
-    root_logger.setLevel(logging.NOTSET)
+    ROOT_LOGGER.setLevel(logging.NOTSET)
 
     if options.logfile:
-        handler = logging.handlers.WatchedFileHandler(options.logfile)
-        handler.setFormatter(logging.Formatter(options.logformat))
-        handler.setLevel(level)
-        root_logger.addHandler(handler)
+        file_handler = logging.handlers.WatchedFileHandler(options.logfile)
+        file_handler.setFormatter(logging.Formatter(options.logformat))
+        handlers.append(file_handler)
 
     if options.stderr_log:
-        handler = logging.StreamHandler()
-        handler.setFormatter(
+        stderr_handler = logging.StreamHandler()
+        stderr_handler.setFormatter(
             LogFormatter(fmt=options.stderr_format, datefmt=options.stderr_dateformat)
         )
 
-        handler.setLevel(level)
-        root_logger.addHandler(handler)
+        handlers.append(stderr_handler)
 
     if options.syslog:
         if options.syslog_port is not None:
@@ -74,13 +74,16 @@ def bootstrap_core_logging():
                 address=syslog_address
             )
             syslog_handler.setFormatter(syslog_formatter)
-            syslog_handler.setLevel(level)
-            root_logger.addHandler(syslog_handler)
+            handlers.append(syslog_handler)
         except socket.error:
             logging.getLogger('frontik.logging').exception('cannot initialize syslog')
 
     for logger_name in options.suppressed_loggers:
         logging.getLogger(logger_name).setLevel(logging.WARN)
 
-    if not root_logger.handlers:
-        root_logger.addHandler(logging.NullHandler())
+    for handler in handlers:
+        handler.setLevel(level)
+        ROOT_LOGGER.addHandler(handler)
+
+    if not ROOT_LOGGER.handlers:
+        ROOT_LOGGER.addHandler(logging.NullHandler())
