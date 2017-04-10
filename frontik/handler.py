@@ -1,14 +1,14 @@
 # coding=utf-8
 
 import base64
-from functools import partial
 import time
+from functools import partial
 
 import tornado.curl_httpclient
 import tornado.httputil
-from tornado.ioloop import IOLoop
 import tornado.options
 import tornado.web
+from tornado.ioloop import IOLoop
 
 import frontik.auth
 import frontik.handler_active_limit
@@ -50,10 +50,10 @@ class BaseHandler(tornado.web.RequestHandler):
     preprocessors = ()
 
     # to restore tornado.web.RequestHandler compatibility
-    def __init__(self, application, request, logger, **kwargs):
+    def __init__(self, application, request, logger=None, **kwargs):
         self._prepared = False
         self.name = self.__class__.__name__
-        self.request_id = logger.request_id
+        self.request_id = RequestContext.get('request_id')
         self.config = application.config
 
         self.log = logger
@@ -64,7 +64,6 @@ class BaseHandler(tornado.web.RequestHandler):
 
         super(BaseHandler, self).__init__(application, request, logger=self.log, **kwargs)
 
-        self.log.register_page_handler(self)
         self._debug_access = None
 
         self._template_postprocessors = []
@@ -95,6 +94,8 @@ class BaseHandler(tornado.web.RequestHandler):
         self.doc = self.xml_producer.doc
 
         self._prepared = True
+
+        super(BaseHandler, self).prepare()
 
     def require_debug_access(self, login=None, passwd=None):
         if self._debug_access is None:
