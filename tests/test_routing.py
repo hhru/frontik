@@ -45,13 +45,15 @@ class TestRouting(unittest.TestCase):
         response = frontik_test_app.get_page('error_on_import')
         self.assertEqual(response.status_code, 500)
 
-    def test_regex_404(self):
+    def test_frontik_router_custom_404(self):
         response = frontik_re_app.get_page('not_matching_regex')
         self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.content, b'<html><title>404: Not Found</title><body>404: Not Found</body></html>')
+        self.assertEqual(response.content, b'404')
 
-    def test_filemapping_404(self):
-        self.assertEqual(frontik_test_app.get_page('no_page').status_code, 404)
+    def test_filemapping_default_404(self):
+        response = frontik_test_app.get_page('no_page')
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.content, b'<html><title>404: Not Found</title><body>404: Not Found</body></html>')
 
     def test_filemapping_404_on_dot_in_url(self):
         self.assertEqual(frontik_test_app.get_page('/nested/nested.nested').status_code, 404)
