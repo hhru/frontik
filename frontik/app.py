@@ -1,23 +1,20 @@
 # coding=utf-8
 
 import importlib
-import logging
 import time
 from functools import partial
 
-import tornado.autoreload
-import tornado.ioloop
 from lxml import etree
 from tornado.concurrent import Future
 from tornado.httpclient import AsyncHTTPClient
 from tornado.options import options
 from tornado.stack_context import StackContext
-from tornado.web import Application, asynchronous, RequestHandler
+from tornado.web import Application, RequestHandler
 
 import frontik.loggers
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
-from frontik.loggers.request import RequestLogger
+from frontik.handler import ErrorHandler
 from frontik.request_context import RequestContext
 from frontik.routing import FileMappingRouter, FrontikRouter
 
@@ -45,12 +42,11 @@ class VersionHandler(RequestHandler):
     def get(self):
         self.set_header('Content-Type', 'text/xml')
         self.write(
-            etree.tostring(get_frontik_and_apps_versions(self.application), encoding='utf-8', xml_declaration=True))
+            etree.tostring(get_frontik_and_apps_versions(self.application), encoding='utf-8', xml_declaration=True)
+        )
 
 
 class StatusHandler(RequestHandler):
-
-    @asynchronous
     def get(self):
         self.set_header('Content-Type', 'application/json; charset=UTF-8')
 
@@ -73,11 +69,6 @@ class StatusHandler(RequestHandler):
         self.finish(result)
 
 
-def app_dispatcher(tornado_app, request, **kwargs):
-    request_logger = RequestLogger(request)
-    return tornado_app.router(tornado_app, request, request_logger, **kwargs)
-
-
 class FrontikApplication(Application):
     request_id = 0
 
@@ -91,12 +82,6 @@ class FrontikApplication(Application):
         if tornado_settings is None:
             tornado_settings = {}
 
-        super(FrontikApplication, self).__init__([
-            (r'/version/?', VersionHandler),
-            (r'/status/?', StatusHandler),
-            (r'.*', app_dispatcher),
-        ], **tornado_settings)
-
         self.app_settings = settings
         self.config = self.application_config()
         self.app = settings.get('app')
@@ -107,8 +92,14 @@ class FrontikApplication(Application):
         AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
         self.http_client = self.curl_http_client = AsyncHTTPClient()
 
-        self.router = FrontikRouter(self.application_urls(), self.app)
+        self.router = FrontikRouter(self)
         self.loggers_initializers = frontik.loggers.bootstrap_app_loggers(self)
+
+        super(FrontikApplication, self).__init__([
+            (r'/version/?', VersionHandler),
+            (r'/status/?', StatusHandler),
+            (r'.*', self.router),
+        ], **tornado_settings)
 
     def __call__(self, request):
         request_id = request.headers.get('X-Request-Id')
@@ -127,7 +118,7 @@ class FrontikApplication(Application):
         ]
 
     def application_404_handler(self, request):
-        return None
+        return ErrorHandler, {'status_code': 404}
 
     def application_config(self):
         return FrontikApplication.DefaultConfig()
