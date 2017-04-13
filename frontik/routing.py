@@ -7,6 +7,7 @@ import re
 
 from frontik.compat import iteritems
 from frontik.handler import ErrorHandler
+from frontik.loggers.request import RequestLogger
 from frontik.util import reverse_regex_named_groups
 
 routing_logger = logging.getLogger('frontik.routing')
@@ -15,10 +16,8 @@ MAX_MODULE_NAME_LENGTH = os.pathconf('/', 'PC_PATH_MAX') - 1
 
 
 class FileMappingRouter(object):
-    def __init__(self, module, handler_404=None):
+    def __init__(self, module):
         self.name = module.__name__
-        self.handler_404 = handler_404
-        routing_logger.info('initialized %r', self)
 
     def __call__(self, application, request, logger, **kwargs):
         url_parts = request.path.strip('/').split('/')
@@ -51,27 +50,18 @@ class FileMappingRouter(object):
 
         return page_module.Page(application, request, logger=logger, **kwargs)
 
-    def __repr__(self):
-        return '{}.{}(<{}>)'.format(__package__, self.__class__.__name__, self.name)
-
     def handle_404(self, application, request, logger, **kwargs):
-        if self.handler_404 is not None:
-            return self.handler_404(application, request, logger, **kwargs)
-
-        handler_class_and_kwargs = application.application_404_handler(request)
-        if handler_class_and_kwargs is not None:
-            handler_class, kwargs = handler_class_and_kwargs
-            return handler_class(application, request, logger=logger, **kwargs)
-
-        return ErrorHandler(application, request, logger=logger, status_code=404, **kwargs)
+        handler_class, handler_kwargs = application.application_404_handler(request)
+        return handler_class(application, request, logger=logger, **dict(kwargs, **handler_kwargs))
 
 
 class FrontikRouter(object):
-    def __init__(self, handlers, *args, **kwargs):  # *args and **kwargs are left for compatibility
+    def __init__(self, application):
+        self.application = application
         self.handlers = []
         self.handler_names = {}
 
-        for handler_spec in handlers:
+        for handler_spec in application.application_urls():
             if len(handler_spec) > 2:
                 pattern, handler, handler_name = handler_spec
             else:
@@ -83,24 +73,24 @@ class FrontikRouter(object):
             if handler_name is not None:
                 self.handler_names[handler_name] = pattern
 
-        routing_logger.info('initialized %r', self)
+    def __call__(self, application, request, **kwargs):
+        request_logger = RequestLogger(request)
 
-    def __call__(self, application, request, logger, **kwargs):
-        logger.info('requested url: %s', request.uri)
+        request_logger.info('requested url: %s', request.uri)
 
         for pattern, handler in self.handlers:
             match = pattern.match(request.uri)
             if match:
-                logger.debug('using %r', handler)
+                request_logger.debug('using %r', handler)
                 extend_request_arguments(request, match)
                 try:
-                    return handler(application, request, logger=logger, **kwargs)
+                    return handler(application, request, logger=request_logger, **kwargs)
                 except Exception as e:
-                    logger.exception('error handling request: %s in %r', e, handler)
-                    return ErrorHandler(application, request, logger=logger, status_code=500, **kwargs)
+                    request_logger.exception('error handling request: %s in %r', e, handler)
+                    return ErrorHandler(application, request, logger=request_logger, status_code=500, **kwargs)
 
-        logger.error('match for request url "%s" not found', request.uri)
-        return ErrorHandler(application, request, logger=logger, status_code=404, **kwargs)
+        request_logger.error('match for request url "%s" not found', request.uri)
+        return self.handle_404(application, request, request_logger, **kwargs)
 
     def reverse_url(self, name, *args, **kwargs):
         if name not in self.handler_names:
@@ -108,8 +98,9 @@ class FrontikRouter(object):
 
         return reverse_regex_named_groups(self.handler_names[name], *args, **kwargs)
 
-    def __repr__(self):
-        return '{}.{}(<{} routes>)'.format(__package__, self.__class__.__name__, len(self.handlers))
+    def handle_404(self, application, request, logger, **kwargs):
+        handler_class, handler_kwargs = application.application_404_handler(request)
+        return handler_class(application, request, logger=logger, **dict(kwargs, **handler_kwargs))
 
 
 def extend_request_arguments(request, match):

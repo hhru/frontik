@@ -111,6 +111,8 @@ def main(config_file=None):
         log.exception('no frontik application present (`app` option is not specified)')
         sys.exit(1)
 
+    log.info('starting application %s', options.app)
+
     try:
         module = importlib.import_module(options.app)
     except Exception as e:
