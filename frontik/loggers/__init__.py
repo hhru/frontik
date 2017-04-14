@@ -8,6 +8,7 @@ from tornado.log import LogFormatter
 from tornado.options import options
 
 from frontik.loggers import sentry
+from frontik.request_context import RequestContext
 
 """Contains a list of all available third-party loggers, that can be used in the request handler.
 
@@ -25,9 +26,17 @@ LOGGERS = (sentry, )
 ROOT_LOGGER = logging.root
 
 
-class BufferedHandler(logging.Logger):
-    def __init__(self, name, level=logging.NOTSET):
-        super(BufferedHandler, self).__init__(name, level)
+class ContextFilter(logging.Filter):
+    def filter(self, record):
+        handler_name = RequestContext.get('handler_name')
+        request_id = RequestContext.get('request_id')
+        record.name = '.'.join(filter(None, [record.name, handler_name, request_id]))
+        return True
+
+
+class BufferedHandler(logging.Handler):
+    def __init__(self, level=logging.NOTSET):
+        super(BufferedHandler, self).__init__(level)
         self.records = []
 
     def handle(self, record):
@@ -35,6 +44,12 @@ class BufferedHandler(logging.Logger):
 
     def produce_all(self):
         raise NotImplementedError()  # pragma: no cover
+
+
+class GlobalLogHandler(logging.Handler):
+    def handle(self, record):
+        if RequestContext.get('log_handler'):
+            RequestContext.get('log_handler').handle(record)
 
 
 def bootstrap_app_loggers(app):
@@ -46,6 +61,7 @@ def bootstrap_core_logging():
 
     handlers = []
     level = getattr(logging, options.loglevel.upper())
+    context_filter = ContextFilter()
     ROOT_LOGGER.setLevel(logging.NOTSET)
 
     if options.logfile:
@@ -83,7 +99,10 @@ def bootstrap_core_logging():
 
     for handler in handlers:
         handler.setLevel(level)
+        handler.addFilter(context_filter)
         ROOT_LOGGER.addHandler(handler)
+
+    ROOT_LOGGER.addHandler(GlobalLogHandler())
 
     if not ROOT_LOGGER.handlers:
         ROOT_LOGGER.addHandler(logging.NullHandler())
