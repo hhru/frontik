@@ -84,7 +84,7 @@ class BaseHandler(tornado.web.RequestHandler):
     def prepare(self):
         self.active_limit = frontik.handler_active_limit.PageHandlerActiveLimit(self)
         self.debug = PageHandlerDebug(self)
-        self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish', logger=self.log)
+        self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish')
 
         self.json_producer = self.application.json.get_producer(self)
         self.json = self.json_producer.json
@@ -241,7 +241,7 @@ class BaseHandler(tornado.web.RequestHandler):
 
         def wrapper(*args, **kwargs):
             if self._finished:
-                self.log.warn('page was already finished, {0} ignored'.format(original_callback))
+                self.log.warning('page was already finished, {0} ignored'.format(original_callback))
             else:
                 callback(*args, **kwargs)
 
