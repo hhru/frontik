@@ -1,6 +1,5 @@
 # coding=utf-8
 
-import base64
 import time
 from functools import partial
 
@@ -17,7 +16,7 @@ import frontik.producers.xml_producer
 import frontik.util
 from frontik.async import AsyncGroup
 from frontik.compat import iteritems
-from frontik.handler_debug import PageHandlerDebug
+from frontik.debug import DebugMode
 from frontik.http_client import HttpClient
 from frontik.http_codes import process_status_code
 from frontik.request_context import RequestContext
@@ -53,7 +52,7 @@ class BaseHandler(tornado.web.RequestHandler):
     def __init__(self, application, request, logger=None, **kwargs):
         self._prepared = False
         self.name = self.__class__.__name__
-        self.request_id = RequestContext.get('request_id')
+        self.request_id = request.request_id = RequestContext.get('request_id')
         self.config = application.config
 
         self.log = logger
@@ -83,7 +82,7 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def prepare(self):
         self.active_limit = frontik.handler_active_limit.PageHandlerActiveLimit(self)
-        self.debug = PageHandlerDebug(self)
+        self.debug_mode = DebugMode(self)
         self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish')
 
         self.json_producer = self.application.json.get_producer(self)
@@ -365,47 +364,6 @@ class BaseHandler(tornado.web.RequestHandler):
         self.log.stage_tag('postprocess')
         super(BaseHandler, self).finish(chunk)
         self.cleanup()
-
-    def flush(self, include_footers=False, **kwargs):
-        self.log.stage_tag('finish')
-        self.log.info('finished handler %r', self)
-
-        if self._prepared and self.debug.debug_mode.enabled:
-            try:
-                self._response_size = sum(map(len, self._write_buffer))
-                original_headers = {'Content-Length': str(self._response_size)}
-                response_headers = dict(self._headers, **original_headers)
-
-                original_response = {
-                    'buffer': base64.b64encode(b''.join(self._write_buffer)),
-                    'headers': response_headers,
-                    'code': self._status_code
-                }
-
-                response_headers_with_cookies = self._generate_headers().splitlines()
-                response_headers_with_cookies = filter(None, response_headers_with_cookies)
-                res = self.debug.get_debug_page(
-                    self._status_code, response_headers_with_cookies,
-                    original_response, self.log.get_current_total()
-                )
-
-                if self.debug.debug_mode.inherited:
-                    self.set_header(PageHandlerDebug.DEBUG_HEADER_NAME, 'true')
-
-                self.set_header('Content-disposition', '')
-                self.set_header('Content-Length', str(len(res)))
-                self._write_buffer = [res]
-                self._status_code = 200
-
-            except Exception:
-                self.log.exception('cannot write debug info')
-
-        super(BaseHandler, self).flush(include_footers=False, **kwargs)
-
-    def _log(self):
-        super(BaseHandler, self)._log()
-        self.log.stage_tag('flush')
-        self.log.log_stages(self._status_code)
 
     # Preprocessors and postprocessors
 

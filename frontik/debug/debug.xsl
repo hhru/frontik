@@ -54,6 +54,7 @@
         </div>
 
         <xsl:apply-templates select="." mode="versions-info"/>
+        <xsl:apply-templates select="current()[status]" mode="status-info"/>
         <xsl:apply-templates select="." mode="general-info"/>
         <xsl:apply-templates select="entry[profile]"/>
         <xsl:apply-templates select="entry[not(profile)]"/>
@@ -90,6 +91,23 @@
         </div>
     </xsl:template>
 
+    <xsl:template match="log" mode="status-info">
+        <div class="entry entry_expandable">
+            <label for="details_{generate-id(status)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
+                <span class="entry__head__expandtext">
+                    Status info
+                </span>
+            </label>
+            <input type="checkbox" class="details-expander" id="details_{generate-id(status)}"/>
+            <div class="details">
+                <xsl:call-template name="highlighted-block">
+                    <xsl:with-param name="text" select="status"/>
+                    <xsl:with-param name="mode" select="'json'" />
+                </xsl:call-template>
+            </div>
+        </div>
+    </xsl:template>
+
     <xsl:template match="log" mode="general-info">
         <div class="entry entry_expandable">
             <!-- This allows debug page to work inside dev tools request preview, useful for ajax requests debugging -->
@@ -103,7 +121,8 @@
                 <xsl:apply-templates select="request/params"/>
                 <xsl:apply-templates select="request/headers"/>
                 <xsl:apply-templates select="request/cookies"/>
-                <xsl:apply-templates select="response/headers" mode="response-headers"/>
+                <xsl:apply-templates select="response/headers"/>
+                <xsl:apply-templates select="response/cookies"/>
             </div>
         </div>
     </xsl:template>
@@ -168,7 +187,7 @@
         </xsl:variable>
 
         <div class="line {@levelname}">
-            <div class="line__bar line__bar_{@levelname}" style="left: {$stagebar-left}; width: {$stagebar-width}"/>
+            <div class="line__bar" style="left: {$stagebar-left}; width: {$stagebar-width}"/>
             <span class="line__label">
                 <xsl:value-of select="stage/name"/>:
                 <xsl:value-of select="format-number(stage/delta, '##.#')"/>ms
@@ -315,6 +334,7 @@
                 </div>
 
                 <xsl:apply-templates select="request" mode="copy-as-curl"/>
+                <xsl:apply-templates select="response/time_info" mode="time-info"/>
                 <xsl:apply-templates select="debug"/>
                 <xsl:apply-templates select="request"/>
                 <xsl:apply-templates select="response"/>
@@ -375,10 +395,30 @@
         </div>
     </xsl:template>
 
+    <xsl:template match="time_info" mode="time-info">
+        <div class="params">
+            <!-- This allows debug page to work inside dev tools request preview, useful for ajax requests debugging -->
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="delimeter time-info-link">
+                pycurl time info
+            </label>
+            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
+            <div>
+                <pre class="details time-info">
+                    <xsl:apply-templates select="time"/>
+                </pre>
+            </div>
+        </div>
+    </xsl:template>
+
     <xsl:template match="response">
         <xsl:apply-templates select="error"/>
         <xsl:apply-templates select="headers[header and not(../../debug/log/response/headers)]"/>
+        <xsl:apply-templates select="cookies[cookie and not(../../debug/log/request/cookies)]"/>
         <xsl:apply-templates select="body"/>
+    </xsl:template>
+
+    <xsl:template match="time">
+        <div><xsl:value-of select="@name"/>:&#160;<xsl:value-of select="."/></div>
     </xsl:template>
 
     <xsl:template match="debug">
@@ -425,17 +465,6 @@
         </div>
     </xsl:template>
 
-    <xsl:template match="headers" mode="response-headers">
-        <div class="headers">
-            <div class="delimeter"><xsl:value-of select="name(parent::*)"/> headers</div>
-            <xsl:apply-templates select="header" mode="response-headers"/>
-        </div>
-    </xsl:template>
-
-    <xsl:template match="header" mode="response-headers">
-        <div><xsl:value-of select="."/></div>
-    </xsl:template>
-
     <xsl:template match="headers[header]">
         <div class="headers">
             <div class="delimeter"><xsl:value-of select="name(parent::*)"/> headers</div>
@@ -444,12 +473,12 @@
     </xsl:template>
 
     <xsl:template match="header">
-        <div><xsl:value-of select="@name"/>: &#160;<xsl:value-of select="."/></div>
+        <div><xsl:value-of select="@name"/>:&#160;<xsl:value-of select="."/></div>
     </xsl:template>
 
     <xsl:template match="cookies[cookie]">
         <div class="cookies">
-            <div class="delimeter">cookies</div>
+            <div class="delimeter"><xsl:value-of select="name(parent::*)"/> cookies</div>
             <xsl:apply-templates select="cookie"/>
         </div>
     </xsl:template>

@@ -103,10 +103,6 @@
                         padding-left: 20px;
                         vertical-align: bottom;
                     }
-                    .entry__head__level {
-                        font-size: 14px;
-                        font-family: monospace;
-                    }
                     .entry__head__message {
                         display: inline-block;
                         padding: 2px 0;
@@ -136,18 +132,6 @@
                     border-bottom: 4px solid #94b24d;
                     opacity: 0.5;
                 }
-                    .line__bar_error {
-                        border-color: #c00;
-                    }
-                    .line__bar_warning {
-                        border-color: #E80;
-                    }
-                    .line__bar_info {
-                        border-color: #060;
-                    }
-                    .line__bar_debug {
-                        border-color: #00B;
-                    }
                 .line__label {
                     position: relative;
                     padding: 0 3px;
@@ -312,12 +296,12 @@
                         text-align: right;
                     }
 
-            .copy-as-curl-link {
+            .copy-as-curl-link, .time-info-link {
                 text-decoration: underline;
                 cursor: pointer;
             }
 
-            .copy-as-curl {
+            .copy-as-curl, .time-info {
                 max-width: 100%;
                 margin: 10px 0;
                 padding: 4px;
