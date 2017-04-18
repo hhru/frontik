@@ -45,7 +45,7 @@ class JsonProducer(object):
 
         self.json = frontik.json_builder.JsonBuilder(json_encoder=json_encoder)
         self.template_filename = None
-        self.environment = getattr(environment, 'environment', environment)  # Temporary for transition period
+        self.environment = environment
         self.jinja_context_provider = jinja_context_provider
 
     def __call__(self, callback):
