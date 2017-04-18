@@ -8,7 +8,6 @@ import os
 import pprint
 import time
 import traceback
-import weakref
 from datetime import datetime
 from io import BytesIO
 
@@ -18,6 +17,7 @@ from lxml.builder import E
 from tornado.escape import to_unicode, utf8
 from tornado.httpclient import HTTPResponse
 from tornado.httputil import HTTPHeaders
+from tornado.web import OutputTransform
 
 import frontik.util
 import frontik.xml_util
@@ -43,7 +43,7 @@ def response_to_xml(response):
     try:
         if 'text/html' in content_type:
             body = frontik.util.decode_string_from_charset(response.body, try_charsets)
-            body = body.replace('\n', '\\n').replace("'", "\\'").replace("<", "&lt;")
+            body = body.replace('\r', '\\r').replace('\n', '\\n').replace("'", "\\'").replace("<", "&lt;")
         elif 'protobuf' in content_type:
             body = repr(response.body)
         elif response.body is None:
@@ -65,7 +65,7 @@ def response_to_xml(response):
 
     try:
         for name, value in iteritems(response.time_info):
-            time_info.append(E.time(str(value), name=name))
+            time_info.append(E.time('{} ms'.format(value * 1000), name=name))
     except Exception:
         debug_log.exception('cannot append time info')
 
@@ -73,22 +73,23 @@ def response_to_xml(response):
         response = E.response(
             E.body(body, content_type=content_type, mode=mode),
             E.code(str(response.code)),
-            E.effective_url(response.effective_url),
             E.error(str(response.error)),
             E.size(str(len(response.body)) if response.body is not None else '0'),
             E.request_time(_format_number(response.request_time * 1000)),
             _headers_to_xml(response.headers),
+            _cookies_to_xml(response.headers),
             time_info,
         )
     except Exception:
         debug_log.exception('cannot log response info')
         response = E.response(E.body('Cannot log response info'))
+
     return response
 
 
 def request_to_xml(request):
     content_type = request.headers.get('Content-Type', '')
-    body = etree.Element("body", content_type=content_type)
+    body = etree.Element('body', content_type=content_type)
 
     if request.body:
         try:
@@ -109,10 +110,6 @@ def request_to_xml(request):
         request = E.request(
             body,
             E.start_time(_format_number(request.start_time)),
-            E.connect_timeout(str(request.connect_timeout)),
-            E.request_timeout(str(request.request_timeout)),
-            E.follow_redirects(str(request.follow_redirects)),
-            E.max_redirects(str(request.max_redirects)),
             E.method(request.method),
             E.url(request.url),
             _params_to_xml(request.url),
@@ -126,6 +123,7 @@ def request_to_xml(request):
         debug_log.exception('cannot parse request body')
         body.text = repr(request.body)
         request = E.request(body)
+
     return request
 
 
@@ -216,10 +214,10 @@ def _headers_to_xml(request_or_response_headers):
     return headers
 
 
-def _cookies_to_xml(request_headers):
+def _cookies_to_xml(request_or_response_headers):
     cookies = etree.Element('cookies')
-    if 'Cookie' in request_headers:
-        _cookies = SimpleCookie(request_headers['Cookie'])
+    if 'Cookie' in request_or_response_headers:
+        _cookies = SimpleCookie(request_or_response_headers['Cookie'])
         for cookie in _cookies:
             cookies.append(E.cookie(_cookies[cookie].value, name=cookie))
     return cookies
@@ -342,106 +340,146 @@ class DebugBufferedHandler(BufferedHandler):
         return entry
 
 
-class PageHandlerDebug(object):
-    DEBUG_HEADER_NAME = 'X-Hh-Debug'
-    DEBUG_XSL = os.path.join(os.path.dirname(__file__), 'debug/debug.xsl')
+DEBUG_HEADER_NAME = 'X-Hh-Debug'
+DEBUG_XSL = os.path.join(os.path.dirname(__file__), 'debug/debug.xsl')
 
-    class DebugMode(object):
-        def __init__(self, handler):
-            debug_value = frontik.util.get_cookie_or_url_param_value(handler, 'debug')
 
-            self.mode_values = debug_value.split(',') if debug_value is not None else ''
-            self.inherited = handler.request.headers.get(PageHandlerDebug.DEBUG_HEADER_NAME)
+class DebugTransform(OutputTransform):
+    def __init__(self, application, request):
+        self.application = application
+        self.request = request
 
-            if debug_value is not None or self.inherited:
-                self.enabled = True
-                self.pass_debug = 'nopass' not in self.mode_values or self.inherited
-                self.profile_xslt = 'xslt' in self.mode_values
-            else:
-                self.enabled = False
-                self.pass_debug = False
-                self.profile_xslt = False
+    def is_enabled(self):
+        return getattr(self.request, '_debug_enabled', False)
 
-    def __init__(self, handler):
-        self.handler = weakref.proxy(handler)
-        self.debug_mode = PageHandlerDebug.DebugMode(self.handler)
+    def is_inherited(self):
+        return getattr(self.request, '_debug_inherited', False)
 
-        if self.debug_mode.enabled:
-            self.handler.require_debug_access()
-            self.debug_log_handler = DebugBufferedHandler()
+    def transform_first_chunk(self, status_code, headers, chunk, finishing):
+        if not self.is_enabled():
+            return status_code, headers, chunk
 
-            RequestContext.set('log_handler', self.debug_log_handler)
+        self.status_code = status_code
+        self.headers = headers
+        self.chunks = [chunk]
 
-            debug_log.debug('debug mode is ON')
+        if not self.is_inherited():
+            headers = HTTPHeaders({'Content-Type': 'text/html'})
+        else:
+            headers = HTTPHeaders({
+                'Content-Type': 'application/xml',
+                DEBUG_HEADER_NAME: 'true'
+            })
 
-        if self.debug_mode.inherited:
-            debug_log.debug('debug mode is inherited due to %s request header', self.DEBUG_HEADER_NAME)
+        return 200, headers, self.produce_debug_body(finishing)
 
-        if self.debug_mode.pass_debug:
-            debug_log.debug('%s header will be passed to all requests', self.DEBUG_HEADER_NAME)
+    def transform_chunk(self, chunk, finishing):
+        if not self.is_enabled():
+            return chunk
 
-    def get_debug_page(self, status_code, response_headers, original_response, stages_total):
-        import frontik.app
+        self.chunks.append(chunk)
+
+        return self.produce_debug_body(finishing)
+
+    def produce_debug_body(self, finishing):
+        if not finishing:
+            return b''
 
         start_time = time.time()
 
-        debug_log_data = self.debug_log_handler.produce_all()
-        debug_log_data.set('code', str(status_code))
-        debug_log_data.set('mode', ','.join(self.debug_mode.mode_values))
-        debug_log_data.set('started', _format_number(self.handler.request._start_time))
-        debug_log_data.set('request-id', str(self.handler.request_id))
-        debug_log_data.set('stages-total', _format_number(stages_total))
+        debug_log_data = RequestContext.get('log_handler').produce_all()
+        debug_log_data.set('code', str(self.status_code))
+        debug_log_data.set('started', _format_number(self.request._start_time))
+        debug_log_data.set('request-id', str(self.request.request_id))
+        debug_log_data.set('stages-total', _format_number((time.time() - self.request._start_time) * 1000))
 
-        if hasattr(self.handler.config, 'debug_labels') and isinstance(self.handler.config.debug_labels, dict):
-            debug_log_data.append(frontik.xml_util.dict_to_xml(self.handler.config.debug_labels, 'labels'))
+        if hasattr(self.application.config, 'debug_labels') and isinstance(self.application.config.debug_labels, dict):
+            debug_log_data.append(frontik.xml_util.dict_to_xml(self.application.config.debug_labels, 'labels'))
 
         try:
             debug_log_data.append(E.versions(
-                etree.tostring(frontik.app.get_frontik_and_apps_versions(self.handler.application), encoding='unicode')
+                etree.tostring(frontik.app.get_frontik_and_apps_versions(self.application), encoding='unicode')
             ))
         except:
             debug_log.exception('cannot add version information')
             debug_log_data.append(E.versions('failed to get version information'))
 
+        try:
+            debug_log_data.append(E.status(
+                json.dumps(self.application.get_current_status(), indent=2)
+            ))
+        except:
+            debug_log.exception('cannot add status information')
+            debug_log_data.append(E.status('failed to get status information'))
+
         debug_log_data.append(E.request(
-            E.method(self.handler.request.method),
-            _params_to_xml(self.handler.request.uri),
-            _headers_to_xml(self.handler.request.headers),
-            _cookies_to_xml(self.handler.request.headers)
+            E.method(self.request.method),
+            _params_to_xml(self.request.uri),
+            _headers_to_xml(self.request.headers),
+            _cookies_to_xml(self.request.headers)
         ))
 
-        headers_node = E.headers()
-        for header in response_headers:
-            headers_node.append(E.header(to_unicode(header)))
-        debug_log_data.append(E.response(headers_node))
+        debug_log_data.append(E.response(
+            _headers_to_xml(self.headers),
+            _cookies_to_xml(self.headers)
+        ))
 
-        if getattr(self.handler, "_response_size", None) is not None:
-            debug_log_data.set("response-size", str(self.handler._response_size))
+        response_buffer = b''.join(self.chunks)
+        original_response = {
+            'buffer': base64.b64encode(response_buffer),
+            'headers': self.headers,
+            'code': self.status_code
+        }
 
-        if original_response is not None:
-            debug_log_data.append(frontik.xml_util.dict_to_xml(original_response, 'original-response'))
-
+        debug_log_data.append(frontik.xml_util.dict_to_xml(original_response, 'original-response'))
+        debug_log_data.set('response-size', str(len(response_buffer)))
         debug_log_data.set('generate-time', _format_number((time.time() - start_time) * 1000))
 
-        # return raw xml if this is specified explicitly (noxsl=true) or when in inherited mode
-        if frontik.util.get_cookie_or_url_param_value(self.handler, 'noxsl') is None and not self.debug_mode.inherited:
+        if not getattr(self.request, '_debug_inherited', False):
             try:
-                transform = etree.XSLT(etree.parse(self.DEBUG_XSL))
+                transform = etree.XSLT(etree.parse(DEBUG_XSL))
                 log_document = utf8(str(transform(debug_log_data)))
-                self.handler.set_header('Content-Type', 'text/html; charset=UTF-8')
             except Exception:
                 debug_log.exception('XSLT debug file error')
+
                 try:
-                    debug_log.error('XSL error log entries:\n%s' % "\n".join(map(
-                        'File "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
-                        .format, transform.error_log)))
+                    debug_log.error('XSL error log entries:\n{}'.format('\n'.join(
+                        '{0.filename}:{0.line}:{0.column}\n\t{0.message}'.format(m) for m in transform.error_log
+                    )))
                 except Exception:
                     pass
 
-                self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
                 log_document = etree.tostring(debug_log_data, encoding='UTF-8', xml_declaration=True)
         else:
-            self.handler.set_header('Content-Type', 'application/xml; charset=UTF-8')
             log_document = etree.tostring(debug_log_data, encoding='UTF-8', xml_declaration=True)
 
         return log_document
+
+
+class DebugMode(object):
+    def __init__(self, handler):
+        debug_value = frontik.util.get_cookie_or_url_param_value(handler, 'debug')
+
+        self.mode_values = debug_value.split(',') if debug_value is not None else ''
+        self.inherited = handler.request.headers.get(DEBUG_HEADER_NAME)
+
+        if self.inherited:
+            debug_log.debug('debug mode is inherited due to %s request header', DEBUG_HEADER_NAME)
+            handler.request._debug_inherited = True
+
+        if debug_value is not None or self.inherited:
+            handler.require_debug_access()
+
+            self.enabled = handler.request._debug_enabled = True
+            self.pass_debug = 'nopass' not in self.mode_values or self.inherited
+            self.profile_xslt = 'xslt' in self.mode_values
+
+            RequestContext.set('log_handler', DebugBufferedHandler())
+            debug_log.debug('debug mode is ON')
+
+            if self.pass_debug:
+                debug_log.debug('%s header will be passed to all requests', DEBUG_HEADER_NAME)
+        else:
+            self.enabled = False
+            self.pass_debug = False
+            self.profile_xslt = False
