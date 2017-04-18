@@ -2,7 +2,7 @@
 
 import unittest
 
-from frontik.handler_debug import request_to_curl_string
+from frontik.debug import request_to_curl_string
 from frontik.util import make_get_request, make_post_request, make_put_request
 
 
