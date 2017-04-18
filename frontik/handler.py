@@ -79,7 +79,7 @@ class BaseHandler(tornado.web.RequestHandler):
         super(BaseHandler, self).initialize(**kwargs)
 
     def prepare(self):
-        self.active_limit = frontik.handler_active_limit.PageHandlerActiveLimit(self)
+        self.active_limit = frontik.handler_active_limit.PageHandlerActiveLimit(self.request)
         self.debug_mode = DebugMode(self)
         self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish')
 

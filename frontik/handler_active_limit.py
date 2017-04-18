@@ -1,23 +1,24 @@
 # coding=utf-8
 
-import weakref
+import logging
 
-import tornado.options
+from tornado.options import options
 
 import frontik.handler
+
+handler_limit_logger = logging.getLogger('frontik.handler_active_limit')
 
 
 class PageHandlerActiveLimit(object):
     working_handlers_count = 0
 
-    def __init__(self, handler):
-        self.handler = weakref.proxy(handler)
+    def __init__(self, request):
         self.acquired = False
 
-        if PageHandlerActiveLimit.working_handlers_count > tornado.options.options.handlers_count:
-            self.handler.log.warning(
+        if PageHandlerActiveLimit.working_handlers_count > options.handlers_count:
+            handler_limit_logger.warning(
                 'dropping %s %s: too many handlers (%d)',
-                self.handler.request.method, self.handler.request.uri, PageHandlerActiveLimit.working_handlers_count
+                request.method, request.uri, PageHandlerActiveLimit.working_handlers_count
             )
 
             raise frontik.handler.HTTPError(503)
@@ -28,10 +29,10 @@ class PageHandlerActiveLimit(object):
         if not self.acquired:
             PageHandlerActiveLimit.working_handlers_count += 1
             self.acquired = True
-            self.handler.log.info('handlers count + 1 = %d', PageHandlerActiveLimit.working_handlers_count)
+            handler_limit_logger.info('handlers count + 1 = %d', PageHandlerActiveLimit.working_handlers_count)
 
     def release(self):
         if self.acquired:
             PageHandlerActiveLimit.working_handlers_count -= 1
             self.acquired = False
-            self.handler.log.info('handlers count - 1 = %d', PageHandlerActiveLimit.working_handlers_count)
+            handler_limit_logger.info('handlers count - 1 = %d', PageHandlerActiveLimit.working_handlers_count)
