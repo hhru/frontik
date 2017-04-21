@@ -30,7 +30,7 @@ class HttpClient(object):
             results_holder = {}
             group_callback = self.handler.finish_group.add(self.handler.check_finished(callback, results_holder))
 
-            async_group = AsyncGroup(group_callback, logger=self.handler.log, name=name)
+            async_group = AsyncGroup(group_callback, name=name)
 
             def future_callback(name, future):
                 results_holder[name] = future.result()

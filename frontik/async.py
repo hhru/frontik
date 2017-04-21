@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# coding=utf-8
 
 import time
 import logging
@@ -6,7 +6,7 @@ import logging
 from tornado.ioloop import IOLoop
 from tornado.concurrent import Future
 
-default_logger = logging.getLogger('frontik.async')
+async_logger = logging.getLogger('frontik.async')
 
 
 class AsyncGroup(object):
@@ -18,12 +18,11 @@ class AsyncGroup(object):
     would not be automatically called.
     """
 
-    def __init__(self, finish_cb, log=default_logger.debug, name=None, logger=None):
+    def __init__(self, finish_cb, name=None, logger=None):
         self._counter = 0
         self._finish_cb = finish_cb
         self._finish_cb_called = False
         self._aborted = False
-        self._logger = logger if logger is not None else default_logger
         self._name = name
 
         self._start_time = time.time()
@@ -37,12 +36,12 @@ class AsyncGroup(object):
         return self._log_name + ': ' + message
 
     def abort(self):
-        self._logger.info(self._message('aborting async group'))
+        async_logger.info(self._message('aborting async group'))
         self._aborted = True
 
     def finish(self):
         if not self._finish_cb_called:
-            self._logger.debug(self._message('done in %.2fms'), (time.time() - self._start_time) * 1000.)
+            async_logger.debug(self._message('done in %.2fms'), (time.time() - self._start_time) * 1000.)
             self._finish_cb_called = True
 
             try:
@@ -66,7 +65,7 @@ class AsyncGroup(object):
 
     def _dec(self):
         self._counter -= 1
-        self._logger.debug(self._message('%s requests pending'), self._counter)
+        async_logger.debug(self._message('%s requests pending'), self._counter)
 
     def add(self, intermediate_cb):
         self._inc()
@@ -77,14 +76,14 @@ class AsyncGroup(object):
                     self._dec()
                     intermediate_cb(*args, **kwargs)
                 except Exception:
-                    self._logger.error(self._message('aborting async group due to unhandled exception in callback'))
-                    self._logger.debug(self._message('done in %.2fms'), (time.time() - self._start_time) * 1000.)
+                    async_logger.error(self._message('aborting async group due to unhandled exception in callback'))
+                    async_logger.debug(self._message('done in %.2fms'), (time.time() - self._start_time) * 1000.)
                     self._aborted = True
                     raise
 
                 self.try_finish()
             else:
-                self._logger.info(self._message('ignoring response because of already finished group'))
+                async_logger.info(self._message('ignoring response because of already finished group'))
 
         return new_cb
 
