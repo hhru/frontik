@@ -2,27 +2,28 @@
 
 import base64
 import copy
-from datetime import datetime
 import inspect
-from io import BytesIO
 import logging
 import os
 import pprint
 import time
 import traceback
 import weakref
+from datetime import datetime
+from io import BytesIO
 
 import lxml.etree as etree
-from lxml.builder import E
 import simplejson as json
+from lxml.builder import E
 from tornado.escape import to_unicode, utf8
 from tornado.httpclient import HTTPResponse
 from tornado.httputil import HTTPHeaders
 
-from frontik.compat import basestring_type, iteritems, SimpleCookie, unicode_type, urlparse
-from frontik.loggers import BufferedHandler
 import frontik.util
 import frontik.xml_util
+from frontik.compat import basestring_type, iteritems, SimpleCookie, unicode_type, urlparse
+from frontik.loggers import BufferedHandler
+from frontik.request_context import RequestContext
 
 debug_log = logging.getLogger('frontik.debug')
 
@@ -191,7 +192,7 @@ def request_to_curl_string(request):
     ).strip()
 
 
-def _params_to_xml(url, logger=debug_log):
+def _params_to_xml(url):
     params = etree.Element('params')
     query = frontik.util.get_query_parameters(url)
     for name, values in iteritems(query):
@@ -199,7 +200,7 @@ def _params_to_xml(url, logger=debug_log):
             try:
                 params.append(E.param(to_unicode(value), name=to_unicode(name)))
             except UnicodeDecodeError:
-                logger.exception('cannot decode parameter name or value')
+                debug_log.exception('cannot decode parameter name or value')
                 params.append(E.param(repr(value), name=repr(name)))
     return params
 
@@ -273,9 +274,6 @@ def _pretty_print_json(node):
 class DebugBufferedHandler(BufferedHandler):
     FIELDS = ['created', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs',
               'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
-
-    def __init__(self):
-        super(DebugBufferedHandler, self).__init__('frontik.debug_buffered_handler')
 
     def produce_all(self):
         log_data = etree.Element('log')
@@ -369,14 +367,16 @@ class PageHandlerDebug(object):
         if self.debug_mode.enabled:
             self.handler.require_debug_access()
             self.debug_log_handler = DebugBufferedHandler()
-            self.handler.log.addHandler(self.debug_log_handler)
-            self.handler.log.debug('debug mode is ON')
+
+            RequestContext.set('log_handler', self.debug_log_handler)
+
+            debug_log.debug('debug mode is ON')
 
         if self.debug_mode.inherited:
-            self.handler.log.debug('debug mode is inherited due to %s request header', self.DEBUG_HEADER_NAME)
+            debug_log.debug('debug mode is inherited due to %s request header', self.DEBUG_HEADER_NAME)
 
         if self.debug_mode.pass_debug:
-            self.handler.log.debug('%s header will be passed to all requests', self.DEBUG_HEADER_NAME)
+            debug_log.debug('%s header will be passed to all requests', self.DEBUG_HEADER_NAME)
 
     def get_debug_page(self, status_code, response_headers, original_response, stages_total):
         import frontik.app
@@ -403,7 +403,7 @@ class PageHandlerDebug(object):
 
         debug_log_data.append(E.request(
             E.method(self.handler.request.method),
-            _params_to_xml(self.handler.request.uri, self.handler.log),
+            _params_to_xml(self.handler.request.uri),
             _headers_to_xml(self.handler.request.headers),
             _cookies_to_xml(self.handler.request.headers)
         ))
@@ -428,9 +428,9 @@ class PageHandlerDebug(object):
                 log_document = utf8(str(transform(debug_log_data)))
                 self.handler.set_header('Content-Type', 'text/html; charset=UTF-8')
             except Exception:
-                self.handler.log.exception('XSLT debug file error')
+                debug_log.exception('XSLT debug file error')
                 try:
-                    self.handler.log.error('XSL error log entries:\n%s' % "\n".join(map(
+                    debug_log.error('XSL error log entries:\n%s' % "\n".join(map(
                         'File "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
                         .format, transform.error_log)))
                 except Exception:

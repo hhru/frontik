@@ -1,25 +1,16 @@
 # coding=utf-8
 
+import logging
 import unittest
 from functools import partial
 
 from tornado.concurrent import Future
+from tornado.testing import ExpectLog
 
-from frontik.async import AsyncGroup
+from frontik.async import async_logger, AsyncGroup
 
 
-class LoggerMock(object):
-    def __init__(self):
-        self.log = []
-
-    def debug(self, msg, *args):
-        self.log.append(msg % args)
-
-    def error(self, msg, *args):
-        self.log.append(msg % args)
-
-    def info(self, msg, *args):
-        self.log.append(msg % args)
+logging.root.setLevel(logging.NOTSET)
 
 
 class TestAsyncGroup(unittest.TestCase):
@@ -85,8 +76,6 @@ class TestAsyncGroup(unittest.TestCase):
         self.assertEqual(f.result(), True)
 
     def test_exception_in_first(self):
-        logger = LoggerMock()
-
         def callback1():
             raise Exception('callback1 error')
 
@@ -96,7 +85,7 @@ class TestAsyncGroup(unittest.TestCase):
         def finish_callback():
             self.fail('finish_callback should not be called')
 
-        ag = AsyncGroup(finish_callback, logger=logger, name='test_group')
+        ag = AsyncGroup(finish_callback, name='test_group')
         cb1 = ag.add(callback1)
         cb2 = ag.add(callback2)
 
@@ -104,33 +93,27 @@ class TestAsyncGroup(unittest.TestCase):
         self.assertEqual(ag._finish_cb_called, False)
         self.assertEqual(ag._aborted, True)
 
-        cb2()
+        with ExpectLog(async_logger, '.*test_group group: ignoring response because of already finished group'):
+            cb2()
 
-        self.assertEqual(logger.log[-1], 'test_group group: ignoring response because of already finished group')
         self.assertEqual(ag._finish_cb_called, False)
         self.assertEqual(ag._aborted, True)
 
     def test_exception_in_last(self):
-        logger = LoggerMock()
-
         def callback2():
             raise Exception('callback1 error')
 
         def finish_callback():
             self.fail('finish_callback should not be called')
 
-        ag = AsyncGroup(finish_callback, logger=logger, name='test_group')
+        ag = AsyncGroup(finish_callback, name='test_group')
         cb1 = ag.add(lambda: None)
         cb2 = ag.add(callback2)
 
         cb1()
 
-        self.assertRaises(Exception, cb2)
-
-        self.assertEqual(
-            logger.log[-2],
-            'test_group group: aborting async group due to unhandled exception in callback'
-        )
+        with ExpectLog(async_logger, '.*test_group group: aborting async group due to unhandled exception in callback'):
+            self.assertRaises(Exception, cb2)
 
         self.assertEqual(ag._finish_cb_called, False)
         self.assertEqual(ag._aborted, True)

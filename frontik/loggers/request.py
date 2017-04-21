@@ -9,38 +9,16 @@ from frontik.request_context import RequestContext
 logger = logging.getLogger('frontik.handler')
 
 
-class ContextFilter(logging.Filter):
-    def filter(self, record):
-        handler_name = RequestContext.get('handler_name')
-        request_id = RequestContext.get('request_id')
-        record.name = '.'.join(filter(None, [record.name, handler_name, request_id]))
-        return True
-
-
-logger.addFilter(ContextFilter())
-
-
-class ProxyLogger(logging.Logger):
-    """
-    Proxies everything to "frontik.handler" logger, but allows to add additional per-request handlers
-    """
-
-    def handle(self, record):
-        logger.handle(record)
-        if self.handlers:
-            super(ProxyLogger, self).handle(record)
-
-
 class RequestLogger(logging.LoggerAdapter):
 
     Stage = namedtuple('Stage', ('name', 'delta', 'start_delta'))
 
-    def __init__(self, request, request_id=None):
+    def __init__(self, request):
         self._page_handler_name = None
         self._last_stage_time = self._start_time = request._start_time
         self.stages = []
 
-        super(RequestLogger, self).__init__(ProxyLogger('frontik.handler'), {})
+        super(RequestLogger, self).__init__(logger, {})
 
         # backcompatibility with logger
         self.warn = self.warning
