@@ -26,7 +26,11 @@ def bootstrap_logger(app):
             handler.get_sentry_logger = lambda: None
             return
 
-        sentry_client = AsyncSentryClient(dsn=dsn, http_client=app.curl_http_client)
+        sentry_client = AsyncSentryClient(
+            dsn=dsn, http_client=app.curl_http_client,
+            # breadcrumbs have serious performance penalties
+            enable_breadcrumbs=False, install_logging_hook=False
+        )
 
         def get_sentry_logger():
             if not hasattr(handler, 'sentry_logger'):
