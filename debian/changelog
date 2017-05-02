@@ -1,3 +1,10 @@
+frontik (2.28.19) unstable; urgency=medium
+
+  * HH-66959 fix debug output if some data not exist
+  * HH-68956 disable breadcrumbs in sentry client
+
+ -- Automated Build <n.kovalev@hh.ru>  Tue, 02 May 2017 16:43:53 +0300
+
 frontik (2.28.18) unstable; urgency=medium
 
   * HH-68476 use global ContextFilter and request-local log handler
