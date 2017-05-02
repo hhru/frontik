@@ -137,18 +137,20 @@ def response_from_debug(request, response):
         response_info = frontik.xml_util.xml_to_dict(original_response)
         original_response.getparent().remove(original_response)
 
-        original_buffer = base64.b64decode(response_info['buffer'])
+        original_buffer = base64.b64decode(response_info.get('buffer', ''))
 
         headers = dict(response.headers)
-        if response_info['headers']:
-            headers.update(response_info['headers'])
+        response_info_headers = response_info.get('headers', {})
+        if response_info_headers:
+            headers.update(response_info_headers)
 
         fake_response = HTTPResponse(
             request,
-            int(response_info['code']),
+            int(response_info.get('code', 599)),
             headers=HTTPHeaders(headers),
             buffer=BytesIO(original_buffer),
-            effective_url=response.effective_url, request_time=response.request_time,
+            effective_url=response.effective_url,
+            request_time=response.request_time,
             time_info=response.time_info
         )
 
