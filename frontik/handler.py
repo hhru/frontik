@@ -45,6 +45,17 @@ class HTTPError(tornado.web.HTTPError):
         self.headers = headers
 
 
+class FinishWithContent(Exception):
+    """Use this exception to stop the handler aborting all unfinished
+    async actions and run postprocessors immediately.
+
+    :arg int status_code: HTTP status code. If not None, this value will be passed
+    to `set_status` method before running postprocessors.
+    """
+    def __init__(self, status_code=None):
+        self.status_code = status_code
+
+
 class BaseHandler(tornado.web.RequestHandler):
 
     preprocessors = ()
@@ -290,6 +301,16 @@ class BaseHandler(tornado.web.RequestHandler):
 
         for exception_hook in self._exception_hooks:
             exception_hook(typ, value, tb)
+
+    def _handle_request_exception(self, e):
+        if isinstance(e, FinishWithContent):
+            if e.status_code is not None:
+                self.set_status(e.status_code)
+
+            self.finish_with_postprocessors()
+            return
+
+        super(BaseHandler, self)._handle_request_exception(e)
 
     def send_error(self, status_code=500, **kwargs):
         """`send_error` is adapted to support `write_error` that can call
