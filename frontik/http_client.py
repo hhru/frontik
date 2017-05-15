@@ -15,7 +15,7 @@ from tornado.options import options
 from frontik.async import AsyncGroup
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.compat import iteritems
-from frontik.handler_debug import PageHandlerDebug, response_from_debug
+from frontik.debug import DEBUG_HEADER_NAME, response_from_debug
 import frontik.util
 
 
@@ -136,9 +136,11 @@ class HttpClient(object):
 
             return Future()
 
-        if self.handler._prepared and self.handler.debug.debug_mode.pass_debug:
-            request.headers[PageHandlerDebug.DEBUG_HEADER_NAME] = 'true'
-            request.url = frontik.util.make_url(request.url, hh_debug_param=int(time.time()))
+        if self.handler.debug_mode.pass_debug:
+            request.headers[DEBUG_HEADER_NAME] = 'true'
+
+            # debug_timestamp is added to avoid caching of debug responses
+            request.url = frontik.util.make_url(request.url, debug_timestamp=int(time.time()))
 
             for header_name in ('Authorization', DEBUG_AUTH_HEADER_NAME):
                 authorization = self.handler.request.headers.get(header_name)
@@ -184,15 +186,16 @@ class HttpClient(object):
     def _log_response(self, request, response):
         try:
             debug_extra = {}
-            if response.headers.get(PageHandlerDebug.DEBUG_HEADER_NAME):
+            if response.headers.get(DEBUG_HEADER_NAME):
                 debug_response = response_from_debug(request, response)
                 if debug_response is not None:
                     debug_xml, response = debug_response
                     debug_extra['_debug_response'] = debug_xml
 
-            debug_extra.update({'_response': response, '_request': request})
-            if getattr(request, '_frontik_labels', None) is not None:
-                debug_extra['_labels'] = request._frontik_labels
+            if self.handler.debug_mode.enabled:
+                debug_extra.update({'_response': response, '_request': request})
+                if getattr(request, '_frontik_labels', None) is not None:
+                    debug_extra['_labels'] = request._frontik_labels
 
             log_message = 'got {code}{size} {url} in {time:.2f}ms'.format(
                 code=response.code,
