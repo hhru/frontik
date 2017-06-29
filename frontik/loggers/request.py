@@ -6,7 +6,9 @@ from collections import namedtuple
 
 from frontik.request_context import RequestContext
 
-logger = logging.getLogger('frontik.handler')
+logger = None  # for smooth transition from LoggerAdapter instances to the global logger
+
+_logger = logging.getLogger('frontik.handler')
 
 
 class RequestLogger(logging.LoggerAdapter):
@@ -18,11 +20,10 @@ class RequestLogger(logging.LoggerAdapter):
         self._last_stage_time = self._start_time = request._start_time
         self.stages = []
 
-        super(RequestLogger, self).__init__(logger, {})
+        super(RequestLogger, self).__init__(_logger, {})
 
         # backcompatibility with logger
         self.warn = self.warning
-        self.addHandler = self.logger.addHandler
 
     def stage_tag(self, stage_name):
         stage_end_time = time.time()

@@ -19,6 +19,7 @@ from frontik.compat import iteritems
 from frontik.debug import DebugMode
 from frontik.http_client import HttpClient
 from frontik.http_codes import process_status_code
+from frontik.loggers.request import RequestLogger
 from frontik.request_context import RequestContext
 
 
@@ -48,20 +49,20 @@ class BaseHandler(tornado.web.RequestHandler):
 
     preprocessors = ()
 
-    # to restore tornado.web.RequestHandler compatibility
-    def __init__(self, application, request, logger=None, **kwargs):
+    def __init__(self, application, request, **kwargs):
         self._prepared = False
         self.name = self.__class__.__name__
         self.request_id = request.request_id = RequestContext.get('request_id')
         self.config = application.config
+        self.log = RequestLogger(request)
+        self.text = None
 
-        self.log = logger
         self._exception_hooks = []
 
         for initializer in application.loggers_initializers:
             initializer(self)
 
-        super(BaseHandler, self).__init__(application, request, logger=self.log, **kwargs)
+        super(BaseHandler, self).__init__(application, request, **kwargs)
 
         self._debug_access = None
 
@@ -71,13 +72,10 @@ class BaseHandler(tornado.web.RequestHandler):
 
         self._http_client = HttpClient(self, self.application.curl_http_client, self.modify_http_client_request)
 
-        self.text = None
-
     def __repr__(self):
         return '.'.join([self.__module__, self.__class__.__name__])
 
     def initialize(self, logger=None, **kwargs):
-        # Hides logger keyword argument from incompatible tornado versions
         super(BaseHandler, self).initialize(**kwargs)
 
     def prepare(self):
@@ -471,13 +469,9 @@ class PageHandler(BaseHandler):
         )
 
 
-class ErrorHandler(tornado.web.ErrorHandler, PageHandler):
-    def initialize(self, status_code, logger=None):
-        # Hides logger keyword argument from incompatible tornado versions
-        super(ErrorHandler, self).initialize(status_code)
+class ErrorHandler(PageHandler, tornado.web.ErrorHandler):
+    pass
 
 
-class RedirectHandler(tornado.web.RedirectHandler, PageHandler):
-    def initialize(self, url, permanent=True, logger=None):
-        # Hides logger keyword argument from incompatible tornado versions
-        super(RedirectHandler, self).initialize(url, permanent)
+class RedirectHandler(PageHandler, tornado.web.RedirectHandler):
+    pass
