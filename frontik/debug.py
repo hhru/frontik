@@ -94,7 +94,7 @@ def request_to_xml(request):
     if request.body:
         try:
             if 'json' in content_type:
-                body.text = json.dumps(json.loads(request.body), sort_keys=True, indent=4)
+                body.text = _pretty_print_json(json.loads(request.body))
             elif 'protobuf' in content_type:
                 body.text = repr(request.body)
             else:
@@ -268,7 +268,7 @@ def _pretty_print_xml(node):
 
 
 def _pretty_print_json(node):
-    return json.dumps(node, sort_keys=True, indent=4, ensure_ascii=False)
+    return json.dumps(node, sort_keys=True, indent=2, ensure_ascii=False)
 
 
 class DebugBufferedHandler(BufferedHandler):
@@ -398,7 +398,9 @@ class DebugTransform(OutputTransform):
 
         try:
             debug_log_data.append(E.versions(
-                etree.tostring(frontik.app.get_frontik_and_apps_versions(self.application), encoding='unicode')
+               _pretty_print_xml(
+                    frontik.app.get_frontik_and_apps_versions(self.application)
+               )
             ))
         except:
             debug_log.exception('cannot add version information')
@@ -406,7 +408,7 @@ class DebugTransform(OutputTransform):
 
         try:
             debug_log_data.append(E.status(
-                json.dumps(self.application.get_current_status(), indent=2)
+                _pretty_print_json(self.application.get_current_status())
             ))
         except:
             debug_log.exception('cannot add status information')
