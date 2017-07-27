@@ -80,17 +80,6 @@
                 Array.prototype.forEach.call(sql, function(el) {
                     el.innerHTML = vkbeautify.sql(el.textContent);
                 });
-
-                var xml = document.getElementsByClassName('xml highlighted-code');
-                Array.prototype.forEach.call(xml, function(el) {
-                    el.innerHTML = vkbeautify.xml(el.textContent.replace(/\&quot\;/g, '\&amp\;quot\;'))
-                                             .replace(/</g, '&lt;');
-                });
-
-                var json = document.getElementsByClassName('javascript highlighted-code');
-                Array.prototype.forEach.call(json, function(el) {
-                    el.innerHTML = vkbeautify.json(el.textContent).replace(/</g, '&lt;');
-                });
             });
         ]]></script>
     </xsl:template>
