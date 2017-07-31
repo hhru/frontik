@@ -3,39 +3,66 @@ Section: python
 Priority: extra
 Maintainer: Andrey Sumin <an.sumin@hh.ru>
 Build-Depends:
-  debhelper (>= 8),
-  python,
-  python-support,
+  debhelper (>= 9),
+  python-all,
+  python3-all,
+  dh-python,
   python-setuptools,
-  python-nose,
+  python3-setuptools,
   python-simplejson,
+  python3-simplejson,
   python-tornado (>= 3.2.2+hh7),
+  python3-tornado (>= 3.2.2+hh7),
   python-jinja2,
+  python3-jinja2,
   libcurl3,
   libcurl3-gnutls,
   libgnutls-dev,
-  python-pycurl (>= 7.19.5),
+  python-pycurl,
+  python3-pycurl,
   python-lxml,
+  python3-lxml,
   libxml2-dev,
   libxslt1-dev,
   python-concurrent.futures,
-Standards-Version: 3.9.3
+Standards-Version: 3.9.5
 X-Python-Version: >= 2.7
+X-Python3-Version: >= 3.2
 
-Package: frontik
+Package: python-frontik
 Architecture: all
+Provides: frontik
+Breaks: frontik
+Replaces: frontik
 Depends:
   ${python:Depends},
   ${misc:Depends},
+  python,
   libcurl3,
   libcurl3-gnutls,
-  python,
+  python-pycurl (>= 7.19.5),
   python-lxml,
   python-simplejson,
-  python-tornado (>= 3.2.2+hh7),
+  python-tornado (>= 3.2.2+hh15),
   python-jinja2,
-  python-pycurl (>= 7.19.5),
   python-concurrent.futures,
 Suggests:
   python-raven (>= 5.2.0+hh1),
 Description: Tornado-based application server
+
+Package: python3-frontik
+Architecture: all
+Depends:
+  ${python3:Depends},
+  ${misc:Depends},
+  python3,
+  libcurl3,
+  libcurl3-gnutls,
+  python3-pycurl,
+  python3-lxml,
+  python3-simplejson,
+  python3-tornado (>= 3.2.2+hh15),
+  python3-jinja2,
+Suggests:
+  python3-raven (>= 5.2.0+hh1),
+Description: Tornado-based application server for Python 3

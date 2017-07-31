@@ -34,7 +34,7 @@ class TestHook(test):
 install_requires = [
     'jinja2 >= 2.6',
     'lxml >= 2.3.2',
-    'pycurl >= 7.19.5',
+    'pycurl >= 7.19.3',
     'simplejson >= 2.3.2',
     'tornado >= 3.2.2, < 4',
 ]
@@ -55,7 +55,6 @@ setup(
     packages=[
         'frontik', 'frontik/loggers', 'frontik/producers'
     ],
-    scripts=['scripts/frontik'],
     package_data={
         'frontik': ['debug/*.xsl'],
     },
