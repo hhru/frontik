@@ -7,12 +7,15 @@
 .ropeproject/
 .settings/
 
+.pybuild/
 build
 debian/*.debhelper
 debian/*.substvars
 debian/files
-debian/frontik
+debian/python-frontik
+debian/python3-frontik
 debian/pycompat
+debian/debhelper-build-stamp
 debian/python-module-stampdir/
 dist/
 frontik.egg-info/
