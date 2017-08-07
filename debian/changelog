@@ -1,3 +1,10 @@
+frontik (2.28.23) unstable; urgency=medium
+
+  * HH-71548 fix tornado dependency
+  * HH-71548 build python3 deb package
+
+ -- Automated Build <an.sumin@hh.ru>  Mon, 07 Aug 2017 13:21:33 +0300
+
 frontik (2.28.21) unstable; urgency=medium
 
   * HH-70830 update js-libs
