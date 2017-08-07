@@ -1,11 +1,18 @@
 #!/usr/bin/make -f
 
+export PYBUILD_NAME = frontik
+
+PYVERS=$(shell pyversions -vr)
+PY3VERS=$(shell py3versions -vr)
+
 %:
-	dh $@
+	dh $@ --with python3,python2 --buildsystem=pybuild
 
 override_dh_auto_clean:
 	dh_auto_clean
-	rm -rf build .*egg-info *.log *.pid .coverage*
+	rm -rf build .*egg-info *.log *.pid .coverage
 
-override_dh_auto_test:
-	python setup.py test || exit 1
+override_dh_auto_test: $(PYVERS:%=test-python%) $(PY3VERS:%=test-python%)
+
+test-python%:
+	python$* setup.py test || exit 1
