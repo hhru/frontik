@@ -429,7 +429,7 @@ class DebugTransform(OutputTransform):
         response_buffer = b''.join(self.chunks)
         original_response = {
             'buffer': base64.b64encode(response_buffer),
-            'headers': self.headers,
+            'headers': dict(self.headers),
             'code': self.status_code
         }
 

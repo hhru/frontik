@@ -14,6 +14,7 @@ These options can be set for each Frontik instance (see [options.py](/frontik/op
 | `log_blocked_ioloop_timeout` | `float` | `0`           | Enables logging of long-running IOLoop iterations                      |
 | `app`                        | `str`   | `None`        | Application package name (see [Frontik application structure](/docs/frontik-app.md)) |
 | `app_class`                  | `str`   | `None`        | Application class name defined in application root module (by default `FrontikApplication` class is used) |
+| `xheaders  `                 | `bool`  | `False`       | Controls Tornado HTTPServer `xheaders` option                          |
 | `tornado_settings`           | `dict`  | `None`        | tornado.web.Application settings                                       |
 | `autoreload`                 | `bool`  | `False`       | Restart Frontik after changes in application sources or config files   |
 | `debug`                      | `bool`  | `False`       | Enable debug mode                                                      |
@@ -44,9 +45,6 @@ Logging options:
 | `sentry_dsn`                 | `str`   | `None`        | Enable Sentry and set Sentry DSN for sending errors                    |
 
 The only option that is mandatory for running Frontik is `app` option — the name of application package.
-
-If you are using the [built-in supervisor](/docs/supervisor.md), you should specify the options for starting several
-Frontik instances in the same configuration file
 
 There are also certain options, that can be defined during application initialization, see
 [Configuring Frontik application](/docs/config-app.md) for more details.
