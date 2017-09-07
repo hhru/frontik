@@ -4,7 +4,7 @@ from frontik.handler import HTTPError, PageHandler
 
 
 def first_preprocessor(handler, callback):
-    handler.set_header('Content-Type', 'plain/text')
+    handler.set_header('Content-Type', 'text/plain')
     handler.text = '1'
     callback()
 
@@ -25,7 +25,7 @@ def third_preprocessor(handler, callback):
 
 def async_preprocessor(handler, callback):
     def _cb(data, response):
-        handler.text += ' 4'
+        handler.text += data.decode()
         callback()
 
     handler.post_url(handler.request.host + handler.request.path, callback=_cb)
@@ -37,6 +37,12 @@ def preprocessor_as_decorator(handler, callback):
     callback()
 
 
+@PageHandler.add_preprocessor
+def post_preprocessor(handler, callback):
+    handler.text += ' 4'
+    callback()
+
+
 class Page(PageHandler):
     preprocessors = (first_preprocessor, second_preprocessor, third_preprocessor)
 
@@ -45,5 +51,6 @@ class Page(PageHandler):
     def get_page(self):
         self.text += ' 6'
 
+    @post_preprocessor
     def post_page(self):
-        pass
+        self.text = ' ({})'.format(self.text)
