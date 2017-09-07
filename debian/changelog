@@ -1,3 +1,9 @@
+frontik (2.30.1) unstable; urgency=medium
+
+  * HH-66084 add preprocessor decorator
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 07 Sep 2017 17:22:50 +0300
+
 frontik (2.30.0) unstable; urgency=medium
 
   * HH-72025 clean things up after removing Tornado patch
