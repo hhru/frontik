@@ -36,7 +36,7 @@ def pp2(handler):
     self_uri = 'http://' + handler.request.host + handler.request.path
     future = handler.post_url(self_uri)
     handler.run.append('pp2')
-    handler.json.put(future)
+    handler.pp2_future = future
 
     if handler.get_argument('raise_error', 'false') != 'false':
         raise HTTPError(400)
@@ -47,12 +47,13 @@ def pp2(handler):
     elif handler.get_argument('finish', 'false') != 'false':
         handler.finish('finished')
     else:
-        return future
+        yield future
 
 
 @preprocessor
 def pp3(handler):
     handler.run.append('pp3')
+    handler.json.put(handler.pp2_future.result())
 
 
 class Page(PageHandler):
