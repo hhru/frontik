@@ -15,7 +15,7 @@ def preprocessor(function_or_list):
         def get_a(handler):
             future = Future()
             # Do something asynchronously
-            return future
+            yield future
 
         @preprocessor
         def get_b(handler):
