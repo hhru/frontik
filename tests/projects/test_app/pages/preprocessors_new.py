@@ -1,5 +1,8 @@
 # coding=utf-8
 
+import time
+
+from tornado import gen
 from tornado.concurrent import Future
 
 from frontik.handler import HTTPError, PageHandler
@@ -16,19 +19,19 @@ def pp0(name):
 
 @preprocessor
 def pp1(handler):
-    handler.run.append('pp1-before-yield')
+    handler.run.append('pp1-before')
 
-    done_future = Future()
-    done_future.set_result('pp1-between-yield')
-    result = yield done_future
+    ready_future = Future()
+    ready_future.set_result('pp1-between')
+    result = yield ready_future
 
     handler.run.append(result)
 
-    self_uri = 'http://' + handler.request.host + handler.request.path
-    post_result = yield handler.post_url(self_uri)
+    wait_future = Future()
+    handler.add_timeout(time.time() + 0.1, lambda: wait_future.set_result('pp1-after'))
+    result = yield wait_future
 
-    if post_result.data.get('post'):
-        handler.run.append('pp1-after-yield')
+    handler.run.append(result)
 
 
 @preprocessor
@@ -86,4 +89,4 @@ class Page(PageHandler):
     @staticmethod
     def postprocessor(handler, callback):
         handler.json.put({'postprocessor': True})
-        callback()
+        handler.add_timeout(time.time() + 0.1, callback)

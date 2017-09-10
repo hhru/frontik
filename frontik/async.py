@@ -21,7 +21,7 @@ class AsyncGroup(object):
     def __init__(self, finish_cb, name=None, logger=None):
         self._counter = 0
         self._finish_cb = finish_cb
-        self._finish_cb_called = False
+        self._finished = False
         self._aborted = False
         self._name = name
 
@@ -35,20 +35,26 @@ class AsyncGroup(object):
     def _message(self, message):
         return self._log_name + ': ' + message
 
+    def is_finished(self):
+        return self._finished
+
     def abort(self):
         async_logger.info(self._message('aborting async group'))
         self._aborted = True
 
     def finish(self):
-        if not self._finish_cb_called:
-            async_logger.debug(self._message('done in %.2fms'), (time.time() - self._start_time) * 1000.)
-            self._finish_cb_called = True
+        if self._finished:
+            async_logger.warning(self._message('trying to finish already finished AsyncGroup'))
+            return
 
-            try:
-                self._finish_cb()
-            finally:
-                # prevent possible cycle references
-                self._finish_cb = None
+        async_logger.debug(self._message('done in %.2fms'), (time.time() - self._start_time) * 1000.)
+        self._finished = True
+
+        try:
+            self._finish_cb()
+        finally:
+            # prevent possible cycle references
+            self._finish_cb = None
 
     def try_finish(self):
         if self._counter == 0:
@@ -60,7 +66,7 @@ class AsyncGroup(object):
             IOLoop.current().add_callback(self.finish)
 
     def _inc(self):
-        assert not self._finish_cb_called
+        assert not self._finished
         self._counter += 1
 
     def _dec(self):
@@ -71,19 +77,20 @@ class AsyncGroup(object):
         self._inc()
 
         def new_cb(*args, **kwargs):
-            if not self._finish_cb_called and not self._aborted:
-                try:
-                    self._dec()
-                    intermediate_cb(*args, **kwargs)
-                except Exception:
-                    async_logger.error(self._message('aborting async group due to unhandled exception in callback'))
-                    async_logger.debug(self._message('done in %.2fms'), (time.time() - self._start_time) * 1000.)
-                    self._aborted = True
-                    raise
-
-                self.try_finish()
-            else:
+            if self._finished or self._aborted:
                 async_logger.info(self._message('ignoring response because of already finished group'))
+                return
+
+            try:
+                self._dec()
+                intermediate_cb(*args, **kwargs)
+            except Exception:
+                async_logger.error(self._message('aborting async group due to unhandled exception in callback'))
+                async_logger.debug(self._message('done in %.2fms'), (time.time() - self._start_time) * 1000.)
+                self._aborted = True
+                raise
+
+            self.try_finish()
 
         return new_cb
 

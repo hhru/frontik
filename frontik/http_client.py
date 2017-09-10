@@ -1,9 +1,9 @@
 # coding=utf-8
 
-from collections import namedtuple
-from functools import partial
 import re
 import time
+from collections import namedtuple
+from functools import partial
 
 import pycurl
 import simplejson
@@ -12,11 +12,11 @@ from tornado.concurrent import Future
 from tornado.curl_httpclient import CurlAsyncHTTPClient
 from tornado.options import options
 
+import frontik.util
 from frontik.async import AsyncGroup
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.compat import iteritems
 from frontik.debug import DEBUG_HEADER_NAME, response_from_debug
-import frontik.util
 
 
 class HttpClient(object):
