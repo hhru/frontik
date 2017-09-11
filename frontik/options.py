@@ -40,6 +40,10 @@ tornado.options.define('debug_password', default=None, type=str)
 
 tornado.options.define('http_client_default_connect_timeout', default=0.2, type=float)
 tornado.options.define('http_client_default_request_timeout', default=2.0, type=float)
+tornado.options.define('http_client_default_max_tries', default=2, type=int)
+tornado.options.define('http_client_default_max_fails', default=0, type=int)
+tornado.options.define('http_client_default_fail_timeout_sec', default=10, type=float)
+tornado.options.define('http_client_stats_interval_ms', default=0, type=int)
 tornado.options.define('http_proxy_host', default=None, type=str)
 tornado.options.define('http_proxy_port', default=3128, type=int)
 
@@ -57,7 +61,6 @@ tornado.options.define('xsl_cache_limit', default=None, type=int)
 tornado.options.define('xsl_cache_step', default=None, type=int)
 tornado.options.define('template_root', default=None, type=str)
 tornado.options.define('template_cache_limit', default=50, type=int)
-tornado.options.define('debug_labels', default=None, type=dict)
 
 tornado.options.define('sentry_dsn', default=None, type=str, metavar='http://public:secret@example.com/1')
 

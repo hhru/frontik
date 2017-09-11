@@ -9,7 +9,7 @@ class Page(frontik.handler.PageHandler):
         def callback_post(text, response):
             self.text = text
 
-        self.post_url(self.request.host + self.request.path, callback=callback_post)
+        self.post_url(self.request.host, self.request.path, callback=callback_post)
 
     def post_page(self):
         self.add_header('Content-Type', 'text/plain')

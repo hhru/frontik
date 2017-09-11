@@ -20,21 +20,21 @@ class Page(frontik.handler.PageHandler):
             self.log.exception('exception catched')
 
         self.log.warning('warning: testing simple inherited debug')
-        self.post_url(self.request.host + self.request.path)
+        self.post_url(self.request.host, self.request.path)
 
         self.log.error('error: testing failing urls')
-        self.get_url('invalid_url')
+        self.get_url('invalid_host', 'invalid_url')
 
         self.log.info('info: testing responses')
-        self.put_url(self.request.host + self.request.path + '?type=html', labels=('test', u'ТЕСТ'))
-        self.put_url(self.request.host + self.request.path + '?type=protobuf')
-        self.put_url(self.request.host + self.request.path + '?type=xml')
-        self.put_url(self.request.host + self.request.path + '?type=javascript')
-        self.put_url(self.request.host + self.request.path + '?type=text')
+        self.put_url(self.request.host, self.request.path + '?type=html')
+        self.put_url(self.request.host, self.request.path + '?type=protobuf')
+        self.put_url(self.request.host, self.request.path + '?type=xml')
+        self.put_url(self.request.host, self.request.path + '?type=javascript')
+        self.put_url(self.request.host, self.request.path + '?type=text')
 
         if self.get_argument('no_recursion', 'false') != 'true':
             self.log.debug('testing complex inherited debug')
-            self.get_url(self.request.host + self.request.path + '?no_recursion=true&debug=xslt')
+            self.get_url(self.request.host, self.request.path + '?no_recursion=true&debug=xslt')
         else:
             self.log.debug('testing xslt profiling')
             self.set_xsl('simple.xsl')

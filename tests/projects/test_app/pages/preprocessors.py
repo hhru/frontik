@@ -28,7 +28,7 @@ def async_preprocessor(handler, callback):
         handler.text += data.decode()
         callback()
 
-    handler.post_url(handler.request.host + handler.request.path, callback=_cb)
+    handler.post_url(handler.request.host, handler.request.path, callback=_cb)
 
 
 @PageHandler.add_preprocessor

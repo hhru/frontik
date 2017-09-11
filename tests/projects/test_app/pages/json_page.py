@@ -17,12 +17,11 @@ class Page(frontik.handler.PageHandler):
         super(Page, self).prepare()
 
     def get_page(self):
-        self_uri = self.request.host + self.request.path
         invalid_json = self.get_argument('invalid', 'false')
 
         data = {
-            'req1': self.post_url(self_uri, data={'param': 1}),
-            'req2': self.post_url(self_uri, data={'param': 2, 'invalid': invalid_json})
+            'req1': self.post_url(self.request.host, self.request.path, data={'param': 1}),
+            'req2': self.post_url(self.request.host, self.request.path, data={'param': 2, 'invalid': invalid_json})
         }
 
         if self.get_argument('template_error', 'false') == 'true':

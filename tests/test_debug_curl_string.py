@@ -2,17 +2,18 @@
 
 import unittest
 
+# noinspection PyUnresolvedReferences
+import frontik.options
+
 from frontik.debug import request_to_curl_string
-from frontik.util import make_get_request, make_post_request, make_put_request
+from frontik.http_client import BalancedHttpRequest
 
 
 class CurlStringTestCase(unittest.TestCase):
     def test_curl_string_get(self):
-        request = make_get_request(
-            'http://test.com/path',
-            data={'param': 'value'},
-            headers={'Accept': 'application/json'}
-        )
+        request = BalancedHttpRequest('http://test.com', None, '/path',
+                                      data={'param': 'value'},
+                                      headers={'Accept': 'application/json'}).make_request()
 
         self.assertEqual(
             request_to_curl_string(request),
@@ -20,7 +21,9 @@ class CurlStringTestCase(unittest.TestCase):
         )
 
     def test_curl_string_post(self):
-        request = make_post_request('http://test.com/path', data={'param': 'value'})
+        request = BalancedHttpRequest('http://test.com', None, '/path',
+                                      data={'param': 'value'},
+                                      method='POST').make_request()
 
         self.assertEqual(
             request_to_curl_string(request),
@@ -29,7 +32,10 @@ class CurlStringTestCase(unittest.TestCase):
         )
 
     def test_curl_string_put(self):
-        request = make_put_request('http://test.com/path', data='DATA', content_type='text/plain')
+        request = BalancedHttpRequest('http://test.com', None, '/path',
+                                      data='DATA',
+                                      method='PUT',
+                                      content_type='text/plain').make_request()
 
         self.assertEqual(
             request_to_curl_string(request),
@@ -37,7 +43,10 @@ class CurlStringTestCase(unittest.TestCase):
         )
 
     def test_curl_string_binary(self):
-        request = make_post_request('http://test.com/path', data=u'тест', content_type='text/plain')
+        request = BalancedHttpRequest('http://test.com', None, '/path',
+                                      data=u'тест',
+                                      method='POST',
+                                      content_type='text/plain').make_request()
 
         self.assertEqual(
             request_to_curl_string(request),

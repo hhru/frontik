@@ -10,6 +10,7 @@ import time
 import traceback
 from datetime import datetime
 from io import BytesIO
+from binascii import crc32
 
 import lxml.etree as etree
 import simplejson as json
@@ -125,6 +126,21 @@ def request_to_xml(request):
         request = E.request(body)
 
     return request
+
+
+def balanced_request_to_xml(balanced_request, retry):
+    info = etree.Element('meta-info')
+
+    if balanced_request.upstream is not None:
+        name = balanced_request.upstream.name.upper()
+        name_hash = crc32(name) % 0xffffffff
+        color = '#%02x%02x%02x' % ((name_hash & 0xFF0000) >> 16, (name_hash & 0x00FF00) >> 8, name_hash & 0x0000FF)
+        etree.SubElement(info, 'upstream', name=name, color=color)
+
+    if retry > 0:
+        etree.SubElement(info, 'retry', count=str(retry))
+
+    return info
 
 
 def response_from_debug(request, response):
@@ -303,17 +319,14 @@ class DebugBufferedHandler(BufferedHandler):
         if record.exc_info is not None:
             entry.append(_exception_to_xml(record.exc_info))
 
-        if getattr(record, '_labels', None) is not None:
-            labels = E.labels()
-            for label in record._labels:
-                labels.append(E.label(label))
-            entry.append(labels)
-
         if getattr(record, '_response', None) is not None:
             entry.append(response_to_xml(record._response))
 
         if getattr(record, '_request', None) is not None:
             entry.append(request_to_xml(record._request))
+
+        if getattr(record, '_balanced_request', None) is not None:
+            entry.append(balanced_request_to_xml(record._balanced_request, record._request_retry))
 
         if getattr(record, '_debug_response', None) is not None:
             entry.append(E.debug(record._debug_response))
@@ -392,9 +405,6 @@ class DebugTransform(OutputTransform):
         debug_log_data.set('started', _format_number(self.request._start_time))
         debug_log_data.set('request-id', str(self.request.request_id))
         debug_log_data.set('stages-total', _format_number((time.time() - self.request._start_time) * 1000))
-
-        if hasattr(self.application.config, 'debug_labels') and isinstance(self.application.config.debug_labels, dict):
-            debug_log_data.append(frontik.xml_util.dict_to_xml(self.application.config.debug_labels, 'labels'))
 
         try:
             debug_log_data.append(E.versions(

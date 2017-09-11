@@ -8,11 +8,10 @@ from frontik.doc import Doc
 
 class Page(frontik.handler.PageHandler):
     def get_page(self):
-        self_uri = self.request.host + self.request.path
         invalid_xml = self.get_argument('invalid', 'false')
 
         self.doc.put(etree.fromstring('<a>aaa</a>'))
-        self.doc.put(self.post_url(self_uri, data={'invalid': invalid_xml}))
+        self.doc.put(self.post_url(self.request.host, self.request.path, data={'invalid': invalid_xml}))
         self.doc.put(Doc('c'))
 
     def post_page(self):

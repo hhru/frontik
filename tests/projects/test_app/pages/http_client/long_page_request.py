@@ -8,7 +8,7 @@ import frontik.handler
 class Page(frontik.handler.PageHandler):
     def get_page(self):
         self.post_url(
-            self.request.host + self.request.path,
+            self.request.host, self.request.path,
             callback=self.request_callback, request_timeout=0.5
         )
 

@@ -17,6 +17,6 @@ class Page(frontik.handler.PageHandler):
         n = int(self.get_argument('n'))
         if n > 0:
             self.get_url(
-                self.request.host + self.request.path + '?n={}'.format(n - 1),
+                self.request.host, self.request.path + '?n={}'.format(n - 1),
                 callback=_cb
             )

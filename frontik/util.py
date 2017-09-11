@@ -6,8 +6,6 @@ from uuid import uuid4
 
 from tornado.concurrent import TracebackFuture
 from tornado.escape import to_unicode, utf8
-from tornado.httpclient import HTTPRequest
-from tornado.httputil import HTTPHeaders
 from tornado.util import raise_exc_info
 
 from frontik.compat import iteritems, unicode_type, urlencode, urlparse
@@ -166,87 +164,6 @@ def make_mfd(fields, files):
     content_type = b'multipart/form-data; boundary=' + BOUNDARY
 
     return b''.join(body), content_type
-
-
-def make_get_request(url, data=None, headers=None, connect_timeout=None, request_timeout=None, follow_redirects=True):
-    data = {} if data is None else data
-    headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
-
-    return HTTPRequest(
-        url=make_url(url, **data),
-        follow_redirects=follow_redirects,
-        headers=headers,
-        connect_timeout=connect_timeout,
-        request_timeout=request_timeout
-    )
-
-
-def make_post_request(url, data='', headers=None, files=None, content_type=None,
-                      connect_timeout=None, request_timeout=None, follow_redirects=True):
-    if files:
-        body, content_type = make_mfd(data, files)
-    else:
-        body = make_body(data)
-
-    headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
-    if content_type is None:
-        content_type = headers.get('Content-Type', 'application/x-www-form-urlencoded')
-
-    headers.update({'Content-Type': content_type, 'Content-Length': str(len(body))})
-
-    return HTTPRequest(
-        url=url,
-        body=body,
-        method='POST',
-        headers=headers,
-        follow_redirects=follow_redirects,
-        connect_timeout=connect_timeout,
-        request_timeout=request_timeout
-    )
-
-
-def make_put_request(url, data='', headers=None, content_type=None, connect_timeout=None, request_timeout=None):
-    headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
-    if content_type is not None:
-        headers['Content-Type'] = content_type
-
-    return HTTPRequest(
-        url=url,
-        body=make_body(data),
-        method='PUT',
-        headers=headers,
-        connect_timeout=connect_timeout,
-        request_timeout=request_timeout
-    )
-
-
-def make_delete_request(url, data=None, headers=None, content_type=None, connect_timeout=None, request_timeout=None):
-    data = {} if data is None else data
-    headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
-    if content_type is not None:
-        headers['Content-Type'] = content_type
-
-    return HTTPRequest(
-        url=make_url(url, **data),
-        method='DELETE',
-        headers=headers,
-        connect_timeout=connect_timeout,
-        request_timeout=request_timeout
-    )
-
-
-def make_head_request(url, data=None, headers=None, connect_timeout=None, request_timeout=None, follow_redirects=True):
-    data = {} if data is None else data
-    headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
-
-    return HTTPRequest(
-        url=make_url(url, **data),
-        follow_redirects=follow_redirects,
-        method='HEAD',
-        headers=headers,
-        connect_timeout=connect_timeout,
-        request_timeout=request_timeout
-    )
 
 
 def _asciify_url_char(c):
