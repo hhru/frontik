@@ -12,8 +12,3 @@ XSL_cache_limit = 1
 XML_cache_step = 1
 
 version = [etree.Element('app-version', number='last version')]
-
-debug_labels = {
-    'test': '#f88',
-    u'ТЕСТ': '#88f'
-}
