@@ -62,5 +62,3 @@ class Page(MicroHandler):
         # Testing invalid return values
         if self.get_argument('invalid_dict_value', 'false') == 'true':
             return {'invalid': 'value'}
-        elif self.get_argument('invalid_return_value', 'false') == 'true':
-            return object()

@@ -46,7 +46,3 @@ class TestMicroHandler(unittest.TestCase):
     def test_future_with_unknown_result_fail_on_error(self):
         response = frontik_test_app.get_page('micro_handler/future?fail_on_error_future=true')
         self.assertEqual(response.status_code, 200)
-
-    def test_invalid_return_value(self):
-        response = frontik_test_app.get_page('micro_handler?invalid_return_value=true', method=requests.delete)
-        self.assertEqual(response.status_code, 500)
