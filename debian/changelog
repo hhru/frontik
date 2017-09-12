@@ -1,3 +1,10 @@
+frontik (2.30.3) unstable; urgency=medium
+
+  * HH-72476 prepare tornado4
+  * HH-72475 fix preprocessors early exit
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 12 Sep 2017 10:44:22 +0300
+
 frontik (2.30.2) unstable; urgency=medium
 
   * HH-72424 fix future return in new preprocessors
