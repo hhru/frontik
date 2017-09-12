@@ -25,7 +25,7 @@ class TestPreprocessors(unittest.TestCase):
             response_json,
             {
                 'run': [
-                    'pp01', 'pp02', 'pp1-before-yield', 'pp1-between-yield', 'pp1-after-yield', 'pp2', 'pp3', 'get_page'
+                    'pp01', 'pp02', 'pp1-before', 'pp1-between', 'pp1-after', 'pp2', 'pp3', 'get_page'
                 ],
                 'post': ['pp01', 'pp02'],
                 'postprocessor': True
@@ -37,7 +37,7 @@ class TestPreprocessors(unittest.TestCase):
         self.assertEqual(
             response_json,
             {
-                'run': ['pp01', 'pp02', 'pp1-before-yield', 'pp1-between-yield', 'pp1-after-yield', 'pp2'],
+                'run': ['pp01', 'pp02', 'pp1-before', 'pp1-between', 'pp1-after', 'pp2'],
                 'postprocessor': True
             }
         )

@@ -167,7 +167,7 @@ class BaseHandler(tornado.web.RequestHandler):
         if self._use_new_preprocessors:
             get_page = self._create_handler_method_wrapper(self.get_page)
             preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(self.get_page.__func__)
-            self.add_future(self._run_coroutines(preprocessors, self), get_page)
+            self.add_future(self._run_preprocessors(preprocessors, self), get_page)
         else:
             self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.get_page))
             self._finish_page()
@@ -179,7 +179,7 @@ class BaseHandler(tornado.web.RequestHandler):
         if self._use_new_preprocessors:
             post_page = self._create_handler_method_wrapper(self.post_page)
             preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(self.post_page.__func__)
-            self.add_future(self._run_coroutines(preprocessors, self), post_page)
+            self.add_future(self._run_preprocessors(preprocessors, self), post_page)
         else:
             self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.post_page))
             self._finish_page()
@@ -191,7 +191,7 @@ class BaseHandler(tornado.web.RequestHandler):
         if self._use_new_preprocessors:
             get_page = self._create_handler_method_wrapper(self.get_page)
             preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(self.get_page.__func__)
-            self.add_future(self._run_coroutines(preprocessors, self), get_page)
+            self.add_future(self._run_preprocessors(preprocessors, self), get_page)
         else:
             self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.get_page))
             self._finish_page()
@@ -203,7 +203,7 @@ class BaseHandler(tornado.web.RequestHandler):
         if self._use_new_preprocessors:
             delete_page = self._create_handler_method_wrapper(self.delete_page)
             preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(self.delete_page.__func__)
-            self.add_future(self._run_coroutines(preprocessors, self), delete_page)
+            self.add_future(self._run_preprocessors(preprocessors, self), delete_page)
         else:
             self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.delete_page))
             self._finish_page()
@@ -215,7 +215,7 @@ class BaseHandler(tornado.web.RequestHandler):
         if self._use_new_preprocessors:
             put_page = self._create_handler_method_wrapper(self.put_page)
             preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(self.put_page.__func__)
-            self.add_future(self._run_coroutines(preprocessors, self), put_page)
+            self.add_future(self._run_preprocessors(preprocessors, self), put_page)
         else:
             self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.put_page))
             self._finish_page()
@@ -239,6 +239,10 @@ class BaseHandler(tornado.web.RequestHandler):
         notification = self.finish_group.add_notification()
 
         def _handle_future(future):
+            if not future.result():
+                self.log.info('preprocessors chain was broken, skipping page method')
+                return
+
             if future.exception():
                 raise_future_exception(future)
 
@@ -413,13 +417,18 @@ class BaseHandler(tornado.web.RequestHandler):
         self._chain_functions(iter(preprocessors), callback, 'preprocessor')
 
     @gen.coroutine
-    def _run_coroutines(self, coroutines, *args, **kwargs):
-        for p in coroutines:
-            if self._finished:
-                self.log.warn('page was already finished, %s ignored', p)
-                continue
+    def _run_preprocessors(self, preprocessors, *args, **kwargs):
+        def _check_page_finished():
+            if self._finished or self.finish_group.is_finished():
+                self.log.warning('page has already started finishing, breaking preprocessors chain')
+                raise gen.Return(False)
 
+        for p in preprocessors:
+            _check_page_finished()
             yield gen.coroutine(p)(*args, **kwargs)
+
+        _check_page_finished()
+        raise gen.Return(True)
 
     def _call_postprocessors(self, postprocessors, callback, *args):
         self._chain_functions(iter(postprocessors), callback, 'postprocessor', *args)
