@@ -36,15 +36,20 @@ def pp1(handler):
 
 @preprocessor
 def pp2(handler):
+    def _cb(_, __):
+        handler.json.put({'put_request_finished': True})
+
     self_uri = 'http://' + handler.request.host + handler.request.path
-    future = handler.post_url(self_uri)
+    future = handler.put_url(self_uri, callback=_cb)
     handler.run.append('pp2')
     handler.pp2_future = future
 
     if handler.get_argument('raise_error', 'false') != 'false':
         raise HTTPError(400)
-    elif handler.get_argument('finish_with_postprocessors', 'false') != 'false':
-        handler.finish_with_postprocessors()
+    elif handler.get_argument('abort_and_run_postprocessors', 'false') != 'false':
+        handler.abort_pending_and_run_postprocessors()
+    elif handler.get_argument('wait_and_run_postprocessors', 'false') != 'false':
+        handler.wait_pending_and_run_postprocessors()
     elif handler.get_argument('redirect', 'false') != 'false':
         handler.redirect(self_uri + '?redirected=true')
     elif handler.get_argument('finish', 'false') != 'false':
@@ -83,8 +88,8 @@ class Page(PageHandler):
 
         self.run.append('get_page')
 
-    def post_page(self):
-        self.text = {'post': self.run}
+    def put_page(self):
+        self.text = {'put_request_preprocessors': self.run}
 
     @staticmethod
     def postprocessor(handler, callback):
