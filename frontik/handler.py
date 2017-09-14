@@ -67,7 +67,7 @@ class BaseHandler(tornado.web.RequestHandler):
         super(BaseHandler, self).__init__(application, request, **kwargs)
 
         self._debug_access = None
-
+        self._page_aborted = False
         self._template_postprocessors = []
         self._early_postprocessors = []
         self._returned_methods = set()
@@ -81,6 +81,7 @@ class BaseHandler(tornado.web.RequestHandler):
         self.active_limit = frontik.handler_active_limit.PageHandlerActiveLimit(self.request)
         self.debug_mode = DebugMode(self)
         self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish')
+        self._handler_finished_notification = self.finish_group.add_notification()
 
         self.json_producer = self.application.json.get_producer(self)
         self.json = self.json_producer.json
@@ -169,7 +170,7 @@ class BaseHandler(tornado.web.RequestHandler):
             self.add_future(self._run_preprocessors(preprocessors, self), get_page)
         else:
             self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.get_page))
-            self._finish_page()
+            self._handler_finished_notification()
 
     @tornado.web.asynchronous
     def post(self, *args, **kwargs):
@@ -181,7 +182,7 @@ class BaseHandler(tornado.web.RequestHandler):
             self.add_future(self._run_preprocessors(preprocessors, self), post_page)
         else:
             self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.post_page))
-            self._finish_page()
+            self._handler_finished_notification()
 
     @tornado.web.asynchronous
     def head(self, *args, **kwargs):
@@ -193,7 +194,7 @@ class BaseHandler(tornado.web.RequestHandler):
             self.add_future(self._run_preprocessors(preprocessors, self), get_page)
         else:
             self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.get_page))
-            self._finish_page()
+            self._handler_finished_notification()
 
     @tornado.web.asynchronous
     def delete(self, *args, **kwargs):
@@ -205,7 +206,7 @@ class BaseHandler(tornado.web.RequestHandler):
             self.add_future(self._run_preprocessors(preprocessors, self), delete_page)
         else:
             self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.delete_page))
-            self._finish_page()
+            self._handler_finished_notification()
 
     @tornado.web.asynchronous
     def put(self, *args, **kwargs):
@@ -217,7 +218,7 @@ class BaseHandler(tornado.web.RequestHandler):
             self.add_future(self._run_preprocessors(preprocessors, self), put_page)
         else:
             self._call_preprocessors(self.preprocessors, partial(self._save_return_value, self.put_page))
-            self._finish_page()
+            self._handler_finished_notification()
 
     def options(self, *args, **kwargs):
         raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
@@ -235,15 +236,13 @@ class BaseHandler(tornado.web.RequestHandler):
                 self.handle_return_value(method_name, return_value)
 
     def _create_handler_method_wrapper(self, handler_method):
-        notification = self.finish_group.add_notification()
-
         def _handle_future(future):
+            if future.exception():
+                raise_future_exception(future)
+
             if not future.result():
                 self.log.info('preprocessors chain was broken, skipping page method')
                 return
-
-            if future.exception():
-                raise_future_exception(future)
 
             return_value = handler_method()
 
@@ -251,7 +250,7 @@ class BaseHandler(tornado.web.RequestHandler):
                 method_name = handler_method.__name__
                 self.handle_return_value(method_name, return_value)
 
-            notification()
+            self._handler_finished_notification()
 
         return self.check_finished(_handle_future)
 
@@ -297,11 +296,15 @@ class BaseHandler(tornado.web.RequestHandler):
 
         return wrapper
 
-    def _finish_page(self):
-        self.finish_group.try_finish()
-
     def finish_with_postprocessors(self):
         self.finish_group.finish()
+
+    def abort_preprocessors(self, wait_finish_group=True):
+        self._page_aborted = True
+        if wait_finish_group:
+            self._handler_finished_notification()
+        else:
+            self.finish_with_postprocessors()
 
     def _finish_page_cb(self):
         def _callback():
@@ -420,16 +423,12 @@ class BaseHandler(tornado.web.RequestHandler):
 
     @gen.coroutine
     def _run_preprocessors(self, preprocessors, *args, **kwargs):
-        def _check_page_finished():
-            if self._finished or self.finish_group.is_finished():
+        for p in preprocessors:
+            yield gen.coroutine(p)(*args, **kwargs)
+            if self._finished or self._page_aborted:
                 self.log.warning('page has already started finishing, breaking preprocessors chain')
                 raise gen.Return(False)
 
-        for p in preprocessors:
-            _check_page_finished()
-            yield gen.coroutine(p)(*args, **kwargs)
-
-        _check_page_finished()
         raise gen.Return(True)
 
     def _call_postprocessors(self, postprocessors, callback, *args):
