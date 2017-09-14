@@ -35,9 +35,6 @@ class AsyncGroup(object):
     def _message(self, message):
         return self._log_name + ': ' + message
 
-    def is_finished(self):
-        return self._finished
-
     def abort(self):
         async_logger.info(self._message('aborting async group'))
         self._aborted = True

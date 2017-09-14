@@ -16,7 +16,7 @@ class Page(PageHandler):
         self.add_early_postprocessor(pp)
 
     def get_page(self):
-        content_type = self.get_argument('type', None)
+        content_type = self.get_argument('type')
 
         def fail_page(_, __):
             raise HTTPError(500)
