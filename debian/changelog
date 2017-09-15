@@ -1,3 +1,9 @@
+frontik (2.31.0) unstable; urgency=medium
+
+  * HH-72340 Add http balancing
+
+ -- Automated Build <d.smirnov@hh.ru>  Fri, 15 Sep 2017 20:38:08 +0300
+
 frontik (2.30.3) unstable; urgency=medium
 
   * HH-72476 prepare tornado4
