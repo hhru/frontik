@@ -18,6 +18,7 @@ from frontik.handler import ErrorHandler
 from frontik.loggers import bootstrap_app_loggers, request
 from frontik.request_context import RequestContext
 from frontik.routing import FileMappingRouter, FrontikRouter
+from frontik.http_client import HttpClientFactory
 
 
 def get_frontik_and_apps_versions(application):
@@ -74,7 +75,7 @@ class FrontikApplication(Application):
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
         AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
-        self.http_client = self.curl_http_client = AsyncHTTPClient()
+        self.http_client_factory = HttpClientFactory(AsyncHTTPClient(), getattr(self.config, 'http_upstreams', {}))
 
         self.router = FrontikRouter(self)
         self.loggers_initializers = bootstrap_app_loggers(self)
@@ -117,7 +118,7 @@ class FrontikApplication(Application):
     def init_async(self):
         init_future = Future()
         init_future.set_result(None)
-        return init_future
+        return (init_future,)
 
     @staticmethod
     def next_request_id():
@@ -137,7 +138,7 @@ class FrontikApplication(Application):
             'uptime': uptime_value,
             'workers': {
                 'total': options.max_http_clients,
-                'free':  len(self.curl_http_client._free_list)
+                'free':  len(self.http_client_factory.tornado_http_client._free_list)
             }
         }
 

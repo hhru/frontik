@@ -7,11 +7,10 @@ import frontik.handler
 
 class Page(frontik.handler.PageHandler):
     def get_page(self):
-        self_uri = self.request.host + self.request.path
-        self.json.put(self.post_url(self_uri, parse_on_error=True))
-        self.json.put(self.put_url(self_uri, parse_on_error=False))
+        self.json.put(self.post_url(self.request.host, self.request.path, parse_on_error=True))
+        self.json.put(self.put_url(self.request.host, self.request.path, parse_on_error=False))
 
-        self.delete_url(self_uri, parse_response=False, callback=self.delete_callback)
+        self.delete_url(self.request.host, self.request.path, parse_response=False, callback=self.delete_callback)
 
     def delete_callback(self, data, response):
         self.json.put({'delete': to_unicode(data)})

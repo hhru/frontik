@@ -36,8 +36,7 @@ def pp1(handler):
 
 @preprocessor
 def pp2(handler):
-    self_uri = 'http://' + handler.request.host + handler.request.path
-    future = handler.post_url(self_uri)
+    future = handler.post_url(handler.request.host, handler.request.path)
     handler.run.append('pp2')
     handler.pp2_future = future
 
@@ -46,7 +45,7 @@ def pp2(handler):
     elif handler.get_argument('finish_with_postprocessors', 'false') != 'false':
         handler.finish_with_postprocessors()
     elif handler.get_argument('redirect', 'false') != 'false':
-        handler.redirect(self_uri + '?redirected=true')
+        handler.redirect(handler.request.host + handler.request.path + '?redirected=true')
     elif handler.get_argument('finish', 'false') != 'false':
         handler.finish('finished')
     else:

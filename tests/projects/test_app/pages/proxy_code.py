@@ -12,4 +12,4 @@ class Page(frontik.handler.PageHandler):
             else:
                 self.finish(str(response.code))
 
-        self.get_url('http://127.0.0.1:' + self.get_argument('port'), request_timeout=0.1, callback=callback)
+        self.get_url('http://127.0.0.1:' + self.get_argument('port'), '', request_timeout=0.1, callback=callback)

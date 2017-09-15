@@ -30,14 +30,14 @@ class Page(PageHandler):
 
         self.add_future(self.run_coroutine(), self.finish_group.add_notification())
 
-        future = self.post_url(self.request.host + self.request.uri)
+        future = self.post_url(self.request.host, self.request.uri)
         future.add_done_callback(_waited_callback('future'))
 
     @coroutine
     def run_coroutine(self):
         self.json.put({'coroutine_before_yield': RequestContext.get('handler_name')})
 
-        yield self.post_url(self.request.host + self.request.uri)
+        yield self.post_url(self.request.host, self.request.uri)
 
         self.json.put({'coroutine_after_yield': RequestContext.get('handler_name')})
 
