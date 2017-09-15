@@ -21,7 +21,7 @@ class Page(PageHandler):
         def fail_page(_, __):
             raise HTTPError(500)
 
-        self.post_url(self.request.host + self.request.path, callback=fail_page)
+        self.post_url(self.request.host, self.request.path, callback=fail_page)
 
         if content_type == 'text':
             self.text = 'ok'

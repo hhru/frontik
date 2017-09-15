@@ -56,7 +56,3 @@ class TestHttpClient(unittest.TestCase):
     def test_http_client_method_future(self):
         json = frontik_test_app.get_page_json('http_client/future')
         self.assertEqual(json, {'main_callback_called': True, 'additional_callback_called': True})
-
-    def test_http_client_fetch(self):
-        text = frontik_test_app.get_page_text('http_client/fetch')
-        self.assertEqual(text, 'fetch success')

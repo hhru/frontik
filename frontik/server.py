@@ -129,16 +129,21 @@ def main(config_file=None):
         tornado_app = application(**options.as_dict())
         ioloop = tornado.ioloop.IOLoop.current()
 
-        def _run_server_cb(future):
-            if future.exception() is not None:
-                log.error('failed to initialize application, init_async returned: %s', future.exception())
-                sys.exit(1)
-
-            run_server(tornado_app)
-
         def _async_init_cb():
             try:
-                ioloop.add_future(tornado_app.init_async(), _run_server_cb)
+                init_futures = list(tornado_app.init_async())
+
+                def await_features(future):
+                    if future.exception() is not None:
+                        log.error('failed to initialize application, init_async returned: %s', future.exception())
+                        sys.exit(1)
+
+                    init_futures.pop()
+                    if not init_futures:
+                        run_server(tornado_app)
+
+                for future in init_futures:
+                    ioloop.add_future(future, await_features)
             except Exception:
                 log.exception('failed to initialize application')
                 sys.exit(1)

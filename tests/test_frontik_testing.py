@@ -22,8 +22,8 @@ class TestHandler(PageHandler):
             self.result += int(xml.findtext('val'))
 
         self.group({
-            'val1': self.get_url(self.config.serviceHost + '/val1/1', callback=accumulate),
-            'val2': self.get_url(self.config.serviceHost + '/val2/2', callback=accumulate)
+            'val1': self.get_url(self.config.serviceHost, '/val1/1', callback=accumulate),
+            'val2': self.get_url(self.config.serviceHost, '/val2/2', callback=accumulate)
         }, callback=finished)
 
 

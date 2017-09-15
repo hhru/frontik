@@ -169,6 +169,13 @@
                 font-size: 14px;
                 border-radius: 5px;
             }
+                .retry {
+                    color: #000;
+                    background-color: #f15;
+                }
+                .type {
+                    background-color: #0ff;
+                }
             .error {
                 color: red;
             }

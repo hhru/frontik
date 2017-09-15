@@ -9,8 +9,6 @@
     <xsl:include href="vkbeautify-js.xsl"/>
     <xsl:include href="highlight-js.xsl"/>
 
-    <xsl:key name="labels" match="/log/labels/*" use="local-name()"/>
-
     <xsl:variable name="highlight-text">
         <xsl:if test="contains(/log/@mode, '@')">
             <xsl:value-of select="substring(/log/@mode, 2)"/>
@@ -143,7 +141,7 @@
         <xsl:apply-templates select="exception/trace"/>
     </xsl:template>
 
-    <xsl:template match="entry[labels/label/text() = 'SQL' or labels/label/text() = 'CQL']">
+    <xsl:template match="entry[meta-info/type/text() = 'SQL' or meta-info/type/text() = 'CQL']">
         <div class="entry entry_expandable">
             <!-- This allows debug page to work inside dev tools request preview, useful for ajax requests debugging -->
             <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="entry__head entry__switcher">
@@ -152,7 +150,7 @@
                         <xsl:value-of select="format-number(@duration, '#0.#')"/>
                         <xsl:text>ms </xsl:text>
                     </span>
-                    <xsl:apply-templates select="labels/label"/>
+                    <xsl:apply-templates select="meta-info/type"/>
                     <xsl:text> at </xsl:text>
                     <xsl:value-of select="@pathname" />
                     <xsl:text>.</xsl:text>
@@ -310,7 +308,8 @@
                         <xsl:value-of select="format-number(response/request_time, '#0.#')"/>
                         <xsl:text>ms </xsl:text>
                     </span>
-                    <xsl:apply-templates select="labels/label"/>
+                    <xsl:apply-templates select="meta-info/upstream"/>
+                    <xsl:apply-templates select="meta-info/retry"/>
                     <xsl:value-of select="response/code"/>
                     <xsl:text> </xsl:text>
                     <xsl:value-of select="request/method"/>
@@ -349,8 +348,21 @@
         <div class="debug-inheritance"/>
     </xsl:template>
 
-    <xsl:template match="label">
-        <span class="label" style="background-color: {key('labels', .)/text()}">
+    <xsl:template match="meta-info/upstream">
+        <span class="label" style="background-color: {@color}">
+            <xsl:value-of select="@name"/>
+        </span>
+    </xsl:template>
+
+    <xsl:template match="meta-info/retry">
+        <span class="label retry">
+            <xsl:text>RETRY </xsl:text>
+            <xsl:value-of select="@count"/>
+        </span>
+    </xsl:template>
+
+    <xsl:template match="meta-info/type">
+        <span class="label type">
             <xsl:value-of select="text()"/>
         </span>
     </xsl:template>

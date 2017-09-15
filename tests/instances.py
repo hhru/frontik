@@ -147,3 +147,11 @@ frontik_broken_config_app = FrontikTestInstance(
 frontik_broken_init_async_app = FrontikTestInstance(
     command='./frontik-test --app=tests.projects.broken_async_init_app --config=tests/projects/frontik_debug.cfg'
 )
+
+frontik_balancer_app = FrontikTestInstance(
+    command='./frontik-test --app=tests.projects.balancer_app --config=tests/projects/frontik_debug.cfg'
+)
+
+frontik_broken_balancer_app = FrontikTestInstance(
+    command='./frontik-test --app=tests.projects.broken_balancer_app --config=tests/projects/frontik_debug.cfg'
+)
