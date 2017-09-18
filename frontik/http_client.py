@@ -312,7 +312,9 @@ class HttpClientFactory(object):
                 if server is None:
                     return
 
-                info.append('{} : ({}, {})'.format(server.address, server.stats_requests, server.stats_errors))
+                info.append('{} : ({}, {} | {}, {}, {})'.format(
+                    server.address, server.stats_requests, server.stats_errors, server.requests, server.weight,
+                    'active' if server.is_active else 'dead'))
                 server.stats_requests = 0
                 server.stats_errors = 0
 
