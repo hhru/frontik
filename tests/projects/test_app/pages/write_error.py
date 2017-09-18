@@ -13,4 +13,4 @@ class Page(frontik.handler.PageHandler):
         if self.get_argument('fail_write_error', 'false') == 'true':
             raise Exception('exception in write_error')
 
-        self.finish_with_postprocessors()
+        self.abort_pending_and_run_postprocessors()

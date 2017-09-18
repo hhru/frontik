@@ -16,7 +16,7 @@ class Page(PageHandler):
         self.add_early_postprocessor(pp)
 
     def get_page(self):
-        content_type = self.get_argument('type', None)
+        content_type = self.get_argument('type')
 
         def fail_page(_, __):
             raise HTTPError(500)
@@ -33,7 +33,7 @@ class Page(PageHandler):
             self.doc.put(etree.Element('ok'))
             self.set_xsl('simple.xsl')
 
-        self.finish_with_postprocessors()
+        self.abort_pending_and_run_postprocessors()
 
     def post_page(self):
         pass
