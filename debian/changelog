@@ -1,3 +1,9 @@
+frontik (2.31.1) unstable; urgency=medium
+
+  * HH-72649 Add logging params
+
+ -- Automated Build <d.smirnov@hh.ru>  Mon, 18 Sep 2017 18:39:49 +0300
+
 frontik (2.31.0) unstable; urgency=medium
 
   * HH-72340 Add http balancing
