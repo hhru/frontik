@@ -53,7 +53,7 @@ setup(
         'test': TestHook
     },
     packages=[
-        'frontik', 'frontik/loggers', 'frontik/producers'
+        'frontik', 'frontik/loggers', 'frontik/producers', 'frontik/http_client'
     ],
     package_data={
         'frontik': ['debug/*.xsl'],
