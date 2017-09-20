@@ -1,3 +1,9 @@
+frontik (2.31.3) unstable; urgency=medium
+
+  * HH-72655 Add protobuf client
+
+ -- Automated Build <d.smirnov@hh.ru>  Wed, 20 Sep 2017 17:36:16 +0300
+
 frontik (2.31.2) unstable; urgency=medium
 
   * HH-72707 Fix requests stats
