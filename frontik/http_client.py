@@ -395,9 +395,8 @@ class HttpClient(object):
     def _fetch_with_retry(self, request, callback, add_to_finish_group, parse_response, parse_on_error):
         future = Future()
 
-        def partial_callback(response):
-            if request.check_retry(response):
-                self._fetch(request, partial_callback, add_to_finish_group)
+        def request_finished_callback(response):
+            if response is None:
                 return
 
             if self.handler.is_finished():
@@ -411,11 +410,25 @@ class HttpClient(object):
 
             future.set_result(result)
 
-        self._fetch(request, partial_callback, add_to_finish_group)
+        if add_to_finish_group:
+            request_finished_callback = self.handler.finish_group.add(request_finished_callback)
+
+        def retry_callback(response=None):
+            if response is None:
+                request_finished_callback(None)
+                return
+
+            if request.check_retry(response):
+                self._fetch(request, retry_callback)
+                return
+
+            request_finished_callback(response)
+
+        self._fetch(request, retry_callback)
 
         return future
 
-    def _fetch(self, balanced_request, callback, add_to_finish_group):
+    def _fetch(self, balanced_request, callback):
         if self.handler.is_finished():
             self.handler.log.warning(
                 'attempted to make http request to %s %s when page is finished, ignoring',
@@ -423,6 +436,7 @@ class HttpClient(object):
                 balanced_request.uri
             )
 
+            callback(None)
             return
 
         request = balanced_request.make_request()
@@ -449,9 +463,6 @@ class HttpClient(object):
                     request.headers[header_name] = authorization
 
         request.headers['X-Request-Id'] = self.handler.request_id
-
-        if add_to_finish_group:
-            request_callback = self.handler.finish_group.add(request_callback)
 
         if isinstance(self.http_client_impl, CurlAsyncHTTPClient):
             request.prepare_curl_callback = partial(
