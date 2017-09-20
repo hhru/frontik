@@ -1,3 +1,9 @@
+frontik (2.31.2) unstable; urgency=medium
+
+  * HH-72707 Fix requests stats
+
+ -- Automated Build <d.smirnov@hh.ru>  Wed, 20 Sep 2017 13:45:38 +0300
+
 frontik (2.31.1) unstable; urgency=medium
 
   * HH-72649 Add logging params
