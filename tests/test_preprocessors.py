@@ -27,17 +27,29 @@ class TestPreprocessors(unittest.TestCase):
                 'run': [
                     'pp01', 'pp02', 'pp1-before', 'pp1-between', 'pp1-after', 'pp2', 'pp3', 'get_page'
                 ],
-                'post': ['pp01', 'pp02'],
+                'put_request_finished': True,
+                'put_request_preprocessors': ['pp01', 'pp02'],
                 'postprocessor': True
             }
         )
 
-    def test_preprocessors_new_finish_with_postprocessors(self):
-        response_json = frontik_test_app.get_page_json('preprocessors_new?finish_with_postprocessors=true')
+    def test_preprocessors_new_abort_and_run_postprocessors(self):
+        response_json = frontik_test_app.get_page_json('preprocessors_new?abort_and_run_postprocessors=true')
         self.assertEqual(
             response_json,
             {
                 'run': ['pp01', 'pp02', 'pp1-before', 'pp1-between', 'pp1-after', 'pp2'],
+                'postprocessor': True
+            }
+        )
+
+    def test_preprocessors_new_wait_and_run_postprocessors(self):
+        response_json = frontik_test_app.get_page_json('preprocessors_new?wait_and_run_postprocessors=true')
+        self.assertEqual(
+            response_json,
+            {
+                'run': ['pp01', 'pp02', 'pp1-before', 'pp1-between', 'pp1-after', 'pp2'],
+                'put_request_finished': True,
                 'postprocessor': True
             }
         )
