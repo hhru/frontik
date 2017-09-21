@@ -8,11 +8,12 @@ from frontik.http_client import Upstream
 class TestHttpConfigParser(unittest.TestCase):
     def test_single_server(self):
         config, servers = Upstream.parse_config(
-            'tries=1 fail_timeout=1    max_fails=30 |server=172.17.0.1:2800     weight=100    | ')
+            'max_tries=1 fail_timeout_sec=1 request_timeout_sec=0.2  max_fails=30 |server=172.17.0.1:2800  weight=100|')
 
-        self.assertEquals('1', config['tries'])
+        self.assertEquals('1', config['max_tries'])
         self.assertEquals('30', config['max_fails'])
-        self.assertEquals('1', config['fail_timeout'])
+        self.assertEquals('1', config['fail_timeout_sec'])
+        self.assertEquals('0.2', config['request_timeout_sec'])
         self.assertEquals(1, len(servers))
 
         server = servers[0]
@@ -20,7 +21,7 @@ class TestHttpConfigParser(unittest.TestCase):
         self.assertEquals(100, server.weight)
 
     def test_single_server_without_last_separator(self):
-        config, servers = Upstream.parse_config('|server=bla-bla   fail_timeout=1 max_fails=30 weight=1 ')
+        config, servers = Upstream.parse_config('|server=bla-bla   fail_timeout_sec=1 max_fails=30 weight=1 ')
 
         self.assertEquals(0, len(config))
         self.assertEquals(1, len(servers))

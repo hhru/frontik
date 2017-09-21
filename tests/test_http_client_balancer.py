@@ -13,7 +13,7 @@ def _total_weight(upstream):
 
 
 def _total_requests(upstream):
-    return sum(server.requests for server in upstream.servers if server is not None)
+    return sum(server.current_requests for server in upstream.servers if server is not None)
 
 
 class TestHttpClientBalancer(unittest.TestCase):
@@ -109,7 +109,7 @@ class TestHttpClientBalancer(unittest.TestCase):
         upstream.return_server(fd)
 
         self.assertEqual(_total_requests(upstream), 0)
-        self.assertEqual(server.requests, 0)
+        self.assertEqual(server.current_requests, 0)
 
         _, address = upstream.borrow_server()
         self.assertEqual(address, '3')

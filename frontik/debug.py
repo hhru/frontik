@@ -131,7 +131,7 @@ def request_to_xml(request):
 def balanced_request_to_xml(balanced_request, retry):
     info = etree.Element('meta-info')
 
-    if balanced_request.upstream is not None:
+    if balanced_request.upstream.balanced:
         name = balanced_request.upstream.name.upper()
         name_hash = crc32(name) % 0xffffffff
         color = '#%02x%02x%02x' % ((name_hash & 0xFF0000) >> 16, (name_hash & 0x00FF00) >> 8, name_hash & 0x0000FF)
