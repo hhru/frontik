@@ -1,3 +1,9 @@
+frontik (2.31.4) unstable; urgency=medium
+
+  * HH-72631 refactor finish_with_postprocessors
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 21 Sep 2017 12:47:41 +0300
+
 frontik (2.31.3) unstable; urgency=medium
 
   * HH-72655 Add protobuf client
