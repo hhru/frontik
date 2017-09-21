@@ -6,12 +6,12 @@ import unittest
 import frontik.options
 
 from frontik.debug import request_to_curl_string
-from frontik.http_client import BalancedHttpRequest
+from frontik.http_client import BalancedHttpRequest, Upstream
 
 
 class CurlStringTestCase(unittest.TestCase):
     def test_curl_string_get(self):
-        request = BalancedHttpRequest('http://test.com', None, '/path',
+        request = BalancedHttpRequest('http://test.com', Upstream.get_single_host_upstream(), '/path',
                                       data={'param': 'value'},
                                       headers={'Accept': 'application/json'}).make_request()
 
@@ -21,7 +21,7 @@ class CurlStringTestCase(unittest.TestCase):
         )
 
     def test_curl_string_post(self):
-        request = BalancedHttpRequest('http://test.com', None, '/path',
+        request = BalancedHttpRequest('http://test.com', Upstream.get_single_host_upstream(), '/path',
                                       data={'param': 'value'},
                                       method='POST').make_request()
 
@@ -32,7 +32,7 @@ class CurlStringTestCase(unittest.TestCase):
         )
 
     def test_curl_string_put(self):
-        request = BalancedHttpRequest('http://test.com', None, '/path',
+        request = BalancedHttpRequest('http://test.com', Upstream.get_single_host_upstream(), '/path',
                                       data='DATA',
                                       method='PUT',
                                       content_type='text/plain').make_request()
@@ -43,7 +43,7 @@ class CurlStringTestCase(unittest.TestCase):
         )
 
     def test_curl_string_binary(self):
-        request = BalancedHttpRequest('http://test.com', None, '/path',
+        request = BalancedHttpRequest('http://test.com', Upstream.get_single_host_upstream(), '/path',
                                       data=u'тест',
                                       method='POST',
                                       content_type='text/plain').make_request()

@@ -6,7 +6,6 @@ from functools import partial
 
 from lxml import etree
 from tornado.concurrent import Future
-from tornado.httpclient import AsyncHTTPClient
 from tornado.options import options
 from tornado.stack_context import StackContext
 from tornado.web import Application, RequestHandler
@@ -74,8 +73,7 @@ class FrontikApplication(Application):
         self.xml = frontik.producers.xml_producer.XMLProducerFactory(self)
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
-        AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
-        self.http_client_factory = HttpClientFactory(AsyncHTTPClient(), getattr(self.config, 'http_upstreams', {}))
+        self.http_client_factory = HttpClientFactory(getattr(self.config, 'http_upstreams', {}))
 
         self.router = FrontikRouter(self)
         self.loggers_initializers = bootstrap_app_loggers(self)

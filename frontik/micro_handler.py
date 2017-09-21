@@ -14,11 +14,12 @@ class MicroHandler(BaseHandler):
     _Request = namedtuple('_Request', ('method', 'host', 'uri', 'kwargs'))
 
     def GET(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None,
-            follow_redirects=True, fail_on_error=False):
+            max_timeout_tries=None, follow_redirects=True, fail_on_error=False):
         future = self._http_client.get_url(
             host, uri,
             data=data, headers=headers,
             connect_timeout=connect_timeout, request_timeout=request_timeout,
+            max_timeout_tries=max_timeout_tries,
             follow_redirects=follow_redirects, parse_on_error=True
         )
         future.fail_on_error = fail_on_error
@@ -37,11 +38,12 @@ class MicroHandler(BaseHandler):
         return future
 
     def PUT(self, host, uri, data='', headers=None, connect_timeout=None, request_timeout=None,
-            content_type=None, fail_on_error=False):
+            max_timeout_tries=None, content_type=None, fail_on_error=False):
         future = self._http_client.put_url(
             host, uri,
             data=data, headers=headers,
             connect_timeout=connect_timeout, request_timeout=request_timeout,
+            max_timeout_tries=max_timeout_tries,
             content_type=content_type,
             parse_on_error=True
         )
@@ -49,11 +51,12 @@ class MicroHandler(BaseHandler):
         return future
 
     def DELETE(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None,
-               content_type=None, fail_on_error=False):
+               max_timeout_tries=None, content_type=None, fail_on_error=False):
         future = self._http_client.delete_url(
             host, uri,
             data=data, headers=headers,
             connect_timeout=connect_timeout, request_timeout=request_timeout,
+            max_timeout_tries=max_timeout_tries,
             content_type=content_type,
             parse_on_error=True
         )
