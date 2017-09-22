@@ -10,9 +10,9 @@ import pycurl
 import simplejson
 import logging
 from lxml import etree
+from tornado import stack_context
 from tornado.ioloop import IOLoop
 from tornado.concurrent import Future
-from tornado.curl_httpclient import CurlAsyncHTTPClient
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPResponse, HTTPError
 from tornado.httputil import HTTPHeaders
 from tornado.options import options
@@ -335,8 +335,13 @@ class BalancedHttpRequest(object):
             request.proxy_host = options.http_proxy_host
             request.proxy_port = options.http_proxy_port
 
+        for attr, default in iteritems(request._DEFAULTS):
+            request_attr = getattr(request, attr)
+            if request_attr is None:
+                setattr(request, attr, default)
+
         self.last_request = request
-        return self.last_request
+        return request
 
     def backend_available(self):
         return self.current_host is not None
@@ -570,6 +575,9 @@ class HttpClient(object):
         return future
 
     def _fetch(self, balanced_request, callback):
+        def request_callback(response):
+            self.handler.add_callback(callback, response)
+
         if self.handler.is_finished():
             self.handler.log.warning(
                 'attempted to make http request to %s %s when page is finished, ignoring',
@@ -577,16 +585,18 @@ class HttpClient(object):
                 balanced_request.uri
             )
 
-            callback(None)
-            return
+            return request_callback(None)
 
         request = balanced_request.make_request()
 
         if not balanced_request.backend_available():
-            callback(HTTPResponse(request, 502,
-                                  error=HTTPError(502, 'No backend available for ' + balanced_request.get_host()),
-                                  request_time=0))
-            return
+            return request_callback(
+                HTTPResponse(
+                    request, 502,
+                    error=HTTPError(502, 'No backend available for ' + balanced_request.get_host()),
+                    request_time=0
+                )
+            )
 
         if self.handler.debug_mode.pass_debug:
             request.headers[DEBUG_HEADER_NAME] = 'true'
@@ -601,12 +611,11 @@ class HttpClient(object):
 
         request.headers['X-Request-Id'] = self.handler.request_id
 
-        if isinstance(self.http_client_impl, CurlAsyncHTTPClient):
-            request.prepare_curl_callback = partial(
-                self._prepare_curl_callback, next_callback=request.prepare_curl_callback
-            )
+        request.prepare_curl_callback = partial(
+            self._prepare_curl_callback, next_callback=request.prepare_curl_callback
+        )
 
-        self.http_client_impl.fetch(request, callback)
+        self.http_client_impl.fetch_impl(request, stack_context.wrap(request_callback))
 
     def _prepare_curl_callback(self, curl, next_callback):
         curl.setopt(pycurl.NOSIGNAL, 1)
@@ -634,6 +643,11 @@ class HttpClient(object):
         return response, debug_extra
 
     def _log_response(self, balanced_request, response, retries_count, do_retry, debug_extra):
+        if response.error and response.code == 599:
+            self.handler.log.info(
+                'request %s failed with 599, curl time info: %s', response.effective_url, response.time_info
+            )
+
         log_message = 'got {code}{size}{retry}, {do_retry} {method} {url} in {time:.2f}ms'.format(
             code=response.code,
             method=balanced_request.method,
