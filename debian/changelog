@@ -1,3 +1,9 @@
+frontik (2.31.5) unstable; urgency=medium
+
+  * HH-72752 Add connect and request timeout per upstream
+
+ -- Automated Build <d.smirnov@hh.ru>  Tue, 26 Sep 2017 17:44:52 +0300
+
 frontik (2.31.4) unstable; urgency=medium
 
   * HH-72631 refactor finish_with_postprocessors
