@@ -11,7 +11,7 @@ class Page(frontik.handler.PageHandler):
     def get_page(self):
         server = get_server(self, 'free')
         self.application.http_client_factory.register_upstream(
-            'deactivate', {'max_fails': 1, 'fail_timeout': 0.1}, [server])
+            'deactivate', {'max_fails': 1, 'fail_timeout_sec': 0.1}, [server])
         self.text = ''
 
         def check_server_active():

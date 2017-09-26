@@ -484,26 +484,28 @@ class PageHandler(BaseHandler):
     def group(self, futures, callback=None, name=None):
         return self._http_client.group(futures, callback, name)
 
-    def get_url(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                follow_redirects=True, add_to_finish_group=True, parse_response=True, parse_on_error=False):
+    def get_url(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None,
+                max_timeout_tries=None, callback=None, follow_redirects=True,
+                add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
         return self._http_client.get_url(
             host, uri, data=data, headers=headers, connect_timeout=connect_timeout, request_timeout=request_timeout,
-            callback=callback, follow_redirects=follow_redirects, add_to_finish_group=add_to_finish_group,
-            parse_response=parse_response, parse_on_error=parse_on_error
+            max_timeout_tries=max_timeout_tries, callback=callback, follow_redirects=follow_redirects,
+            add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
 
-    def head_url(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                 follow_redirects=True, add_to_finish_group=True):
+    def head_url(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None,
+                 max_timeout_tries=None, callback=None, follow_redirects=True, add_to_finish_group=True):
 
         return self._http_client.head_url(
             host, uri, data=data, headers=headers, connect_timeout=connect_timeout, request_timeout=request_timeout,
-            callback=callback, follow_redirects=follow_redirects, add_to_finish_group=add_to_finish_group
+            max_timeout_tries=max_timeout_tries, callback=callback, follow_redirects=follow_redirects,
+            add_to_finish_group=add_to_finish_group
         )
 
     def post_url(self, host, uri, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
-                 callback=None, follow_redirects=True, content_type=None, add_to_finish_group=True,
-                 parse_response=True, parse_on_error=False):
+                 callback=None, follow_redirects=True, content_type=None,
+                 add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
         return self._http_client.post_url(
             host, uri, data=data, headers=headers, files=files,
@@ -512,22 +514,24 @@ class PageHandler(BaseHandler):
             add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
 
-    def put_url(self, host, uri, data='', headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                content_type=None, add_to_finish_group=True, parse_response=True, parse_on_error=False):
+    def put_url(self, host, uri, data='', headers=None, connect_timeout=None, request_timeout=None,
+                max_timeout_tries=None, callback=None, content_type=None, add_to_finish_group=True,
+                parse_response=True, parse_on_error=False):
 
         return self._http_client.put_url(
             host, uri, data=data, headers=headers, connect_timeout=connect_timeout, request_timeout=request_timeout,
-            callback=callback, content_type=content_type, add_to_finish_group=add_to_finish_group,
-            parse_response=parse_response, parse_on_error=parse_on_error
+            max_timeout_tries=max_timeout_tries, callback=callback, content_type=content_type,
+            add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
 
-    def delete_url(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None, callback=None,
-                   content_type=None, add_to_finish_group=True, parse_response=True, parse_on_error=False):
+    def delete_url(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None,
+                   max_timeout_tries=None, callback=None, content_type=None, add_to_finish_group=True,
+                   parse_response=True, parse_on_error=False):
 
         return self._http_client.delete_url(
             host, uri, data=data, headers=headers, connect_timeout=connect_timeout, request_timeout=request_timeout,
-            callback=callback, content_type=content_type, add_to_finish_group=add_to_finish_group,
-            parse_response=parse_response, parse_on_error=parse_on_error
+            max_timeout_tries=max_timeout_tries, callback=callback, content_type=content_type,
+            add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
 
 

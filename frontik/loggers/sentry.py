@@ -69,8 +69,8 @@ if has_raven:
             http_client = self.http_client if self.http_client else AsyncHTTPClient()
             return http_client.fetch(
                 url, callback, method='POST', body=data, headers=headers if headers else {},
-                validate_cert=self.validate_cert, connect_timeout=options.http_client_default_connect_timeout,
-                request_timeout=options.http_client_default_request_timeout
+                validate_cert=self.validate_cert, connect_timeout=options.http_client_default_connect_timeout_sec,
+                request_timeout=options.http_client_default_request_timeout_sec
             )
 
     class SentryLogger(object):
