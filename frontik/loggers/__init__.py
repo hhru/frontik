@@ -7,7 +7,7 @@ from logging.handlers import SysLogHandler
 from tornado.log import LogFormatter
 from tornado.options import options
 
-from frontik.loggers import sentry
+from frontik.loggers import sentry, statsd
 from frontik.request_context import RequestContext
 
 """Contains a list of all available third-party loggers, that can be used in the request handler.
@@ -21,7 +21,7 @@ If the initialization was successful, `bootstrap_logger` should return a callabl
 request handler. It will be called when a request handler is starting and should provide an initialization code
 for this request handler (for example, add some specific methods for the handler or register hooks).
 """
-LOGGERS = (sentry, )
+LOGGERS = (sentry, statsd)
 
 ROOT_LOGGER = logging.root
 
