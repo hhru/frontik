@@ -4,12 +4,13 @@ import re
 import time
 from collections import namedtuple
 from functools import partial
+from random import shuffle
 
 import pycurl
 import simplejson
 import logging
 from lxml import etree
-from tornado.ioloop import IOLoop
+from tornado.ioloop import IOLoop, PeriodicCallback
 from tornado.concurrent import Future
 from tornado.curl_httpclient import CurlAsyncHTTPClient
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPResponse, HTTPError
@@ -44,12 +45,16 @@ class Server(object):
         self.fails = 0
         self.requests = 0
         self.is_active = True
+        self.current_weight = self.weight
+        self.slow_start_tics_left = 0
 
         if self.weight < 1:
             raise ValueError('weight should not be less then 1')
 
     def update(self, server):
         self.weight = server.weight
+        if server.slow_start_tics_left == 0:
+            self.current_weight = server.weight
 
     def deactivate(self, timeout):
         self.is_active = False
@@ -60,6 +65,10 @@ class Server(object):
         self.fails = 0
         self.requests = 0
         self.is_active = True
+
+    def slow_start(self, tics):
+        self.current_weight = 1
+        self.slow_start_tics_left = tics
 
 
 class Upstream(object):
@@ -92,6 +101,7 @@ class Upstream(object):
         self.connect_timeout = options.http_client_default_connect_timeout_sec
         self.request_timeout = options.http_client_default_request_timeout_sec
         self.fail_timeout = options.http_client_default_fail_timeout_sec
+        self.slow_start_timeout = options.http_client_default_slow_start_timeout
         self.balanced = True
 
         self.update(config, servers)
@@ -106,10 +116,10 @@ class Upstream(object):
             if server is None or not server.is_active:
                 continue
 
-            load = server.requests / float(server.weight)
-            current_load = server.current_requests / float(server.weight)
+            load = server.requests / float(server.current_weight)
+            current_load = server.current_requests / float(server.current_weight)
 
-            should_rescale = should_rescale and server.requests >= server.weight
+            should_rescale = should_rescale and server.requests >= server.current_weight
             worth = current_load < min_current_load or (current_load == min_current_load and load < min_load)
 
             if (exclude is None or index not in exclude) and (min_index is None or worth):
@@ -123,7 +133,7 @@ class Upstream(object):
         if should_rescale:
             for server in self.servers:
                 if server is not None and server.is_active:
-                    server.requests -= server.weight
+                    server.requests -= server.current_weight
 
         server = self.servers[min_index]
         server.requests += 1
@@ -142,6 +152,10 @@ class Upstream(object):
 
                 if self.max_fails != 0 and server.fails >= self.max_fails:
                     http_logger.info('disable server %s for upstream %s', server.address, self.name)
+
+                    if self.slow_start_timeout != 0:
+                        server.slow_start(self.slow_start_timeout)
+
                     server.deactivate(self.fail_timeout)
             else:
                 server.fails = 0
@@ -156,6 +170,7 @@ class Upstream(object):
         self.max_timeout_tries = int(config.get('max_timeout_tries', self.max_timeout_tries))
         self.connect_timeout = float(config.get('connect_timeout_sec', self.connect_timeout))
         self.request_timeout = float(config.get('request_timeout_sec', self.request_timeout))
+        self.slow_start_timeout = int(config.get('slow_start_timeout_sec', self.slow_start_timeout))
 
         mapping = {server.address: server for server in servers}
 
@@ -172,6 +187,9 @@ class Upstream(object):
                 self._add_server(server)
 
     def _add_server(self, server):
+        if self.slow_start_timeout != 0:
+            server.slow_start(self.slow_start_timeout)
+
         for index, s in enumerate(self.servers):
             if s is None:
                 self.servers[index] = server
@@ -303,7 +321,11 @@ class HttpClientFactory(object):
         self.upstreams = {}
 
         for name, upstream in iteritems(upstreams):
-            self.register_upstream(name, upstream['config'], [Server.from_config(s) for s in upstream['servers']])
+            servers = [Server.from_config(s) for s in upstream['servers']]
+            shuffle(servers)
+            self.register_upstream(name, upstream['config'], servers)
+
+        PeriodicCallback(self._maintenance, 1000).start()
 
     def get_http_client(self, handler, modify_http_request_hook):
         return HttpClient(handler, self.tornado_http_client, modify_http_request_hook,
@@ -315,6 +337,7 @@ class HttpClientFactory(object):
             return
 
         upstream_config, servers = Upstream.parse_config(config)
+        shuffle(servers)
         self.register_upstream(name, upstream_config, servers)
 
     def register_upstream(self, name, upstream_config, servers):
@@ -334,6 +357,16 @@ class HttpClientFactory(object):
 
         upstream.update(upstream_config, servers)
         http_logger.info('update %s upstream: %s', name, str(upstream))
+
+    def _maintenance(self):
+        for name, upstream in iteritems(self.upstreams):
+            if upstream.slow_start_timeout == 0:
+                continue
+
+            for server in upstream.servers:
+                if server.is_active and server.slow_start_tics_left > 0:
+                    server.current_weight += (server.weight - server.current_weight) / server.slow_start_tics_left
+                    server.slow_start_tics_left -= 1
 
 
 class HttpClient(object):

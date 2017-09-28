@@ -5,7 +5,7 @@ import unittest
 from .instances import find_free_port, frontik_balancer_app, frontik_broken_balancer_app
 
 
-class TestHttpError(unittest.TestCase):
+class TestHttpBalancer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         frontik_balancer_app.start()

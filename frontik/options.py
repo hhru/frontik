@@ -44,6 +44,7 @@ tornado.options.define('http_client_default_max_tries', default=2, type=int)
 tornado.options.define('http_client_default_max_timeout_tries', default=1, type=int)
 tornado.options.define('http_client_default_max_fails', default=0, type=int)
 tornado.options.define('http_client_default_fail_timeout_sec', default=10, type=float)
+tornado.options.define('http_client_default_slow_start_timeout', default=0, type=int)
 tornado.options.define('http_proxy_host', default=None, type=str)
 tornado.options.define('http_proxy_port', default=3128, type=int)
 
