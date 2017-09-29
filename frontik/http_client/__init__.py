@@ -4,6 +4,7 @@ import re
 import time
 from collections import namedtuple
 from functools import partial
+from random import shuffle
 
 import pycurl
 import simplejson
@@ -303,7 +304,9 @@ class HttpClientFactory(object):
         self.upstreams = {}
 
         for name, upstream in iteritems(upstreams):
-            self.register_upstream(name, upstream['config'], [Server.from_config(s) for s in upstream['servers']])
+            servers = [Server.from_config(s) for s in upstream['servers']]
+            shuffle(servers)
+            self.register_upstream(name, upstream['config'], servers)
 
     def get_http_client(self, handler, modify_http_request_hook):
         return HttpClient(handler, self.tornado_http_client, modify_http_request_hook,
@@ -315,6 +318,7 @@ class HttpClientFactory(object):
             return
 
         upstream_config, servers = Upstream.parse_config(config)
+        shuffle(servers)
         self.register_upstream(name, upstream_config, servers)
 
     def register_upstream(self, name, upstream_config, servers):
@@ -441,7 +445,7 @@ class HttpClient(object):
 
             future.set_result(result)
 
-        if add_to_finish_group:
+        if add_to_finish_group and not self.handler.is_finished():
             request_finished_callback = self.handler.finish_group.add(request_finished_callback)
 
         def retry_callback(response=None):
