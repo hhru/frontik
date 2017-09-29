@@ -1,3 +1,10 @@
+frontik (2.31.7) unstable; urgency=medium
+
+  * HH-72978 Add server randomization, add check for already finished
+    page
+
+ -- Automated Build <d.smirnov@hh.ru>  Fri, 29 Sep 2017 13:10:39 +0300
+
 frontik (2.31.5) unstable; urgency=medium
 
   * HH-72752 Add connect and request timeout per upstream
