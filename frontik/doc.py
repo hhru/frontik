@@ -4,8 +4,7 @@ import lxml.etree as etree
 
 from tornado.concurrent import Future
 
-from frontik.compat import basestring_type, iteritems
-from frontik.http_client import RequestResult
+from frontik.compat import basestring_type
 
 
 def _is_valid_element(node):
@@ -45,10 +44,6 @@ class Doc(object):
     def clear(self):
         self.data = []
 
-    @staticmethod
-    def get_error_node(exception):
-        return etree.Element('error', **{k: str(v) for k, v in iteritems(exception.attrs)})
-
     def to_etree_element(self):
         res = self.root_node.to_etree_element() if isinstance(self.root_node, Doc) else self.root_node
 
@@ -59,14 +54,9 @@ class Doc(object):
                         yield i
 
             elif hasattr(chunk, 'to_etree_element'):
-                yield chunk.to_etree_element()
-
-            elif isinstance(chunk, RequestResult):
-                if chunk.exception is not None:
-                    yield self.get_error_node(chunk.exception)
-                else:
-                    for i in chunk_to_element(chunk.data):
-                        yield i
+                etree_element = chunk.to_etree_element()
+                if etree_element is not None:
+                    yield etree_element
 
             elif isinstance(chunk, Future):
                 if chunk.done():
