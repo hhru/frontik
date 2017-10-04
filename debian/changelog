@@ -1,3 +1,9 @@
+frontik (2.31.8) unstable; urgency=medium
+
+  * HH-73119 small xml producer optimization
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 04 Oct 2017 13:22:20 +0300
+
 frontik (2.31.7) unstable; urgency=medium
 
   * HH-72978 Add server randomization, add check for already finished
