@@ -606,6 +606,20 @@ class RequestResult(object):
     def set_exception(self, exception):
         self.exception = exception
 
+    def to_dict(self):
+        if self.exception is not None:
+            return {
+                'error': {k: v for k, v in iteritems(self.exception.attrs)}
+            }
+
+        return self.data
+
+    def to_etree_element(self):
+        if self.exception is not None:
+            return etree.Element('error', **{k: str(v) for k, v in iteritems(self.exception.attrs)})
+
+        return self.data
+
 
 def _parse_response(response, logger, parser=None, response_type=None):
     try:

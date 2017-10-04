@@ -21,11 +21,6 @@ def _encode_value(v):
     elif isinstance(v, (set, frozenset, list, tuple)):
         return _encode_iterable(v)
 
-    elif isinstance(v, RequestResult):
-        if v.exception is not None:
-            return JsonBuilder.get_error_node(v.exception)
-        return _encode_value(v.data)
-
     elif isinstance(v, Future):
         if v.done():
             return _encode_value(v.result())
@@ -33,7 +28,7 @@ def _encode_value(v):
         return None
 
     elif hasattr(v, 'to_dict'):
-        return _encode_dict(v.to_dict())
+        return _encode_value(v.to_dict())
 
     return v
 
@@ -77,12 +72,6 @@ class JsonBuilder(object):
     def replace(self, *args, **kwargs):
         self.clear()
         self.put(*args, **kwargs)
-
-    @staticmethod
-    def get_error_node(exception):
-        return {
-            'error': {k: v for k, v in iteritems(exception.attrs)}
-        }
 
     def to_dict(self):
         """ Return plain dict from all data appended to JsonBuilder """
