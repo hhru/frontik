@@ -1,3 +1,9 @@
+frontik (2.31.9) unstable; urgency=medium
+
+  * HH-73177 Add requests slow start
+
+ -- Automated Build <d.smirnov@hh.ru>  Thu, 05 Oct 2017 14:39:52 +0300
+
 frontik (2.31.8) unstable; urgency=medium
 
   * HH-73119 small xml producer optimization
