@@ -45,6 +45,7 @@ class Server(object):
         self.fails = 0
         self.requests = 0
         self.is_active = True
+        self.slow_start_requests = 0
 
         if self.weight < 1:
             raise ValueError('weight should not be less then 1')
@@ -52,15 +53,15 @@ class Server(object):
     def update(self, server):
         self.weight = server.weight
 
-    def deactivate(self, timeout):
+    def disable(self):
         self.is_active = False
-        IOLoop.current().add_timeout(IOLoop.current().time() + timeout, self.restore)
+        self.slow_start_requests = 0
 
-    def restore(self):
-        http_logger.info('restore server %s', self.address)
+    def restore(self, slow_start_requests):
         self.fails = 0
         self.requests = 0
         self.is_active = True
+        self.slow_start_requests = slow_start_requests
 
 
 class Upstream(object):
@@ -107,7 +108,7 @@ class Upstream(object):
             if server is None or not server.is_active:
                 continue
 
-            load = server.requests / float(server.weight)
+            load = float('inf') if server.slow_start_requests > 0 else server.requests / float(server.weight)
             current_load = server.current_requests / float(server.weight)
 
             should_rescale = should_rescale and server.requests >= server.weight
@@ -130,6 +131,13 @@ class Upstream(object):
         server.requests += 1
         server.current_requests += 1
 
+        if server.slow_start_requests > 0:
+            server.slow_start_requests -= 1
+
+            if server.slow_start_requests == 0:
+                server.requests = max(server.requests for server in self.servers
+                                      if server is not None and server.is_active)
+
         return min_index, server.address
 
     def return_server(self, index, error=False):
@@ -142,10 +150,18 @@ class Upstream(object):
                 server.fails += 1
 
                 if self.max_fails != 0 and server.fails >= self.max_fails:
-                    http_logger.info('disable server %s for upstream %s', server.address, self.name)
-                    server.deactivate(self.fail_timeout)
+                    self._disable_server(server)
             else:
                 server.fails = 0
+
+    def _disable_server(self, server):
+        http_logger.info('disable server %s for upstream %s', server.address, self.name)
+        server.disable()
+        IOLoop.current().add_timeout(IOLoop.current().time() + self.fail_timeout, partial(self._restore_server, server))
+
+    def _restore_server(self, server):
+        http_logger.info('restore server %s for upstream %s', server.address, self.name)
+        server.restore(self.max_fails)
 
     def update(self, config, servers):
         if not servers:
