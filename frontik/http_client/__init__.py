@@ -104,12 +104,23 @@ class Upstream(object):
         min_index = None
         should_rescale = True
 
+        stats = []
+
         for index, server in enumerate(self.servers):
+            # temporary logging stats before request
+            if server is not None:
+                stats.append('{} : ({}, {}, {} | {}, {}, {})'.format(
+                    server.address, server.current_requests, server.requests, server.fails, server.weight,
+                    server.is_active, server.slow_start_requests))
+
             if server is None or not server.is_active:
                 continue
 
-            load = float('inf') if server.slow_start_requests > 0 else server.requests / float(server.weight)
-            current_load = server.current_requests / float(server.weight)
+            if server.slow_start_requests > 0 and server.current_requests > 0:
+                load = current_load = float('inf')
+            else:
+                load = server.requests / float(server.weight)
+                current_load = server.current_requests / float(server.weight)
 
             should_rescale = should_rescale and server.requests >= server.weight
             worth = current_load < min_current_load or (current_load == min_current_load and load < min_load)
@@ -118,6 +129,8 @@ class Upstream(object):
                 min_current_load = current_load
                 min_load = load
                 min_index = index
+
+        http_logger.info('upstream %s stats: %s', self.name, '; '.join(stats))
 
         if min_index is None:
             return None, None
@@ -135,8 +148,9 @@ class Upstream(object):
             server.slow_start_requests -= 1
 
             if server.slow_start_requests == 0:
-                server.requests = max(server.requests for server in self.servers
-                                      if server is not None and server.is_active)
+                max_load = max(server.requests / float(server.weight) for server in self.servers
+                               if server is not None and server.is_active)
+                server.requests = int(server.weight * max_load)
 
         return min_index, server.address
 
@@ -177,6 +191,9 @@ class Upstream(object):
         mapping = {server.address: server for server in servers}
 
         for index, server in enumerate(self.servers):
+            if server is None:
+                continue
+
             changed = mapping.get(server.address)
             if changed is None:
                 self.servers[index] = None
