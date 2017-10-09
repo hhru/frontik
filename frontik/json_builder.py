@@ -5,7 +5,6 @@ import json
 from tornado.concurrent import Future
 
 from frontik.compat import basestring_type, iteritems
-from frontik.http_client import RequestResult
 
 
 def _encode_value(v):
@@ -28,7 +27,7 @@ def _encode_value(v):
         return None
 
     elif hasattr(v, 'to_dict'):
-        return _encode_value(v.to_dict())
+        return v.to_dict()
 
     return v
 
@@ -80,7 +79,7 @@ class JsonBuilder(object):
     def _concat_chunks(self):
         result = {}
         for chunk in self._data:
-            if isinstance(chunk, (RequestResult, Future)) or hasattr(chunk, 'to_dict'):
+            if isinstance(chunk, Future) or hasattr(chunk, 'to_dict'):
                 chunk = _encode_value(chunk)
 
             if chunk is not None:
