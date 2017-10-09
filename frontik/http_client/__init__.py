@@ -2,9 +2,10 @@
 
 import re
 import time
+import math
 from collections import namedtuple
 from functools import partial
-from random import shuffle
+from random import shuffle, random
 
 import pycurl
 import simplejson
@@ -45,7 +46,7 @@ class Server(object):
         self.fails = 0
         self.requests = 0
         self.is_active = True
-        self.slow_start_requests = 0
+        self.slow_start = None
 
         if self.weight < 1:
             raise ValueError('weight should not be less then 1')
@@ -55,13 +56,13 @@ class Server(object):
 
     def disable(self):
         self.is_active = False
-        self.slow_start_requests = 0
+        self.slow_start = None
 
-    def restore(self, slow_start_requests):
+    def restore(self, slow_start):
         self.fails = 0
         self.requests = 0
         self.is_active = True
-        self.slow_start_requests = slow_start_requests
+        self.slow_start = slow_start
 
 
 class Upstream(object):
@@ -94,6 +95,7 @@ class Upstream(object):
         self.connect_timeout = options.http_client_default_connect_timeout_sec
         self.request_timeout = options.http_client_default_request_timeout_sec
         self.fail_timeout = options.http_client_default_fail_timeout_sec
+        self.slow_start = None
         self.balanced = True
 
         self.update(config, servers)
@@ -109,14 +111,14 @@ class Upstream(object):
         for index, server in enumerate(self.servers):
             # temporary logging stats before request
             if server is not None:
-                stats.append('{} : ({}, {}, {} | {}, {}, {})'.format(
+                stats.append('{} : ({}, {}, {} | {}, {}, {!r})'.format(
                     server.address, server.current_requests, server.requests, server.fails, server.weight,
-                    server.is_active, server.slow_start_requests))
+                    server.is_active, server.slow_start))
 
             if server is None or not server.is_active:
                 continue
 
-            if server.slow_start_requests > 0 and server.current_requests > 0:
+            if server.slow_start is not None and not server.slow_start.can_handle_request(server):
                 load = current_load = float('inf')
             else:
                 load = server.requests / float(server.weight)
@@ -144,13 +146,14 @@ class Upstream(object):
         server.requests += 1
         server.current_requests += 1
 
-        if server.slow_start_requests > 0:
-            server.slow_start_requests -= 1
+        if server.slow_start is not None:
+            server.slow_start.handle_request()
 
-            if server.slow_start_requests == 0:
+            if server.slow_start.is_complete():
                 max_load = max(server.requests / float(server.weight) for server in self.servers
                                if server is not None and server.is_active)
                 server.requests = int(server.weight * max_load)
+                server.slow_start = None
 
         return min_index, server.address
 
@@ -175,7 +178,7 @@ class Upstream(object):
 
     def _restore_server(self, server):
         http_logger.info('restore server %s for upstream %s', server.address, self.name)
-        server.restore(self.max_fails)
+        server.restore(self.slow_start())
 
     def update(self, config, servers):
         if not servers:
@@ -187,6 +190,7 @@ class Upstream(object):
         self.max_timeout_tries = int(config.get('max_timeout_tries', self.max_timeout_tries))
         self.connect_timeout = float(config.get('connect_timeout_sec', self.connect_timeout))
         self.request_timeout = float(config.get('request_timeout_sec', self.request_timeout))
+        self.slow_start = self.prepare_slow_start(config)
 
         mapping = {server.address: server for server in servers}
 
@@ -213,8 +217,95 @@ class Upstream(object):
 
         self.servers.append(server)
 
+    def prepare_slow_start(self, config):
+        slow_start_type = config.get('slow_start_type', None)
+
+        if slow_start_type == 'delayed':
+            return partial(DelayedSlowStart, config)
+        elif slow_start_type == 'linear':
+            return partial(LinearSlowStart, config)
+        elif slow_start_type == 'sigmoid':
+            return partial(SigmoidSlowStart, config)
+        else:
+            return lambda: None
+
     def __str__(self):
         return '[{}]'.format(','.join(server.address for server in self.servers))
+
+
+class DelayedSlowStart(object):
+    def __init__(self, config):
+        self.initial_delay_end_time = time.time() + random() * config.get('slow_start_interval_sec', 0)
+        self.slow_start_requests = config.get('slow_start_requests', 0)
+
+    def is_complete(self):
+        return time.time() > self.initial_delay_end_time and self.slow_start_requests <= 0
+
+    def can_handle_request(self, server):
+        if server.current_requests > 0:
+            return False
+
+        if time.time() < self.initial_delay_end_time:
+            return False
+
+        return True
+
+    def handle_request(self):
+        self.slow_start_requests -= 1
+
+    def repr(self):
+        return '<DelayedSlowStart(initial_delay_end_time={}, slow_start_requests={})>'.format(
+            self.initial_delay_end_time, self.slow_start_requests)
+
+
+class LinearSlowStart(object):
+    def __init__(self, config):
+        self.start_time = time.time()
+        self.duration = float(config.get('slow_start_interval_sec', 0))
+
+    def is_complete(self):
+        return time.time() - self.start_time > self.duration
+
+    def can_handle_request(self, server):
+        if server.current_requests > 0:
+            return False
+
+        percent_spent = (time.time() - self.start_time) / self.duration
+        if random() < percent_spent:
+            return True
+
+        return False
+
+    def handle_request(self):
+        pass
+
+    def __repr__(self):
+        return '<LinearSlowStart(start_time={}, duration={})>'.format(self.start_time, self.duration)
+
+
+class SigmoidSlowStart(object):
+    def __init__(self, config):
+        self.start_time = time.time()
+        self.duration = float(config.get('slow_start_interval_sec', 0))
+
+    def is_complete(self):
+        return time.time() - self.start_time > self.duration
+
+    def can_handle_request(self, server):
+        if server.current_requests > 0:
+            return False
+
+        x = 12.0 * (time.time() - self.start_time) / self.duration
+        if random() < 1.0 / (1.0 + math.exp(6.0 - x)):
+            return True
+
+        return False
+
+    def handle_request(self):
+        pass
+
+    def __repr__(self):
+        return '<SigmoidSlowStart(start_time={}, duration={})>'.format(self.start_time, self.duration)
 
 
 class BalancedHttpRequest(object):
