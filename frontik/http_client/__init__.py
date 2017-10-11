@@ -56,7 +56,6 @@ class Server(object):
 
     def disable(self):
         self.is_active = False
-        self.slow_start = None
 
     def restore(self, slow_start):
         self.fails = 0
@@ -92,6 +91,7 @@ class Upstream(object):
         self.max_tries = options.http_client_default_max_tries
         self.max_timeout_tries = options.http_client_default_max_timeout_tries
         self.max_fails = options.http_client_default_max_fails
+        self.max_slow_start_fails = options.http_client_default_max_fails
         self.connect_timeout = options.http_client_default_connect_timeout_sec
         self.request_timeout = options.http_client_default_request_timeout_sec
         self.fail_timeout = options.http_client_default_fail_timeout_sec
@@ -119,10 +119,11 @@ class Upstream(object):
                 continue
 
             if server.slow_start is not None and not server.slow_start.can_handle_request(server):
-                load = current_load = float('inf')
+                current_load = float('inf')
             else:
-                load = server.requests / float(server.weight)
                 current_load = server.current_requests / float(server.weight)
+
+            load = server.requests / float(server.weight)
 
             should_rescale = should_rescale and server.requests >= server.weight
             worth = current_load < min_current_load or (current_load == min_current_load and load < min_load)
@@ -166,7 +167,8 @@ class Upstream(object):
             if error:
                 server.fails += 1
 
-                if self.max_fails != 0 and server.fails >= self.max_fails:
+                fails_limit = self.max_fails if server.slow_start is None else self.max_slow_start_fails
+                if fails_limit != 0 and server.fails >= fails_limit:
                     self._disable_server(server)
             else:
                 server.fails = 0
@@ -186,6 +188,7 @@ class Upstream(object):
 
         self.max_tries = int(config.get('max_tries', self.max_tries))
         self.max_fails = int(config.get('max_fails', self.max_fails))
+        self.max_slow_start_fails = int(config.get('max_slow_start_fails', self.max_fails))
         self.fail_timeout = float(config.get('fail_timeout_sec', self.fail_timeout))
         self.max_timeout_tries = int(config.get('max_timeout_tries', self.max_timeout_tries))
         self.connect_timeout = float(config.get('connect_timeout_sec', self.connect_timeout))
@@ -222,10 +225,10 @@ class Upstream(object):
 
         if slow_start_type == 'delayed':
             return partial(DelayedSlowStart, config)
-        elif slow_start_type == 'linear':
-            return partial(LinearSlowStart, config)
         elif slow_start_type == 'sigmoid':
             return partial(SigmoidSlowStart, config)
+        elif slow_start_type == 'custom':
+            return partial(CustomSlowStart, config)
         else:
             return lambda: None
 
@@ -235,7 +238,7 @@ class Upstream(object):
 
 class DelayedSlowStart(object):
     def __init__(self, config):
-        self.initial_delay_end_time = time.time() + random() * config.get('slow_start_interval_sec', 0)
+        self.initial_delay_end_time = time.time() + random() * float(config.get('slow_start_interval_sec', 0))
         self.slow_start_requests = config.get('slow_start_requests', 0)
 
     def is_complete(self):
@@ -256,31 +259,6 @@ class DelayedSlowStart(object):
     def repr(self):
         return '<DelayedSlowStart(initial_delay_end_time={}, slow_start_requests={})>'.format(
             self.initial_delay_end_time, self.slow_start_requests)
-
-
-class LinearSlowStart(object):
-    def __init__(self, config):
-        self.start_time = time.time()
-        self.duration = float(config.get('slow_start_interval_sec', 0))
-
-    def is_complete(self):
-        return time.time() - self.start_time > self.duration
-
-    def can_handle_request(self, server):
-        if server.current_requests > 0:
-            return False
-
-        percent_spent = (time.time() - self.start_time) / self.duration
-        if random() < percent_spent:
-            return True
-
-        return False
-
-    def handle_request(self):
-        pass
-
-    def __repr__(self):
-        return '<LinearSlowStart(start_time={}, duration={})>'.format(self.start_time, self.duration)
 
 
 class SigmoidSlowStart(object):
@@ -306,6 +284,61 @@ class SigmoidSlowStart(object):
 
     def __repr__(self):
         return '<SigmoidSlowStart(start_time={}, duration={})>'.format(self.start_time, self.duration)
+
+
+class CustomSlowStart(object):
+    def __init__(self, config):
+        self.start_time = time.time()
+        self.duration = float(config.get('slow_start_interval_sec', 0))
+        self.intervals = []
+        intervals = []
+
+        for point in config.get('custom_slow_start_intervals', '').split(';'):
+            if not point:
+                continue
+
+            parts = point.split(':')
+            intervals.append((float(parts[0]), float(parts[1])))
+
+        if len(intervals) == 0 or intervals[0][0] != 0.0:
+            intervals.insert(0, (0.0, 0.0))
+
+        if intervals[-1][0] != 1.0:
+            intervals.append((1.0, 1.0))
+
+        for i in range(0, len(intervals) - 1):
+            x1, y1 = intervals[i]
+            x2, y2 = intervals[i + 1]
+            a = (y2 - y1) / (x2 - x1)
+            b = (y1 * x2 - x1 * y2) / (x2 - x1)
+
+            self.intervals.append((x1, a, b))
+
+    def is_complete(self):
+        return time.time() - self.start_time > self.duration
+
+    def can_handle_request(self, server):
+        x = (time.time() - self.start_time) / self.duration
+
+        if x >= 1.0:
+            return True
+
+        index = 0
+        while index < len(self.intervals) and self.intervals[index][0] <= x:
+            index += 1
+
+        params = self.intervals[index - 1]
+
+        if random() < params[1] * x + params[2]:
+            return True
+
+        return False
+
+    def handle_request(self):
+        pass
+
+    def __repr__(self):
+        return '<CustomSlowStart(start_time={}, intervals={})>'.format(self.start_time, self.intervals)
 
 
 class BalancedHttpRequest(object):
