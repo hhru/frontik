@@ -1,3 +1,12 @@
+frontik (2.31.15) unstable; urgency=medium
+
+  * HH-73592 Add non idempotent retry
+  * HH-73599 Send service name to statsd with tag rather then with
+    prefix
+  * HH-73397 Calculate label color for xml
+
+ -- Automated Build <d.smirnov@hh.ru>  Thu, 19 Oct 2017 19:31:48 +0300
+
 frontik (2.31.13) unstable; urgency=medium
 
   * HH-73326 Add custom slow start
