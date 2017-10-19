@@ -132,10 +132,7 @@ def balanced_request_to_xml(balanced_request, retry):
     info = etree.Element('meta-info')
 
     if balanced_request.upstream.balanced:
-        name = balanced_request.upstream.name.upper()
-        name_hash = crc32(name) % 0xffffffff
-        color = '#%02x%02x%02x' % ((name_hash & 0xFF0000) >> 16, (name_hash & 0x00FF00) >> 8, name_hash & 0x0000FF)
-        etree.SubElement(info, 'upstream', name=name, color=color)
+        etree.SubElement(info, 'upstream', name=balanced_request.upstream.name.upper())
 
     if retry > 0:
         etree.SubElement(info, 'retry', count=str(retry))
@@ -285,6 +282,11 @@ def _pretty_print_xml(node):
 
 def _pretty_print_json(node):
     return json.dumps(node, sort_keys=True, indent=2, ensure_ascii=False)
+
+
+def _string_to_color(value):
+    value_hash = crc32(value) % 0xffffffff
+    return '#%02x%02x%02x' % ((value_hash & 0xFF0000) >> 16, (value_hash & 0x00FF00) >> 8, value_hash & 0x0000FF)
 
 
 class DebugBufferedHandler(BufferedHandler):
@@ -446,6 +448,9 @@ class DebugTransform(OutputTransform):
         debug_log_data.append(frontik.xml_util.dict_to_xml(original_response, 'original-response'))
         debug_log_data.set('response-size', str(len(response_buffer)))
         debug_log_data.set('generate-time', _format_number((time.time() - start_time) * 1000))
+
+        for upstream in debug_log_data.xpath('//meta-info/upstream'):
+            upstream.set('color', _string_to_color(upstream.get('name')))
 
         if not getattr(self.request, '_debug_inherited', False):
             try:
