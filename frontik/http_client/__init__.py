@@ -2,7 +2,6 @@
 
 import re
 import time
-import math
 from collections import namedtuple
 from functools import partial
 from random import shuffle, random
@@ -64,6 +63,28 @@ class Server(object):
         self.slow_start = slow_start
 
 
+class RetryPolicy(object):
+    _mapping = {
+        'timeout': (599, False),
+        'http_503': (503, False),
+        'non_idempotent_503': (503, True),
+    }
+
+    def __init__(self, properties):
+        self.statuses = dict(RetryPolicy._mapping.get(policy) for policy in properties.split(','))
+
+    def check_retry(self, response, idempotent):
+        connect_error = response.code == 599 and 'HTTP 599: Failed to connect' in str(response.error)
+
+        if connect_error:
+            return True, True
+
+        if response.code not in self.statuses:
+            return False, False
+
+        return idempotent or self.statuses.get(response.code), True
+
+
 class Upstream(object):
     _single_host_upstream = None
 
@@ -88,14 +109,6 @@ class Upstream(object):
     def __init__(self, name, config, servers):
         self.name = name
         self.servers = []
-        self.max_tries = options.http_client_default_max_tries
-        self.max_timeout_tries = options.http_client_default_max_timeout_tries
-        self.max_fails = options.http_client_default_max_fails
-        self.max_slow_start_fails = options.http_client_default_max_fails
-        self.connect_timeout = options.http_client_default_connect_timeout_sec
-        self.request_timeout = options.http_client_default_request_timeout_sec
-        self.fail_timeout = options.http_client_default_fail_timeout_sec
-        self.slow_start = None
         self.balanced = True
 
         self.update(config, servers)
@@ -167,8 +180,7 @@ class Upstream(object):
             if error:
                 server.fails += 1
 
-                fails_limit = self.max_fails if server.slow_start is None else self.max_slow_start_fails
-                if fails_limit != 0 and server.fails >= fails_limit:
+                if self.max_fails != 0 and server.fails >= self.max_fails:
                     self._disable_server(server)
             else:
                 server.fails = 0
@@ -186,14 +198,21 @@ class Upstream(object):
         if not servers:
             raise ValueError('server list should not be empty')
 
-        self.max_tries = int(config.get('max_tries', self.max_tries))
-        self.max_fails = int(config.get('max_fails', self.max_fails))
-        self.max_slow_start_fails = int(config.get('max_slow_start_fails', self.max_fails))
-        self.fail_timeout = float(config.get('fail_timeout_sec', self.fail_timeout))
-        self.max_timeout_tries = int(config.get('max_timeout_tries', self.max_timeout_tries))
-        self.connect_timeout = float(config.get('connect_timeout_sec', self.connect_timeout))
-        self.request_timeout = float(config.get('request_timeout_sec', self.request_timeout))
-        self.slow_start = self.prepare_slow_start(config)
+        self.max_tries = int(config.get('max_tries', options.http_client_default_max_tries))
+        self.max_fails = int(config.get('max_fails', options.http_client_default_max_fails))
+        self.fail_timeout = float(config.get('fail_timeout_sec', options.http_client_default_fail_timeout_sec))
+        self.max_timeout_tries = int(config.get('max_timeout_tries', options.http_client_default_max_timeout_tries))
+        self.connect_timeout = float(config.get('connect_timeout_sec', options.http_client_default_connect_timeout_sec))
+        self.request_timeout = float(config.get('request_timeout_sec', options.http_client_default_request_timeout_sec))
+
+        slow_start_interval = float(config.get('slow_start_interval_sec', 0))
+        slow_start_requests = int(config.get('slow_start_requests', 0))
+
+        self.slow_start = lambda: None
+        if slow_start_interval != 0 or slow_start_requests != 0:
+            self.slow_start = partial(DelayedSlowStart, slow_start_interval, slow_start_requests)
+
+        self.retry_policy = RetryPolicy(config.get('retry_policy', options.http_client_default_retry_policy))
 
         mapping = {server.address: server for server in servers}
 
@@ -220,26 +239,14 @@ class Upstream(object):
 
         self.servers.append(server)
 
-    def prepare_slow_start(self, config):
-        slow_start_type = config.get('slow_start_type', None)
-
-        if slow_start_type == 'delayed':
-            return partial(DelayedSlowStart, config)
-        elif slow_start_type == 'sigmoid':
-            return partial(SigmoidSlowStart, config)
-        elif slow_start_type == 'custom':
-            return partial(CustomSlowStart, config)
-        else:
-            return lambda: None
-
     def __str__(self):
         return '[{}]'.format(','.join(server.address for server in self.servers))
 
 
 class DelayedSlowStart(object):
-    def __init__(self, config):
-        self.initial_delay_end_time = time.time() + random() * float(config.get('slow_start_interval_sec', 0))
-        self.slow_start_requests = config.get('slow_start_requests', 0)
+    def __init__(self, slow_start_interval, slow_start_requests):
+        self.initial_delay_end_time = time.time() + random() * slow_start_interval
+        self.slow_start_requests = slow_start_requests
 
     def is_complete(self):
         return time.time() > self.initial_delay_end_time and self.slow_start_requests <= 0
@@ -256,89 +263,9 @@ class DelayedSlowStart(object):
     def handle_request(self):
         self.slow_start_requests -= 1
 
-    def repr(self):
+    def __repr__(self):
         return '<DelayedSlowStart(initial_delay_end_time={}, slow_start_requests={})>'.format(
             self.initial_delay_end_time, self.slow_start_requests)
-
-
-class SigmoidSlowStart(object):
-    def __init__(self, config):
-        self.start_time = time.time()
-        self.duration = float(config.get('slow_start_interval_sec', 0))
-
-    def is_complete(self):
-        return time.time() - self.start_time > self.duration
-
-    def can_handle_request(self, server):
-        if server.current_requests > 0:
-            return False
-
-        x = 12.0 * (time.time() - self.start_time) / self.duration
-        if random() < 1.0 / (1.0 + math.exp(6.0 - x)):
-            return True
-
-        return False
-
-    def handle_request(self):
-        pass
-
-    def __repr__(self):
-        return '<SigmoidSlowStart(start_time={}, duration={})>'.format(self.start_time, self.duration)
-
-
-class CustomSlowStart(object):
-    def __init__(self, config):
-        self.start_time = time.time()
-        self.duration = float(config.get('slow_start_interval_sec', 0))
-        self.intervals = []
-        intervals = []
-
-        for point in config.get('custom_slow_start_intervals', '').split(';'):
-            if not point:
-                continue
-
-            parts = point.split(':')
-            intervals.append((float(parts[0]), float(parts[1])))
-
-        if len(intervals) == 0 or intervals[0][0] != 0.0:
-            intervals.insert(0, (0.0, 0.0))
-
-        if intervals[-1][0] != 1.0:
-            intervals.append((1.0, 1.0))
-
-        for i in range(0, len(intervals) - 1):
-            x1, y1 = intervals[i]
-            x2, y2 = intervals[i + 1]
-            a = (y2 - y1) / (x2 - x1)
-            b = (y1 * x2 - x1 * y2) / (x2 - x1)
-
-            self.intervals.append((x1, a, b))
-
-    def is_complete(self):
-        return time.time() - self.start_time > self.duration
-
-    def can_handle_request(self, server):
-        x = (time.time() - self.start_time) / self.duration
-
-        if x >= 1.0:
-            return True
-
-        index = 0
-        while index < len(self.intervals) and self.intervals[index][0] <= x:
-            index += 1
-
-        params = self.intervals[index - 1]
-
-        if random() < params[1] * x + params[2]:
-            return True
-
-        return False
-
-    def handle_request(self):
-        pass
-
-    def __repr__(self):
-        return '<CustomSlowStart(start_time={}, intervals={})>'.format(self.start_time, self.intervals)
 
 
 class BalancedHttpRequest(object):
@@ -419,27 +346,19 @@ class BalancedHttpRequest(object):
     def get_host(self):
         return self.upstream.name if self.upstream.balanced else self.current_host
 
-    def _check(self, response):
-        # disable retries for not balancing backends
-        if not self.upstream.balanced:
-            return False, False
-
-        self.request_time_left -= response.request_time
-        connect_error = response.code == 599 and 'HTTP 599: Failed to connect' in str(response.error)
-        backend_failed = response.code in (503, 599)
-
-        if self.tries_left <= 0 or not backend_failed or self.request_time_left <= 0:
-            return False, backend_failed
-
-        return connect_error or (self.idempotent and backend_failed), True
-
     def check_retry(self, response):
         self.tries_left -= 1
+        self.request_time_left -= response.request_time
 
-        do_retry, error = self._check(response)
+        if self.upstream.balanced:
+            do_retry, error = self.upstream.retry_policy.check_retry(response, self.idempotent)
 
-        if self.upstream.balanced and self.current_fd is not None:
-            self.upstream.return_server(self.current_fd, error)
+            if self.current_fd is not None:
+                self.upstream.return_server(self.current_fd, error)
+        else:
+            do_retry, error = False, False
+
+        do_retry = do_retry and self.tries_left > 0 and self.request_time_left > 0
 
         if do_retry:
             http_logger.warn('got error from %s, retrying', self.current_host)
@@ -549,12 +468,12 @@ class HttpClient(object):
         return self._fetch_with_retry(request, callback, add_to_finish_group, False, False)
 
     def post_url(self, host, uri, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
-                 callback=None, follow_redirects=True, content_type=None, add_to_finish_group=True,
-                 parse_response=True, parse_on_error=False):
+                 max_timeout_tries=None, idempotent=False, callback=None, follow_redirects=True, content_type=None,
+                 add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
         request = BalancedHttpRequest(host, self.get_upstream(host), uri, 'POST', data, headers,
-                                      files, content_type, connect_timeout, request_timeout, None,
-                                      follow_redirects, False)
+                                      files, content_type, connect_timeout, request_timeout, max_timeout_tries,
+                                      follow_redirects, idempotent)
 
         return self._fetch_with_retry(request, callback, add_to_finish_group, parse_response, parse_on_error)
 
