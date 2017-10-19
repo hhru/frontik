@@ -26,11 +26,12 @@ class MicroHandler(BaseHandler):
         return future
 
     def POST(self, host, uri, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
-             follow_redirects=True, content_type=None, fail_on_error=False):
+             max_timeout_tries=None, idempotent=False, follow_redirects=True, content_type=None, fail_on_error=False):
         future = self._http_client.post_url(
             host, uri,
             data=data, headers=headers, files=files,
             connect_timeout=connect_timeout, request_timeout=request_timeout,
+            max_timeout_tries=max_timeout_tries, idempotent=idempotent,
             follow_redirects=follow_redirects, content_type=content_type,
             parse_on_error=True
         )
