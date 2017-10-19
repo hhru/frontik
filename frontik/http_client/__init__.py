@@ -106,15 +106,7 @@ class Upstream(object):
         min_index = None
         should_rescale = True
 
-        stats = []
-
         for index, server in enumerate(self.servers):
-            # temporary logging stats before request
-            if server is not None:
-                stats.append('{} : ({}, {}, {} | {}, {}, {!r})'.format(
-                    server.address, server.current_requests, server.requests, server.fails, server.weight,
-                    server.is_active, server.slow_start))
-
             if server is None or not server.is_active:
                 continue
 
@@ -132,8 +124,6 @@ class Upstream(object):
                 min_current_load = current_load
                 min_load = load
                 min_index = index
-
-        http_logger.info('upstream %s stats: %s', self.name, '; '.join(stats))
 
         if min_index is None:
             return None, None
@@ -583,9 +573,9 @@ class HttpClient(object):
             if response is None:
                 return
 
-            if request.upstream.balanced and request.tried_hosts is not None:
+            if request.tried_hosts is not None:
                 self.statsd_client.count('http.client.retries', 1,
-                                         upstream=request.upstream.name,
+                                         upstream=request.get_host(),
                                          server=request.current_host,
                                          first_upstream_status=request.first_status,
                                          tries=len(request.tried_hosts),
@@ -612,12 +602,11 @@ class HttpClient(object):
 
             do_retry = request.check_retry(response)
 
-            if request.upstream.balanced:
-                self.statsd_client.time('http.client.requests', int(response.request_time * 1000),
-                                        upstream=request.upstream.name,
-                                        server=request.current_host,
-                                        final=str(not do_retry),
-                                        status=response.code)
+            self.statsd_client.time('http.client.requests', int(response.request_time * 1000),
+                                    upstream=request.get_host(),
+                                    server=request.current_host,
+                                    final=str(not do_retry),
+                                    status=response.code)
 
             if do_retry:
                 self._fetch(request, retry_callback)
