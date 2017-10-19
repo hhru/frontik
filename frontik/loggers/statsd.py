@@ -15,7 +15,7 @@ statsd_logger = logging.getLogger('frontik.loggers.statsd')
 
 def bootstrap_logger(app):
     if options.statsd_host is not None and options.statsd_port is not None:
-        statsd_client = StatsDClient(options.statsd_host, options.statsd_port, app.app)
+        statsd_client = StatsDClient(options.statsd_host, options.statsd_port, app=app.app)
     else:
         statsd_client = StatsDClientStub()
 
@@ -27,8 +27,7 @@ def bootstrap_logger(app):
     return logger_initializer
 
 
-def _convert_tag(tag):
-    name, value = tag
+def _convert_tag(name, value):
     return '{}_is_{}'.format(name.replace('.', '-'), str(value).replace('.', '-'))
 
 
@@ -36,7 +35,7 @@ def _convert_tags(tags):
     if not tags:
         return ''
 
-    return '.' + '.'.join(_convert_tag(tag) for tag in iteritems(tags))
+    return '.' + '.'.join(_convert_tag(name, value) for name, value in iteritems(tags) if value is not None)
 
 
 class StatsDClientStub(object):
@@ -57,18 +56,15 @@ class StatsDClientStub(object):
 
 
 class StatsDClient(object):
-    def __init__(self, host, port, prefix='', max_udp_size=508, reconnect_timeout=2):
-        self.prefix = prefix
+    def __init__(self, host, port, app=None, max_udp_size=508, reconnect_timeout=2):
         self.host = host
         self.port = port
+        self.app = app
         self.max_udp_size = max_udp_size
         self.reconnect_timeout = reconnect_timeout
         self.buffer = collections.deque()
         self.stacking = False
         self.socket = None
-
-        if self.prefix:
-            self.prefix += '.'
 
         self._connect()
 
@@ -136,7 +132,7 @@ class StatsDClient(object):
         self._write(data)
 
     def count(self, aspect, delta, **kwargs):
-        self._send('{}{}{}:{}|c'.format(self.prefix, aspect, _convert_tags(kwargs), delta))
+        self._send('{}{}:{}|c'.format(aspect, _convert_tags(dict(kwargs, app=self.app)), delta))
 
     def time(self, aspect, value, **kwargs):
-        self._send('{}{}{}:{}|ms'.format(self.prefix, aspect, _convert_tags(kwargs), value))
+        self._send('{}{}:{}|ms'.format(aspect, _convert_tags(dict(kwargs, app=self.app)), value))
