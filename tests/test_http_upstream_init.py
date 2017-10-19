@@ -48,6 +48,13 @@ class TestHttpUpstreamInit(unittest.TestCase):
         self.assertEquals(1, len(upstream.servers))
         self.assertEquals('172.17.0.1:2800', upstream.servers[0].address)
 
+    def test_retry_policy(self):
+        http_client_factory = HttpClientFactory({})
+
+        http_client_factory.update_upstream('nn', 'retry_policy=http_503,non_idempotent_503|server=172.17.0.1:2800')
+        upstream = http_client_factory.upstreams.get('nn')
+        self.assertEquals({503: True}, upstream.retry_policy.statuses)
+
     def test_remove(self):
         http_client_factory = HttpClientFactory({})
 

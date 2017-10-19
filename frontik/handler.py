@@ -504,13 +504,14 @@ class PageHandler(BaseHandler):
         )
 
     def post_url(self, host, uri, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
-                 callback=None, follow_redirects=True, content_type=None,
+                 max_timeout_tries=None, idempotent=False, callback=None, follow_redirects=True, content_type=None,
                  add_to_finish_group=True, parse_response=True, parse_on_error=False):
 
         return self._http_client.post_url(
             host, uri, data=data, headers=headers, files=files,
             connect_timeout=connect_timeout, request_timeout=request_timeout,
-            callback=callback, follow_redirects=follow_redirects, content_type=content_type,
+            max_timeout_tries=max_timeout_tries, idempotent=idempotent, callback=callback,
+            follow_redirects=follow_redirects, content_type=content_type,
             add_to_finish_group=add_to_finish_group, parse_response=parse_response, parse_on_error=parse_on_error
         )
 
