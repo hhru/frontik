@@ -21,6 +21,11 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'resultresultresult')
 
+    def test_retry_connect_timeout(self):
+        response = frontik_balancer_app.get_page(self.make_url('retry_connect_timeout'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'resultresultresult')
+
     def test_retry_error(self):
         response = frontik_balancer_app.get_page(self.make_url('retry_error'))
         self.assertEqual(response.status_code, 200)
