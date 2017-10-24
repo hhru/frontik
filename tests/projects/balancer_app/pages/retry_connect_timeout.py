@@ -1,0 +1,36 @@
+# coding=utf-8
+
+import frontik.handler
+from frontik.handler import HTTPError
+from frontik.async import AsyncGroup
+
+from tests.projects.balancer_app import get_server, get_non_listening_server
+from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_occupied
+
+
+class Page(frontik.handler.PageHandler):
+    def get_page(self):
+        self.application.http_client_factory.register_upstream('retry_connect_timeout', {},
+                                                               [get_non_listening_server(), get_server(self, 'normal')])
+        self.text = ''
+
+        def check_requests_cb():
+            check_all_requests_done(self, 'retry_connect_timeout')
+
+        async_group = AsyncGroup(check_requests_cb)
+
+        def callback_post(text, response):
+            if response.error or text is None:
+                raise HTTPError(500)
+
+            self.text = self.text + text.decode()
+
+        self.post_url('retry_connect_timeout', self.request.path, callback=async_group.add(callback_post))
+        self.post_url('retry_connect_timeout', self.request.path, callback=async_group.add(callback_post))
+        self.post_url('retry_connect_timeout', self.request.path, callback=async_group.add(callback_post))
+
+        check_all_servers_occupied(self, 'retry_connect_timeout')
+
+    def post_page(self):
+        self.add_header('Content-Type', 'text/plain')
+        self.text = 'result'
