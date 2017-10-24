@@ -74,10 +74,10 @@ class RetryPolicy(object):
         self.statuses = dict(RetryPolicy._mapping.get(policy) for policy in properties.split(','))
 
     def check_retry(self, response, idempotent):
-        connect_error = response.code == 599 and 'HTTP 599: Failed to connect' in str(response.error)
-
-        if connect_error:
-            return True, True
+        if response.code == 599:
+            error = str(response.error)
+            if error.startswith('HTTP 599: Failed to connect') or error.startswith('HTTP 599: Connection timed out'):
+                return True, True
 
         if response.code not in self.statuses:
             return False, False
@@ -272,6 +272,7 @@ class BalancedHttpRequest(object):
         self.idempotent = idempotent
         self.body = None
         self.first_status = None
+        self.last_request = None
 
         if request_timeout is not None and max_timeout_tries is None:
             max_timeout_tries = options.http_client_default_max_timeout_tries
@@ -328,7 +329,8 @@ class BalancedHttpRequest(object):
             request.proxy_host = options.http_proxy_host
             request.proxy_port = options.http_proxy_port
 
-        return request
+        self.last_request = request
+        return self.last_request
 
     def backend_available(self):
         return self.current_host is not None
@@ -351,8 +353,6 @@ class BalancedHttpRequest(object):
         do_retry = do_retry and self.tries_left > 0 and self.request_time_left > 0
 
         if do_retry:
-            http_logger.warn('got error from %s, retrying', self.current_host)
-
             if self.tried_hosts is None:
                 self.first_status = response.code
                 self.tried_hosts = set()
@@ -360,6 +360,14 @@ class BalancedHttpRequest(object):
             self.tried_hosts.add(self.current_fd)
 
         return do_retry
+
+    def pop_last_request(self):
+        request = self.last_request
+        self.last_request = None
+        return request
+
+    def get_retries_count(self):
+        return len(self.tried_hosts) if self.tried_hosts else 0
 
 
 class HttpClientFactory(object):
@@ -485,19 +493,19 @@ class HttpClient(object):
 
         return self._fetch_with_retry(request, callback, add_to_finish_group, parse_response, parse_on_error)
 
-    def _fetch_with_retry(self, request, callback, add_to_finish_group, parse_response, parse_on_error):
+    def _fetch_with_retry(self, balanced_request, callback, add_to_finish_group, parse_response, parse_on_error):
         future = Future()
 
         def request_finished_callback(response):
             if response is None:
                 return
 
-            if request.tried_hosts is not None:
+            if balanced_request.tried_hosts is not None:
                 self.statsd_client.count('http.client.retries', 1,
-                                         upstream=request.get_host(),
-                                         server=request.current_host,
-                                         first_upstream_status=request.first_status,
-                                         tries=len(request.tried_hosts),
+                                         upstream=balanced_request.get_host(),
+                                         server=balanced_request.current_host,
+                                         first_upstream_status=balanced_request.first_status,
+                                         tries=len(balanced_request.tried_hosts),
                                          status=response.code)
 
             if self.handler.is_finished():
@@ -519,21 +527,23 @@ class HttpClient(object):
                 request_finished_callback(None)
                 return
 
-            do_retry = request.check_retry(response)
+            response, debug_extra = self._unwrap_debug(balanced_request, balanced_request.pop_last_request(), response)
+            do_retry = balanced_request.check_retry(response)
 
+            self._log_response(balanced_request, response, do_retry, debug_extra)
             self.statsd_client.time('http.client.requests', int(response.request_time * 1000),
-                                    upstream=request.get_host(),
-                                    server=request.current_host,
+                                    upstream=balanced_request.get_host(),
+                                    server=balanced_request.current_host,
                                     final=str(not do_retry),
                                     status=response.code)
 
             if do_retry:
-                self._fetch(request, retry_callback)
+                self._fetch(balanced_request, retry_callback)
                 return
 
             request_finished_callback(response)
 
-        self._fetch(request, retry_callback)
+        self._fetch(balanced_request, retry_callback)
 
         return future
 
@@ -550,14 +560,10 @@ class HttpClient(object):
 
         request = balanced_request.make_request()
 
-        def request_callback(response):
-            callback(self._log_response(request, response, balanced_request))
-
         if not balanced_request.backend_available():
-            request_callback(
-                HTTPResponse(request, 502,
-                             error=HTTPError(502, 'No backend available for ' + balanced_request.get_host()),
-                             request_time=0))
+            callback(HTTPResponse(request, 502,
+                                  error=HTTPError(502, 'No backend available for ' + balanced_request.get_host()),
+                                  request_time=0))
             return
 
         if self.handler.debug_mode.pass_debug:
@@ -578,7 +584,7 @@ class HttpClient(object):
                 self._prepare_curl_callback, next_callback=request.prepare_curl_callback
             )
 
-        self.http_client_impl.fetch(self.modify_http_request_hook(request, balanced_request), request_callback)
+        self.http_client_impl.fetch(self.modify_http_request_hook(request, balanced_request), callback)
 
     def _prepare_curl_callback(self, curl, next_callback):
         curl.setopt(pycurl.NOSIGNAL, 1)
@@ -586,37 +592,39 @@ class HttpClient(object):
         if callable(next_callback):
             next_callback(curl)
 
-    def _log_response(self, request, response, balanced_request):
+    def _unwrap_debug(self, balanced_request, request, response):
+        debug_extra = {}
+
         try:
-            debug_extra = {}
             if response.headers.get(DEBUG_HEADER_NAME):
                 debug_response = response_from_debug(request, response)
                 if debug_response is not None:
                     debug_xml, response = debug_response
                     debug_extra['_debug_response'] = debug_xml
 
-            retry = len(balanced_request.tried_hosts) if balanced_request.tried_hosts else 0
             if self.handler.debug_mode.enabled:
                 debug_extra.update({'_response': response, '_request': request,
-                                    '_request_retry': retry,
+                                    '_request_retry': balanced_request.get_retries_count(),
                                     '_balanced_request': balanced_request})
-
-            log_message = 'got {code}{size}{retry} {method} {url} in {time:.2f}ms'.format(
-                code=response.code,
-                method=request.method,
-                url=response.effective_url,
-                size=' {0} bytes'.format(len(response.body)) if response.body is not None else '',
-                retry=' retry {}'.format(retry) if retry > 0 else '',
-                time=response.request_time * 1000
-            )
-
-            log_method = self.handler.log.warn if response.code >= 500 else self.handler.log.info
-            log_method(log_message, extra=debug_extra)
-
         except Exception:
-            self.handler.log.exception('Cannot log response info')
+            self.handler.log.exception('Cannot get response from debug')
 
-        return response
+        return response, debug_extra
+
+    def _log_response(self, balanced_request, response, do_retry, debug_extra):
+        retry = balanced_request.get_retries_count()
+        log_message = 'got {code}{size}{retry}, {do_retry} {method} {url} in {time:.2f}ms'.format(
+            code=response.code,
+            method=balanced_request.method,
+            url=response.effective_url,
+            size=' {0} bytes'.format(len(response.body)) if response.body is not None else '',
+            retry=' retry {}'.format(retry) if retry > 0 else '',
+            do_retry='retrying' if do_retry else 'final',
+            time=response.request_time * 1000
+        )
+
+        log_method = self.handler.log.warn if response.code >= 500 else self.handler.log.info
+        log_method(log_message, extra=debug_extra)
 
     def _parse_response(self, response, parse_response, parse_on_error):
         data = None
