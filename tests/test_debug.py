@@ -117,6 +117,10 @@ class DebugTestCase(unittest.TestCase):
         for h in invalid_headers:
             self.assertDebugResponseCode('simple?debug', http_codes.UNAUTHORIZED, headers={'Authorization': h})
 
+    def test_custom_exception_in_write_error(self):
+        response = frontik_no_debug_app.get_page('write_error?debug', headers={'Authorization': 'wrong'})
+        self.assertEqual(to_unicode(response.content), 'DebugUnauthorizedHTTPError')
+
     def test_debug_by_header(self):
         for param in ('debug', 'noxsl', 'notpl'):
             response = self.assertDebugResponseCode('simple?{}'.format(param), http_codes.UNAUTHORIZED)
