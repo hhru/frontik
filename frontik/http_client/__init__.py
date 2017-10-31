@@ -527,10 +527,13 @@ class HttpClient(object):
                 request_finished_callback(None)
                 return
 
-            response, debug_extra = self._unwrap_debug(balanced_request, balanced_request.pop_last_request(), response)
+            request = balanced_request.pop_last_request()
+            retries_count = balanced_request.get_retries_count()
+
+            response, debug_extra = self._unwrap_debug(balanced_request, request, response, retries_count)
             do_retry = balanced_request.check_retry(response)
 
-            self._log_response(balanced_request, response, do_retry, debug_extra)
+            self._log_response(balanced_request, response, retries_count, do_retry, debug_extra)
             self.statsd_client.stack()
             self.statsd_client.count('http.client.requests', 1,
                                      upstream=balanced_request.get_host(),
@@ -596,7 +599,7 @@ class HttpClient(object):
         if callable(next_callback):
             next_callback(curl)
 
-    def _unwrap_debug(self, balanced_request, request, response):
+    def _unwrap_debug(self, balanced_request, request, response, retries_count):
         debug_extra = {}
 
         try:
@@ -608,21 +611,20 @@ class HttpClient(object):
 
             if self.handler.debug_mode.enabled:
                 debug_extra.update({'_response': response, '_request': request,
-                                    '_request_retry': balanced_request.get_retries_count(),
+                                    '_request_retry': retries_count,
                                     '_balanced_request': balanced_request})
         except Exception:
             self.handler.log.exception('Cannot get response from debug')
 
         return response, debug_extra
 
-    def _log_response(self, balanced_request, response, do_retry, debug_extra):
-        retry = balanced_request.get_retries_count()
+    def _log_response(self, balanced_request, response, retries_count, do_retry, debug_extra):
         log_message = 'got {code}{size}{retry}, {do_retry} {method} {url} in {time:.2f}ms'.format(
             code=response.code,
             method=balanced_request.method,
             url=response.effective_url,
             size=' {0} bytes'.format(len(response.body)) if response.body is not None else '',
-            retry=' retry {}'.format(retry) if retry > 0 else '',
+            retry=' retry {}'.format(retries_count) if retries_count > 0 else '',
             do_retry='retrying' if do_retry else 'final',
             time=response.request_time * 1000
         )
