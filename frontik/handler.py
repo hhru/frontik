@@ -46,6 +46,10 @@ class HTTPError(tornado.web.HTTPError):
         self.headers = headers
 
 
+class DebugUnauthorizedHTTPError(HTTPError):
+    pass
+
+
 class BaseHandler(tornado.web.RequestHandler):
 
     preprocessors = ()
@@ -103,7 +107,7 @@ class BaseHandler(tornado.web.RequestHandler):
                 debug_access = (error is None)
                 if not debug_access:
                     code, headers = error
-                    raise HTTPError(code, headers=headers)
+                    raise DebugUnauthorizedHTTPError(code, headers=headers)
 
             self._debug_access = debug_access
 
