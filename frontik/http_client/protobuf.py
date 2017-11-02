@@ -41,11 +41,11 @@ class RpcChannel(object):
     CONTENT_TYPE_HEADER = 'Content-Type'
     PROTOBUF_CONTENT_TYPE = 'application/x-protobuf'
 
-    def __init__(self, post_url, host, query_params=None, request_timeout=None):
+    def __init__(self, post_url, host, query_params=None, **kwargs):
         self.host = host
         self.post_url = post_url
         self.query_params = query_params if query_params is not None else {}
-        self.request_timeout = request_timeout
+        self.kwargs = kwargs
 
     def CallMethod(self, method_descriptor, rpc_controller, request, response_class, done):
         url = '/{service}/{method}'.format(
@@ -123,5 +123,5 @@ class RpcChannel(object):
 
         self.post_url(self.host, url_concat(url, self.query_params), payload,
                       content_type=RpcChannel.PROTOBUF_CONTENT_TYPE,
-                      request_timeout=self.request_timeout,
-                      callback=_cb)
+                      callback=_cb,
+                      **self.kwargs)

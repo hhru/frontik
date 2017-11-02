@@ -230,7 +230,7 @@ class Upstream(object):
         self.servers.append(server)
 
     def __str__(self):
-        return '[{}]'.format(','.join(server.address for server in self.servers))
+        return '[{}]'.format(','.join(server.address for server in self.servers if server is not None))
 
 
 class DelayedSlowStart(object):
