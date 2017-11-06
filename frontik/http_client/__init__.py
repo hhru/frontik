@@ -426,24 +426,27 @@ class HttpClient(object):
         return self.upstreams.get(host, Upstream.get_single_host_upstream())
 
     def group(self, futures, callback=None, name=None):
-        if callable(callback):
-            results_holder = {}
-            group_callback = self.handler.finish_group.add(self.handler.check_finished(callback, results_holder))
+        group_future = Future()
+        results_holder = {}
 
-            async_group = AsyncGroup(group_callback, name=name)
+        def group_callback():
+            callback(results_holder)
+            group_future.set_result(results_holder)
 
-            def future_callback(name, future):
-                results_holder[name] = future.result()
+        def future_callback(name, future):
+            results_holder[name] = future.result()
 
-            for name, future in iteritems(futures):
-                if future.done():
-                    future_callback(name, future)
-                else:
-                    self.handler.add_future(future, async_group.add(partial(future_callback, name)))
+        async_group = AsyncGroup(self.handler.finish_group.add(self.handler.check_finished(group_callback)), name=name)
 
-            async_group.try_finish_async()
+        for name, future in iteritems(futures):
+            if future.done():
+                future_callback(name, future)
+            else:
+                self.handler.add_future(future, async_group.add(partial(future_callback, name)))
 
-        return futures
+        async_group.try_finish_async()
+
+        return group_future
 
     def get_url(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None,
                 max_timeout_tries=None, callback=None, follow_redirects=True,
