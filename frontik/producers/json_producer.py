@@ -5,6 +5,7 @@ import weakref
 from functools import partial
 
 import jinja2
+import sys
 import tornado.ioloop
 from jinja2.utils import concat
 from tornado.concurrent import TracebackFuture
@@ -95,7 +96,13 @@ class JsonProducer(object):
 
             def do_render_job_part(part_index=1):
                 part_start_time = time.time()
-                rendered_part = next(template_stream, None)
+
+                try:
+                    rendered_part = next(template_stream, None)
+                except Exception:
+                    render_future.set_exc_info(sys.exc_info())
+                    return
+
                 if rendered_part is None:
                     render_future.set_result((start_time, concat(rendered_parts)))
                     return
