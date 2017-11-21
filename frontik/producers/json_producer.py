@@ -2,9 +2,12 @@
 
 import time
 import weakref
+from functools import partial
 
 import jinja2
 import tornado.ioloop
+from jinja2.utils import concat
+from tornado.concurrent import TracebackFuture
 from tornado.escape import to_unicode, utf8
 from tornado.options import options
 
@@ -62,6 +65,12 @@ class JsonProducer(object):
     def set_template(self, filename):
         self.template_filename = filename
 
+    def get_jinja_context(self):
+        if callable(self.jinja_context_provider):
+            return self.jinja_context_provider(self.handler)
+        else:
+            return self.json.to_dict()
+
     def _finish_with_template(self, callback):
         if not self.environment:
             raise Exception('Cannot apply template, no Jinja2 environment configured')
@@ -69,17 +78,46 @@ class JsonProducer(object):
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', 'text/html; charset=utf-8')
 
-        def job():
+        jinja_streaming_render_buffer_size = None
+        buffer_size_provider = getattr(self.handler, 'get_jinja_streaming_render_buffer_size', None)
+        if callable(buffer_size_provider):
+            jinja_streaming_render_buffer_size = buffer_size_provider()
+
+        if jinja_streaming_render_buffer_size:
+            render_future = TracebackFuture()
+
             start_time = time.time()
             template = self.environment.get_template(self.template_filename)
 
-            if callable(self.jinja_context_provider):
-                jinja_context = self.jinja_context_provider(self.handler)
-            else:
-                jinja_context = self.json.to_dict()
+            template_stream = template.stream(self.get_jinja_context())
+            template_stream.enable_buffering(size=jinja_streaming_render_buffer_size)
+            rendered_parts = []
 
-            result = template.render(**jinja_context)
-            return start_time, result
+            def do_render_job_part(part_index=1):
+                part_start_time = time.time()
+                rendered_part = next(template_stream, None)
+                if rendered_part is None:
+                    render_future.set_result((start_time, concat(rendered_parts)))
+                    return
+                else:
+                    self.log.info(
+                        'applied template part %i in %.2fms',
+                        part_index,
+                        (time.time() - part_start_time) * 1000
+                    )
+                    rendered_parts.append(rendered_part)
+                    self.ioloop.add_callback(partial(do_render_job_part, part_index + 1))
+
+            do_render_job_part()
+
+        else:
+            def render_job_full():
+                start_time = time.time()
+                template = self.environment.get_template(self.template_filename)
+                result = template.render(**self.get_jinja_context())
+                return start_time, result
+
+            render_future = self.executor.submit(render_job_full)
 
         def job_callback(future):
             if future.exception() is not None:
@@ -105,9 +143,8 @@ class JsonProducer(object):
 
             callback(utf8(result))
 
-        future = self.executor.submit(job)
-        self.ioloop.add_future(future, self.handler.check_finished(job_callback))
-        return future
+        self.ioloop.add_future(render_future, self.handler.check_finished(job_callback))
+        return render_future
 
     def _finish_with_json(self, callback):
         self.log.debug('finishing without templating')
