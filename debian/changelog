@@ -1,3 +1,9 @@
+frontik (2.32.1) unstable; urgency=medium
+
+  * HH-74434 allow partial jinja templating
+
+ -- Automated Build <e.bokshitskiy@hh.ru>  Tue, 21 Nov 2017 17:57:28 +0300
+
 frontik (2.32.0) unstable; urgency=medium
 
   * HH-74353 remove old preprocessors
