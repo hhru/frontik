@@ -1,3 +1,9 @@
+frontik (2.32.2) unstable; urgency=medium
+
+  * HH-74457 make pretty exceptions handling for stream-templating
+
+ -- Automated Build <e.bokshitskiy@hh.ru>  Tue, 21 Nov 2017 19:09:07 +0300
+
 frontik (2.32.1) unstable; urgency=medium
 
   * HH-74434 allow partial jinja templating
