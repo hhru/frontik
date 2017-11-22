@@ -72,6 +72,62 @@ class JsonProducer(object):
         else:
             return self.json.to_dict()
 
+    def _render_template_stream_on_ioloop(self, batch_render_timeout_ms):
+        render_future = TracebackFuture()
+        template_render_start_time = time.time()
+        template = self.environment.get_template(self.template_filename)
+
+        template_stream = template.generate(self.get_jinja_context())
+        template_parts = []
+
+        def _render_template_part(part_index=1):
+            whole_template_render_finished = False
+            part_render_start_time = time.time()
+            part_render_timeout_time = part_render_start_time + batch_render_timeout_ms / 1000.0
+
+            batch = []
+            statements_processed = 0
+
+            while True:
+                try:
+                    next_statement_render_result = next(template_stream, None)
+                except Exception:
+                    render_future.set_exc_info(sys.exc_info())
+                    return
+
+                if next_statement_render_result is None:
+                    whole_template_render_finished = True
+                    break
+                statements_processed += 1
+                batch.append(next_statement_render_result)
+
+                if time.time() > part_render_timeout_time:
+                    break
+
+            taken_time_ms = (time.time() - part_render_start_time) * 1000
+            self.log.info(
+                'render template part %i with %i statements in %.2fms',
+                part_index, statements_processed, taken_time_ms
+            )
+
+            template_parts.extend(batch)
+            if whole_template_render_finished:
+                render_future.set_result((template_render_start_time, concat(template_parts)))
+            else:
+                self.ioloop.add_callback(partial(_render_template_part, part_index + 1))
+
+        _render_template_part()
+        return render_future
+
+    def _render_template_on_executor(self):
+        def render_job():
+            start_time = time.time()
+            template = self.environment.get_template(self.template_filename)
+            result = template.render(**self.get_jinja_context())
+            return start_time, result
+
+        return self.executor.submit(render_job)
+
     def _finish_with_template(self, callback):
         if not self.environment:
             raise Exception('Cannot apply template, no Jinja2 environment configured')
@@ -79,52 +135,15 @@ class JsonProducer(object):
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', 'text/html; charset=utf-8')
 
-        jinja_streaming_render_buffer_size = None
-        buffer_size_provider = getattr(self.handler, 'get_jinja_streaming_render_buffer_size', None)
-        if callable(buffer_size_provider):
-            jinja_streaming_render_buffer_size = buffer_size_provider()
+        jinja_streaming_render_timeout = None
+        render_timeout_provider = getattr(self.handler, 'get_jinja_streaming_render_timeout', None)
+        if callable(render_timeout_provider):
+            jinja_streaming_render_timeout = render_timeout_provider()
 
-        if jinja_streaming_render_buffer_size:
-            render_future = TracebackFuture()
-
-            start_time = time.time()
-            template = self.environment.get_template(self.template_filename)
-
-            template_stream = template.stream(self.get_jinja_context())
-            template_stream.enable_buffering(size=jinja_streaming_render_buffer_size)
-            rendered_parts = []
-
-            def do_render_job_part(part_index=1):
-                part_start_time = time.time()
-
-                try:
-                    rendered_part = next(template_stream, None)
-                except Exception:
-                    render_future.set_exc_info(sys.exc_info())
-                    return
-
-                if rendered_part is None:
-                    render_future.set_result((start_time, concat(rendered_parts)))
-                    return
-                else:
-                    self.log.info(
-                        'applied template part %i in %.2fms',
-                        part_index,
-                        (time.time() - part_start_time) * 1000
-                    )
-                    rendered_parts.append(rendered_part)
-                    self.ioloop.add_callback(partial(do_render_job_part, part_index + 1))
-
-            do_render_job_part()
-
+        if jinja_streaming_render_timeout:
+            render_future = self._render_template_stream_on_ioloop(jinja_streaming_render_timeout)
         else:
-            def render_job_full():
-                start_time = time.time()
-                template = self.environment.get_template(self.template_filename)
-                result = template.render(**self.get_jinja_context())
-                return start_time, result
-
-            render_future = self.executor.submit(render_job_full)
+            render_future = self._render_template_on_executor()
 
         def job_callback(future):
             if future.exception() is not None:
