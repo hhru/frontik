@@ -85,7 +85,6 @@ class JsonProducer(object):
             part_render_start_time = time.time()
             part_render_timeout_time = part_render_start_time + batch_render_timeout_ms / 1000.0
 
-            batch = []
             statements_processed = 0
 
             while True:
@@ -99,7 +98,7 @@ class JsonProducer(object):
                     whole_template_render_finished = True
                     break
                 statements_processed += 1
-                batch.append(next_statement_render_result)
+                template_parts.append(next_statement_render_result)
 
                 if time.time() > part_render_timeout_time:
                     break
@@ -110,7 +109,6 @@ class JsonProducer(object):
                 part_index, statements_processed, taken_time_ms
             )
 
-            template_parts.extend(batch)
             if whole_template_render_finished:
                 render_future.set_result((template_render_start_time, concat(template_parts)))
             else:
