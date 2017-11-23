@@ -128,6 +128,11 @@ class JsonProducer(object):
 
         return self.executor.submit(render_job)
 
+    def _get_jinja_streaming_render_timeout(self):
+        render_timeout_provider = getattr(self.handler, 'get_jinja_streaming_render_timeout', None)
+        if callable(render_timeout_provider):
+            return render_timeout_provider()
+
     def _finish_with_template(self, callback):
         if not self.environment:
             raise Exception('Cannot apply template, no Jinja2 environment configured')
@@ -135,10 +140,7 @@ class JsonProducer(object):
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', 'text/html; charset=utf-8')
 
-        jinja_streaming_render_timeout = None
-        render_timeout_provider = getattr(self.handler, 'get_jinja_streaming_render_timeout', None)
-        if callable(render_timeout_provider):
-            jinja_streaming_render_timeout = render_timeout_provider()
+        jinja_streaming_render_timeout = self._get_jinja_streaming_render_timeout()
 
         if jinja_streaming_render_timeout:
             render_future = self._render_template_stream_on_ioloop(jinja_streaming_render_timeout)
