@@ -1,3 +1,11 @@
+frontik (2.32.3) unstable; urgency=medium
+
+  * HH-74483 remove rendering batch variable
+  * HH-74483 extract method
+  * HH-74483 allow to set rendering timeout
+
+ -- Automated Build <e.bokshitskiy@hh.ru>  Thu, 23 Nov 2017 11:19:49 +0300
+
 frontik (2.32.2) unstable; urgency=medium
 
   * HH-74457 make pretty exceptions handling for stream-templating
