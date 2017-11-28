@@ -240,8 +240,8 @@ class BaseHandler(tornado.web.RequestHandler):
 
     # HTTP client methods
 
-    def modify_http_client_request(self, request, balanced_request):
-        return request
+    def modify_http_client_request(self, balanced_request):
+        pass
 
     # Finish page
 

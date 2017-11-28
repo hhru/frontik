@@ -51,6 +51,10 @@ class Server(object):
             raise ValueError('weight should not be less then 1')
 
     def update(self, server):
+        if self.weight != server.weight:
+            ratio = float(server.weight) / float(self.weight)
+            self.requests = int(self.requests * ratio)
+
         self.weight = server.weight
 
     def disable(self):
@@ -176,12 +180,12 @@ class Upstream(object):
                 server.fails = 0
 
     def _disable_server(self, server):
-        http_logger.info('disable server %s for upstream %s', server.address, self.name)
+        http_logger.info('disabling server %s for upstream %s', server.address, self.name)
         server.disable()
         IOLoop.current().add_timeout(IOLoop.current().time() + self.fail_timeout, partial(self._restore_server, server))
 
     def _restore_server(self, server):
-        http_logger.info('restore server %s for upstream %s', server.address, self.name)
+        http_logger.info('restoring server %s for upstream %s', server.address, self.name)
         server.restore(self.slow_start())
 
     def update(self, config, servers):
@@ -222,6 +226,8 @@ class Upstream(object):
                 self._add_server(server)
 
     def _add_server(self, server):
+        server.restore(self.slow_start())
+
         for index, s in enumerate(self.servers):
             if s is None:
                 self.servers[index] = server
@@ -554,6 +560,7 @@ class HttpClient(object):
 
             request_finished_callback(response)
 
+        self.modify_http_request_hook(balanced_request)
         self._fetch(balanced_request, retry_callback)
 
         return future
@@ -595,7 +602,7 @@ class HttpClient(object):
                 self._prepare_curl_callback, next_callback=request.prepare_curl_callback
             )
 
-        self.http_client_impl.fetch(self.modify_http_request_hook(request, balanced_request), callback)
+        self.http_client_impl.fetch(request, callback)
 
     def _prepare_curl_callback(self, curl, next_callback):
         curl.setopt(pycurl.NOSIGNAL, 1)

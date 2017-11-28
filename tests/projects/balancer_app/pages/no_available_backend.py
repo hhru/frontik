@@ -10,9 +10,8 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 class Page(frontik.handler.PageHandler):
     def get_page(self):
         server = get_server(self, 'normal')
-        server.is_active = False
-
         self.application.http_client_factory.register_upstream('no_available_backend', {}, [server])
+        server.is_active = False
 
         def check_requests_cb():
             check_all_requests_done(self, 'no_available_backend')

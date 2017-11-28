@@ -21,3 +21,12 @@ Frontik will start normally with default config.
 | `XML_cache_step`       | `int`  | `None`        | Increase in weight for XML cache entry after each get |
 | `template_root`        | `str`  | `None`        | Root directory for Jinja templates                    |
 | `template_cache_limit` | `int`  | `50`          | Upper limit for Jinja templates cache                 |
+| `http_upstreams`       | `dict` | `None`        | [Virtual hosts](/docs/http-balancing.md) configuration|
+
+`http_upstreams` example:
+
+```python
+http_upstreams = {
+    'virtual_host_name': {'config': {'max_tries': 3}, 'servers': [{'server': 'http://localhost:1111', 'weight': 100}, {'server': 'http://localhost:2222', 'weight': 200}]},
+}
+```
