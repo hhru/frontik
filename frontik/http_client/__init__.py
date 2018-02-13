@@ -381,6 +381,10 @@ class HttpClientFactory(object):
         AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
 
         self.tornado_http_client = AsyncHTTPClient()
+
+        if options.max_http_clients_connects is not None:
+            self.tornado_http_client._multi.setopt(pycurl.M_MAXCONNECTS, options.max_http_clients_connects)
+
         self.upstreams = {}
 
         for name, upstream in iteritems(upstreams):
