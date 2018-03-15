@@ -36,7 +36,7 @@ install_requires = [
     'lxml >= 2.3.2',
     'pycurl >= 7.19.3',
     'simplejson >= 2.3.2',
-    'tornado >= 3.2.2, < 4',
+    'tornado >= 4.5, < 4.6',
 ]
 
 if sys.version_info < (3, 2):
@@ -63,7 +63,7 @@ setup(
     tests_require=[
         'nose',
         'pycodestyle == 2.2.0',
-        'requests >= 0.8.2',
+        'requests <= 2.9.1',
         'lxml-asserts',
         'tornado-httpclient-mock',
     ],
