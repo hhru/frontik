@@ -57,7 +57,8 @@ def run_server(app):
     try:
         log.info('starting server on %s:%s', options.host, options.port)
         http_server = tornado.httpserver.HTTPServer(app, xheaders=options.xheaders)
-        http_server.listen(options.port, options.host)
+        http_server.bind(options.port, options.host, reuse_port=options.reuse_port)
+        http_server.start()
 
         io_loop = tornado.ioloop.IOLoop.current()
 

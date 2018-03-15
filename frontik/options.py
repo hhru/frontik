@@ -6,6 +6,7 @@ tornado.options.define('app', default=None, type=str)
 tornado.options.define('app_class', default=None, type=str)
 tornado.options.define('tornado_settings', default=None, type=dict)
 tornado.options.define('handlers_count', default=100, type=int)
+tornado.options.define('reuse_port', default=True, type=bool)
 tornado.options.define('xheaders', default=False, type=bool)
 
 tornado.options.define('config', None, str)
