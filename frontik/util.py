@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import mimetypes
+import os.path
 import re
 from uuid import uuid4
 
@@ -216,3 +217,10 @@ def raise_future_exception(future):
         raise_exc_info((type(exception),) + future.exception_info())
     else:
         raise exception
+
+
+def get_abs_path(root_path, relative_path):
+    if relative_path is None or os.path.isabs(relative_path):
+        return relative_path
+
+    return os.path.normpath(os.path.join(root_path, relative_path))

@@ -12,9 +12,8 @@ from tornado.concurrent import Future
 from tornado.escape import to_unicode, utf8
 from tornado.options import options
 
-import frontik.jobs
 import frontik.json_builder
-from frontik.util import get_cookie_or_url_param_value, raise_future_exception
+from frontik.util import get_abs_path, get_cookie_or_url_param_value, raise_future_exception
 from frontik.producers import ProducerFactory
 
 
@@ -22,11 +21,11 @@ class JsonProducerFactory(ProducerFactory):
     def __init__(self, application):
         if hasattr(application, 'get_jinja_environment'):
             self.environment = application.get_jinja_environment()
-        elif getattr(application.config, 'template_root', None) is not None:
+        elif options.jinja_template_root is not None:
             self.environment = jinja2.Environment(
                 auto_reload=options.debug,
-                cache_size=getattr(application.config, 'template_cache_limit', 50),
-                loader=jinja2.FileSystemLoader(application.config.template_root),
+                cache_size=options.jinja_template_cache_limit,
+                loader=jinja2.FileSystemLoader(get_abs_path(application.app_root, options.jinja_template_root)),
             )
         else:
             self.environment = None
@@ -44,7 +43,6 @@ class JsonProducer(object):
     def __init__(self, handler, environment=None, json_encoder=None, jinja_context_provider=None):
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
-        self.executor = frontik.jobs.get_executor(options.json_executor)
         self.ioloop = tornado.ioloop.IOLoop.current()
 
         self.json = frontik.json_builder.JsonBuilder(json_encoder=json_encoder)
@@ -83,7 +81,11 @@ class JsonProducer(object):
         def _render_template_part(part_index=1):
             whole_template_render_finished = False
             part_render_start_time = time.time()
-            part_render_timeout_time = part_render_start_time + batch_render_timeout_ms / 1000.0
+
+            if batch_render_timeout_ms is not None:
+                part_render_timeout_time = part_render_start_time + batch_render_timeout_ms / 1000.0
+            else:
+                part_render_timeout_time = None
 
             statements_processed = 0
 
@@ -97,16 +99,16 @@ class JsonProducer(object):
                 if next_statement_render_result is None:
                     whole_template_render_finished = True
                     break
+
                 statements_processed += 1
                 template_parts.append(next_statement_render_result)
 
-                if time.time() > part_render_timeout_time:
+                if part_render_timeout_time is not None and time.time() > part_render_timeout_time:
                     break
 
             taken_time_ms = (time.time() - part_render_start_time) * 1000
             self.log.info(
-                'render template part %i with %i statements in %.2fms',
-                part_index, statements_processed, taken_time_ms
+                'render template part %s with %s statements in %.2fms', part_index, statements_processed, taken_time_ms
             )
 
             if whole_template_render_finished:
@@ -115,21 +117,8 @@ class JsonProducer(object):
                 self.ioloop.add_callback(partial(_render_template_part, part_index + 1))
 
         _render_template_part()
+
         return render_future
-
-    def _render_template_on_executor(self):
-        def render_job():
-            start_time = time.time()
-            template = self.environment.get_template(self.template_filename)
-            result = template.render(**self.get_jinja_context())
-            return start_time, result
-
-        return self.executor.submit(render_job)
-
-    def _get_jinja_streaming_render_timeout(self):
-        render_timeout_provider = getattr(self.handler, 'get_jinja_streaming_render_timeout', None)
-        if callable(render_timeout_provider):
-            return render_timeout_provider()
 
     def _finish_with_template(self, callback):
         if not self.environment:
@@ -138,12 +127,7 @@ class JsonProducer(object):
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', 'text/html; charset=utf-8')
 
-        jinja_streaming_render_timeout = self._get_jinja_streaming_render_timeout()
-
-        if jinja_streaming_render_timeout:
-            render_future = self._render_template_stream_on_ioloop(jinja_streaming_render_timeout)
-        else:
-            render_future = self._render_template_on_executor()
+        render_future = self._render_template_stream_on_ioloop(options.jinja_streaming_render_timeout_ms)
 
         def job_callback(future):
             if future.exception() is not None:

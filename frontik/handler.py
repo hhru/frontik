@@ -89,7 +89,6 @@ class BaseHandler(tornado.web.RequestHandler):
         self.json = self.json_producer.json
 
         self.xml_producer = self.application.xml.get_producer(self)
-        self.xml = self.xml_producer  # deprecated synonym
         self.doc = self.xml_producer.doc
 
         self._prepared = True

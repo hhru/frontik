@@ -14,4 +14,4 @@ self.set_template('template.html')  # uses Jinja2 template to generate text/html
 ```
 
 Root directory for XSL or Jinja template files and some other parameters are set up in application config file
-(see [Configuring Frontik application](/docs/config-app.md)).
+(see [Configuring Frontik](/docs/config.md)).

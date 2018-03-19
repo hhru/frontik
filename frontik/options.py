@@ -54,18 +54,16 @@ tornado.options.define('statsd_port', default=None, type=int)
 
 tornado.options.define('timeout_multiplier', default=1.0, type=float)
 
-tornado.options.define('xsl_executor', default='threaded', type=str, metavar='threaded|ioloop')
-tornado.options.define('json_executor', default='ioloop', type=str, metavar='threaded|ioloop')
-tornado.options.define('executor_pool_size', default=1, type=int)
-
 tornado.options.define('xml_root', default=None, type=str)
 tornado.options.define('xml_cache_limit', default=None, type=int)
 tornado.options.define('xml_cache_step', default=None, type=int)
 tornado.options.define('xsl_root', default=None, type=str)
 tornado.options.define('xsl_cache_limit', default=None, type=int)
 tornado.options.define('xsl_cache_step', default=None, type=int)
-tornado.options.define('template_root', default=None, type=str)
-tornado.options.define('template_cache_limit', default=50, type=int)
+tornado.options.define('xsl_executor_pool_size', default=1, type=int)
+tornado.options.define('jinja_template_root', default=None, type=str)
+tornado.options.define('jinja_template_cache_limit', default=50, type=int)
+tornado.options.define('jinja_streaming_render_timeout_ms', default=50, type=int)
 
 tornado.options.define('sentry_dsn', default=None, type=str, metavar='http://public:secret@example.com/1')
 

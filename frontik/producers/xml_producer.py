@@ -3,50 +3,50 @@
 import copy
 import time
 import weakref
+from concurrent.futures import ThreadPoolExecutor
 
 import tornado.ioloop
-import tornado.options
 from lxml import etree
+from tornado.options import options
 
 import frontik.doc
-import frontik.jobs
 import frontik.util
 from frontik import file_cache
 from frontik.producers import ProducerFactory
-from frontik.util import raise_future_exception
+from frontik.util import get_abs_path, raise_future_exception
 from frontik.xml_util import xml_from_file, xsl_from_file
 
 
 class XMLProducerFactory(ProducerFactory):
     def __init__(self, application):
-        config = application.config
-
         self.xml_cache = file_cache.make_file_cache(
-            'XML', 'XML_root',
-            getattr(config, 'XML_root', None),
+            'XML', 'xml_root',
+            get_abs_path(application.app_root, options.xml_root),
             xml_from_file,
-            getattr(config, 'XML_cache_limit', None),
-            getattr(config, 'XML_cache_step', None),
+            options.xml_cache_limit,
+            options.xml_cache_step,
             deepcopy=True
         )
 
         self.xsl_cache = file_cache.make_file_cache(
-            'XSL', 'XSL_root',
-            getattr(config, 'XSL_root', None),
+            'XSL', 'xsl_root',
+            get_abs_path(application.app_root, options.xsl_root),
             xsl_from_file,
-            getattr(config, 'XSL_cache_limit', None),
-            getattr(config, 'XSL_cache_step', None)
+            options.xsl_cache_limit,
+            options.xsl_cache_step
         )
 
+        self.executor = ThreadPoolExecutor(options.xsl_executor_pool_size)
+
     def get_producer(self, handler):
-        return XmlProducer(handler, xml_cache=self.xml_cache, xsl_cache=self.xsl_cache)
+        return XmlProducer(handler, xml_cache=self.xml_cache, xsl_cache=self.xsl_cache, executor=self.executor)
 
 
 class XmlProducer(object):
-    def __init__(self, handler, xml_cache=None, xsl_cache=None):
+    def __init__(self, handler, xml_cache=None, xsl_cache=None, executor=None):
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
-        self.executor = frontik.jobs.get_executor(tornado.options.options.xsl_executor)
+        self.executor = executor
         self.ioloop = tornado.ioloop.IOLoop.current()
 
         self.xml_cache = xml_cache

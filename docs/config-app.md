@@ -13,14 +13,6 @@ Frontik will start normally with default config.
 
 | Option name            | Type   | Default value | Description                                           |
 | ---------------------- | ------ | ------------- | ----------------------------------------------------- |
-| `XSL_root`             | `str`  | `None`        | Root directory for XSL files                          |
-| `XML_root`             | `str`  | `None`        | Root directory for XML files                          |
-| `XSL_cache_limit`      | `int`  | `None`        | Upper limit for XSL LRU files cache                   |
-| `XML_cache_limit`      | `int`  | `None`        | Upper limit for XML LRU files cache                   |
-| `XSL_cache_step`       | `int`  | `None`        | Increase in weight for XSL cache entry after each get |
-| `XML_cache_step`       | `int`  | `None`        | Increase in weight for XML cache entry after each get |
-| `template_root`        | `str`  | `None`        | Root directory for Jinja templates                    |
-| `template_cache_limit` | `int`  | `50`          | Upper limit for Jinja templates cache                 |
 | `http_upstreams`       | `dict` | `None`        | [Virtual hosts](/docs/http-balancing.md) configuration|
 
 `http_upstreams` example:
