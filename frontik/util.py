@@ -4,7 +4,7 @@ import mimetypes
 import re
 from uuid import uuid4
 
-from tornado.concurrent import TracebackFuture
+from tornado.concurrent import Future
 from tornado.escape import to_unicode, utf8
 from tornado.util import raise_exc_info
 
@@ -210,7 +210,7 @@ def reverse_regex_named_groups(pattern, *args, **kwargs):
 def raise_future_exception(future):
     exception = future.exception()
 
-    if isinstance(future, TracebackFuture):
+    if isinstance(future, Future):
         raise_exc_info(future.exc_info())
     elif hasattr(future, 'exception_info') and future.exception_info()[1] is not None:
         raise_exc_info((type(exception),) + future.exception_info())
