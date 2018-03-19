@@ -8,7 +8,7 @@ import jinja2
 import sys
 import tornado.ioloop
 from jinja2.utils import concat
-from tornado.concurrent import TracebackFuture
+from tornado.concurrent import Future
 from tornado.escape import to_unicode, utf8
 from tornado.options import options
 
@@ -73,7 +73,7 @@ class JsonProducer(object):
             return self.json.to_dict()
 
     def _render_template_stream_on_ioloop(self, batch_render_timeout_ms):
-        render_future = TracebackFuture()
+        render_future = Future()
         template_render_start_time = time.time()
         template = self.environment.get_template(self.template_filename)
 
