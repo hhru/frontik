@@ -1,12 +1,12 @@
 # coding=utf-8
 
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
 from tornado.gen import coroutine
 from tornado.stack_context import NullContext
 
 from frontik.handler import PageHandler
-from frontik.jobs import get_executor
 from frontik.request_context import RequestContext
 
 
@@ -26,7 +26,7 @@ class Page(PageHandler):
         with NullContext():
             self.add_callback(_waited_callback('null_context_callback'))
 
-        get_executor('threaded').submit(_waited_callback('executor'))
+        ThreadPoolExecutor(1).submit(_waited_callback('executor'))
 
         self.add_future(self.run_coroutine(), self.finish_group.add_notification())
 

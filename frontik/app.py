@@ -69,6 +69,7 @@ class FrontikApplication(Application):
         self.app_settings = settings
         self.config = self.application_config()
         self.app = settings.get('app')
+        self.app_root = settings.get('app_root')
 
         self.xml = frontik.producers.xml_producer.XMLProducerFactory(self)
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
