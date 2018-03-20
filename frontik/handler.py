@@ -318,7 +318,7 @@ class BaseHandler(tornado.web.RequestHandler):
 
         self.clear()
 
-        reason = None
+        reason = kwargs.get('reason')
         if 'exc_info' in kwargs:
             exception = kwargs['exc_info'][1]
             if isinstance(exception, HTTPError) and exception.reason:
