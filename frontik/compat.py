@@ -4,7 +4,7 @@ import sys
 
 __all__ = [
     'basestring_type', 'iteritems', 'long_type', 'SimpleCookie', 'unicode_type',
-    'urlencode', 'urlparse'
+    'urlencode', 'urlparse', 'httplib', 'quote', 'unquote_plus'
 ]
 
 PY3 = sys.version_info >= (3,)
@@ -12,6 +12,8 @@ PY3 = sys.version_info >= (3,)
 if PY3:
     import urllib.parse as urlparse
     from urllib.parse import urlencode
+    import http.client as httplib
+    from urllib.parse import quote, unquote_plus
 
     basestring_type = str
     long_type = int
@@ -23,6 +25,8 @@ if PY3:
 else:
     from urllib import urlencode
     import urlparse
+    import httplib
+    from urllib import quote, unquote_plus
 
     basestring_type = basestring
     long_type = long
