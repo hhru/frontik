@@ -2,6 +2,7 @@
 
 import importlib
 import logging
+import os.path
 import signal
 import sys
 import time
@@ -127,7 +128,7 @@ def main(config_file=None):
     application = getattr(module, options.app_class) if options.app_class is not None else FrontikApplication
 
     try:
-        tornado_app = application(**options.as_dict())
+        tornado_app = application(app_root=os.path.dirname(module.__file__), **options.as_dict())
         ioloop = tornado.ioloop.IOLoop.current()
 
         def _async_init_cb():
