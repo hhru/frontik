@@ -1,3 +1,12 @@
+frontik (3.1.0) unstable; urgency=medium
+
+  * HH-77357 add pycurl version to /version
+  * HH-77357 update osx travis image
+  * HH-77357 move producer settings to frontik.cfg
+  * HH-77357 use tornado.concurrent.Future instead of TracebackFuture
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 21 Mar 2018 16:11:17 +0300
+
 frontik (3.0.2) unstable; urgency=medium
 
   * HH-77551 extend frontik.compat
