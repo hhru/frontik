@@ -1,3 +1,9 @@
+frontik (3.0.2) unstable; urgency=medium
+
+  * HH-77551 extend frontik.compat
+
+ -- Automated Build <a.pertsev@hh.ru>  Wed, 21 Mar 2018 13:53:09 +0300
+
 frontik (3.0.1) unstable; urgency=medium
 
   * HH-77483 update install dependencies
