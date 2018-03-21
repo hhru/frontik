@@ -21,8 +21,6 @@ These options can be set for each Frontik instance (see [options.py](/frontik/op
 | `debug`                      | `bool`  | `False`       | Enable debug mode                                                      |
 | `debug_login`                | `str`   | `None`        | Debug mode login for basic authentication (when `debug=False`)         |
 | `debug_password`             | `str`   | `None`        | Debug mode password for basic authentication (when `debug=False`)      |
-| `xsl_executor`               | `str`   | `'threaded'`  | Executor type for XSL templating (alternative: `'ioloop'`)             |
-| `json_executor`              | `str`   | `'ioloop'`    | Executor type for JSON templating                                      |
 | `timeout_multiplier`         | `float` | `1.0`         | Generic timeout multiplier for get_xxx calls (useful for testing)      |
 | `handlers_count`             | `int`   | `100`         | Limit for number of simultaneous requests handled by Frontik instance  |
 | `http_proxy_host`            | `str`   | `None`        | HTTP proxy host for Curl HTTP client                                   |
@@ -44,6 +42,20 @@ Logging options:
 | `syslog_facility`            | `str`   | `'user'`      | Syslog facility                                                        |
 | `suppressed_loggers`         | `list`  | `[]`          | List of logger names to be excluded from debug output                  |
 | `sentry_dsn`                 | `str`   | `None`        | Enable Sentry and set Sentry DSN for sending errors                    |
+
+Producers options:
+
+| Option name                         | Type   | Default value | Description                                           |
+| `xsl_root`                          | `str`  | `None`        | Root directory for XSL files                          |
+| `xml_root`                          | `str`  | `None`        | Root directory for XML files                          |
+| `xsl_cache_limit`                   | `int`  | `None`        | Upper limit for XSL LRU files cache                   |
+| `xml_cache_limit`                   | `int`  | `None`        | Upper limit for XML LRU files cache                   |
+| `xsl_cache_step`                    | `int`  | `None`        | Increase in weight for XSL cache entry after each get |
+| `xml_cache_step`                    | `int`  | `None`        | Increase in weight for XML cache entry after each get |
+| `xsl_executor_pool_size`            | `int`  | `1`           | Number of background threads for XSLT processing      |
+| `jinja_template_root`               | `str`  | `None`        | Root directory for Jinja templates                    |
+| `jinja_template_cache_limit`        | `int`  | `50`          | Upper limit for Jinja templates cache                 |
+| `jinja_streaming_render_timeout_ms` | `int`  | `50`          | Upper limit (in msecs) for one iteration of partial Jinja template rendering |
 
 The only option that is mandatory for running Frontik is `app` option — the name of application package.
 

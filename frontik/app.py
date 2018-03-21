@@ -1,9 +1,13 @@
 # coding=utf-8
 
 import importlib
+import sys
 import time
 from functools import partial
 
+import pycurl
+import simplejson
+import tornado
 from lxml import etree
 from tornado.concurrent import Future
 from tornado.options import options
@@ -14,24 +18,22 @@ import frontik.producers.json_producer
 import frontik.producers.xml_producer
 from frontik.debug import DebugTransform
 from frontik.handler import ErrorHandler
+from frontik.http_client import HttpClientFactory
 from frontik.loggers import bootstrap_app_loggers, request
 from frontik.request_context import RequestContext
 from frontik.routing import FileMappingRouter, FrontikRouter
-from frontik.http_client import HttpClientFactory
+from frontik.version import version
 
 
 def get_frontik_and_apps_versions(application):
-    from frontik.version import version
-    import simplejson
-    import sys
-    import tornado
-
     versions = etree.Element('versions')
+
     etree.SubElement(versions, 'frontik').text = version
     etree.SubElement(versions, 'tornado').text = tornado.version
     etree.SubElement(versions, 'lxml.etree.LXML').text = '.'.join(str(x) for x in etree.LXML_VERSION)
     etree.SubElement(versions, 'lxml.etree.LIBXML').text = '.'.join(str(x) for x in etree.LIBXML_VERSION)
     etree.SubElement(versions, 'lxml.etree.LIBXSLT').text = '.'.join(str(x) for x in etree.LIBXSLT_VERSION)
+    etree.SubElement(versions, 'pycurl').text = pycurl.version
     etree.SubElement(versions, 'simplejson').text = simplejson.__version__
     etree.SubElement(versions, 'python').text = sys.version.replace('\n', '')
     etree.SubElement(versions, 'application', name=options.app).extend(application.application_version_xml())
@@ -69,6 +71,7 @@ class FrontikApplication(Application):
         self.app_settings = settings
         self.config = self.application_config()
         self.app = settings.get('app')
+        self.app_root = settings.get('app_root')
 
         self.xml = frontik.producers.xml_producer.XMLProducerFactory(self)
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
