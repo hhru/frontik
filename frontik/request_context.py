@@ -17,7 +17,7 @@ class RequestContext(object):
     ```
 
     `RequestContext` is initialized at the beginning of request handling
-    and can be populated with neccessary data at any time.
+    and can be populated with necessary data at any time.
 
     `RequestContext` is not passed automatically to other threads
     and it probably shouldn't due to StackContext being not thread-safe
