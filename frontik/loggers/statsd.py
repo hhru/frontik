@@ -38,6 +38,10 @@ def _convert_tags(tags):
     return '.' + '.'.join(_convert_tag(name, value) for name, value in iteritems(tags) if value is not None)
 
 
+def _encode_str(some):
+    return some if isinstance(some, (bytes, bytearray)) else some.encode('utf-8')
+
+
 class StatsDClientStub(object):
     def __init__(self):
         pass
@@ -105,7 +109,7 @@ class StatsDClient(object):
             return
 
         try:
-            self.socket.send(data)
+            self.socket.send(_encode_str(data))
         except (socket.error, IOError, OSError) as e:
             statsd_logger.warning("writing error: %s", e)
             self._close()
