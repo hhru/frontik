@@ -1,3 +1,10 @@
+frontik (3.1.1) unstable; urgency=medium
+
+  * HH-78120 small compat feature and statsd client python3
+    compatibility fix
+
+ -- Automated Build <a.pertsev@hh.ru>  Thu, 05 Apr 2018 18:44:01 +0300
+
 frontik (3.1.0) unstable; urgency=medium
 
   * HH-77357 add pycurl version to /version
