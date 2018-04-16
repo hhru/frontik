@@ -511,9 +511,6 @@ class HttpClient(object):
         future = Future()
 
         def request_finished_callback(response):
-            if response is None:
-                return
-
             if balanced_request.tried_hosts is not None:
                 self.statsd_client.count('http.client.retries', 1,
                                          upstream=balanced_request.get_host(),
@@ -536,11 +533,7 @@ class HttpClient(object):
         if add_to_finish_group and not self.handler.is_finished():
             request_finished_callback = self.handler.finish_group.add(request_finished_callback)
 
-        def retry_callback(response=None):
-            if response is None:
-                request_finished_callback(None)
-                return
-
+        def retry_callback(response):
             request = balanced_request.pop_last_request()
             retries_count = balanced_request.get_retries_count()
 
@@ -576,8 +569,6 @@ class HttpClient(object):
                 balanced_request.get_host(),
                 balanced_request.uri
             )
-
-            callback(None)
             return
 
         request = balanced_request.make_request()
