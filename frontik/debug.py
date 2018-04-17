@@ -285,7 +285,7 @@ def _pretty_print_json(node):
 
 
 def _string_to_color(value):
-    value_hash = crc32(value) % 0xffffffff
+    value_hash = crc32(utf8(value)) % 0xffffffff
     return '#%02x%02x%02x' % ((value_hash & 0xFF0000) >> 16, (value_hash & 0x00FF00) >> 8, value_hash & 0x0000FF)
 
 
