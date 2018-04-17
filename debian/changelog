@@ -1,3 +1,9 @@
+frontik (3.1.2) unstable; urgency=medium
+
+  * HH-78415 python3 related fix
+
+ -- Automated Build <a.pertsev@hh.ru>  Tue, 17 Apr 2018 14:58:56 +0300
+
 frontik (3.1.1) unstable; urgency=medium
 
   * HH-78120 small compat feature and statsd client python3
