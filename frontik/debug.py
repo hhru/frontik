@@ -404,6 +404,7 @@ class DebugTransform(OutputTransform):
 
         debug_log_data = RequestContext.get('log_handler').produce_all()
         debug_log_data.set('code', str(self.status_code))
+        debug_log_data.set('handler-name', RequestContext.get('handler_name'))
         debug_log_data.set('started', _format_number(self.request._start_time))
         debug_log_data.set('request-id', str(self.request.request_id))
         debug_log_data.set('stages-total', _format_number((time.time() - self.request._start_time) * 1000))
@@ -492,7 +493,6 @@ class DebugMode(object):
             self.profile_xslt = 'xslt' in self.mode_values
 
             RequestContext.set('log_handler', DebugBufferedHandler())
-            debug_log.debug('debug mode is ON')
 
             if self.pass_debug:
                 debug_log.debug('%s header will be passed to all requests', DEBUG_HEADER_NAME)
