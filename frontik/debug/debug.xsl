@@ -43,6 +43,7 @@
 
         <div class="entry entry_title">
             request id: <xsl:value-of select="@request-id"/>,
+            handler: <xsl:value-of select="@handler-name"/>,
             code: <xsl:value-of select="@code"/><br/>
             requests: <xsl:value-of select="count(entry/response)"/>,
             bytes received: <xsl:value-of select="sum(entry/response/size)"/>,
