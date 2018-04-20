@@ -45,7 +45,7 @@ class Server(object):
         self.fails = 0
         self.requests = 0
         self.is_active = True
-        self.slow_start = None
+        self.join_strategy = None
 
         if self.weight < 1:
             raise ValueError('weight should not be less then 1')
@@ -60,11 +60,11 @@ class Server(object):
     def disable(self):
         self.is_active = False
 
-    def restore(self, slow_start):
+    def restore(self, join_strategy):
         self.fails = 0
         self.requests = 0
         self.is_active = True
-        self.slow_start = slow_start
+        self.join_strategy = join_strategy
 
 
 class RetryPolicy(object):
@@ -127,7 +127,7 @@ class Upstream(object):
             if server is None or not server.is_active:
                 continue
 
-            if server.slow_start is not None and not server.slow_start.can_handle_request(server):
+            if server.join_strategy is not None and not server.join_strategy.can_handle_request(server):
                 current_load = float('inf')
             else:
                 current_load = server.current_requests / float(server.weight)
@@ -154,14 +154,14 @@ class Upstream(object):
         server.requests += 1
         server.current_requests += 1
 
-        if server.slow_start is not None:
-            server.slow_start.handle_request()
+        if server.join_strategy is not None:
+            server.join_strategy.handle_request()
 
-            if server.slow_start.is_complete():
+            if server.join_strategy.is_complete():
                 max_load = max(server.requests / float(server.weight) for server in self.servers
                                if server is not None and server.is_active)
                 server.requests = int(server.weight * max_load)
-                server.slow_start = None
+                server.join_strategy = None
 
         return min_index, server.address
 
@@ -186,7 +186,7 @@ class Upstream(object):
 
     def _restore_server(self, server):
         http_logger.info('restoring server %s for upstream %s', server.address, self.name)
-        server.restore(self.slow_start())
+        server.restore(self.get_join_strategy())
 
     def update(self, config, servers):
         if not servers:
@@ -202,9 +202,9 @@ class Upstream(object):
         slow_start_interval = float(config.get('slow_start_interval_sec', 0))
         slow_start_requests = int(config.get('slow_start_requests', 0))
 
-        self.slow_start = lambda: None
+        self.get_join_strategy = lambda: DefaultJoinStrategy
         if slow_start_interval != 0 or slow_start_requests != 0:
-            self.slow_start = partial(DelayedSlowStart, slow_start_interval, slow_start_requests)
+            self.get_join_strategy = partial(DelayedSlowStartJoinStrategy, slow_start_interval, slow_start_requests)
 
         self.retry_policy = RetryPolicy(config.get('retry_policy', options.http_client_default_retry_policy))
 
@@ -226,7 +226,7 @@ class Upstream(object):
                 self._add_server(server)
 
     def _add_server(self, server):
-        server.restore(self.slow_start())
+        server.restore(self.get_join_strategy())
 
         for index, s in enumerate(self.servers):
             if s is None:
@@ -239,7 +239,24 @@ class Upstream(object):
         return '[{}]'.format(','.join(server.address for server in self.servers if server is not None))
 
 
-class DelayedSlowStart(object):
+class DefaultJoinStrategy(object):
+    @staticmethod
+    def is_complete():
+        return True
+
+    @staticmethod
+    def can_handle_request(server):
+        return True
+
+    @staticmethod
+    def handle_request():
+        pass
+
+    def __repr__(self):
+        return '<DefaultJoinStrategy>'
+
+
+class DelayedSlowStartJoinStrategy(object):
     def __init__(self, slow_start_interval, slow_start_requests):
         self.initial_delay_end_time = time.time() + random() * slow_start_interval
         self.slow_start_requests = slow_start_requests
@@ -260,7 +277,7 @@ class DelayedSlowStart(object):
         self.slow_start_requests -= 1
 
     def __repr__(self):
-        return '<DelayedSlowStart(initial_delay_end_time={}, slow_start_requests={})>'.format(
+        return '<DelayedSlowStartJoinStrategy(initial_delay_end_time={}, slow_start_requests={})>'.format(
             self.initial_delay_end_time, self.slow_start_requests)
 
 
