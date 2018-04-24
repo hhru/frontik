@@ -44,7 +44,7 @@ class FileMappingRouter(Router):
         except ImportError:
             routing_logger.warning('%s module not found', (self.name, page_module_name))
             return _get_application_404_handler_delegate(application, request)
-        except:
+        except Exception:
             routing_logger.exception('error while importing %s module', page_module_name)
             return _get_application_500_handler_delegate(application, request)
 

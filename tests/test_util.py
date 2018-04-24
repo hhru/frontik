@@ -117,9 +117,9 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(files['file3'][1]['content_type'], 'application/octet-stream')
 
     def test_reverse_regex_named_groups(self):
-        two_ids = '/id/(?P<id1>[^/]+)/(?P<id2>[^/]+)'
-        two_ids_with_ending = '/id/(?P<id1>[^/]+)/(?P<id2>[^/]+)(\?|$)'
-        two_ids_with_unnamed_groups = '/id/(?P<id1>[^/]+)/(\w+)/(?P<id2>[^/]+)(\?|$)'
+        two_ids = r'/id/(?P<id1>[^/]+)/(?P<id2>[^/]+)'
+        two_ids_with_ending = r'/id/(?P<id1>[^/]+)/(?P<id2>[^/]+)(\?|$)'
+        two_ids_with_unnamed_groups = r'/id/(?P<id1>[^/]+)/(\w+)/(?P<id2>[^/]+)(\?|$)'
 
         self.assertEqual('/id/1/2', reverse_regex_named_groups(two_ids, 1, 2))
         self.assertEqual('/id/1/2', reverse_regex_named_groups(two_ids_with_ending, 1, 2))
