@@ -735,7 +735,7 @@ class RequestResult(object):
 def _parse_response(response, logger, parser=None, response_type=None):
     try:
         return parser(response.body)
-    except:
+    except Exception:
         _preview_len = 100
 
         if len(response.body) > _preview_len:

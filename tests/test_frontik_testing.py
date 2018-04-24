@@ -8,7 +8,7 @@ from frontik.testing import FrontikTestCase
 from tests.projects.test_app.pages.handler import delete
 
 
-class TestHandler(PageHandler):
+class AsyncHandler(PageHandler):
     def get_page(self):
         self.result = 0
 
@@ -42,7 +42,7 @@ class TestFrontikTesting(FrontikTestCase):
             def application_urls(self):
                 return [
                     ('/config', CheckConfigHandler),
-                    ('/sum_values', TestHandler),
+                    ('/sum_values', AsyncHandler),
                     ('/delete', delete.Page),
                 ]
 

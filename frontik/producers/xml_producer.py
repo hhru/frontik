@@ -75,7 +75,7 @@ class XmlProducer(object):
         except etree.XSLTParseError:
             self.log.error('failed parsing XSL file %s (XSL parse error)', self.transform_filename)
             raise
-        except:
+        except Exception:
             self.log.error('failed loading XSL file %s', self.transform_filename)
             raise
 

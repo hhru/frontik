@@ -19,7 +19,7 @@ def xml_from_file(filename, log):
     except IOError:
         log.error('failed to read xml file %s', filename)
         raise
-    except:
+    except Exception:
         log.error('failed to parse xml file %s', filename)
         raise
 
