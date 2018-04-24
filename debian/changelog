@@ -1,3 +1,9 @@
+frontik (3.1.4) unstable; urgency=medium
+
+  * HH-78634 use pytest, up pycodestyle
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 24 Apr 2018 15:06:09 +0300
+
 frontik (3.1.3) unstable; urgency=medium
 
   * HH-78543 Add new server to balancing with max load
