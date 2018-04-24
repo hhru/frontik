@@ -19,7 +19,7 @@ class LimitedDict(dict):
             if self.step:
                 ind = self._order.index(key)
                 self._order.remove(key)
-                self._order.insert(ind+self.step, key)
+                self._order.insert(ind + self.step, key)
             else:
                 self._order.remove(key)
                 self._order.append(key)

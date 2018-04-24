@@ -411,11 +411,11 @@ class DebugTransform(OutputTransform):
 
         try:
             debug_log_data.append(E.versions(
-               _pretty_print_xml(
+                _pretty_print_xml(
                     frontik.app.get_frontik_and_apps_versions(self.application)
-               )
+                )
             ))
-        except:
+        except Exception:
             debug_log.exception('cannot add version information')
             debug_log_data.append(E.versions('failed to get version information'))
 
@@ -423,7 +423,7 @@ class DebugTransform(OutputTransform):
             debug_log_data.append(E.status(
                 _pretty_print_json(self.application.get_current_status())
             ))
-        except:
+        except Exception:
             debug_log.exception('cannot add status information')
             debug_log_data.append(E.status('failed to get status information'))
 

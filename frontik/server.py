@@ -152,6 +152,6 @@ def main(config_file=None):
 
         ioloop.add_callback(_async_init_cb)
         ioloop.start()
-    except:
+    except BaseException:
         log.exception('frontik application exited with exception')
         sys.exit(1)
