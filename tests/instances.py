@@ -50,7 +50,7 @@ def find_free_port(from_port=9000, to_port=10000):
             s.bind(('', port))
             s.close()
             break
-        except:
+        except Exception:
             pass
     else:
         raise AssertionError('No empty port in range {}..{} for frontik test instance'.format(from_port, to_port))
@@ -78,7 +78,7 @@ class FrontikTestInstance(object):
                 response = self.get_page('status')
                 if response.status_code == 200:
                     return
-            except:
+            except Exception:
                 pass
 
         assert False, 'Failed to start Frontik instance'

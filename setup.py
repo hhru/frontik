@@ -27,8 +27,8 @@ class TestHook(test):
         test.initialize_options(self)
 
     def run_tests(self):
-        import nose
-        nose.main(argv=['nosetests', 'tests/', '-v', '--logging-clear-handlers'])
+        import pytest
+        sys.exit(pytest.main(['tests']))
 
 
 install_requires = [
@@ -61,8 +61,8 @@ setup(
     install_requires=install_requires,
     test_suite='tests',
     tests_require=[
-        'nose',
-        'pycodestyle == 2.2.0',
+        'pytest <= 3.5.0',
+        'pycodestyle == 2.4.0',
         'requests <= 2.9.1',
         'lxml-asserts',
         'tornado-httpclient-mock',
