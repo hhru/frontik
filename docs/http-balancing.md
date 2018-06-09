@@ -14,7 +14,11 @@ Each virtual host is added or modified using `register_upstream` method of HttpC
     * `slow_start_interval_sec` - if set, new or restored server won't be used until rand([0, slow_start_interval_sec]) seconds has passed
     * `slow_start_requests` - if set, new or restored server will not be used for more than one concurrent request until this number of requests will be finished
     * `retry_policy` - comma-separated string specifying when request is eligible for retry, for example: "timeout,http_503,non_idempotent_503" 
-* `servers` - list of Server objects with server address and weight
+* `servers` - list of Server objects with:
+    * `server` - ip address and port of the server
+    * `weigth` - controls how many requests should be send to this server
+    * `rack` - group servers by rack or blade system. Client will try to make a retry request to a different rack
+    * `dc` - unless specifically allowed, servers from datacenter other than that of the current application will be ignored
 
 Virtual host could be added, updated or deleted at any time.
 To make configuration of virtual hosts easier, `update_upstream` function accepts string representation of configuration:

@@ -74,43 +74,46 @@ class TestHttpClientBalancer(unittest.TestCase):
     def test_borrow_server(self):
         upstream = self._upstream([Server('1', 2), Server('2', 1)])
 
-        _, address = upstream.borrow_server()
+        _, address, _, _ = upstream.borrow_server()
         self.assertEqual(address, '1')
 
-        _, address = upstream.borrow_server()
+        _, address, _, _ = upstream.borrow_server()
         self.assertEqual(address, '2')
 
-        _, address = upstream.borrow_server()
+        _, address, _, _ = upstream.borrow_server()
         self.assertEqual(address, '1')
 
-        _, address = upstream.borrow_server()
+        _, address, _, _ = upstream.borrow_server()
         self.assertEqual(address, '1')
 
         self.assertEqual(_total_requests(upstream), 4)
 
     def test_borrow_return_server(self):
-        upstream = self._upstream([Server('1', 1), Server('2', 5)])
+        upstream = self._upstream([Server('1', 1, rack='rack1'), Server('2', 5, rack='rack2')])
 
-        _, address = upstream.borrow_server()
+        _, address, rack, _ = upstream.borrow_server()
         self.assertEqual(address, '1')
+        self.assertEqual(rack, 'rack1')
 
-        fd, address = upstream.borrow_server()
+        fd, address, rack, _ = upstream.borrow_server()
         self.assertEqual(address, '2')
+        self.assertEqual(rack, 'rack2')
 
         upstream.return_server(fd)
 
-        _, address = upstream.borrow_server()
+        _, address, rack, _ = upstream.borrow_server()
         self.assertEqual(address, '2')
+        self.assertEqual(rack, 'rack2')
 
         self.assertEqual(_total_requests(upstream), 2)
 
     def test_replace_in_process(self):
         upstream = self._upstream([Server('1', 1), Server('2', 5)])
 
-        fd, address = upstream.borrow_server()
+        fd, address, _, _ = upstream.borrow_server()
         self.assertEqual(address, '1')
 
-        _, address = upstream.borrow_server()
+        _, address, _, _ = upstream.borrow_server()
         self.assertEqual(address, '2')
 
         server = Server('3', 1)
@@ -123,5 +126,12 @@ class TestHttpClientBalancer(unittest.TestCase):
         self.assertEqual(_total_requests(upstream), 0)
         self.assertEqual(server.current_requests, 0)
 
-        _, address = upstream.borrow_server()
+        _, address, _, _ = upstream.borrow_server()
         self.assertEqual(address, '3')
+
+    def test_create_with_rack_and_datacenter(self):
+        upstream = self._upstream([Server('1', 1, 'rack1', 'dc1'), Server('2', 1)])
+
+        self.assertEqual(len(upstream.servers), 2)
+        self.assertEqual([server.rack for server in upstream.servers if server is not None], ['rack1', None])
+        self.assertEqual([server.datacenter for server in upstream.servers if server is not None], ['dc1', None])

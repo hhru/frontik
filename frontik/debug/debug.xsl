@@ -312,6 +312,7 @@
                     </span>
                     <xsl:apply-templates select="meta-info/upstream"/>
                     <xsl:apply-templates select="meta-info/retry"/>
+                    <xsl:apply-templates select="meta-info/server/@datacenter"/>
                     <xsl:value-of select="response/code"/>
                     <xsl:text> </xsl:text>
                     <xsl:value-of select="request/method"/>
@@ -334,8 +335,16 @@
                     </div>
                 </div>
 
-                <xsl:apply-templates select="request" mode="copy-as-curl"/>
-                <xsl:apply-templates select="response/time_info" mode="time-info"/>
+                <xsl:apply-templates select="request" mode="params-info">
+                    <xsl:with-param name="label" select="'copy as cURL'"/>
+                    <xsl:with-param name="select" select="true()"/>
+                </xsl:apply-templates>
+                <xsl:apply-templates select="response/time_info" mode="params-info">
+                    <xsl:with-param name="label" select="'pycurl time info'"/>
+                </xsl:apply-templates>
+                <xsl:apply-templates select="meta-info/server" mode="params-info">
+                    <xsl:with-param name="label" select="'server info'"/>
+                </xsl:apply-templates>
                 <xsl:apply-templates select="debug"/>
                 <xsl:apply-templates select="request"/>
                 <xsl:apply-templates select="response"/>
@@ -361,6 +370,11 @@
             <xsl:text>RETRY </xsl:text>
             <xsl:value-of select="@count"/>
         </span>
+    </xsl:template>
+
+    <xsl:template match="meta-info/server/@datacenter">
+        <xsl:value-of select="."/>
+        <xsl:text> </xsl:text>
     </xsl:template>
 
     <xsl:template match="data-source-info/type">
@@ -400,34 +414,41 @@
         <xsl:apply-templates select="body[not(param)]"/>
     </xsl:template>
 
-    <xsl:template match="request" mode="copy-as-curl">
+    <xsl:template match="request | time_info | server" mode="params-info">
+        <xsl:param name="label"/>
+        <xsl:param name="select" select="false()"/>
+
+        <xsl:variable name="select-js">
+            <xsl:if test="$select">
+                <xsl:value-of select="'select(this.parentNode);'"/>
+            </xsl:if>
+        </xsl:variable>
+
         <div class="params">
             <!-- This allows debug page to work inside dev tools request preview, useful for ajax requests debugging -->
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode); select(this.parentNode)" class="delimeter copy-as-curl-link">
-                copy as cURL
+            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode);{$select-js}" class="delimeter params-link">
+                <xsl:value-of select="$label"/>
             </label>
             <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
             <div>
-                <pre class="details copy-as-curl">
-                    <xsl:value-of select='curl'/>
+                <pre class="details params-info">
+                    <xsl:apply-templates select="." mode="params-info-body"/>
                 </pre>
             </div>
         </div>
     </xsl:template>
 
-    <xsl:template match="time_info" mode="time-info">
-        <div class="params">
-            <!-- This allows debug page to work inside dev tools request preview, useful for ajax requests debugging -->
-            <label for="details_{generate-id(.)}" onclick="toggle(this.parentNode)" class="delimeter time-info-link">
-                pycurl time info
-            </label>
-            <input type="checkbox" class="details-expander" id="details_{generate-id(.)}"/>
-            <div>
-                <pre class="details time-info">
-                    <xsl:apply-templates select="time"/>
-                </pre>
-            </div>
-        </div>
+    <xsl:template match="request" mode="params-info-body">
+        <xsl:value-of select="curl"/>
+    </xsl:template>
+
+    <xsl:template match="time_info" mode="params-info-body">
+        <xsl:apply-templates select="time"/>
+    </xsl:template>
+
+    <xsl:template match="server" mode="params-info-body">
+        <div>datacenter:&#160;<xsl:value-of select="@datacenter"/></div>
+        <div>rack:&#160;<xsl:value-of select="@rack"/></div>
     </xsl:template>
 
     <xsl:template match="response">
