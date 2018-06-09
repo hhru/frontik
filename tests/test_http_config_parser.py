@@ -62,3 +62,18 @@ class TestHttpConfigParser(unittest.TestCase):
 
         server = servers[0]
         self.assertEquals('bla-bla', server.address)
+
+    def test_rack_and_datacenter_parameters(self):
+        config, servers = Upstream.parse_config('|server=s1 rack=r1 dc=dc1|server=s2 rack=r2 dc=dc2')
+
+        self.assertEquals(2, len(servers))
+
+        server = servers[0]
+        self.assertEquals('s1', server.address)
+        self.assertEquals('r1', server.rack)
+        self.assertEquals('dc1', server.datacenter)
+
+        server = servers[1]
+        self.assertEquals('s2', server.address)
+        self.assertEquals('r2', server.rack)
+        self.assertEquals('dc2', server.datacenter)

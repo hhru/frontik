@@ -34,12 +34,14 @@ http_logger = logging.getLogger('frontik.http_client')
 class Server(object):
     @classmethod
     def from_config(cls, properties):
-        params = {key: properties[key] for key in ('weight',) if key in properties}
+        params = {key: properties[key] for key in ('weight', 'rack', 'dc') if key in properties}
         return cls(properties.get('server'), **params)
 
-    def __init__(self, address, weight=1):
+    def __init__(self, address, weight=1, rack=None, dc=None):
         self.address = address.rstrip(u'/')
         self.weight = int(weight)
+        self.rack = rack
+        self.datacenter = dc
 
         self.current_requests = 0
         self.fails = 0
@@ -56,6 +58,8 @@ class Server(object):
             self.requests = int(self.requests * ratio)
 
         self.weight = server.weight
+        self.rack = server.rack
+        self.datacenter = server.datacenter
 
     def disable(self):
         self.is_active = False
@@ -118,14 +122,32 @@ class Upstream(object):
         self.update(config, servers)
 
     def borrow_server(self, exclude=None):
-        min_load = 0
-        min_current_load = 0
         min_index = None
-        should_rescale = True
+        min_weights = None
+        should_rescale_local_dc = True
+        should_rescale_remote_dc = options.http_client_allow_cross_datacenter_requests
+
+        if exclude is not None:
+            tried_racks = {self.servers[index].rack for index in exclude if self.servers[index] is not None}
+        else:
+            tried_racks = None
 
         for index, server in enumerate(self.servers):
             if server is None or not server.is_active:
                 continue
+
+            is_different_datacenter = server.datacenter != options.datacenter
+
+            if is_different_datacenter and not options.http_client_allow_cross_datacenter_requests:
+                continue
+
+            should_rescale = server.requests >= server.weight
+            if is_different_datacenter:
+                should_rescale_remote_dc = should_rescale_remote_dc and should_rescale
+            else:
+                should_rescale_local_dc = should_rescale_local_dc and should_rescale
+
+            groups = (is_different_datacenter, tried_racks is not None and server.rack in tried_racks)
 
             if server.join_strategy is not None and not server.join_strategy.can_handle_request(server):
                 current_load = float('inf')
@@ -134,21 +156,21 @@ class Upstream(object):
 
             load = server.requests / float(server.weight)
 
-            should_rescale = should_rescale and server.requests >= server.weight
-            worth = current_load < min_current_load or (current_load == min_current_load and load < min_load)
+            weights = (groups, current_load, load)
 
-            if (exclude is None or index not in exclude) and (min_index is None or worth):
-                min_current_load = current_load
-                min_load = load
+            if (exclude is None or index not in exclude) and (min_index is None or weights < min_weights):
+                min_weights = weights
                 min_index = index
 
         if min_index is None:
-            return None, None
+            return None, None, None, None
 
-        if should_rescale:
+        if should_rescale_local_dc or should_rescale_remote_dc:
             for server in self.servers:
                 if server is not None and server.is_active:
-                    server.requests -= server.weight
+                    is_same_dc = server.datacenter == options.datacenter
+                    if (should_rescale_local_dc and is_same_dc) or (should_rescale_remote_dc and not is_same_dc):
+                        server.requests -= server.weight
 
         server = self.servers[min_index]
         server.requests += 1
@@ -163,7 +185,7 @@ class Upstream(object):
                 server.requests = int(server.weight * max_load)
                 server.join_strategy = None
 
-        return min_index, server.address
+        return min_index, server.address, server.rack, server.datacenter
 
     def return_server(self, index, error=False):
         server = self.servers[index]
@@ -219,6 +241,8 @@ class Upstream(object):
                 self.servers[index] = None
             else:
                 del mapping[server.address]
+                if server.is_active and server.datacenter != changed.datacenter:
+                    server.restore(self.get_join_strategy())
                 server.update(changed)
 
         for server in servers:
@@ -332,11 +356,18 @@ class BalancedHttpRequest(object):
         self.request_time_left = self.request_timeout * max_timeout_tries
         self.tried_hosts = None
         self.current_host = host.rstrip(u'/')
-        self.current_fd = None
+        self.current_server_index = None
+        self.current_rack = None
+        self.current_datacenter = None
 
     def make_request(self):
         if self.upstream.balanced:
-            self.current_fd, self.current_host = self.upstream.borrow_server(self.tried_hosts)
+            index, host, rack, datacenter = self.upstream.borrow_server(self.tried_hosts)
+
+            self.current_server_index = index
+            self.current_host = host
+            self.current_rack = rack
+            self.current_datacenter = datacenter
 
         request = HTTPRequest(
             url=(self.current_host if self.backend_available() else self.upstream.name) + self.uri,
@@ -368,8 +399,8 @@ class BalancedHttpRequest(object):
         if self.upstream.balanced:
             do_retry, error = self.upstream.retry_policy.check_retry(response, self.idempotent)
 
-            if self.current_fd is not None:
-                self.upstream.return_server(self.current_fd, error)
+            if self.current_server_index is not None:
+                self.upstream.return_server(self.current_server_index, error)
         else:
             do_retry, error = False, False
 
@@ -380,7 +411,7 @@ class BalancedHttpRequest(object):
                 self.first_status = response.code
                 self.tried_hosts = set()
 
-            self.tried_hosts.add(self.current_fd)
+            self.tried_hosts.add(self.current_server_index)
 
         return do_retry
 
@@ -535,6 +566,7 @@ class HttpClient(object):
                 self.statsd_client.count('http.client.retries', 1,
                                          upstream=balanced_request.get_host(),
                                          server=balanced_request.current_host,
+                                         datacenter=balanced_request.current_datacenter,
                                          first_upstream_status=balanced_request.first_status,
                                          tries=len(balanced_request.tried_hosts),
                                          status=response.code)
@@ -569,9 +601,11 @@ class HttpClient(object):
             self.statsd_client.count('http.client.requests', 1,
                                      upstream=balanced_request.get_host(),
                                      server=balanced_request.current_host,
+                                     datacenter=balanced_request.current_datacenter,
                                      final=str(not do_retry),
                                      status=response.code)
             self.statsd_client.time('http.client.request.time', int(response.request_time * 1000),
+                                    datacenter=balanced_request.current_datacenter,
                                     upstream=balanced_request.get_host())
             self.statsd_client.flush()
 
@@ -600,9 +634,10 @@ class HttpClient(object):
         request = balanced_request.make_request()
 
         if not balanced_request.backend_available():
-            callback(HTTPResponse(request, 502,
-                                  error=HTTPError(502, 'No backend available for ' + balanced_request.get_host()),
-                                  request_time=0))
+            response = HTTPResponse(request, 502,
+                                    error=HTTPError(502, 'No backend available for ' + balanced_request.get_host()),
+                                    request_time=0)
+            IOLoop.current().add_callback(callback, response)
             return
 
         if self.handler.debug_mode.pass_debug:
@@ -644,6 +679,8 @@ class HttpClient(object):
             if self.handler.debug_mode.enabled:
                 debug_extra.update({'_response': response, '_request': request,
                                     '_request_retry': retries_count,
+                                    '_rack': balanced_request.current_rack,
+                                    '_datacenter': balanced_request.current_datacenter,
                                     '_balanced_request': balanced_request})
         except Exception:
             self.handler.log.exception('Cannot get response from debug')

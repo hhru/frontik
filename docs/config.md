@@ -21,10 +21,8 @@ These options can be set for each Frontik instance (see [options.py](/frontik/op
 | `debug`                      | `bool`  | `False`       | Enable debug mode                                                      |
 | `debug_login`                | `str`   | `None`        | Debug mode login for basic authentication (when `debug=False`)         |
 | `debug_password`             | `str`   | `None`        | Debug mode password for basic authentication (when `debug=False`)      |
-| `timeout_multiplier`         | `float` | `1.0`         | Generic timeout multiplier for get_xxx calls (useful for testing)      |
 | `handlers_count`             | `int`   | `100`         | Limit for number of simultaneous requests handled by Frontik instance  |
-| `http_proxy_host`            | `str`   | `None`        | HTTP proxy host for Curl HTTP client                                   |
-| `http_proxy_port`            | `int`   | `3128`        | HTTP proxy port for Curl HTTP client                                   |
+| `datacenter`                 | `str`   | `None`        | Datacenter where current application is running                        |
 
 Logging options:
 
@@ -42,6 +40,26 @@ Logging options:
 | `syslog_facility`            | `str`   | `'user'`      | Syslog facility                                                        |
 | `suppressed_loggers`         | `list`  | `[]`          | List of logger names to be excluded from debug output                  |
 | `sentry_dsn`                 | `str`   | `None`        | Enable Sentry and set Sentry DSN for sending errors                    |
+| `statsd_host`                | `str`   | `None`        | Stats server host for metrics                                          |
+| `statsd_port`                | `int`   | `None`        | Stats server port for metrics                                          |
+
+HTTP client options:
+
+| Option name                                   | Type    | Default value      | Description                                                                                |
+| --------------------------------------------- | ------- | ------------------ | ------------------------------------------------------------------------------------------ |
+| `max_http_clients`                            | `int`   | `100`              | Curl max clients option                                                                    |
+| `max_http_clients_connects`                   | `int`   | `None`             | Curl max connects option                                                                   |
+| `http_client_default_connect_timeout_sec`     | `float` | `0.2`              | Default connect timeout                                                                    |
+| `http_client_default_request_timeout_sec`     | `float` | `2.0`              | Default request timeout                                                                    |
+| `http_client_default_max_tries`               | `int`   | `2`                | Maximum number of retries per request + 1                                                  |
+| `http_client_default_max_timeout_tries`       | `int`   | `1`                | Maximum number of retries due to timeout per request + 1                                   |
+| `http_client_default_max_fails`               | `int`   | `0`                | Number of consecutive fails before server is considered dead                               |
+| `http_client_default_fail_timeout_sec`        | `float` | `10`               | Timeout before starting making requests to a dead server                                   |
+| `http_client_default_retry_policy`            | `str`   | `timeout,http_503` | Conditions when request retry is possible                                                  |
+| `http_proxy_host`                             | `str`   | `None`             | HTTP proxy host for Curl HTTP client                                                       |
+| `http_proxy_port`                             | `int`   | `3128`             | HTTP proxy port for Curl HTTP client                                                       |
+| `http_client_allow_cross_datacenter_requests` | `bool`  | `False`            | Allow requests to different datacenter when no upstream in current datacenter is available |
+| `timeout_multiplier`                          | `float` | `1.0`              | Generic timeout multiplier for http requests (useful for testing)                          |
 
 Producers options:
 
