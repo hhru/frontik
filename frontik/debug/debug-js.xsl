@@ -5,12 +5,15 @@
         <script><![CDATA[
             function toggle(entry) {
                 var details = entry.querySelector('.details');
+                var expander = entry.querySelector('.details-expander');
                 if (details.className.indexOf('m-details_visible') != -1) {
                     details.className = details.className.replace(/\bm-details_visible\b/, '');
                     entry.className = entry.className.replace(/\bentry_expanded\b/, 'entry_expandable')
+                    expander.checked = true;
                 } else {
                     details.className = details.className + ' m-details_visible';
                     entry.className = entry.className.replace(/\bentry_expandable\b/, 'entry_expanded')
+                    expander.checked = false;
                 }
             }
 

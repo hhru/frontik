@@ -303,12 +303,12 @@
                         text-align: right;
                     }
 
-            .copy-as-curl-link, .time-info-link {
+            .params-link {
                 text-decoration: underline;
                 cursor: pointer;
             }
 
-            .copy-as-curl, .time-info {
+            .params-info {
                 max-width: 100%;
                 margin: 10px 0;
                 padding: 4px;
