@@ -39,6 +39,8 @@ tornado.options.define('debug', default=False, type=bool)
 tornado.options.define('debug_login', default=None, type=str)
 tornado.options.define('debug_password', default=None, type=str)
 
+tornado.options.define('datacenter', default=None, type=str)
+
 tornado.options.define('http_client_default_connect_timeout_sec', default=0.2, type=float)
 tornado.options.define('http_client_default_request_timeout_sec', default=2.0, type=float)
 tornado.options.define('http_client_default_max_tries', default=2, type=int)
@@ -48,6 +50,7 @@ tornado.options.define('http_client_default_fail_timeout_sec', default=10, type=
 tornado.options.define('http_client_default_retry_policy', default='timeout,http_503', type=str)
 tornado.options.define('http_proxy_host', default=None, type=str)
 tornado.options.define('http_proxy_port', default=3128, type=int)
+tornado.options.define('http_client_allow_cross_datacenter_requests', default=False, type=bool)
 
 tornado.options.define('statsd_host', default=None, type=str)
 tornado.options.define('statsd_port', default=None, type=int)

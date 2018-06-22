@@ -150,6 +150,7 @@ class FrontikApplication(Application):
 
         return {
             'uptime': uptime_value,
+            'datacenter': options.datacenter,
             'workers': {
                 'total': options.max_http_clients,
                 'free': len(self.http_client_factory.tornado_http_client._free_list)
