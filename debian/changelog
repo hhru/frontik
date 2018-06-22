@@ -1,3 +1,11 @@
+frontik (3.1.5) unstable; urgency=medium
+
+  * HH-79867 Add datacenter and rack handling, fix sync callback
+    execution
+  * HH-76660 add .hh-release file
+
+ -- Automated Build <d.smirnov@hh.ru>  Fri, 22 Jun 2018 11:53:41 +0300
+
 frontik (3.1.4) unstable; urgency=medium
 
   * HH-78634 use pytest, up pycodestyle
