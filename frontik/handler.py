@@ -8,6 +8,7 @@ import tornado.httputil
 import tornado.options
 import tornado.web
 from tornado import gen
+from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 
 import frontik.auth
@@ -161,40 +162,47 @@ class BaseHandler(tornado.web.RequestHandler):
         RequestContext.set('handler_name', repr(self))
         return super(BaseHandler, self)._execute(transforms, *args, **kwargs)
 
+    def add_request_to_preprocessors_completed_group(self, future):
+        self.add_future(future, self.preprocessors_completed_group.add_notification())
+        return future
+
+    def _execute_page_handler_after_preprocessor_completion(self, page_handler_method):
+        self.log.stage_tag('prepare')
+
+        wrapped_page_handler_method = self._create_handler_method_wrapper(page_handler_method)
+        preprocessors_completed_callback = self.check_finished(
+            lambda: wrapped_page_handler_method(self._preprocessors_future)
+        )
+
+        self.preprocessors_completed_group = AsyncGroup(preprocessors_completed_callback, name='finish preprocessors')
+        self._preprocessors_completed_notification = self.preprocessors_completed_group.add_notification()
+
+        def _handle_preprocessors_future(future):
+            self._preprocessors_future = future
+            self._preprocessors_completed_notification()
+
+        preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(page_handler_method.__func__)
+        self.add_future(self._run_preprocessors(preprocessors, self), _handle_preprocessors_future)
+
     @tornado.web.asynchronous
     def get(self, *args, **kwargs):
-        self.log.stage_tag('prepare')
-        get_page = self._create_handler_method_wrapper(self.get_page)
-        preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(self.get_page.__func__)
-        self.add_future(self._run_preprocessors(preprocessors, self), get_page)
+        self._execute_page_handler_after_preprocessor_completion(self.get_page)
 
     @tornado.web.asynchronous
     def post(self, *args, **kwargs):
-        self.log.stage_tag('prepare')
-        post_page = self._create_handler_method_wrapper(self.post_page)
-        preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(self.post_page.__func__)
-        self.add_future(self._run_preprocessors(preprocessors, self), post_page)
+        self._execute_page_handler_after_preprocessor_completion(self.post_page)
 
     @tornado.web.asynchronous
     def head(self, *args, **kwargs):
-        self.log.stage_tag('prepare')
-        get_page = self._create_handler_method_wrapper(self.get_page)
-        preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(self.get_page.__func__)
-        self.add_future(self._run_preprocessors(preprocessors, self), get_page)
+        self._execute_page_handler_after_preprocessor_completion(self.get_page)
 
     @tornado.web.asynchronous
     def delete(self, *args, **kwargs):
-        self.log.stage_tag('prepare')
-        delete_page = self._create_handler_method_wrapper(self.delete_page)
-        preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(self.delete_page.__func__)
-        self.add_future(self._run_preprocessors(preprocessors, self), delete_page)
+        self._execute_page_handler_after_preprocessor_completion(self.delete_page)
 
     @tornado.web.asynchronous
     def put(self, *args, **kwargs):
-        self.log.stage_tag('prepare')
-        put_page = self._create_handler_method_wrapper(self.put_page)
-        preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(self.put_page.__func__)
-        self.add_future(self._run_preprocessors(preprocessors, self), put_page)
+        self._execute_page_handler_after_preprocessor_completion(self.put_page)
 
     def options(self, *args, **kwargs):
         raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
