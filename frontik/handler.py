@@ -394,7 +394,7 @@ class BaseHandler(tornado.web.RequestHandler):
                 raise gen.Return(False)
 
         preprocessors_group_notification()
-        yield self.preprocessors_group.get_group_future()
+        yield self.preprocessors_group.get_finish_future()
 
         raise gen.Return(True)
 
