@@ -103,10 +103,10 @@ class AsyncGroup(object):
         return new_cb
 
     def add_future(self, future):
-        future.add_done_callback(self.add_notification())
+        IOLoop.current().add_future(future, self.add_notification())
         return future
 
-    def get_group_future(self):
+    def get_finish_future(self):
         return self._future
 
 
