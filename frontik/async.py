@@ -24,6 +24,7 @@ class AsyncGroup(object):
         self._finished = False
         self._aborted = False
         self._name = name
+        self._future = Future()
 
         self._start_time = time.time()
 
@@ -46,6 +47,7 @@ class AsyncGroup(object):
 
         async_logger.debug(self._message('done in %.2fms'), (time.time() - self._start_time) * 1000.)
         self._finished = True
+        self._future.set_result(None)
 
         try:
             self._finish_cb()
@@ -99,6 +101,13 @@ class AsyncGroup(object):
             self.try_finish()
 
         return new_cb
+
+    def add_future(self, future):
+        future.add_done_callback(self.add_notification())
+        return future
+
+    def get_group_future(self):
+        return self._future
 
 
 def future_fold(future, result_mapper=None, exception_mapper=None):
