@@ -27,11 +27,11 @@ def waiting_preprocessor(sleep_time_sec, preprocessor_name, add_to_preprocessors
 
 class Page(PageHandler):
 
-    @waiting_preprocessor(4.0, "should_finish_after_page_finish", False)
-    @waiting_preprocessor(2.0, "should_finish_third", True)
-    @waiting_preprocessor(1.0, "should_finish_first", False)
-    @waiting_preprocessor(1.5, "should_finish_second", True)
-    @waiting_preprocessor(5.0, "should_finish_after_page_finish", False)
+    @waiting_preprocessor(0.7, "should_finish_after_page_finish", False)
+    @waiting_preprocessor(0.5, "should_finish_third", True)
+    @waiting_preprocessor(0.1, "should_finish_first", False)
+    @waiting_preprocessor(0.3, "should_finish_second", True)
+    @waiting_preprocessor(0.9, "should_finish_after_page_finish", False)
     def get_page(self):
         assert hasattr(self, 'completed_preprocessors')
         self.json.put({'preprocessors': self.completed_preprocessors})
