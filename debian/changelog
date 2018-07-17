@@ -1,3 +1,12 @@
+frontik (3.1.6.1) unstable; urgency=medium
+
+  * HH-80991 use lower timeouts for preprocessors group tests
+  * HH-80991 add tests for preprocessors group
+  * HH-80991 introduce asynchGroup future
+  * HH-80991 allow to wait preprocessors requests completion
+
+ -- Automated Build <e.petrukovich@hh.by>  Tue, 17 Jul 2018 16:02:16 +0300
+
 frontik (3.1.5) unstable; urgency=medium
 
   * HH-79867 Add datacenter and rack handling, fix sync callback
