@@ -54,3 +54,16 @@ class TestPreprocessors(unittest.TestCase):
         response = frontik_test_app.get_page('preprocessors?redirect=true', allow_redirects=False)
         self.assertEqual(response.status_code, 302)
         self.assertIn('redirected', response.headers.get('Location'))
+
+    def test_preprocessors_group(self):
+        response_json = frontik_test_app.get_page_json('preprocessors_group')
+        self.assertEqual(
+            response_json,
+            {
+                'preprocessors': [
+                    'should_finish_first',
+                    'should_finish_second',
+                    'should_finish_third'
+                ]
+            }
+        )
