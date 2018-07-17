@@ -8,6 +8,7 @@ import tornado.httputil
 import tornado.options
 import tornado.web
 from tornado import gen
+from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 
 import frontik.auth
@@ -161,40 +162,32 @@ class BaseHandler(tornado.web.RequestHandler):
         RequestContext.set('handler_name', repr(self))
         return super(BaseHandler, self)._execute(transforms, *args, **kwargs)
 
+    def _execute_page_handler_after_preprocessor_completion(self, page_handler_method):
+        self.log.stage_tag('prepare')
+        wrapped_page_handler_method = self._create_handler_method_wrapper(page_handler_method)
+
+        preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(page_handler_method.__func__)
+        self.add_future(self._run_preprocessors(preprocessors, self), wrapped_page_handler_method)
+
     @tornado.web.asynchronous
     def get(self, *args, **kwargs):
-        self.log.stage_tag('prepare')
-        get_page = self._create_handler_method_wrapper(self.get_page)
-        preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(self.get_page.__func__)
-        self.add_future(self._run_preprocessors(preprocessors, self), get_page)
+        self._execute_page_handler_after_preprocessor_completion(self.get_page)
 
     @tornado.web.asynchronous
     def post(self, *args, **kwargs):
-        self.log.stage_tag('prepare')
-        post_page = self._create_handler_method_wrapper(self.post_page)
-        preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(self.post_page.__func__)
-        self.add_future(self._run_preprocessors(preprocessors, self), post_page)
+        self._execute_page_handler_after_preprocessor_completion(self.post_page)
 
     @tornado.web.asynchronous
     def head(self, *args, **kwargs):
-        self.log.stage_tag('prepare')
-        get_page = self._create_handler_method_wrapper(self.get_page)
-        preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(self.get_page.__func__)
-        self.add_future(self._run_preprocessors(preprocessors, self), get_page)
+        self._execute_page_handler_after_preprocessor_completion(self.get_page)
 
     @tornado.web.asynchronous
     def delete(self, *args, **kwargs):
-        self.log.stage_tag('prepare')
-        delete_page = self._create_handler_method_wrapper(self.delete_page)
-        preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(self.delete_page.__func__)
-        self.add_future(self._run_preprocessors(preprocessors, self), delete_page)
+        self._execute_page_handler_after_preprocessor_completion(self.delete_page)
 
     @tornado.web.asynchronous
     def put(self, *args, **kwargs):
-        self.log.stage_tag('prepare')
-        put_page = self._create_handler_method_wrapper(self.put_page)
-        preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(self.put_page.__func__)
-        self.add_future(self._run_preprocessors(preprocessors, self), put_page)
+        self._execute_page_handler_after_preprocessor_completion(self.put_page)
 
     def options(self, *args, **kwargs):
         raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
@@ -386,16 +379,22 @@ class BaseHandler(tornado.web.RequestHandler):
 
     # Preprocessors and postprocessors
 
-    def _call_preprocessors(self, preprocessors, callback):
-        self._chain_functions(iter(preprocessors), callback, 'preprocessor')
+    def add_to_preprocessors_group(self, future):
+        return self.preprocessors_group.add_future(future)
 
     @gen.coroutine
     def _run_preprocessors(self, preprocessors, *args, **kwargs):
+        self.preprocessors_group = AsyncGroup(lambda: None, name='preprocessors')
+        preprocessors_group_notification = self.preprocessors_group.add_notification()
+
         for p in preprocessors:
             yield gen.coroutine(p)(*args, **kwargs)
             if self._finished or self._page_aborted:
                 self.log.warning('page has already started finishing, breaking preprocessors chain')
                 raise gen.Return(False)
+
+        preprocessors_group_notification()
+        yield self.preprocessors_group.get_finish_future()
 
         raise gen.Return(True)
 
