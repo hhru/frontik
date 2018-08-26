@@ -29,6 +29,11 @@ def _string_to_dict(s):
 http_logger = logging.getLogger('frontik.http_client')
 
 
+class FailFastError(Exception):
+    def __init__(self, failed_request):
+        self.failed_request = failed_request
+
+
 class Server(object):
     @classmethod
     def from_config(cls, properties):
@@ -507,53 +512,62 @@ class HttpClient(object):
 
     def get_url(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None,
                 max_timeout_tries=None, callback=None, follow_redirects=True,
-                add_to_finish_group=True, parse_response=True, parse_on_error=False):
+                add_to_finish_group=True, parse_response=True, parse_on_error=False, fail_fast=False):
 
         request = BalancedHttpRequest(host, self.get_upstream(host), uri, 'GET', data, headers,
                                       None, None, connect_timeout, request_timeout, max_timeout_tries,
                                       follow_redirects)
 
-        return self._fetch_with_retry(request, callback, add_to_finish_group, parse_response, parse_on_error)
+        return self._fetch_with_retry(
+            request, callback, add_to_finish_group, parse_response, parse_on_error, fail_fast
+        )
 
     def head_url(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None,
                  max_timeout_tries=None, callback=None, follow_redirects=True,
-                 add_to_finish_group=True):
+                 add_to_finish_group=True, fail_fast=False):
 
         request = BalancedHttpRequest(host, self.get_upstream(host), uri, 'HEAD', data, headers,
                                       None, None, connect_timeout, request_timeout, max_timeout_tries,
                                       follow_redirects)
 
-        return self._fetch_with_retry(request, callback, add_to_finish_group, False, False)
+        return self._fetch_with_retry(request, callback, add_to_finish_group, False, False, fail_fast)
 
     def post_url(self, host, uri, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
                  max_timeout_tries=None, idempotent=False, callback=None, follow_redirects=True, content_type=None,
-                 add_to_finish_group=True, parse_response=True, parse_on_error=False):
+                 add_to_finish_group=True, parse_response=True, parse_on_error=False, fail_fast=False):
 
         request = BalancedHttpRequest(host, self.get_upstream(host), uri, 'POST', data, headers,
                                       files, content_type, connect_timeout, request_timeout, max_timeout_tries,
                                       follow_redirects, idempotent)
 
-        return self._fetch_with_retry(request, callback, add_to_finish_group, parse_response, parse_on_error)
+        return self._fetch_with_retry(
+            request, callback, add_to_finish_group, parse_response, parse_on_error, fail_fast
+        )
 
     def put_url(self, host, uri, data='', headers=None, connect_timeout=None, request_timeout=None,
                 max_timeout_tries=None, callback=None, content_type=None,
-                add_to_finish_group=True, parse_response=True, parse_on_error=False):
+                add_to_finish_group=True, parse_response=True, parse_on_error=False, fail_fast=False):
 
         request = BalancedHttpRequest(host, self.get_upstream(host), uri, 'PUT', data, headers,
                                       None, content_type, connect_timeout, request_timeout, max_timeout_tries)
 
-        return self._fetch_with_retry(request, callback, add_to_finish_group, parse_response, parse_on_error)
+        return self._fetch_with_retry(
+            request, callback, add_to_finish_group, parse_response, parse_on_error, fail_fast
+        )
 
     def delete_url(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None,
                    max_timeout_tries=None, callback=None, content_type=None,
-                   add_to_finish_group=True, parse_response=True, parse_on_error=False):
+                   add_to_finish_group=True, parse_response=True, parse_on_error=False, fail_fast=False):
 
         request = BalancedHttpRequest(host, self.get_upstream(host), uri, 'DELETE', data, headers,
                                       None, content_type, connect_timeout, request_timeout, max_timeout_tries)
 
-        return self._fetch_with_retry(request, callback, add_to_finish_group, parse_response, parse_on_error)
+        return self._fetch_with_retry(
+            request, callback, add_to_finish_group, parse_response, parse_on_error, fail_fast
+        )
 
-    def _fetch_with_retry(self, balanced_request, callback, add_to_finish_group, parse_response, parse_on_error):
+    def _fetch_with_retry(self, balanced_request, callback, add_to_finish_group, parse_response, parse_on_error,
+                          fail_fast):
         future = Future()
 
         def request_finished_callback(response):
@@ -578,7 +592,10 @@ class HttpClient(object):
             if callable(callback):
                 self.handler.warn_slow_callback(callback)(result.data, result.response)
 
-            future.set_result(result)
+            if fail_fast and (result.response.error or result.exception):
+                raise FailFastError(result)
+            else:
+                future.set_result(result)
 
         if add_to_finish_group and not self.handler.is_finished():
             request_finished_callback = self.handler.finish_group.add(request_finished_callback)
@@ -736,11 +753,12 @@ class FailedRequestException(Exception):
 
 
 class RequestResult(object):
-    __slots__ = ('data', 'response', 'exception')
+    __slots__ = ('name', 'data', 'response', 'exception')
 
     ResponseData = namedtuple('ResponseData', ('data', 'response'))
 
     def __init__(self):
+        self.name = None
         self.data = None
         self.response = None
         self.exception = None
