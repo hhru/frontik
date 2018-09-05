@@ -1,3 +1,9 @@
+frontik (3.1.6.2) unstable; urgency=medium
+
+  * HH-82583 Convern body to bytes
+
+ -- Automated Build <d.smirnov@hh.ru>  Wed, 05 Sep 2018 19:46:34 +0300
+
 frontik (3.1.6.1) unstable; urgency=medium
 
   * HH-80991 use lower timeouts for preprocessors group tests
