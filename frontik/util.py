@@ -54,7 +54,7 @@ def make_qs(query_args):
 
 
 def make_body(data):
-    return make_qs(data) if isinstance(data, dict) else data
+    return make_qs(data) if isinstance(data, dict) else any_to_bytes(data)
 
 
 def make_url(base, **query_args):
