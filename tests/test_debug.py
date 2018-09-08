@@ -47,10 +47,6 @@ class DebugTestCase(unittest.TestCase):
         for msg in extra_output:
             self.assertIn(msg, response_content)
 
-        # Iframes
-
-        self.assertEqual(response_content.count("doiframe('"), 3)
-
         # Check that all http requests are present
 
         self.assertEqual(response_content.count('<div class="timebar">'), 15)

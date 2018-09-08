@@ -485,15 +485,6 @@
         </xsl:call-template>
     </xsl:template>
 
-    <xsl:template match="body[contains(@content_type, 'text/html') and text() != '']">
-        <xsl:variable name="id" select="generate-id(.)"/>
-        <div class="delimeter"><xsl:value-of select="name(parent::*)"/> body</div>
-        <div id="{$id}"><![CDATA[]]></div>
-        <script>
-            doiframe('<xsl:value-of select="$id"/>', '<xsl:value-of select="."/>');
-        </script>
-    </xsl:template>
-
     <xsl:template match="body[text() = '']">
         <div class="delimeter"><xsl:value-of select="name(parent::*)"/> body</div>
         Empty response
