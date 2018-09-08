@@ -6,7 +6,7 @@ Postprocessing is a mechanism for inserting and running hooks after finishing al
 Postprocessor can be added at any moment before finishing the main AsyncGroup:
 
 ```python
-self.add_early_postprocessor(postprocessor)
+self.add_postprocessor(postprocessor)
 ```
 
 where `postprocessor` is a callable:
@@ -20,7 +20,7 @@ There are two types of postprocessors in Frontik:
 
 ![Postprocessing](/docs/postprocessing.png)
 
-__Early postprocessors__ are called just after all requests are done (the main AsyncGroup is finished). They are ideal
+__Postprocessors__ are called just after all requests are done (the main AsyncGroup is finished). They are ideal
 for general checks that can immediately interrupt request handling (for example make redirect or throw HTTPError).
 
 __Template postprocessors__ could be used for modifying the response text after the actual templating.
