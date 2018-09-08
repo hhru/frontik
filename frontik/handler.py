@@ -141,12 +141,12 @@ class BaseHandler(tornado.web.RequestHandler):
         return self.application.reverse_url(name, *args, **kwargs)
 
     @staticmethod
-    def add_callback(callback):
-        IOLoop.current().add_callback(callback)
+    def add_callback(callback, *args, **kwargs):
+        IOLoop.current().add_callback(callback, *args, **kwargs)
 
     @staticmethod
-    def add_timeout(deadline, callback):
-        return IOLoop.current().add_timeout(deadline, callback)
+    def add_timeout(deadline, callback, *args, **kwargs):
+        return IOLoop.current().add_timeout(deadline, callback, *args, **kwargs)
 
     @staticmethod
     def remove_timeout(timeout):
