@@ -13,7 +13,7 @@ class TestPostprocessors(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'<html><h1>%%header%%</h1>%%content%%</html>')
 
-    def test_early_postprocessors(self):
+    def test_postprocessors(self):
         response = frontik_test_app.get_page(POSTPROCESS_URL.format('fail_early'))
         self.assertEqual(response.status_code, 400)
 

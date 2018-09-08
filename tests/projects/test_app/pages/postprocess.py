@@ -11,8 +11,8 @@ class ContentPostprocessor(object):
 class Page(frontik.handler.PageHandler):
     def get_page(self):
         if self.get_argument('fail_early', None) is not None:
-            self.add_early_postprocessor(Page._early_pp_1)
-            self.add_early_postprocessor(Page._early_pp_2)
+            self.add_postprocessor(Page._early_pp_1)
+            self.add_postprocessor(Page._early_pp_2)
 
         self.set_template('postprocess.html')
         self.json.put({'content': '%%content%%'})
