@@ -167,17 +167,6 @@ def make_mfd(fields, files):
     return b''.join(body), content_type
 
 
-def _asciify_url_char(c):
-    if ord(c) > 127:
-        return hex(ord(c)).replace('0x', '%')
-    else:
-        return c
-
-
-def asciify_url(url):
-    return ''.join(map(_asciify_url_char, url))
-
-
 def get_cookie_or_url_param_value(handler, param_name):
     return handler.get_argument(param_name, handler.get_cookie(param_name, None))
 
