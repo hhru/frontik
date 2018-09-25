@@ -10,6 +10,7 @@ import pycurl
 import simplejson
 import logging
 from lxml import etree
+from tornado.escape import to_unicode
 from tornado.ioloop import IOLoop
 from tornado.concurrent import Future
 from tornado.curl_httpclient import CurlAsyncHTTPClient
@@ -776,14 +777,20 @@ def _parse_response(response, logger, parser=None, response_type=None):
         _preview_len = 100
 
         if len(response.body) > _preview_len:
-            body_preview = '{0}...'.format(response.body[:_preview_len])
+            body_preview = response.body[:_preview_len]
         else:
             body_preview = response.body
 
-        logger.exception('failed to parse {0} response from {1}, bad data: "{2}"'.format(
-            response_type, response.effective_url, body_preview))
+        try:
+            body_preview = ': "{}"'.format(to_unicode(body_preview))
+        except Exception:
+            body_preview = 'is unavailable, could not covert to unicode'
 
-        raise FailedRequestException(url=response.effective_url, reason='invalid {0}'.format(response_type))
+        logger.exception(
+            'failed to parse %s response from %s, body excerpt %s', response_type, response.effective_url, body_preview
+        )
+
+        raise FailedRequestException(url=response.effective_url, reason='invalid {}'.format(response_type))
 
 
 _xml_parser = etree.XMLParser(strip_cdata=False)
@@ -798,5 +805,5 @@ _parse_response_json = partial(_parse_response,
 DEFAULT_REQUEST_TYPES = {
     re.compile('.*xml.?'): _parse_response_xml,
     re.compile('.*json.?'): _parse_response_json,
-    re.compile('.*text/plain.?'): (lambda response, logger: response.body),
+    re.compile('.*text/plain.?'): (lambda response, logger: to_unicode(response.body)),
 }
