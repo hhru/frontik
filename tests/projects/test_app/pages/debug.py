@@ -67,5 +67,5 @@ class Page(frontik.handler.PageHandler):
             self.set_header('Content-Type', 'application/javascript')
             self.text = 'document.body.write("Привет")'
         elif content_type == 'text':
-            self.set_header('Content-Type', 'text/plain; charset=koi8-r')
-            self.text = u'привет charset'.encode('koi8-r')
+            self.set_header('Content-Type', 'text/plain; charset=utf-8')
+            self.text = u'привет charset'.encode('utf-8')

@@ -83,8 +83,7 @@ class TestXmlUtils(unittest.TestCase, LxmlTestCaseMixin):
 
     def test_xml_from_file(self):
         result = xml_from_file(self.XML_FILE, TestXmlUtils.MockLog())
-        self.assertIn('Source:', result[0].text)
-        self.assertEqual(result[1].text, 'aaa')
+        self.assertEqual(result.text, 'aaa')
 
     def test_xml_from_file_does_not_exist(self):
         log = TestXmlUtils.MockLog()

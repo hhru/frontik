@@ -23,7 +23,7 @@ class Page(frontik.handler.PageHandler):
             if response.error or text is None:
                 raise HTTPError(500)
 
-            self.text = self.text + text.decode()
+            self.text = self.text + text
 
         self.put_url('retry_error', self.request.path, callback=async_group.add(callback))
         self.put_url('retry_error', self.request.path, callback=async_group.add(callback))
