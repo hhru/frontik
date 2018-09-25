@@ -1,3 +1,12 @@
+frontik (3.2.0) unstable; urgency=medium
+
+  * HH-83491 BREAKING return XML node from xml_from_file (old behaviour:
+    return list of [comment, node])
+  * HH-83491 prepare for future raven releases
+  * HH-83491 BREAKING decode text/plain to unicode
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 25 Sep 2018 11:47:50 +0300
+
 frontik (3.1.6.2) unstable; urgency=medium
 
   * HH-82583 Convern body to bytes
