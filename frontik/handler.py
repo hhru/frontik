@@ -16,7 +16,7 @@ import frontik.handler_active_limit
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
 import frontik.util
-from frontik.async import AsyncGroup
+from frontik.futures import AsyncGroup
 from frontik.compat import iteritems
 from frontik.debug import DebugMode
 from frontik.http_codes import process_status_code

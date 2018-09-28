@@ -1,7 +1,7 @@
 # coding=utf-8
 
 import frontik.handler
-from frontik.async import AsyncGroup
+from frontik.futures import AsyncGroup
 
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done

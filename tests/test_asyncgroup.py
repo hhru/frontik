@@ -7,7 +7,7 @@ from functools import partial
 from tornado.concurrent import Future
 from tornado.testing import ExpectLog
 
-from frontik.async import async_logger, AsyncGroup
+from frontik.futures import async_logger, AsyncGroup
 
 
 logging.root.setLevel(logging.NOTSET)
@@ -62,6 +62,9 @@ class TestAsyncGroup(unittest.TestCase):
         self.assertEqual(ag._aborted, False)
         self.assertEqual(f.result(), True)
 
+        with ExpectLog(async_logger, r'.*trying to finish already finished AsyncGroup\(name=None\)'):
+            ag.finish()
+
     def test_finish(self):
         f = Future()
         ag = AsyncGroup(partial(f.set_result, True))
@@ -93,7 +96,7 @@ class TestAsyncGroup(unittest.TestCase):
         self.assertEqual(ag._finished, False)
         self.assertEqual(ag._aborted, True)
 
-        with ExpectLog(async_logger, '.*test_group group: ignoring response because of already finished group'):
+        with ExpectLog(async_logger, r'.*ignoring response because of already finished AsyncGroup\(name=test_group\)'):
             cb2()
 
         self.assertEqual(ag._finished, False)
@@ -112,7 +115,7 @@ class TestAsyncGroup(unittest.TestCase):
 
         cb1()
 
-        with ExpectLog(async_logger, '.*test_group group: aborting async group due to unhandled exception in callback'):
+        with ExpectLog(async_logger, r'.*aborting AsyncGroup\(name=test_group\) due to unhandled exception'):
             self.assertRaises(Exception, cb2)
 
         self.assertEqual(ag._finished, False)
