@@ -61,7 +61,7 @@ setup(
     install_requires=install_requires,
     test_suite='tests',
     tests_require=[
-        'pytest <= 3.5.0',
+        'pytest <= 3.8.1',
         'pycodestyle == 2.4.0',
         'requests <= 2.9.1',
         'lxml-asserts',

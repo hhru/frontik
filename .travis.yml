@@ -17,18 +17,6 @@ matrix:
       env: TORNADO_VERSION=4.5.3 ; WITH_RAVEN=1
     - os: linux
       dist: trusty
-      python: "3.4"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=1
-    - os: linux
-      dist: trusty
-      python: "3.4"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=0
-    - os: linux
-      dist: trusty
-      python: "3.4"
-      env: TORNADO_VERSION=4.5.3 ; WITH_RAVEN=1
-    - os: linux
-      dist: trusty
       python: "3.5"
       env: TORNADO_VERSION=HH ; WITH_RAVEN=1
     - os: linux
