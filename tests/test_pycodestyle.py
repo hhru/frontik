@@ -17,7 +17,6 @@ class TestPycodestyle(unittest.TestCase):
             show_pep8=False,
             show_source=True,
             max_line_length=120,
-            ignore=['W606']  # TODO: fix frontik.async package name
         )
         result = style_guide.check_files(map(partial(os.path.join, FRONTIK_ROOT), TestPycodestyle.CHECKED_PATHS))
         self.assertEqual(result.total_errors, 0, 'Pycodestyle found code style errors or warnings')

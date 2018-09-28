@@ -29,7 +29,7 @@ def callback(parsed_response_body, response):
     pass
 ```
 
-All callbacks are always added to main [AsyncGroup](/frontik/async.py), `finish_group`,
+All callbacks are always added to main [AsyncGroup](/frontik/futures.py), `finish_group`,
 except when `add_to_finish_group` parameter is set to `False`. Only after all requests and callbacks
 are finished, AsyncGroup is marked as completed and [postprocessing](/docs/postprocessing.md)
 and [templating](/docs/producers.md) takes place.
