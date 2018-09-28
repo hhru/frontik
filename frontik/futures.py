@@ -6,9 +6,11 @@ import logging
 from tornado.ioloop import IOLoop
 from tornado.concurrent import Future
 
-async_logger = logging.getLogger('frontik.async')
+async_logger = logging.getLogger('frontik.futures')
 
 
+# AsyncGroup will become legacy in future releases
+# It will be replaced with FutureGroup
 class AsyncGroup(object):
     """
     Grouping of several async requests and final callback in such way that final callback is invoked
@@ -18,34 +20,25 @@ class AsyncGroup(object):
     would not be automatically called.
     """
 
-    def __init__(self, finish_cb, name=None, logger=None):
+    def __init__(self, finish_cb, name=None):
         self._counter = 0
         self._finish_cb = finish_cb
         self._finished = False
         self._aborted = False
         self._name = name
         self._future = Future()
-
         self._start_time = time.time()
 
-        if self._name is not None:
-            self._log_name = '{0} group'.format(self._name)
-        else:
-            self._log_name = 'group'
-
-    def _message(self, message):
-        return self._log_name + ': ' + message
-
     def abort(self):
-        async_logger.info(self._message('aborting async group'))
+        async_logger.info('aborting %s', self)
         self._aborted = True
 
     def finish(self):
         if self._finished:
-            async_logger.warning(self._message('trying to finish already finished AsyncGroup'))
+            async_logger.warning('trying to finish already finished %s', self)
             return
 
-        async_logger.debug(self._message('done in %.2fms'), (time.time() - self._start_time) * 1000.)
+        async_logger.debug('%s done in %.2fms', self, (time.time() - self._start_time) * 1000.)
         self._finished = True
         self._future.set_result(None)
 
@@ -70,22 +63,22 @@ class AsyncGroup(object):
 
     def _dec(self):
         self._counter -= 1
-        async_logger.debug(self._message('%s requests pending'), self._counter)
+        async_logger.debug('%s: %s requests pending', self, self._counter)
 
     def add(self, intermediate_cb):
         self._inc()
 
         def new_cb(*args, **kwargs):
             if self._finished or self._aborted:
-                async_logger.info(self._message('ignoring response because of already finished group'))
+                async_logger.info('ignoring response because of already finished %s', self)
                 return
 
             try:
                 self._dec()
                 intermediate_cb(*args, **kwargs)
             except Exception:
-                async_logger.error(self._message('aborting async group due to unhandled exception in callback'))
-                async_logger.debug(self._message('done in %.2fms'), (time.time() - self._start_time) * 1000.)
+                async_logger.error('aborting %s due to unhandled exception in callback', self)
+                async_logger.debug('%s done in %.2fms', self, (time.time() - self._start_time) * 1000.)
                 self._aborted = True
                 raise
 
@@ -108,6 +101,9 @@ class AsyncGroup(object):
 
     def get_finish_future(self):
         return self._future
+
+    def __str__(self):
+        return 'AsyncGroup(name={})'.format(self._name)
 
 
 def future_fold(future, result_mapper=None, exception_mapper=None):

@@ -2,7 +2,7 @@
 from tornado.concurrent import Future
 from tornado.testing import AsyncTestCase
 
-from frontik.async import future_fold
+from frontik.futures import future_fold
 
 
 class MyException(Exception):

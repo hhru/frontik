@@ -18,7 +18,7 @@ from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPResponse, HTTPE
 from tornado.httputil import HTTPHeaders
 from tornado.options import options
 
-from frontik.async import AsyncGroup
+from frontik.futures import AsyncGroup
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.compat import iteritems
 from frontik.debug import DEBUG_HEADER_NAME, response_from_debug
