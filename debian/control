@@ -25,6 +25,7 @@ Build-Depends:
   libxml2-dev,
   libxslt1-dev,
   python-concurrent.futures,
+  python-raven,
 Standards-Version: 3.9.5
 X-Python-Version: >= 2.7
 X-Python3-Version: >= 3.2

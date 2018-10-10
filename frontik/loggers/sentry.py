@@ -15,23 +15,26 @@ except Exception:
 from frontik.compat import iteritems
 
 
+def _noop_logger_initializer(handler):
+    handler.get_sentry_logger = lambda: None
+
+
 def bootstrap_logger(app):
     dsn = app.app_settings.get('sentry_dsn')
 
     if not has_raven:
         logging.getLogger('frontik.loggers').warning('sentry_dsn set but raven not avalaible')
 
+    if not dsn or not has_raven:
+        return _noop_logger_initializer
+
+    sentry_client = AsyncSentryClient(
+        dsn=dsn, http_client=app.http_client_factory.tornado_http_client,
+        # breadcrumbs have serious performance penalties
+        enable_breadcrumbs=False, install_logging_hook=False, install_sys_hook=False
+    )
+
     def logger_initializer(handler):
-        if not dsn or not has_raven:
-            handler.get_sentry_logger = lambda: None
-            return
-
-        sentry_client = AsyncSentryClient(
-            dsn=dsn, http_client=app.http_client_factory.tornado_http_client,
-            # breadcrumbs have serious performance penalties
-            enable_breadcrumbs=False, install_logging_hook=False, install_sys_hook=False
-        )
-
         def get_sentry_logger():
             if not hasattr(handler, 'sentry_logger'):
                 handler.sentry_logger = SentryLogger(sentry_client, handler.request)
