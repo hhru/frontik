@@ -17,20 +17,6 @@
                 }
             }
 
-            function doiframe(id, text) {
-                var iframe = window.document.createElement('iframe');
-                iframe.className = 'iframe'
-                var html = text
-                    .replace(/&lt;/g, '<')
-                    .replace(/&gt;/g, '>')
-                    .replace(/&amp;/g, '&');
-                window.document.getElementById(id).appendChild(iframe);
-                var document = iframe.contentWindow.document;
-                document.open();
-                document.write(html);
-                //document.close();
-            }
-
             function sortTableColumn(table, columnIndex) {
                 var rows = [];
                 var tBody = table.tBodies[0];

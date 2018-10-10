@@ -73,7 +73,7 @@ class BaseHandler(tornado.web.RequestHandler):
         self._debug_access = None
         self._page_aborted = False
         self._template_postprocessors = []
-        self._early_postprocessors = []
+        self._postprocessors = []
 
         self._http_client = self.application.http_client_factory.get_http_client(self, self.modify_http_client_request)
 
@@ -141,12 +141,12 @@ class BaseHandler(tornado.web.RequestHandler):
         return self.application.reverse_url(name, *args, **kwargs)
 
     @staticmethod
-    def add_callback(callback):
-        IOLoop.current().add_callback(callback)
+    def add_callback(callback, *args, **kwargs):
+        IOLoop.current().add_callback(callback, *args, **kwargs)
 
     @staticmethod
-    def add_timeout(deadline, callback):
-        return IOLoop.current().add_timeout(deadline, callback)
+    def add_timeout(deadline, callback, *args, **kwargs):
+        return IOLoop.current().add_timeout(deadline, callback, *args, **kwargs)
 
     @staticmethod
     def remove_timeout(timeout):
@@ -277,7 +277,7 @@ class BaseHandler(tornado.web.RequestHandler):
             self.log.debug('using %s producer', producer)
             producer(partial(self._call_postprocessors, self._template_postprocessors, self.finish))
 
-        self._call_postprocessors(self._early_postprocessors, _callback)
+        self._call_postprocessors(self._postprocessors, _callback)
 
     def on_connection_close(self):
         self.finish_group.abort()
@@ -418,8 +418,8 @@ class BaseHandler(tornado.web.RequestHandler):
     def add_template_postprocessor(self, postprocessor):
         self._template_postprocessors.append(postprocessor)
 
-    def add_early_postprocessor(self, postprocessor):
-        self._early_postprocessors.append(postprocessor)
+    def add_postprocessor(self, postprocessor):
+        self._postprocessors.append(postprocessor)
 
     # Producers
 

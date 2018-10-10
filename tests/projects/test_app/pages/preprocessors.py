@@ -75,7 +75,7 @@ class Page(PageHandler):
             'run': self.run
         })
 
-        self.add_early_postprocessor(self.postprocessor)
+        self.add_postprocessor(self.postprocessor)
 
     @pp1
     @preprocessor([pp2, pp3])

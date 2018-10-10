@@ -13,7 +13,7 @@ class Page(PageHandler):
             handler.add_header('X-Foo', 'Bar')
             cb()
 
-        self.add_early_postprocessor(pp)
+        self.add_postprocessor(pp)
 
     def get_page(self):
         content_type = self.get_argument('type')

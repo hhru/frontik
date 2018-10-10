@@ -43,8 +43,8 @@ def response_to_xml(response):
 
     try:
         if 'text/html' in content_type:
+            mode = 'html'
             body = frontik.util.decode_string_from_charset(response.body, try_charsets)
-            body = body.replace('\r', '\\r').replace('\n', '\\n').replace("'", "\\'").replace("<", "&lt;")
         elif 'protobuf' in content_type:
             body = repr(response.body)
         elif response.body is None:
