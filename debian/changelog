@@ -1,3 +1,11 @@
+frontik (3.4.0) unstable; urgency=medium
+
+  * HH-84091 *args, **kwargs in add_timeout / add_callback
+  * HH-84091 early postprocessors -> postprocessors
+  * HH-84091 do not output html response in iframe in debug
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 10 Oct 2018 18:14:36 +0300
+
 frontik (3.3.1) unstable; urgency=medium
 
   * HH-84075 try to fix raven memory leak
