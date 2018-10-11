@@ -5,13 +5,14 @@ import json
 import logging
 import os
 import pprint
+import re
 import time
 import traceback
 from binascii import crc32
 from datetime import datetime
 from http.cookies import SimpleCookie
 from io import BytesIO
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlparse
 
 from lxml import etree
 from lxml.builder import E
@@ -206,9 +207,14 @@ def request_to_curl_string(request):
     ).strip()
 
 
+def _get_query_parameters(url):
+    url = 'http://' + url if not re.match(r'[a-z]+://.+\??.*', url, re.IGNORECASE) else url
+    return parse_qs(urlparse(url).query, True)
+
+
 def _params_to_xml(url):
     params = etree.Element('params')
-    query = frontik.util.get_query_parameters(url)
+    query = _get_query_parameters(url)
     for name, values in query.items():
         for value in values:
             try:
