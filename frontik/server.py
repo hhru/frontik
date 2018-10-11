@@ -8,11 +8,11 @@ import time
 import tornado.autoreload
 import tornado.httpserver
 import tornado.ioloop
-import tornado.options
-from tornado.options import options
+from tornado.options import parse_command_line, parse_config_file
 
 from frontik.app import FrontikApplication
 from frontik.loggers import bootstrap_logger, bootstrap_core_logging
+from frontik.options import options
 
 log = logging.getLogger('server')
 
@@ -21,7 +21,7 @@ def parse_configs(config_files):
     """Reads command line options / config file and bootstraps logging.
     """
 
-    tornado.options.parse_command_line(final=False)
+    parse_command_line(final=False)
 
     if options.config:
         configs_to_read = options.config
@@ -33,10 +33,10 @@ def parse_configs(config_files):
     )
 
     for config in configs_to_read:
-        tornado.options.parse_config_file(config, final=False)
+        parse_config_file(config, final=False)
 
     # override options from config with command line options
-    tornado.options.parse_command_line(final=False)
+    parse_command_line(final=False)
 
     bootstrap_core_logging()
 
@@ -108,9 +108,6 @@ def run_server(app: FrontikApplication):
 
 
 def main(config_file=None):
-    # noinspection PyUnresolvedReferences
-    import frontik.options
-
     parse_configs(config_files=config_file)
 
     if options.app is None:
