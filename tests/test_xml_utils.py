@@ -32,7 +32,7 @@ DICT_BEFORE = {
     'key2': '',
     'nested': {
         'key1': 'русский текст в utf-8',
-        'key2': u'русский текст в unicode'
+        'key2': 'русский текст в unicode'
     },
     'complexNested': {
         'nested': {
@@ -48,8 +48,8 @@ DICT_AFTER = {
     'key1': 'value',
     'key2': '',
     'nested': {
-        'key1': u'русский текст в utf-8',
-        'key2': u'русский текст в unicode'
+        'key1': 'русский текст в utf-8',
+        'key2': 'русский текст в unicode'
     },
     'complexNested': {
         'nested': {

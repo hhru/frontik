@@ -136,12 +136,12 @@ class JsonProducer(object):
                 exception = future.exception()
                 if isinstance(exception, jinja2.TemplateSyntaxError):
                     self.log.error(
-                        u'%s in file "%s", line %d\n\t%s',
+                        '%s in file "%s", line %d\n\t%s',
                         exception.__class__.__name__, to_unicode(exception.filename),
                         exception.lineno, to_unicode(exception.message)
                     )
                 elif isinstance(exception, jinja2.TemplateError):
-                    self.log.error(u'%s error\n\t%s', exception.__class__.__name__, to_unicode(exception.message))
+                    self.log.error('%s error\n\t%s', exception.__class__.__name__, to_unicode(exception.message))
 
                 raise_future_exception(future)
                 return

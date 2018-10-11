@@ -12,7 +12,7 @@ class Page(frontik.handler.PageHandler):
             if response.error:
                 self.text = str(response.code)
             else:
-                self.text = u'200 {}'.format(to_unicode(text))
+                self.text = '200 {}'.format(to_unicode(text))
 
         n = int(self.get_argument('n'))
         if n > 0:

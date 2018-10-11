@@ -19,7 +19,7 @@ FILES = {
     'field9': [{'filename': 'file0', 'body': b'\x10\x20\x30'}],
     'field10': [
         {'filename': 'file1', 'body': b'\x01\x02\x03'},
-        {'filename': u'файл 01-12_25.abc', 'body': u'Ёконтент 123 !"№;%:?*()_+={}[]'}
+        {'filename': 'файл 01-12_25.abc', 'body': 'Ёконтент 123 !"№;%:?*()_+={}[]'}
     ]
 }
 

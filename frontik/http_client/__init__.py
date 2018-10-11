@@ -38,7 +38,7 @@ class Server(object):
         return cls(properties.get('server'), **params)
 
     def __init__(self, address, weight=1, rack=None, dc=None):
-        self.address = address.rstrip(u'/')
+        self.address = address.rstrip('/')
         self.weight = int(weight)
         self.rack = rack
         self.datacenter = dc
@@ -309,7 +309,7 @@ class BalancedHttpRequest(object):
     def __init__(self, host, upstream, uri, method='GET', data=None, headers=None, files=None, content_type=None,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None,
                  follow_redirects=True, idempotent=True):
-        self.uri = uri if uri.startswith(u'/') else u'/' + uri
+        self.uri = uri if uri.startswith('/') else '/' + uri
         self.upstream = upstream
         self.method = method
         self.headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
@@ -355,7 +355,7 @@ class BalancedHttpRequest(object):
         self.tries_left = self.upstream.max_tries
         self.request_time_left = self.request_timeout * max_timeout_tries
         self.tried_hosts = None
-        self.current_host = host.rstrip(u'/')
+        self.current_host = host.rstrip('/')
         self.current_server_index = None
         self.current_rack = None
         self.current_datacenter = None
