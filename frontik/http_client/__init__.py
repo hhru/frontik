@@ -1,5 +1,6 @@
 # coding=utf-8
 
+import json
 import re
 import time
 from collections import namedtuple
@@ -7,7 +8,6 @@ from functools import partial
 from random import shuffle, random
 
 import pycurl
-import simplejson
 import logging
 from lxml import etree
 from tornado.escape import to_unicode
@@ -794,11 +794,11 @@ def _parse_response(response, logger, parser=None, response_type=None):
 
 _xml_parser = etree.XMLParser(strip_cdata=False)
 _parse_response_xml = partial(_parse_response,
-                              parser=lambda x: etree.fromstring(x, parser=_xml_parser),
+                              parser=lambda body: etree.fromstring(body, parser=_xml_parser),
                               response_type='XML')
 
 _parse_response_json = partial(_parse_response,
-                               parser=simplejson.loads,
+                               parser=lambda body: json.loads(to_unicode(body)),
                                response_type='JSON')
 
 DEFAULT_REQUEST_TYPES = {

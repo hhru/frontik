@@ -7,7 +7,6 @@ Build-Depends:
   python3-all,
   dh-python,
   python3-setuptools,
-  python3-simplejson,
   python3-tornado (>= 4.5.3+hh2),
   python3-jinja2,
   libcurl3,
@@ -31,7 +30,6 @@ Depends:
   libcurl3-gnutls,
   python3-pycurl,
   python3-lxml,
-  python3-simplejson,
   python3-tornado (>= 4.5.3+hh2),
   python3-jinja2,
 Suggests:

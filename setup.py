@@ -35,7 +35,6 @@ install_requires = [
     'jinja2 >= 2.8',
     'lxml >= 3.5.0',
     'pycurl >= 7.43.0',
-    'simplejson >= 3.8.1',
     'tornado >= 4.5, < 4.6',
 ]
 
