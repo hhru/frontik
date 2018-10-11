@@ -4,14 +4,9 @@ import re
 from urllib.parse import urlencode
 from uuid import uuid4
 
-from tornado.concurrent import Future
 from tornado.escape import to_unicode, utf8
 
 from frontik import media_types
-
-
-def list_unique(l):
-    return list(set(l))
 
 
 def any_to_unicode(s):
