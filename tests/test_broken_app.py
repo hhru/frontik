@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import unittest
 
 from .instances import frontik_broken_config_app, frontik_broken_init_async_app

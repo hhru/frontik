@@ -1,5 +1,3 @@
-# coding=utf-8
-
 from lxml import etree
 from tornado.escape import json_decode, utf8
 from tornado.httpclient import AsyncHTTPClient

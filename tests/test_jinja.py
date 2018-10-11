@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import unittest
 
 from .instances import frontik_no_debug_app, frontik_re_app, frontik_test_app

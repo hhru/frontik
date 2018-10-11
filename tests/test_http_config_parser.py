@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import unittest
 
 from frontik.http_client import Upstream

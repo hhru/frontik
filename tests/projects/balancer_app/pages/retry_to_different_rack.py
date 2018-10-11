@@ -1,5 +1,3 @@
-# coding=utf-8
-
 from tornado.web import HTTPError
 
 from frontik.handler import PageHandler

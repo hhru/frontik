@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import frontik.handler
 from tornado.ioloop import IOLoop
 

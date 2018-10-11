@@ -1,5 +1,3 @@
-# coding=utf-8
-
 from lxml.builder import E
 
 import frontik.handler

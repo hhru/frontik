@@ -1,5 +1,3 @@
-# coding=utf-8
-
 from frontik.futures import AsyncGroup
 from frontik.handler import PageHandler
 

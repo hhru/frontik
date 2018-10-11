@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import unittest
 
 from .instances import find_free_port, frontik_balancer_app, frontik_broken_balancer_app

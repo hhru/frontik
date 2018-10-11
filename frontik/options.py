@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import tornado.options
 
 tornado.options.define('app', default=None, type=str)

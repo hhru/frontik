@@ -1,6 +1,3 @@
-# coding=utf-8
-
-
 def preprocessor(function_or_list):
     """Creates a preprocessor decorator for `BaseHandler.get_page`, `BaseHandler.post_page` etc.
 

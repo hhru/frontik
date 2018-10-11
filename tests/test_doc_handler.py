@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import unittest
 
 from lxml_asserts.testcase import LxmlTestCaseMixin

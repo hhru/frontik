@@ -1,5 +1,3 @@
-# coding=utf-8
-
 from frontik.app import FrontikApplication
 from frontik.http_client import Server
 

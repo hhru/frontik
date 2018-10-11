@@ -1,5 +1,3 @@
-# coding=utf-8
-
 from tornado.escape import to_unicode
 
 from frontik.handler import HTTPErrorWithPostprocessors, PageHandler
