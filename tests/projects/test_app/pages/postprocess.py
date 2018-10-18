@@ -5,7 +5,7 @@ import frontik.handler
 
 class ContentPostprocessor(object):
     def __call__(self, handler, tpl, callback):
-        callback(tpl.replace(b'%%content%%', b'CONTENT'))
+        callback(tpl.replace('%%content%%', 'CONTENT'))
 
 
 class Page(frontik.handler.PageHandler):
@@ -30,4 +30,4 @@ class Page(frontik.handler.PageHandler):
         raise frontik.handler.HTTPError(500)
 
     def _header_pp(self, tpl, callback):
-        callback(tpl.replace(b'%%header%%', b'HEADER'))
+        callback(tpl.replace('%%header%%', 'HEADER'))
