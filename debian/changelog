@@ -1,3 +1,652 @@
+frontik (3.4.1) unstable; urgency=medium
+
+  * HH-84347 string json response
+  * HH-84091 *args, **kwargs in add_timeout / add_callback
+  * HH-84091 early postprocessors -> postprocessors
+  * HH-84091 do not output html response in iframe in debug
+  * HH-84075 try to fix raven memory leak
+  * HH-83696 BREAKING rename frontik.async -> frontik.futures
+  * HH-83491 BREAKING return XML node from xml_from_file (old behaviour:
+    return list of [comment, node])
+  * HH-83491 prepare for future raven releases
+  * HH-83491 BREAKING decode text/plain to unicode
+  * HH-82583 Convern body to bytes
+  * HH-80991 use lower timeouts for preprocessors group tests
+  * HH-80991 add tests for preprocessors group
+  * HH-80991 introduce asynchGroup future
+  * HH-80991 allow to wait preprocessors requests completion
+  * HH-79867 Add datacenter and rack handling, fix sync callback
+    execution
+  * HH-76660 add .hh-release file
+  * HH-78634 use pytest, up pycodestyle
+  * HH-78543 Add new server to balancing with max load
+  * HH-78501 log handler name
+  * HH-78415 python3 related fix
+  * HH-78120 small compat feature and statsd client python3
+    compatibility fix
+  * HH-77551 extend frontik.compat
+  * HH-77357 add pycurl version to /version
+  * HH-77357 update osx travis image
+  * HH-77357 move producer settings to frontik.cfg
+  * HH-77357 use tornado.concurrent.Future instead of TracebackFuture
+  * HH-77483 update install dependencies
+  * HH-77483 sync send_error implementation with Tornado 4.5
+  * HH-77483 up tornado version
+  * HH-77221 migrate to tornado 4.5
+  * HH-76515 add max_http_clients_connects option
+  * HH-75529 Add gauge statsd metric
+  * HH-74480 Fix server weight chenge, and basic documentation
+  * HH-73932 Raise custom HTTPError for debug mode
+  * HH-74483 remove rendering batch variable
+  * HH-74483 extract method
+  * HH-74483 allow to set rendering timeout
+  * HH-74457 make pretty exceptions handling for stream-templating
+  * HH-74434 allow partial jinja templating
+  * HH-74353 remove old preprocessors
+  * HH-74009 Fix upstream update logging, pass http parameters to
+    protobuf client
+  * HH-73921 Fix retries logging
+  * HH-73794 Change timing metric labels
+  * HH-73710 parse data-source-info
+  * HH-73662 Fix connect timeout retry, add logging
+  * HH-73592 Add non idempotent retry
+  * HH-73599 Send service name to statsd with tag rather then with
+    prefix
+  * HH-73397 Calculate label color for xml
+  * HH-73326 Add custom slow start
+  * HH-73297 Implement new slow start strategies
+  * HH-72947 Fix slow start
+  * HH-73201 do not encode json responses recursively
+  * HH-73177 Add requests slow start
+  * HH-73119 small xml producer optimization
+  * HH-72978 Add server randomization, add check for already finished
+    page
+  * HH-72752 Add connect and request timeout per upstream
+  * HH-72655 Add protobuf client
+  * HH-72707 Fix requests stats
+  * HH-72631 refactor finish_with_postprocessors
+  * HH-72649 Add logging params
+  * HH-72340 Add http balancing
+  * HH-72476 prepare tornado4
+  * HH-72475 fix preprocessors early exit
+  * HH-72424 fix future return in new preprocessors
+  * HH-66084 add preprocessor decorator
+  * HH-72025 clean things up after removing Tornado patch
+  * HH-70485 remove logging patch
+  * HH-71548 fix tornado dependency
+  * HH-71548 build python3 deb package
+  * HH-70830 update js-libs
+  * HH-69223 insane debug refactoring
+  * HH-66959 fix debug output if some data not exist
+  * HH-68956 disable breadcrumbs in sentry client
+  * HH-68476 use global ContextFilter and request-local log handler
+  * HH-68298 routing grooming
+  * HH-67413 use request_id and handler_name from RequestContext
+  * HH-68115 remove supervisor module
+  * HH-68068 remove codecov and exception_on_init test
+  * HH-67889 cleanup routing
+  * HH-67796 fix RequestContext usages
+  * HH-67628 remove versions from libcurl debian deps
+  * HH-67595 small fix in RequestContext
+  * HH-67430 move routing to frontik.routing
+  * HH-67233 implement reverse_url method
+  * HH-67237 run travis builds on trusty
+  * HH-67237 remove deprecated write_error behaviour
+  * HH-67114 introduce RequestContext in test mode
+  * HH-67147 add deprecation warnings for some unusual write_error cases
+  * HH-66615 add JsonBuilder.replace and update send_error/write_error
+    docs
+  * HH-66949 use tornado_mock.httpclient
+  * HH-66853 remove some unused code
+  * HH-66784 remove frontik.testing.service_mock
+  * HH-66638 remove set_plaintext_response
+  * HH-66550 http_client cleanup
+  * HH-66099 frontik.testing using tornado.testing
+  * HH-66651 remove unnecessary log entries
+  * HH-66579 wait for fail_on_error handler and all requests in group
+  * HH-66396 reformat http_client.fetch and remove dead code
+  * HH-66340 remove error_callback from http_client interface
+  * HH-65749 we need to log redirect url because it's cool
+  * HH-66074 remove unused micro_handler code
+  * HH-66005 add simple futures support for fail_on_error
+  * HH-65836 remove late postprocessors
+  * HH-65794 remove doc.put(str) feature
+  * HH-64560 show cookies in response headers block of debug page
+  * HH-65479 require pycurl >= 7.19.5
+  * HH-64453 change logging level on warn when response is failed
+  * HH-65467 prepare for Tornado4
+  * HH-65376 xheaders httpserver option
+  * HH-65293 fix pycodestyle issues + up version
+  * HH-63088 update SysLogHandler formatter to include application name
+  * HH-63088 add NullHandler
+  * HH-63088 try to fix python-daemon fail on new release
+  * HH-63288 allow microhandler to handle with futures
+  * HH-63559 remove request_id checks and settings
+  * HH-63448 add future_fold and its two aliases - future_map,
+    future_map_exception
+  * HH-63342 update .travis.yml
+  * HH-63342 move Doc.put(str) logging
+  * HH-63342 remove legacy frontik.jobs interface
+  * HH-63215 add tests and fix content_type escaping for make_mfd
+  * HH-63215 sanitize mfd field names and filenames
+  * HH-63215 fix py3 compatibility in multipart form data generation
+  * HH-62844 fix producers backwards compatibility and review comments
+  * HH-62844 rewrite tests to check jinja better
+  * HH-62844 fix stderr logging
+  * HH-62844 add producers tests
+  * HH-62844 update docs and add doc.put('string') logging
+  * HH-62844 refactor producers
+  * HH-62670 fix some unicode in debug
+  * HH-62670 return 404 page when module name is too large
+  * HH-61546 use stdlib (or backported) executor instead of custom
+    interface
+  * HH-61554 refactor and simplify logging ingrastructure
+  * HH-61554 rename register_handler -> register_page_handler
+  * HH-61554 rename data -> future in frontik.server
+  * HH-62067 add request id response header
+  * HH-62024 fix test_http_client_keep_alive not compatible with
+    python3, remove copy-paste of closing
+  * HH-62024 fix tornado link
+  * HH-61841 check response request id
+  * HH-61841 add http_client_allow_keep_alive option
+  * HH-61746 move prohibition of keep-alive to backends from tornado
+  * HH-61614 shell=False and escape cmd with check_output
+  * HH-61614 make aliveness check friendly for OS without procfs
+  * HH-61614 add trusty to travis ci matrix
+  * HH-61614 add osx to travis ci config
+  * HH-60868 Add tests for workers counters in /status
+  * HH-60868 Add workers counters to /status
+  * HH-60868 Add max_clients to app options
+  * HH-60868 Fix docs for config
+  * HH-61472 remove app_root_url
+  * HH-61473 add tests for file cache
+  * HH-61503 fix json_builder._encoder check
+  * HH-61473 add more xml_util tests
+  * HH-61102 revert additional encoders
+  * HH-61102 optimize JsonBuilder.to_string()
+  * HH-61046 log app_root_url usages
+  * HH-60993 add fallback for apps with app_root_url
+  * HH-60796 add application_kwargs to testing environment
+  * HH-60750 let's use httpheaders in debug
+  * HH-60358 Start frontik application asynchronously
+  * HH-60593 use pycodestyle
+  * HH-60593 fix xml_to_dict and debug page tests for py3
+  * HH-60593 remove json_asserts and xml_asserts
+  * HH-60423 remove stats from frontik status
+  * HH-60423 fix one more test for py3
+  * HH-60297 fix sentry test
+  * HH-59805 fix .content type for different requests package version
+  * HH-57034 fix unencoded characters issue
+  * HH-59866 Fix depends
+  * HH-59805 fix mime message boundary generation
+  * HH-59805 fix py3 issues in tests.test_frontik_testing
+  * HH-59805 fix py3 issues in tests.test_handler.test_active_limit
+  * HH-59805 fix py3 issues in debug mode
+  * HH-59805 fix py3 issues in frontik.util.make_url
+  * HH-59805 fix py3 issues in tests.test_unicode
+  * HH-59805 rename assertEquals -> assertEqual
+  * HH-59805 fix py3 issues in basic auth headers generation
+  * HH-59805 fix py3 issues in frontik.http_codes.process_status_code
+  * HH-59805 fix codecov
+  * HH-59805 fix py3 issues in
+    frontik.handler_debug.request_to_curl_string
+  * HH-59805 fix py3 issues in tests infrastructure and enable some
+    tests for py3
+  * HH-59805 fix py3 issues in frontik.testing.service_mock
+  * HH-59805 fix py3 issues in frontik.testing.json_asserts
+  * HH-59805 fix py3 issues in frontik.server.supervisor
+  * HH-59866 Ubuntu Trusty support
+  * HH-59801 revert boundary changes
+  * HH-59605 update travis config
+  * HH-59605 update debian/control
+  * HH-59605 ignore unittests that fail on Python 3
+  * HH-59605 add basestring, unicode, long aliases for PY2/3
+  * HH-59605 replace incompatible Cookie usages
+  * HH-59605 replace incompatible xrange usages
+  * HH-59605 replace incompatible urllib2 usages
+  * HH-59605 replace incompatible unquote_plus usages
+  * HH-59605 replace incompatible Queue usages
+  * HH-59605 replace incompatible urlencode usages
+  * HH-59605 replace incompatible mimetools usages
+  * HH-59605 replace incompatible urlparse usages
+  * HH-59605 replace incompatible cStringIO usages
+  * HH-59605 replace incompatible httplib usages
+  * HH-59605 add compat module and replace incompatible iteritems usages
+  * HH-59025 [fixup] remove additional assert message
+  * HH-59025 [fixup] add meaniang message
+  * HH-59025 fix assertXmlEqual: order xml children with deep comparing
+  * HH-59459 remove old protobuf debug convention
+  * HH-59459 fix byte strings in supervisor test
+  * HH-59444 make frontik able to use raw protobuf data
+  * HH-58572 add CI run with concurrent.futures backport
+  * HH-58572 fix add_done_callback
+  * HH-58572 refactor asyncgroup tests
+  * HH-58407 Add debug for cassandra
+  * HH-58331 lower logging level for FileMappingDispatcher
+  * HH-58331 replace file() with open()
+  * HH-57509 return 502, if backend return 500, 502, 503, 504
+  * HH-57512 add more routing tests
+  * HH-57512 remove unneccessary application urls
+  * HH-57512 remove parse function for application urls
+  * HH-57927 rename future_callback
+  * HH-57927 group of resolved futures should not finish early
+  * HH-57819 remove unused stuff
+  * HH-57740 fix service_mock methods
+  * HH-57276 update frontik.testing Environment methods to support
+    further refactoring
+  * HH-57276 add some docs
+  * HH-57276 remove unused postprocessor option
+  * HH-57276 add tests for sentry logger
+  * HH-57276 refactor sentry logger
+  * HH-57384 fix tests with str.find
+  * HH-57384 fix setup.py and python-daemon for tests
+  * HH-53847 Log unresolved futures correctly
+  * HH-57223 nopost and apply_postprocessor cut-off
+  * HH-56406 add some more tests for supervisor
+  * HH-56601 http proxy settings
+  * HH-56406 fix frontik to pass tests with Tornado 3.2.2
+  * HH-56406 update docs
+  * HH-56406 remove tornado_util
+  * HH-56406 refactor frontik.server.supervisor
+  * HH-56406 move tornado_util server and supervisor to frontik
+  * HH-56406 remove long requests
+  * HH-56003 move back xml and json PP
+  * HH-56003 fix origin-response handling for nested debug
+  * HH-56003 modify http client request to disable caching
+  * HH-56003 use duration attribute as sql processing time
+  * HH-56003 replace highlightjs with prism, add xml,sql formatter
+  * HH-56003 add sql highlight and folding
+  * HH-56141 add codecov support
+  * HH-56141 improve travis support
+  * HH-56064 add test and more info to log
+  * HH-56064 fix bug caused by "." char in url
+  * HH-55628 Delete additional data
+  * HH-55621 Remove graylog
+  * HH-55342 add handler id to all log lines
+  * HH-54606 add unicode url and path test
+  * HH-53444 fix coverage
+  * HH-54606 Unicode uri in microhandler
+  * HH-53228 Fix test
+  * HH-53228 Append data kwarg in delete requests to query string
+    instead of body
+  * HH-52500 add libcurl in debs
+  * HH-51249 [tmp] add logging
+  * HH-51228 add forwarding of debug auth header
+  * HH-51249 [tmp] fix misspells
+  * HH-51249 add documentation for service urls
+  * HH-51329 add head_url for PageHandler
+  * HH-51249 make request to service itself on /status
+  * HH-50957 Log all exceptions during application initialization
+  * HH-51161 fix make_qs with unicode param keys
+  * HH-50844 Add syslog port
+  * HH-50589 Remove unused frontik internal urls
+  * HH-49568 sentry integration
+  * HH-49600 Fix debug
+  * HH-50161 Use debug log level for file cache and producers
+  * HH-48942 Make frontik application initialisation similar to tornado
+    application
+  * HH-50283 import object to module scope to prevent errors on
+    interpreter shutdown
+  * HH-50050 Change log levels for async group and pre/post processors
+    to debug
+  * HH-50094 Small style fixes
+  * HH-50021 serializable object can be put into doc
+  * HH-49557 Module not found is now warning
+  * HH-48946 [tmp] send request_id field as additional data for bulk
+    loggers
+  * HH-48946 additional data for bulk loggers, simplify graylog handler,
+    add separate traceback field
+  * HH-48947 extended HTTP status codes support
+  * HH-49458 extract app dispatcher builder
+  * HH-48945 allow send 'nopost' as a cookie
+  * HH-48945 debugging auth by header
+  * HH-48945 fix parsing malformed basic auth header, add more tests for
+    debug auth
+  * HH-48945 testing infrastructure tests
+  * HH-48945 make tests more solid
+  * HH-48945 use 127.0.0.1 instead of localhost for forcing using ipv4
+    (fix failing tests in OS X)
+  * HH-49403 Add proper cleanup
+  * HH-48866 service_mock improvements
+  * HH-48866 remove Tornado2 backwards compatible code
+  * HH-48861 remove old App and FileMappingDispatcher
+  * HH-39242 return old code for backwards compatibility
+  * HH-39242 add tests and fix ErrorHandler
+  * HH-39242 remove frontik_import
+  * HH-48427 remove old test_utils
+  * HH-48399 remove @before
+  * HH-48514 remove some dead code
+  * HH-48514 set MicroHandler group name
+  * HH-48514 add new MicroHandler test
+  * HH-48514 add more handler tests
+  * HH-44533 move json asserts and fix tests
+  * HH-48291 extend /version info
+  * HH-47942 fix styles
+  * HH-47942 fix debug styles
+  * HH-47942 Change inserted queries debug style
+  * HH-47330 set AsyncGroup default level to INFO
+  * HH-47330 use tornado.autoreload.watch alias
+  * HH-47330 fix tests with lxml >= 3
+  * HH-47330 update docs
+  * HH-47330 add xsl syntax error test
+  * HH-47330 add fail_on_error kwarg to MicroHandler HTTP client methods
+  * HH-47396 add timings to xsl files loading
+  * HH-47396 handle client connection closed
+  * HH-47815 fix logging levels
+  * HH-47074 new stages logging
+  * HH-47815 fix bug in write_error and add tests
+  * HH-47619 use SimpleCookie instead of SilentCookie
+  * HH-47396 fix tornado-3 compatibility
+  * HH-46704 fix example config and setup.py
+  * HH-46704 remove fetch_request_wrapper
+  * HH-47288 fix test on trailing slash at the end
+  * HH-47288 handle trailing slash at the end of url in testing
+  * HH-46659 fix pre/post-processor log message
+  * HH-46659 improve MicroHandler
+  * HH-46994 clean some configs and docs
+  * HH-46994 improve logging configuration
+  * HH-45030 remove check_xsrf_cookie
+  * HH-46655 fix send_error StackOverflow
+  * HH-41231 add travis config
+  * HH-41231 tornado-3 support
+  * HH-46489 remove urls option
+  * HH-44646 fix import frontik in tests
+  * HH-44646 use namedtuple as _Request base
+  * HH-44646 add MicroHandler implementation
+  * HH-45839 log page stage when unhandled exception was raised
+  * HH-46075 remove xml deepcopy before xslt
+  * HH-44167 remove init.d script
+  * HH-46351 remove server.main app parameter
+  * HH-46151 handle invalid cookie name of value
+  * HH-45000 fix debug page styles
+  * HH-45000 update debug page and add debug page tests
+  * HH-45000 make logging more consistent
+  * HH-45977 add app_root_url option
+  * HH-45766 Fix encoding in test
+  * HH-45000 initialize logger as soon as possible
+  * HH-45000 remove @dispatcher
+  * HH-45766 Add test for unicode filename and content [SuminAndrew]
+  * HH-45766 Use format() instead of % in request body constructor
+    [SuminAndrew]
+  * HH-45830 fix default http client timeouts
+  * HH-45830 load http client default timeouts from options
+  * HH-45231 update docs
+  * HH-45231 add more http client tests
+  * HH-45231 move all http-client methods to http_client module
+  * HH-45231 add explicit parse_on_error and parse_response options
+  * HH-45231 introduce http_client module
+  * HH-45231 remove port argument usages in tests
+  * HH-45231 move ApplicationGlobals back to handler
+  * HH-45307 add send_error implementation for backwards compatibility
+  * HH-45307 fix calling template_postprocessor after HTTPError
+  * HH-45117 fix HTTPError in prepare method
+  * HH-45117 tornado3-compatible send_error
+  * HH-44962 use kwargs in frontik.options
+  * HH-44962 disable all logging in tests
+  * HH-44962 add frontik.doc tests
+  * HH-44962 add tornado_settings option
+  * HH-45022 override check_xsrf_cookie method of PageHandler
+  * HH-44999 add parse_qs tests
+  * HH-44999 do not use coverage on any tests run
+  * HH-44849 move globals into frontik.globals module
+  * HH-44849 things for micro handler
+  * HH-44881 add copy as curl tests
+  * HH-44881 raise exception with original traceback in service_mock
+  * HH-44762 fix unicode test
+  * HH-44762 update docs
+  * HH-44762 singleapp in example_app
+  * HH-44762 fix singleapp test configs
+  * HH-44762 remove some unneccessary stuff
+  * HH-44762 add tests for singleapp mode
+  * HH-44603 add tests for default urls
+  * HH-44603 add coverage
+  * HH-44603 drop python 2.6
+  * HH-44603 add new tests
+  * HH-44624 remove deprecated service_mock methods
+  * HH-44523 introduce new methods for testing response
+  * HH-44356 clean logging options
+  * HH-44122 frontik.testing with IOLoop
+  * HH-44122 add pep8 test and fix others
+  * HH-44247 add --app parameter to frontik script
+  * HH-44204 Handle request exceptions in result object
+  * HH-44215 remove __init__.py side effects
+  * HH-44215 pep8 and compatibility fixes
+  * HH-44174 more naming fixes
+  * HH-44174 fix errors on unparsable content
+  * HH-44174 rename Future._finished to _done
+  * HH-44124 introduce call_* methods
+  * HH-44174 make frontik Future compatible with tornado Future
+  * HH-44124 add get_headers and get_response_text methods
+  * HH-44124 remove unused Environment methods and add new
+  * HH-44124 remove headers from route
+  * HH-43705 Add self.group method
+  * HH-43929 Add async data provider
+  * HH-40165 update docs and misc
+  * HH-40165 add preprocessors
+  * HH-43961 improve tests
+  * HH-43534 remove apps option
+  * HH-43534 changes for tornado3 upgrade
+  * HH-43666 log HTTPRequest body only in debug mode
+  * HH-43583 add an example and update docs
+  * HH-43583 add handler_404 parameter to FileMappingDispatcher
+  * HH-43544 raise FailedFutureException on Placeholder.get() instead of
+    returning it
+  * HH-43544 parse text/plain
+  * HH-43401 escape apos in copy as curl
+  * HH-43278 correct stages logging
+  * HH-43401 set ensure_ascii=False in JsonProducer
+  * HH-42371 fix docs and speed up unittests, fix PEP8
+  * HH-42371 fix AsyncGroup implementation
+  * HH-43355 fix binary requests and responses in debug
+  * HH-43336 new AsyncGroup.try_finish_async method
+  * HH-43249 add support of binary request data to copy as curl
+  * HH-43096 copy as curl: use ": " instead of "=" as a delimeter for
+    headers
+  * HH-42767 get_to_dispatch optimization
+  * HH-36526 add copy as CURL link to debug and remove autodebug with
+    debug=True
+  * HH-42490 use unicode chars when debugging xml & json responses
+  * HH-42314 improvements for self.json
+  * HH-42147 fix some PEP8 issues
+  * HH-42147 improve frontik.testing internals
+  * HH-41609 move logging configuration from tornado to frontik
+  * HH-41889 update executor configs
+  * HH-41451 run PEP8 tests on build and fix some PEP8 warnings
+  * HH-41451 syntax highlighting in debug [ipetropolsky] [gkostin]
+  * HH-41776 add content_type argument to put_url
+  * HH-40214 better json support
+  * HH-41537 catch all exceptions in postprocessors
+  * HH-41535 Add parameter allowing to parse xml or json in response
+    despite error
+  * HH-41465 use WatchedFileHandler for monik log
+  * HH-40478 add parameter add_to_finish_group to ***_url methods
+  * HH-41098 send all exception tracebacks to graylog [maizy]
+  * HH-40690 fixes for graylog bulk handler
+  * HH-40620 call request_finish_hook asyncronously
+  * HH-37492 make python2.6 compatible
+  * HH-37492 PEP8ify
+  * HH-37492 more cleanup and proper error message formatting
+  * HH-37492 stricter handler release check
+  * HH-39951 fix debug mode on pages with unicode query params names
+  * HH-39601 improve unicode handling
+  * HH-39620 mark debug entries as error if status < 200 or status >=
+    300
+  * HH-39153 improve logging of XSLT and failed _parse_response
+  * HH-39039 fix debug response body escaping
+  * HH-38149 remove stage.start
+  * HH-38149 make GELF bulk handler independent of record formatting and
+    refactor it
+  * HH-38988 use tornado.server instead of tornado_util
+  * HH-38304 Allow page handler to process PUT and DELETE requests
+    [SuminAndrew]
+  * HH-38779 add 'prepare' stage to all frontik requests
+  * HH-38215 fix setup.py
+  * HH-38215 add parse_response argument to *_url
+  * HH-37783 run tests on build and fix failing test
+  * HH-37783 fallback to default request timeouts if passing request
+    with no timeouts to fetch_request
+  * HH-37783 log responses in fetch_request
+  * HH-37783 add new version.py
+  * HH-37783 clean config files
+  * HH-37938 fix early postprocessors
+  * HH-38166 remove CurlAsyncHTTPClient max_simultaneous_connections
+    parameter
+  * HH-38164 set debug_xsl option in sample config for dev environment
+  * HH-38164 apply meaningless formatting changes
+  * HH-38164 add doc entry about XSLT profiling
+  * HH-38164 add debug=xslt for XSLT profiling
+  * HH-37938 fix debugging production errors and try..except late
+    postprocessors
+  * HH-37938 update some old tests, add postprocessing tests, fix None
+    in Placeholder
+  * HH-37938 add some docs
+  * HH-37938 add early, late and template postprocessors
+  * HH-37938 move handler.py methods around
+  * HH-37938 fix some tornado3 incompatibilities and bugs
+  * HH-37025 fix xsl bug by the way
+  * HH-37025 fixes for debian packaging
+  * HH-37025 add docs
+  * HH-37025 set_xsl should be lazy
+  * HH-37025 refactor postprocessing
+  * HH-37640 fix Version info and General debug info
+  * HH-37640 fix README and add some docs
+  * HH-36340 fix bulk handler
+  * HH-36340 fix send_error debug, apply debug xsl even if
+    apply_xsl=False
+  * HH-36340 switch debug log handler to bulk mode
+  * HH-36340 remove debug=profile and refactor debug parameters
+  * HH-37114 add css fallback for js entries toggling
+  * HH-36871 add support for debug labels in get_url
+  * HH-36050 fix xsl and some python [Aulust]
+  * HH-36050 show python tracebacks on debug page
+  * HH-36521 more general timeouts
+  * HH-36521 do not rely on the postprocessor to call finish()
+  * HH-34951 PEP8
+  * HH-34951 fix UnicodeEncodeError in graylog bulk handler
+  * HH-36683 do not use xsl cache in debug mode
+  * HH-32140 remove watchdog and disable file caching in dev environment
+  * HH-32140 run watch_function on frontik startup
+  * HH-33836 use PollingObserver for watching xsl dir for changes in
+    debug mode
+  * HH-36008 raise max number of working handlers in testing framework
+  * HH-35564 update configs and remove some trash
+  * HH-35564 remove paranoid try_get_body_repr
+  * HH-35564 try to parse query params from different encodings
+  * HH-33539 ignore multipart/form-data requests while removing password
+    values from bodies of POST requests
+  * HH-30380 fix for debug=pass
+  * HH-30380 PEP8
+  * HH-30380 show original Content-Type and -Disposition on debug page,
+    but replace it in actual output
+  * HH-35140 reraise exception during module exec as Exception
+  * HH-34878 add new supervisor options into example config
+  * HH-35383 add IOLoop.instance().add_callback support
+  * HH-32688 do not fail to start in case syslog is down and print error
+    message to server_log about the incident
+  * HH-33539 add passwordAdd to a list of request params to be secured
+    for logs
+  * HH-33539 add passwordAdd to a list of request params to be secured
+    for logs
+  * HH-33539 replace password values in case of multipart/form-data
+    content-type too
+  * HH-33539 log bodies of POST requests (in case of unhandled
+    exceptions) replacing `password` fields values in them with
+    asterisks
+  * HH-33539 httpreq class patching to remove body logging from POST
+    reqs
+  * HH-34910 append parameters with & in case where are already some
+    parameters in base url
+  * HH-33588 always log response.body on parse errors
+  * HH-30031 proper HTTPError handling in AsyncGroup
+  * HH-28793 fix debug page timeout
+  * HH-33260 code style fix
+  * HH-33260 exception logging fix
+  * HH-32313 fixed memory leak with gelfhandler
+  * HH-31752 Raplace stack trace exceptions on exceptions reason
+  * HH-32313 fix debian/control
+  * HH-31752 Fix responce exception for facancy response. Add charset
+    for response body from response header
+  * HH-32313 remove dev logging
+  * HH-32313 graylog handler fixes
+  * HH-31965 fix xml text nodes compare
+  * HH-31418 fix XmlResponseTestCaseMixin's inheritance, fix test name
+  * HH-31965 fix "text not equals" error's unicode issues
+  * HH-31965 Add to .gitignore rules for OS X & Windows junk
+  * HH-31965 xml testing helpers, XmlResponseTestCase mixin and tests
+    for them
+  * HH-31791 fix xml response body display
+  * HH-32061 add method class to _handler
+  * HH-32061 add add_headers and add_arguments for ExpectingHandler
+  * HH-31508 move mocks to new repo
+  * HH-29729 close udp sockets
+  * HH-30159 Fix problem when displaying multiline response to feedback
+    from the employer starnitse.
+  * HH-25219 frontik apps testing infrastructure
+  * HH-31250 fix timebars width
+  * HH-31250 small fixes for request/response debug display
+  * HH-26920 kill get_url_retry method
+  * HH-26920 add HTTP 204 support to request response fetching
+  * HH-29729 bad merge fixed
+  * HH-29729
+  * HH-29729 gelf bulk handler added
+  * HH-22544 fix profiler for ajax and json
+  * HH-22544 hide profiler in IE8
+  * HH-22544 fix profiler for IE9
+  * HH-22544 fixes for firefox
+  * HH-22544 optimize imports
+  * HH-22544 use DOMContentLoaded event instead of old browsers
+    compatibile function
+  * HH-22544 insert template as html file with json data, rewrite client
+    logic [mikesub]
+  * HH-22544 implement profiler embedded in frontik
+  * HH-22544 make xml_debug code a bit simpler
+  * HH-22544 incapsulate debug modes in DebugMode class
+  * HH-22544 change profiler toggle param to debug=profile, change
+    passed stages format [p.trukhanov]
+  * HH-22544 pass stages info to profiler, if enabled
+  * HH-30365 json replaced with simplejson [a.petruhin]
+  * HH-28576 remove watching for xsl includes in favour of naive cache
+    invalidation
+  * HH-28576 pass logger instead of log_function [p.trukhanov]
+  * HH-28576 remove tornado.autoreload on xsl file changes, use watchdog
+    and cache invalidation instead
+  * HH-28576 implement directory watching in frontik apps
+  * HH-28791 fix display in inherited debug logs
+  * HH-28791 display version info in debug log
+  * HH-28791 enable headers logging for current handler
+  * HH-28214 do not deepcopy xsl
+  * HH-28214 small handler_xml.py refactoring
+  * HH-28214 copy.deepcopy cached xml documents
+  * HH-28714 change monik-stages log file name
+  * HH-28714 introduce separate handler for monik-stages [p.trukhanov]
+  * HH-28714 improve process_stage [p.trukhanov]
+  * HH-28812 pass Authorization header to subrequests with debug=pass
+  * HH-28714 include class name in logged page identifier [p.trukhanov]
+  * HH-28714 add get_full_module_name method to handle proxy pages
+    correctly
+  * HH-28714 add [monik-stages] debug log line
+  * HH-24363 update changelog
+  * HH-27375 improve debug template styles
+  * HH-27375 fix request query parameters logging
+  * HH-24363 move fake request creation into util function [p.trukhanov]
+  * HH-24363 change parameter to debug=pass, fix setting of bytes
+    produced info [p.trukhanov]
+  * HH-24363 add test for dict_to_xml and xml_to_dict
+  * HH-24363 update comments to make them more obvious
+  * HH-24363 fix debug log resolving
+  * HH-24363 introduce pass_debug parameter, enable passing debug log
+    from all requested frontik apps
+  * HH-27375 implement logging of json/protobuf/plaintext
+    responses/requests
+  * HH-26775 little frontik features
+  * HH-21428 [mikesub]
+  * HH-25681 fix record xml attribute for dump
+  * HH-25681 memory leak in loggerAdapter fix
+  * HH-26489 fix error in need_finish condition [curlup]
+  * HH-25681 debug with extra in loggerAdapter fix
+
+ -- Automated Build <a.pertsev@hh.ru>  Thu, 18 Oct 2018 12:54:37 +0300
+
 frontik (3.4.0) unstable; urgency=medium
 
   * HH-84091 *args, **kwargs in add_timeout / add_callback
