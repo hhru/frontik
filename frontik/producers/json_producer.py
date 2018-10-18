@@ -151,7 +151,7 @@ class JsonProducer(object):
             self.log.stage_tag('tpl')
             self.log.info('applied template %s in %.2fms', self.template_filename, (time.time() - start_time) * 1000)
 
-            callback(utf8(result))
+            callback(result)
 
         self.ioloop.add_future(render_future, self.handler.check_finished(job_callback))
         return render_future
@@ -160,7 +160,7 @@ class JsonProducer(object):
         self.log.debug('finishing without templating')
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', 'application/json; charset=utf-8')
-        callback(utf8(self.json.to_string()))
+        callback(self.json.to_string())
 
     def __repr__(self):
         return '{}.{}'.format(__package__, self.__class__.__name__)
