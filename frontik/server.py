@@ -64,7 +64,7 @@ def run_server(app):
         io_loop = tornado.ioloop.IOLoop.current()
 
         if options.autoreload:
-            tornado.autoreload.start(io_loop, 1000)
+            tornado.autoreload.start(1000)
 
         def log_ioloop_block(signum, frame):
             io_loop.add_callback_from_signal(
@@ -79,7 +79,7 @@ def run_server(app):
             signal.signal(signal.SIGTERM, signal.SIG_IGN)
 
         def ioloop_is_running():
-            return io_loop._running
+            return io_loop.asyncio_loop.is_running()
 
         def server_stop():
             http_server.stop()

@@ -31,7 +31,7 @@ class Page(PageHandler):
         self.add_future(self.run_coroutine(), self.finish_group.add_notification())
 
         future = self.post_url(self.request.host, self.request.uri)
-        future.add_done_callback(_waited_callback('future'))
+        self.add_future(future, _waited_callback('future'))
 
     @coroutine
     def run_coroutine(self):
