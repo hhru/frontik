@@ -200,7 +200,7 @@ def raise_future_exception(future):
     exception = future.exception()
 
     if isinstance(future, Future):
-        raise_exc_info(future.exc_info())
+        future.result()  # Raises the exception
     elif hasattr(future, 'exception_info') and future.exception_info()[1] is not None:
         raise_exc_info((type(exception),) + future.exception_info())
     else:

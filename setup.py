@@ -35,7 +35,7 @@ install_requires = [
     'jinja2 >= 2.8',
     'lxml >= 3.5.0',
     'pycurl >= 7.43.0',
-    'tornado >= 4.5, < 4.6',
+    'tornado >= 5.0, < 5.1',
 ]
 
 setup(
@@ -64,7 +64,7 @@ setup(
         'tornado-httpclient-mock',
     ],
     dependency_links=[
-        'https://github.com/hhru/tornado/archive/master.zip',
+        'https://github.com/hhru/tornado/archive/tornado5.zip',
     ],
     extras_require={
         'sentry': ['raven']

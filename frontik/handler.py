@@ -8,7 +8,6 @@ import tornado.httputil
 import tornado.options
 import tornado.web
 from tornado import gen
-from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 
 import frontik.auth
