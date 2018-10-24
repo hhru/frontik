@@ -4,51 +4,46 @@ matrix:
     - os: osx
   include:
     - os: linux
-      dist: trusty
-      python: "2.7"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=1
-    - os: linux
-      dist: trusty
-      python: "2.7"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=0
-    - os: linux
-      dist: trusty
-      python: "2.7"
-      env: TORNADO_VERSION=4.5.3 ; WITH_RAVEN=1
-    - os: linux
-      dist: trusty
+      dist: xenial
       python: "3.5"
       env: TORNADO_VERSION=HH ; WITH_RAVEN=1
     - os: linux
-      dist: trusty
+      dist: xenial
       python: "3.5"
       env: TORNADO_VERSION=HH ; WITH_RAVEN=0
     - os: linux
-      dist: trusty
+      dist: xenial
       python: "3.5"
       env: TORNADO_VERSION=4.5.3 ; WITH_RAVEN=1
     - os: linux
-      dist: trusty
+      dist: xenial
       python: "3.6"
       env: TORNADO_VERSION=HH ; WITH_RAVEN=0
     - os: linux
-      dist: trusty
+      dist: xenial
       python: "3.6"
+      env: TORNADO_VERSION=4.5.3 ; WITH_RAVEN=1
+    - os: linux
+      dist: xenial
+      python: "3.7"
+      env: TORNADO_VERSION=HH ; WITH_RAVEN=0
+    - os: linux
+      dist: xenial
+      python: "3.7"
       env: TORNADO_VERSION=4.5.3 ; WITH_RAVEN=1
     - os: osx
-      osx_image: xcode8.3
+      osx_image: xcode9.4
       language: generic
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=1
+      env: TORNADO_VERSION=HH ; WITH_RAVEN=1 ; OSX=1
       before_install:
-        - pip2 install virtualenv
-        - virtualenv venv -p python2
-        - source venv/bin/activate
+      - brew reinstall openssl
+      - pip3 uninstall pycurl
+      - pip3 install --install-option="--with-openssl" --install-option="--openssl-dir=/usr/local/opt/openssl" pycurl==7.43.0
 install:
+  - if [[ $OSX != 1 ]]; then sudo apt-get install libgnutls28-dev libcurl4-gnutls-dev; fi
   - if [[ $TORNADO_VERSION == 'HH' ]]; then pip install https://github.com/hhru/tornado/archive/master.zip; else pip install tornado==$TORNADO_VERSION; fi
-  - if [[ $WITH_RAVEN == 1 ]]; then pip install "raven < 5.5.0"; fi
-  - python setup.py install
-  - mkdir ~/.python-eggs
-  - chmod og-wx ~/.python-eggs
+  - if [[ $WITH_RAVEN == 1 ]]; then pip install raven; fi
+  - python3 setup.py install
 script:
-  - python setup.py test
-sudo: false
+  - python3 setup.py test
+sudo: required

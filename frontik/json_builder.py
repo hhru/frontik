@@ -4,15 +4,13 @@ import json
 
 from tornado.concurrent import Future
 
-from frontik.compat import basestring_type, iteritems
-
 
 def _encode_value(v):
     def _encode_iterable(l):
         return [_encode_value(v) for v in l]
 
     def _encode_dict(d):
-        return {k: _encode_value(v) for k, v in iteritems(d)}
+        return {k: _encode_value(v) for k, v in d.items()}
 
     if isinstance(v, dict):
         return _encode_dict(v)
@@ -49,7 +47,7 @@ class JsonBuilder(object):
     __slots__ = ('_data', '_encoder', 'root_node')
 
     def __init__(self, root_node=None, json_encoder=None):
-        if root_node is not None and not isinstance(root_node, basestring_type):
+        if root_node is not None and not isinstance(root_node, str):
             raise TypeError('Cannot set {} as root node'.format(root_node))
 
         self._data = []

@@ -39,9 +39,6 @@ install_requires = [
     'tornado >= 4.5, < 4.6',
 ]
 
-if sys.version_info < (3, 2):
-    install_requires.append('futures')
-
 setup(
     name='frontik',
     version=__import__('frontik').__version__,
@@ -61,9 +58,9 @@ setup(
     install_requires=install_requires,
     test_suite='tests',
     tests_require=[
-        'pytest <= 3.8.1',
+        'pytest <= 3.8.2',
         'pycodestyle == 2.4.0',
-        'requests <= 2.9.1',
+        'requests <= 2.19.1',
         'lxml-asserts',
         'tornado-httpclient-mock',
     ],

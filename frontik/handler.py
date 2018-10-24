@@ -17,7 +17,6 @@ import frontik.producers.json_producer
 import frontik.producers.xml_producer
 import frontik.util
 from frontik.futures import AsyncGroup
-from frontik.compat import iteritems
 from frontik.debug import DebugMode
 from frontik.http_codes import process_status_code
 from frontik.loggers.request import RequestLogger
@@ -340,7 +339,7 @@ class BaseHandler(tornado.web.RequestHandler):
         finish_with_exception = isinstance(exception, HTTPError) and override_content
 
         if headers:
-            for (name, value) in iteritems(headers):
+            for (name, value) in headers.items():
                 self.set_header(name, value)
 
         if finish_with_exception:

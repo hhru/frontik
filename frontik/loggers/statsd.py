@@ -7,9 +7,6 @@ import collections
 from tornado.ioloop import IOLoop
 from tornado.options import options
 
-from frontik.compat import iteritems
-
-
 statsd_logger = logging.getLogger('frontik.loggers.statsd')
 
 
@@ -35,7 +32,7 @@ def _convert_tags(tags):
     if not tags:
         return ''
 
-    return '.' + '.'.join(_convert_tag(name, value) for name, value in iteritems(tags) if value is not None)
+    return '.' + '.'.join(_convert_tag(name, value) for name, value in tags.items() if value is not None)
 
 
 def _encode_str(some):

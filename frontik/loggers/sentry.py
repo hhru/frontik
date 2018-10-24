@@ -12,8 +12,6 @@ try:
 except Exception:
     has_raven = False
 
-from frontik.compat import iteritems
-
 
 def _noop_logger_initializer(handler):
     handler.get_sentry_logger = lambda: None
@@ -104,7 +102,7 @@ if has_raven:
                 'email': email,
                 'ip_address': ip,
             }
-            new_data = {k: v for k, v in iteritems(new_data) if v is not None}
+            new_data = {k: v for k, v in new_data.items() if v is not None}
             self.user_info.update(new_data)
 
         def capture_exception(self, exc_info=None, extra_data=None, **kwargs):

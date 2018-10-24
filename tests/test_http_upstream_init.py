@@ -18,15 +18,15 @@ class TestHttpUpstreamInit(unittest.TestCase):
 
         upstream = http_client_factory.upstreams.get('nn')
 
-        self.assertEquals(10, upstream.max_tries)
-        self.assertEquals(100, upstream.max_fails)
-        self.assertEquals(10, upstream.fail_timeout)
-        self.assertEquals(1.3, upstream.connect_timeout)
-        self.assertEquals(0.1, upstream.request_timeout)
-        self.assertEquals(4, upstream.max_timeout_tries)
+        self.assertEqual(10, upstream.max_tries)
+        self.assertEqual(100, upstream.max_fails)
+        self.assertEqual(10, upstream.fail_timeout)
+        self.assertEqual(1.3, upstream.connect_timeout)
+        self.assertEqual(0.1, upstream.request_timeout)
+        self.assertEqual(4, upstream.max_timeout_tries)
 
-        self.assertEquals(1, len(upstream.servers))
-        self.assertEquals('172.17.0.1:2800', upstream.servers[0].address)
+        self.assertEqual(1, len(upstream.servers))
+        self.assertEqual('172.17.0.1:2800', upstream.servers[0].address)
 
     def test_from_config_string(self):
         http_client_factory = HttpClientFactory({})
@@ -38,43 +38,43 @@ class TestHttpUpstreamInit(unittest.TestCase):
             'server=172.17.0.1:2800')
         upstream = http_client_factory.upstreams.get('nn')
 
-        self.assertEquals(10, upstream.max_tries)
-        self.assertEquals(30, upstream.max_fails)
-        self.assertEquals(1, upstream.fail_timeout)
-        self.assertEquals(1, upstream.connect_timeout)
-        self.assertEquals(0.2, upstream.request_timeout)
-        self.assertEquals(2, upstream.max_timeout_tries)
+        self.assertEqual(10, upstream.max_tries)
+        self.assertEqual(30, upstream.max_fails)
+        self.assertEqual(1, upstream.fail_timeout)
+        self.assertEqual(1, upstream.connect_timeout)
+        self.assertEqual(0.2, upstream.request_timeout)
+        self.assertEqual(2, upstream.max_timeout_tries)
 
-        self.assertEquals(1, len(upstream.servers))
-        self.assertEquals('172.17.0.1:2800', upstream.servers[0].address)
+        self.assertEqual(1, len(upstream.servers))
+        self.assertEqual('172.17.0.1:2800', upstream.servers[0].address)
 
     def test_retry_policy(self):
         http_client_factory = HttpClientFactory({})
 
         http_client_factory.update_upstream('nn', 'retry_policy=http_503,non_idempotent_503|server=172.17.0.1:2800')
         upstream = http_client_factory.upstreams.get('nn')
-        self.assertEquals({503: True}, upstream.retry_policy.statuses)
+        self.assertEqual({503: True}, upstream.retry_policy.statuses)
 
     def test_remove(self):
         http_client_factory = HttpClientFactory({})
 
         http_client_factory.update_upstream('nn', 'max_tries=10 | server=172.17.0.1:2800')
-        self.assertEquals(1, len(http_client_factory.upstreams))
+        self.assertEqual(1, len(http_client_factory.upstreams))
 
         http_client_factory.update_upstream('nn', None)
-        self.assertEquals(0, len(http_client_factory.upstreams))
+        self.assertEqual(0, len(http_client_factory.upstreams))
 
     def test_empty_server_list_init(self):
         http_client_factory = HttpClientFactory({})
 
         http_client_factory.update_upstream('nn', '|')
-        self.assertEquals(0, len(http_client_factory.upstreams))
+        self.assertEqual(0, len(http_client_factory.upstreams))
 
     def test_empty_server_list_update(self):
         http_client_factory = HttpClientFactory({})
 
         http_client_factory.update_upstream('nn', 'max_tries=10 | server=172.17.0.1:2800')
-        self.assertEquals(1, len(http_client_factory.upstreams))
+        self.assertEqual(1, len(http_client_factory.upstreams))
 
         http_client_factory.update_upstream('nn', '|')
-        self.assertEquals(0, len(http_client_factory.upstreams))
+        self.assertEqual(0, len(http_client_factory.upstreams))

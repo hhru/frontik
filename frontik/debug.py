@@ -8,9 +8,11 @@ import os
 import pprint
 import time
 import traceback
-from datetime import datetime
-from io import BytesIO
 from binascii import crc32
+from datetime import datetime
+from http.cookies import SimpleCookie
+from io import BytesIO
+from urllib.parse import parse_qs
 
 import lxml.etree as etree
 import simplejson as json
@@ -22,7 +24,6 @@ from tornado.web import OutputTransform
 
 import frontik.util
 import frontik.xml_util
-from frontik.compat import basestring_type, iteritems, SimpleCookie, unicode_type, urlparse
 from frontik.loggers import BufferedHandler
 from frontik.request_context import RequestContext
 
@@ -65,7 +66,7 @@ def response_to_xml(response):
         body = repr(response.body)
 
     try:
-        for name, value in iteritems(response.time_info):
+        for name, value in response.time_info.items():
             time_info.append(E.time('{} ms'.format(value * 1000), name=name))
     except Exception:
         debug_log.exception('cannot append time info')
@@ -99,8 +100,8 @@ def request_to_xml(request):
             elif 'protobuf' in content_type:
                 body.text = repr(request.body)
             else:
-                body_query = urlparse.parse_qs(str(request.body), True)
-                for name, values in iteritems(body_query):
+                body_query = parse_qs(str(request.body), True)
+                for name, values in body_query.items():
                     for value in values:
                         body.append(E.param(to_unicode(value), name=to_unicode(name)))
         except Exception:
@@ -134,7 +135,7 @@ def balanced_request_to_xml(balanced_request, retry, rack, datacenter):
     if balanced_request.upstream.balanced:
         etree.SubElement(info, 'upstream', name=balanced_request.upstream.name.upper())
         server_params = {'rack': rack, 'datacenter': datacenter}
-        etree.SubElement(info, 'server', **{key: value for key, value in iteritems(server_params) if value})
+        etree.SubElement(info, 'server', **{key: value for key, value in server_params.items() if value})
 
     if retry > 0:
         etree.SubElement(info, 'retry', count=str(retry))
@@ -210,7 +211,7 @@ def request_to_curl_string(request):
 def _params_to_xml(url):
     params = etree.Element('params')
     query = frontik.util.get_query_parameters(url)
-    for name, values in iteritems(query):
+    for name, values in query.items():
         for value in values:
             try:
                 params.append(E.param(to_unicode(value), name=to_unicode(name)))
@@ -222,9 +223,9 @@ def _params_to_xml(url):
 
 def _headers_to_xml(request_or_response_headers):
     headers = etree.Element('headers')
-    for name, value in iteritems(request_or_response_headers):
+    for name, value in request_or_response_headers.items():
         if name != 'Cookie':
-            str_value = value if isinstance(value, basestring_type) else str(value)
+            str_value = value if isinstance(value, str) else str(value)
             headers.append(E.header(to_unicode(str_value), name=name))
     return headers
 
@@ -343,7 +344,7 @@ class DebugBufferedHandler(BufferedHandler):
             entry.append(E.text(etree.tostring(record._xml, encoding='unicode')))
 
         if getattr(record, '_protobuf', None) is not None:
-            entry.append(E.text(unicode_type(record._protobuf)))
+            entry.append(E.text(str(record._protobuf)))
 
         if getattr(record, '_text', None) is not None:
             entry.append(E.text(to_unicode(record._text)))

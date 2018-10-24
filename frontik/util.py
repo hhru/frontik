@@ -3,13 +3,12 @@
 import mimetypes
 import os.path
 import re
+from urllib.parse import parse_qs, urlencode, urlparse
 from uuid import uuid4
 
 from tornado.concurrent import Future
 from tornado.escape import to_unicode, utf8
 from tornado.util import raise_exc_info
-
-from frontik.compat import iteritems, unicode_type, urlencode, urlparse
 
 
 def list_unique(l):
@@ -20,11 +19,11 @@ def any_to_unicode(s):
     if isinstance(s, bytes):
         return to_unicode(s)
 
-    return unicode_type(s)
+    return str(s)
 
 
 def any_to_bytes(s):
-    if isinstance(s, unicode_type):
+    if isinstance(s, str):
         return utf8(s)
     elif isinstance(s, bytes):
         return s
@@ -33,7 +32,7 @@ def any_to_bytes(s):
 
 
 def _encode(s):
-    if isinstance(s, unicode_type):
+    if isinstance(s, str):
         return utf8(s)
 
     return s
@@ -41,7 +40,7 @@ def _encode(s):
 
 def make_qs(query_args):
     kv_pairs = []
-    for key, val in iteritems(query_args):
+    for key, val in query_args.items():
         if val is not None:
             encoded_key = _encode(key)
             if isinstance(val, (set, frozenset, list, tuple)):
@@ -71,7 +70,7 @@ def make_url(base, **query_args):
 
 
 def decode_string_from_charset(string, charsets=('cp1251',)):
-    if isinstance(string, unicode_type):
+    if isinstance(string, str):
         return string
 
     decoded_body = None
@@ -90,7 +89,7 @@ def decode_string_from_charset(string, charsets=('cp1251',)):
 
 def get_query_parameters(url):
     url = 'http://' + url if not re.match(r'[a-z]+://.+\??.*', url, re.IGNORECASE) else url
-    return urlparse.parse_qs(urlparse.urlparse(url).query, True)
+    return parse_qs(urlparse(url).query, True)
 
 
 def choose_boundary():
@@ -144,7 +143,7 @@ def make_mfd(fields, files):
 
     body = []
 
-    for name, data in iteritems(fields):
+    for name, data in fields.items():
         if data is None:
             continue
 
@@ -155,7 +154,7 @@ def make_mfd(fields, files):
         else:
             body.extend(create_field(name, data))
 
-    for name, files in iteritems(files):
+    for name, files in files.items():
         for file in files:
             body.extend(create_file_field(
                 name, file['filename'], file['body'], file.get('content_type', 'application/unknown')

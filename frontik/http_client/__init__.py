@@ -20,7 +20,6 @@ from tornado.options import options
 
 from frontik.futures import AsyncGroup
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
-from frontik.compat import iteritems
 from frontik.debug import DEBUG_HEADER_NAME, response_from_debug
 from frontik.util import make_url, make_body, make_mfd
 
@@ -436,7 +435,7 @@ class HttpClientFactory(object):
 
         self.upstreams = {}
 
-        for name, upstream in iteritems(upstreams):
+        for name, upstream in upstreams.items():
             servers = [Server.from_config(s) for s in upstream['servers']]
             shuffle(servers)
             self.register_upstream(name, upstream['config'], servers)
@@ -498,7 +497,7 @@ class HttpClient(object):
 
         async_group = AsyncGroup(self.handler.finish_group.add(self.handler.check_finished(group_callback)), name=name)
 
-        for name, future in iteritems(futures):
+        for name, future in futures.items():
             if future.done():
                 future_callback(name, future)
             else:
@@ -713,7 +712,7 @@ class HttpClient(object):
                 data = response.body
             elif response.code != 204:
                 content_type = response.headers.get('Content-Type', '')
-                for k, v in iteritems(DEFAULT_REQUEST_TYPES):
+                for k, v in DEFAULT_REQUEST_TYPES.items():
                     if k.search(content_type):
                         data = v(response, logger=self.handler.log)
                         break
@@ -758,14 +757,14 @@ class RequestResult(object):
     def to_dict(self):
         if self.exception is not None:
             return {
-                'error': {k: v for k, v in iteritems(self.exception.attrs)}
+                'error': {k: v for k, v in self.exception.attrs.items()}
             }
 
         return self.data
 
     def to_etree_element(self):
         if self.exception is not None:
-            return etree.Element('error', **{k: str(v) for k, v in iteritems(self.exception.attrs)})
+            return etree.Element('error', **{k: str(v) for k, v in self.exception.attrs.items()})
 
         return self.data
 
