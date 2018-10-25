@@ -8,7 +8,6 @@ from tornado_mock.httpclient import patch_http_client, safe_template, set_stub
 
 # noinspection PyUnresolvedReferences
 import frontik.options
-from frontik.compat import iteritems
 from frontik.util import make_url
 
 
@@ -58,7 +57,7 @@ class FrontikTestCase(AsyncHTTPTestCase):
 
     def configure_app(self, **kwargs):
         """Updates or adds options to application config."""
-        for name, val in iteritems(kwargs):
+        for name, val in kwargs.items():
             setattr(self._app.config, name, val)
 
         return self

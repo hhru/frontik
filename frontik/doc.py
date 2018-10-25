@@ -4,8 +4,6 @@ import lxml.etree as etree
 
 from tornado.concurrent import Future
 
-from frontik.compat import basestring_type
-
 
 def _is_valid_element(node):
     if not isinstance(node, etree._Element):
@@ -21,7 +19,7 @@ class Doc(object):
     __slots__ = ('root_node', 'data')
 
     def __init__(self, root_node='doc'):
-        if isinstance(root_node, basestring_type):
+        if isinstance(root_node, str):
             root_node = etree.Element(root_node)
 
         if not (_is_valid_element(root_node) or isinstance(root_node, Doc)):

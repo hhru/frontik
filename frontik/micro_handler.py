@@ -5,7 +5,6 @@ from functools import partial
 
 from tornado.concurrent import Future
 
-from frontik.compat import iteritems
 from frontik.handler import BaseHandler, HTTPError
 from frontik.http_client import RequestResult
 
@@ -82,7 +81,7 @@ class MicroHandler(BaseHandler):
 
         if isinstance(return_value, dict):
             futures = {}
-            for name, future in iteritems(return_value):
+            for name, future in return_value.items():
                 # Use is_future with Tornado 4
                 if not isinstance(future, Future):
                     raise Exception('Invalid MicroHandler return value: {!r}'.format(future))

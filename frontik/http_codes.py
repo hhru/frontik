@@ -1,11 +1,6 @@
 # coding=utf-8
 
-from frontik.compat import PY3
-
-if PY3:
-    import http.client as httpcodes
-else:
-    import httplib as httpcodes
+import http.client as httpcodes
 
 OK = int(httpcodes.OK)
 SERVICE_UNAVAILABLE = int(httpcodes.SERVICE_UNAVAILABLE)

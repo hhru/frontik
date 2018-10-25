@@ -90,7 +90,7 @@ class DebugTestCase(unittest.TestCase):
             response = self.assertDebugResponseCode(page='simple?{}'.format(param),
                                                     expected_code=http_codes.UNAUTHORIZED)
             self.assertIn('Www-Authenticate', response.headers)
-            self.assertRegexpMatches(response.headers['Www-Authenticate'], 'Basic realm="[^"]+"')
+            self.assertRegex(response.headers['Www-Authenticate'], 'Basic realm="[^"]+"')
 
             self.assertDebugResponseCode(page='simple?{}'.format(param),
                                          headers={'Authorization': self.DEBUG_BASIC_AUTH},

@@ -9,7 +9,6 @@ from inspect import isclass
 from tornado.routing import ReversibleRouter, Router
 from tornado.web import RequestHandler
 
-from frontik.compat import iteritems
 from frontik.handler import ErrorHandler
 from frontik.util import reverse_regex_named_groups
 
@@ -115,6 +114,6 @@ def _get_application_500_handler_delegate(application, request):
 
 def _add_request_arguments_from_path(request, match):
     arguments = match.groupdict()
-    for name, value in iteritems(arguments):
+    for name, value in arguments.items():
         if value:
             request.arguments.setdefault(name, []).append(value)

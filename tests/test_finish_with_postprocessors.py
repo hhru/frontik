@@ -2,7 +2,6 @@
 
 import unittest
 
-from frontik.compat import iteritems
 from .instances import frontik_test_app
 
 
@@ -15,7 +14,7 @@ class TestFinishWithPostprocessors(unittest.TestCase):
             'json': b'{"ok": true}',
         }
 
-        for content_type, content in iteritems(type_to_content):
+        for content_type, content in type_to_content.items():
             response = frontik_test_app.get_page('finish_with_postprocessors?type={}'.format(content_type))
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content, content)
