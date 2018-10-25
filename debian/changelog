@@ -1,3 +1,9 @@
+frontik (4.0.0) unstable; urgency=medium
+
+  * HH-84575 remove Python 2 from frontik
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 25 Oct 2018 14:06:02 +0300
+
 frontik (3.4.1) unstable; urgency=medium
 
   * HH-84347 string json response
