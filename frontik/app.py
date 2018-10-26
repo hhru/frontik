@@ -6,7 +6,6 @@ import time
 from functools import partial
 
 import pycurl
-import simplejson
 import tornado
 from lxml import etree
 from tornado.concurrent import Future
@@ -34,7 +33,6 @@ def get_frontik_and_apps_versions(application):
     etree.SubElement(versions, 'lxml.etree.LIBXML').text = '.'.join(str(x) for x in etree.LIBXML_VERSION)
     etree.SubElement(versions, 'lxml.etree.LIBXSLT').text = '.'.join(str(x) for x in etree.LIBXSLT_VERSION)
     etree.SubElement(versions, 'pycurl').text = pycurl.version
-    etree.SubElement(versions, 'simplejson').text = simplejson.__version__
     etree.SubElement(versions, 'python').text = sys.version.replace('\n', '')
     etree.SubElement(versions, 'application', name=options.app).extend(application.application_version_xml())
 
