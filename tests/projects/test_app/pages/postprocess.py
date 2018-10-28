@@ -1,6 +1,8 @@
 # coding=utf-8
 
-import frontik.handler
+from tornado.web import HTTPError
+
+from frontik.handler import PageHandler
 
 
 class ContentPostprocessor(object):
@@ -8,7 +10,7 @@ class ContentPostprocessor(object):
         callback(tpl.replace('%%content%%', 'CONTENT'))
 
 
-class Page(frontik.handler.PageHandler):
+class Page(PageHandler):
     def get_page(self):
         if self.get_argument('fail_early', None) is not None:
             self.add_postprocessor(Page._early_pp_1)
@@ -24,10 +26,10 @@ class Page(frontik.handler.PageHandler):
             self.add_template_postprocessor(ContentPostprocessor())
 
     def _early_pp_1(self, callback):
-        raise frontik.handler.HTTPError(400)
+        raise HTTPError(400)
 
     def _early_pp_2(self, callback):
-        raise frontik.handler.HTTPError(500)
+        raise HTTPError(500)
 
     def _header_pp(self, tpl, callback):
         callback(tpl.replace('%%header%%', 'HEADER'))

@@ -3,8 +3,9 @@
 from functools import partial
 
 from tornado.ioloop import IOLoop
+from tornado.web import HTTPError
 
-from frontik.handler import HTTPError, PageHandler
+from frontik.handler import PageHandler
 
 
 class Page(PageHandler):
@@ -12,7 +13,7 @@ class Page(PageHandler):
         raise Exception('Runtime exception for Sentry')
 
     def post_page(self):
-        raise HTTPError('HTTPError for Sentry')
+        raise HTTPError(500, 'HTTPError for Sentry')
 
     def put_page(self):
         self.get_sentry_logger().capture_message('Message for Sentry')

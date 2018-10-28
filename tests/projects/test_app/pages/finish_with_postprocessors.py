@@ -1,8 +1,9 @@
 # coding=utf-8
 
 from lxml import etree
+from tornado.web import HTTPError
 
-from frontik.handler import HTTPError, PageHandler
+from frontik.handler import PageHandler
 
 
 class Page(PageHandler):

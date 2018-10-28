@@ -3,8 +3,7 @@
 import logging
 
 from tornado.options import options
-
-import frontik.handler
+from tornado.web import HTTPError
 
 handler_limit_logger = logging.getLogger('frontik.handler_active_limit')
 
@@ -21,7 +20,7 @@ class PageHandlerActiveLimit(object):
                 request.method, request.uri, PageHandlerActiveLimit.working_handlers_count
             )
 
-            raise frontik.handler.HTTPError(503)
+            raise HTTPError(503)
 
         self.acquire()
 

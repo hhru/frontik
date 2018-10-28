@@ -1,12 +1,13 @@
 # coding=utf-8
 
-import frontik.handler
-from frontik.handler import HTTPError
+from tornado.web import HTTPError
+
+from frontik.handler import PageHandler
 
 from tests.projects.balancer_app import get_server
 
 
-class Page(frontik.handler.PageHandler):
+class Page(PageHandler):
     def get_page(self):
         free_server = get_server(self, 'free')
         free_server.rack = 'rack1'

@@ -1,17 +1,17 @@
 # coding=utf-8
 
-import tornado.web
+from tornado.web import HTTPError
 
-import frontik.handler
+from frontik.handler import PageHandler
 
 
-class Page(frontik.handler.PageHandler):
+class Page(PageHandler):
     def get_page(self):
         port = int(self.get_argument('port'))
 
         @self.check_finished
         def cb(*args, **kw):
-            raise tornado.web.HTTPError(400)
+            raise HTTPError(400)
 
         self.get_url('http://localhost:{}'.format(port), '/page/simple/', callback=cb)
         self.get_url('http://localhost:{}'.format(port), '/page/simple/', callback=cb)

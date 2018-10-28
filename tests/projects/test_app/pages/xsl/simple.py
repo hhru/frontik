@@ -2,13 +2,14 @@
 
 from lxml import etree
 
-import frontik.handler
+from frontik.handler import HTTPErrorWithPostprocessors, PageHandler
 
 
-class Page(frontik.handler.PageHandler):
+class Page(PageHandler):
     def get_page(self):
         self.set_xsl(self.get_argument('template', 'simple.xsl'))
         self.doc.put(etree.Element('ok'))
 
         if self.get_argument('raise', 'false') == 'true':
-            raise frontik.handler.HTTPError(400, xml=etree.Element('not-ok'))
+            self.doc.put(etree.Element('not-ok'))
+            raise HTTPErrorWithPostprocessors(400)
