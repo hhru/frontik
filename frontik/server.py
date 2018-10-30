@@ -6,7 +6,6 @@ import os.path
 import signal
 import sys
 import time
-import traceback
 
 import tornado.autoreload
 import tornado.httpserver
@@ -66,12 +65,6 @@ def run_server(app):
         if options.autoreload:
             tornado.autoreload.start(1000)
 
-        def log_ioloop_block(signum, frame):
-            io_loop.add_callback_from_signal(
-                log.warning, 'IOLoop blocked for %f seconds in\n%s',
-                io_loop._blocking_signal_threshold, ''.join(traceback.format_stack(frame))
-            )
-
         def sigterm_handler(signum, frame):
             log.info('requested shutdown')
             log.info('shutting down server on %s:%d', options.host, options.port)
@@ -95,12 +88,10 @@ def run_server(app):
 
                 io_loop.add_timeout(time.time() + options.stop_timeout, ioloop_stop)
 
-        if options.log_blocked_ioloop_timeout > 0:
-            io_loop.set_blocking_signal_threshold(options.log_blocked_ioloop_timeout, log_ioloop_block)
-
         signal.signal(signal.SIGTERM, sigterm_handler)
     except Exception:
         log.exception('failed to start Tornado application')
+        sys.exit(1)
 
 
 def main(config_file=None):
