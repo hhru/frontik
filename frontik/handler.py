@@ -1,5 +1,5 @@
 # coding=utf-8
-
+import inspect
 import time
 from functools import partial
 
@@ -8,6 +8,7 @@ import tornado.httputil
 import tornado.options
 import tornado.web
 from tornado import gen
+from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 
 import frontik.auth
@@ -83,6 +84,7 @@ class BaseHandler(tornado.web.RequestHandler):
         self.debug_mode = DebugMode(self)
         self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish')
         self._handler_finished_notification = self.finish_group.add_notification()
+        self._postprocessors_finished = Future()
 
         self.json_producer = self.application.json.get_producer(self)
         self.json = self.json_producer.json
@@ -160,54 +162,42 @@ class BaseHandler(tornado.web.RequestHandler):
         RequestContext.set('handler_name', repr(self))
         return super(BaseHandler, self)._execute(transforms, *args, **kwargs)
 
-    def _execute_page_handler_after_preprocessor_completion(self, page_handler_method):
+    async def _execute_page_handler_after_preprocessor_completion(self, page_handler_method):
         self.log.stage_tag('prepare')
-        wrapped_page_handler_method = self._create_handler_method_wrapper(page_handler_method)
-
         preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(page_handler_method.__func__)
-        self.add_future(self._run_preprocessors(preprocessors, self), wrapped_page_handler_method)
+        preprocessors_run_result = await self._run_preprocessors(preprocessors, self)
+        if not preprocessors_run_result:
+            self.log.info('preprocessors chain was broken, skipping page method')
+            return
 
-    @tornado.web.asynchronous
-    def get(self, *args, **kwargs):
-        self._execute_page_handler_after_preprocessor_completion(self.get_page)
+        return_value = page_handler_method()
+        if inspect.iscoroutine(return_value):
+            await return_value
+        elif hasattr(self, 'handle_return_value'):
+            method_name = page_handler_method.__name__
+            self.handle_return_value(method_name, return_value)
 
-    @tornado.web.asynchronous
-    def post(self, *args, **kwargs):
-        self._execute_page_handler_after_preprocessor_completion(self.post_page)
+        self._handler_finished_notification()
+        await self.finish_group.get_finish_future()
+        await self._postprocessors_finished
 
-    @tornado.web.asynchronous
-    def head(self, *args, **kwargs):
-        self._execute_page_handler_after_preprocessor_completion(self.get_page)
+    async def get(self, *args, **kwargs):
+        await self._execute_page_handler_after_preprocessor_completion(self.get_page)
 
-    @tornado.web.asynchronous
-    def delete(self, *args, **kwargs):
-        self._execute_page_handler_after_preprocessor_completion(self.delete_page)
+    async def post(self, *args, **kwargs):
+        await self._execute_page_handler_after_preprocessor_completion(self.post_page)
 
-    @tornado.web.asynchronous
-    def put(self, *args, **kwargs):
-        self._execute_page_handler_after_preprocessor_completion(self.put_page)
+    async def head(self, *args, **kwargs):
+        await self._execute_page_handler_after_preprocessor_completion(self.get_page)
+
+    async def delete(self, *args, **kwargs):
+        await self._execute_page_handler_after_preprocessor_completion(self.delete_page)
+
+    async def put(self, *args, **kwargs):
+        await self._execute_page_handler_after_preprocessor_completion(self.put_page)
 
     def options(self, *args, **kwargs):
         raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
-
-    def _create_handler_method_wrapper(self, handler_method):
-        def _handle_future(future):
-            if future.exception():
-                raise_future_exception(future)
-
-            if not future.result():
-                self.log.info('preprocessors chain was broken, skipping page method')
-                return
-
-            return_value = handler_method()
-
-            if hasattr(self, 'handle_return_value'):
-                method_name = handler_method.__name__
-                self.handle_return_value(method_name, return_value)
-
-            self._handler_finished_notification()
-
-        return self.check_finished(_handle_future)
 
     def get_page(self):
         """ This method can be implemented in the subclass """
@@ -273,7 +263,12 @@ class BaseHandler(tornado.web.RequestHandler):
                 producer = self.xml_producer
 
             self.log.debug('using %s producer', producer)
-            producer(partial(self._call_postprocessors, self._template_postprocessors, self.finish))
+
+            def _after_postprocessors_finished(result):
+                self._postprocessors_finished.set_result(None)
+                self.finish(result)
+
+            producer(partial(self._call_postprocessors, self._template_postprocessors, _after_postprocessors_finished))
 
         self._call_postprocessors(self._postprocessors, _callback)
 
@@ -380,21 +375,19 @@ class BaseHandler(tornado.web.RequestHandler):
     def add_to_preprocessors_group(self, future):
         return self.preprocessors_group.add_future(future)
 
-    @gen.coroutine
-    def _run_preprocessors(self, preprocessors, *args, **kwargs):
+    async def _run_preprocessors(self, preprocessors, *args, **kwargs):
         self.preprocessors_group = AsyncGroup(lambda: None, name='preprocessors')
         preprocessors_group_notification = self.preprocessors_group.add_notification()
 
         for p in preprocessors:
-            yield gen.coroutine(p)(*args, **kwargs)
+            await gen.coroutine(p)(*args, **kwargs)
             if self._finished or self._page_aborted:
                 self.log.warning('page has already started finishing, breaking preprocessors chain')
-                raise gen.Return(False)
+                return False
 
         preprocessors_group_notification()
-        yield self.preprocessors_group.get_finish_future()
-
-        raise gen.Return(True)
+        await self.preprocessors_group.get_finish_future()
+        return True
 
     def _call_postprocessors(self, postprocessors, callback, *args):
         self._chain_functions(iter(postprocessors), callback, 'postprocessor', *args)

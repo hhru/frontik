@@ -3,7 +3,7 @@
 from collections import namedtuple
 from functools import partial
 
-from tornado.concurrent import Future
+from tornado.concurrent import Future, is_future
 
 from frontik.handler import BaseHandler, HTTPError
 from frontik.http_client import RequestResult
@@ -83,7 +83,7 @@ class MicroHandler(BaseHandler):
             futures = {}
             for name, future in return_value.items():
                 # Use is_future with Tornado 4
-                if not isinstance(future, Future):
+                if not is_future(future):
                     raise Exception('Invalid MicroHandler return value: {!r}'.format(future))
 
                 if getattr(future, 'fail_on_error', False):
@@ -92,6 +92,7 @@ class MicroHandler(BaseHandler):
                 futures[name] = future
 
             done_method_name = handler_method_name + '_requests_done'
+
             self._http_client.group(futures, getattr(self, done_method_name, None), name='MicroHandler')
 
         elif return_value is not None:
