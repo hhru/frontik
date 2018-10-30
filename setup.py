@@ -59,7 +59,7 @@ setup(
     tests_require=[
         'pytest <= 3.8.2',
         'pycodestyle == 2.4.0',
-        'requests <= 2.19.1',
+        'requests <= 2.20.0',
         'lxml-asserts',
         'tornado-httpclient-mock',
     ],

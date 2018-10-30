@@ -1,12 +1,16 @@
 # coding=utf-8
 
 import base64
+import http.client
 
 from tornado.escape import to_unicode
-
-from frontik import http_codes
+from tornado.web import Finish
 
 DEBUG_AUTH_HEADER_NAME = 'Frontik-Debug-Auth'
+
+
+class DebugUnauthorizedError(Finish):
+    pass
 
 
 def passed_basic_auth(handler, login, passwd):
@@ -32,9 +36,12 @@ def check_debug_auth(handler, login, password):
     if debug_auth_header is not None:
         debug_access = (debug_auth_header == '{}:{}'.format(login, password))
         if not debug_access:
-            return http_codes.UNAUTHORIZED, {'WWW-Authenticate': '{}-Header realm="Secure Area"'.format(header_name)}
+            handler.set_header('WWW-Authenticate', '{}-Header realm="Secure Area"'.format(header_name))
+            handler.set_status(http.client.UNAUTHORIZED)
+            raise DebugUnauthorizedError()
     else:
         debug_access = passed_basic_auth(handler, login, password)
         if not debug_access:
-            return http_codes.UNAUTHORIZED, {'WWW-Authenticate': 'Basic realm="Secure Area"'}
-    return None
+            handler.set_header('WWW-Authenticate', 'Basic realm="Secure Area"')
+            handler.set_status(http.client.UNAUTHORIZED)
+            raise DebugUnauthorizedError()

@@ -1,5 +1,6 @@
 # coding=utf-8
 
+import http.client
 import time
 from functools import partial
 
@@ -17,7 +18,6 @@ import frontik.producers.xml_producer
 import frontik.util
 from frontik.futures import AsyncGroup
 from frontik.debug import DebugMode
-from frontik.http_codes import process_status_code
 from frontik.loggers.request import RequestLogger
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors
 from frontik.request_context import RequestContext
@@ -40,13 +40,13 @@ class HTTPError(tornado.web.HTTPError):
         for data in ('text', 'xml', 'json'):
             setattr(self, data, kwargs.pop(data, None))
 
-        status_code, kwargs['reason'] = process_status_code(status_code, kwargs.get('reason'))
+        status_code = _fallback_status_code(status_code)
         super(HTTPError, self).__init__(status_code, log_message, *args, **kwargs)
         self.headers = headers
 
 
-class DebugUnauthorizedHTTPError(HTTPError):
-    pass
+def _fallback_status_code(status_code):
+    return status_code if status_code in http.client.responses else http.client.SERVICE_UNAVAILABLE
 
 
 class BaseHandler(tornado.web.RequestHandler):
@@ -101,11 +101,8 @@ class BaseHandler(tornado.web.RequestHandler):
             else:
                 check_login = login if login is not None else tornado.options.options.debug_login
                 check_passwd = passwd if passwd is not None else tornado.options.options.debug_password
-                error = frontik.auth.check_debug_auth(self, check_login, check_passwd)
-                debug_access = (error is None)
-                if not debug_access:
-                    code, headers = error
-                    raise DebugUnauthorizedHTTPError(code, headers=headers)
+                frontik.auth.check_debug_auth(self, check_login, check_passwd)
+                debug_access = True
 
             self._debug_access = debug_access
 
@@ -128,7 +125,7 @@ class BaseHandler(tornado.web.RequestHandler):
             return value.decode('utf-8', 'ignore')
 
     def set_status(self, status_code, reason=None):
-        status_code, reason = process_status_code(status_code, reason)
+        status_code = _fallback_status_code(status_code)
         super(BaseHandler, self).set_status(status_code, reason=reason)
 
     def redirect(self, url, *args, **kwargs):
