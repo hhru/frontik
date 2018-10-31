@@ -1,11 +1,10 @@
 # coding=utf-8
 
 import base64
+import http.client
 import unittest
 
 from tornado.escape import to_unicode
-
-from frontik import http_codes
 
 from .instances import create_basic_auth_header, frontik_test_app, frontik_no_debug_app
 
@@ -88,13 +87,13 @@ class DebugTestCase(unittest.TestCase):
     def test_debug_by_basic_auth(self):
         for param in ('debug', 'noxsl', 'notpl'):
             response = self.assertDebugResponseCode(page='simple?{}'.format(param),
-                                                    expected_code=http_codes.UNAUTHORIZED)
+                                                    expected_code=http.client.UNAUTHORIZED)
             self.assertIn('Www-Authenticate', response.headers)
             self.assertRegex(response.headers['Www-Authenticate'], 'Basic realm="[^"]+"')
 
             self.assertDebugResponseCode(page='simple?{}'.format(param),
                                          headers={'Authorization': self.DEBUG_BASIC_AUTH},
-                                         expected_code=http_codes.OK)
+                                         expected_code=http.client.OK)
 
     def test_debug_by_basic_auth_with_invalid_header(self):
         invalid_headers = (
@@ -110,32 +109,28 @@ class DebugTestCase(unittest.TestCase):
         )
 
         for h in invalid_headers:
-            self.assertDebugResponseCode('simple?debug', http_codes.UNAUTHORIZED, headers={'Authorization': h})
-
-    def test_custom_exception_in_write_error(self):
-        response = frontik_no_debug_app.get_page('write_error?debug', headers={'Authorization': 'wrong'})
-        self.assertEqual(to_unicode(response.content), 'DebugUnauthorizedHTTPError')
+            self.assertDebugResponseCode('simple?debug', http.client.UNAUTHORIZED, headers={'Authorization': h})
 
     def test_debug_by_header(self):
         for param in ('debug', 'noxsl', 'notpl'):
-            response = self.assertDebugResponseCode('simple?{}'.format(param), http_codes.UNAUTHORIZED)
+            response = self.assertDebugResponseCode('simple?{}'.format(param), http.client.UNAUTHORIZED)
 
             self.assertIn('Www-Authenticate', response.headers)
             self.assertEqual('Basic realm="Secure Area"', response.headers['Www-Authenticate'])
 
             self.assertDebugResponseCode(
-                'simple?{}'.format(param), http_codes.OK, headers={'Frontik-Debug-Auth': 'user:god'}
+                'simple?{}'.format(param), http.client.OK, headers={'Frontik-Debug-Auth': 'user:god'}
             )
 
             self.assertDebugResponseCode(
-                'simple?{}'.format(param), http_codes.OK,
+                'simple?{}'.format(param), http.client.OK,
                 headers={'Frontik-Debug-Auth': 'user:god', 'Authorization': 'Basic bad'}
             )
 
     def test_debug_by_header_with_wrong_header(self):
         for value in ('', 'not:pass', 'user: god', self.DEBUG_BASIC_AUTH):
             response = self.assertDebugResponseCode(
-                'simple?debug', http_codes.UNAUTHORIZED, headers={'Frontik-Debug-Auth': value}
+                'simple?debug', http.client.UNAUTHORIZED, headers={'Frontik-Debug-Auth': value}
             )
 
             self.assertIn('Www-Authenticate', response.headers)
@@ -144,10 +139,10 @@ class DebugTestCase(unittest.TestCase):
     def test_debug_by_cookie(self):
         for param in ('debug', 'noxsl', 'notpl'):
             self.assertDebugResponseCode(
-                'simple', http_codes.UNAUTHORIZED, headers={'Cookie': '{}=true'.format(param)}
+                'simple', http.client.UNAUTHORIZED, headers={'Cookie': '{}=true'.format(param)}
             )
 
             self.assertDebugResponseCode(
-                'simple', http_codes.OK,
+                'simple', http.client.OK,
                 headers={'Cookie': '{}=true;'.format(param), 'Authorization': self.DEBUG_BASIC_AUTH}
             )
