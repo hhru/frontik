@@ -12,6 +12,7 @@ These options can be set for each Frontik instance (see [options.py](/frontik/op
 | `port`                       | `int`   | `8000`        | Port to listen to                                                      |
 | `reuse_port`                 | `bool`  | `True`        | Binds server socket with SO_REUSEPORT option                           |
 | `config`                     | `str`   | `None`        | Path to config file                                                    |
+| `log_blocked_ioloop_timeout` | `float` | `0`           | Enables logging of long-running IOLoop iterations                      |
 | `app`                        | `str`   | `None`        | Application package name (see [Frontik application structure](/docs/frontik-app.md)) |
 | `app_class`                  | `str`   | `None`        | Application class name defined in application root module (by default `FrontikApplication` class is used) |
 | `xheaders  `                 | `bool`  | `False`       | Controls Tornado HTTPServer `xheaders` option                          |
