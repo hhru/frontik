@@ -1,3 +1,9 @@
+frontik (5.1.1) unstable; urgency=medium
+
+  * HH-84820 add slow callbacks monitoring
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 01 Nov 2018 12:33:15 +0300
+
 frontik (5.1.0) unstable; urgency=medium
 
   * HH-84737 remove httpcodes module
