@@ -1,3 +1,9 @@
+frontik (5.2.0) unstable; urgency=medium
+
+  * HH-84865 add functools.wraps for some wrappers
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 01 Nov 2018 18:18:33 +0300
+
 frontik (5.1.1) unstable; urgency=medium
 
   * HH-84820 add slow callbacks monitoring
