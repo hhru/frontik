@@ -1,7 +1,6 @@
 # coding=utf-8
 
-from frontik.handler import HTTPErrorWithPostprocessors
-from frontik.micro_handler import MicroHandler
+from frontik.handler import HTTPErrorWithPostprocessors, PageHandler
 from frontik.preprocessors import preprocessor
 
 
@@ -12,7 +11,7 @@ def get_page_preprocessor(handler):
     })
 
 
-class Page(MicroHandler):
+class Page(PageHandler):
     @get_page_preprocessor
     def get_page(self):
         fail_on_error = self.get_argument('fail_on_error', 'false') == 'true'
@@ -63,5 +62,3 @@ class Page(MicroHandler):
         # Testing invalid return values
         if self.get_argument('invalid_dict_value', 'false') == 'true':
             return {'invalid': 'value'}
-        elif self.get_argument('invalid_return_value', 'false') == 'true':
-            return object()
