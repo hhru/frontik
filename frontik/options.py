@@ -15,7 +15,7 @@ tornado.options.define('port', 8080, int)
 
 tornado.options.define('autoreload', False, bool)
 tornado.options.define('stop_timeout', 3, int)
-tornado.options.define('log_blocked_ioloop_timeout', 0, float)
+tornado.options.define('slow_callback_threshold_ms', None, int)
 
 tornado.options.define('loglevel', default='info', type=str, help='Log level')
 tornado.options.define('logformat', default='[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s', type=str,
