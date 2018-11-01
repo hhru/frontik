@@ -2,6 +2,7 @@
 
 import time
 import logging
+from functools import wraps
 
 from tornado.ioloop import IOLoop
 from tornado.concurrent import Future
@@ -68,6 +69,7 @@ class AsyncGroup(object):
     def add(self, intermediate_cb):
         self._inc()
 
+        @wraps(intermediate_cb)
         def new_cb(*args, **kwargs):
             if self._finished or self._aborted:
                 async_logger.info('ignoring response because of already finished %s', self)

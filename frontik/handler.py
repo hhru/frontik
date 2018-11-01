@@ -3,7 +3,7 @@
 import http.client
 import logging
 import time
-from functools import partial
+from functools import partial, wraps
 
 import tornado.curl_httpclient
 import tornado.httputil
@@ -208,6 +208,7 @@ class BaseHandler(tornado.web.RequestHandler):
         raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
 
     def _create_handler_method_wrapper(self, handler_method):
+        @wraps(handler_method)
         def _handle_future(future):
             if future.exception():
                 raise_future_exception(future)
@@ -255,14 +256,11 @@ class BaseHandler(tornado.web.RequestHandler):
     def is_finished(self):
         return self._finished
 
-    def check_finished(self, callback, *args, **kwargs):
-        original_callback = callback
-        if args or kwargs:
-            callback = partial(callback, *args, **kwargs)
-
+    def check_finished(self, callback):
+        @wraps(callback)
         def wrapper(*args, **kwargs):
             if self._finished:
-                self.log.warning('page was already finished, %s ignored', original_callback)
+                self.log.warning('page was already finished, %s ignored', callback)
             else:
                 return callback(*args, **kwargs)
 
