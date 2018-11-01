@@ -88,9 +88,6 @@ def run_server(app):
 
                 io_loop.add_timeout(time.time() + options.stop_timeout, ioloop_stop)
 
-        if options.log_blocked_ioloop_timeout > 0:
-            io_loop.asyncio_loop.slow_callback_duration = options.log_blocked_ioloop_timeout
-
         signal.signal(signal.SIGTERM, sigterm_handler)
     except Exception:
         log.exception('failed to start Tornado application')

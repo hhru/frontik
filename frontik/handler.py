@@ -1,15 +1,16 @@
 # coding=utf-8
 
 import http.client
+import logging
 import time
 from functools import partial
 
 import tornado.curl_httpclient
 import tornado.httputil
-import tornado.options
 import tornado.web
 from tornado import gen
 from tornado.ioloop import IOLoop
+from tornado.options import options
 
 import frontik.auth
 import frontik.handler_active_limit
@@ -22,6 +23,8 @@ from frontik.loggers.request import RequestLogger
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors
 from frontik.request_context import RequestContext
 from frontik.util import raise_future_exception
+
+SLOW_CALLBACK_LOGGER = logging.getLogger('slow_callback')
 
 
 class HTTPError(tornado.web.HTTPError):
@@ -96,11 +99,11 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def require_debug_access(self, login=None, passwd=None):
         if self._debug_access is None:
-            if tornado.options.options.debug:
+            if options.debug:
                 debug_access = True
             else:
-                check_login = login if login is not None else tornado.options.options.debug_login
-                check_passwd = passwd if passwd is not None else tornado.options.options.debug_password
+                check_login = login if login is not None else options.debug_login
+                check_passwd = passwd if passwd is not None else options.debug_password
                 frontik.auth.check_debug_auth(self, check_login, check_passwd)
                 debug_access = True
 
@@ -135,21 +138,38 @@ class BaseHandler(tornado.web.RequestHandler):
     def reverse_url(self, name, *args, **kwargs):
         return self.application.reverse_url(name, *args, **kwargs)
 
-    @staticmethod
-    def add_callback(callback, *args, **kwargs):
-        IOLoop.current().add_callback(callback, *args, **kwargs)
+    @classmethod
+    def add_callback(cls, callback, *args, **kwargs):
+        IOLoop.current().add_callback(cls.warn_slow_callback(callback), *args, **kwargs)
 
-    @staticmethod
-    def add_timeout(deadline, callback, *args, **kwargs):
-        return IOLoop.current().add_timeout(deadline, callback, *args, **kwargs)
+    @classmethod
+    def add_timeout(cls, deadline, callback, *args, **kwargs):
+        return IOLoop.current().add_timeout(deadline, cls.warn_slow_callback(callback), *args, **kwargs)
 
     @staticmethod
     def remove_timeout(timeout):
         IOLoop.current().remove_timeout(timeout)
 
+    @classmethod
+    def add_future(cls, future, callback):
+        IOLoop.current().add_future(future, cls.warn_slow_callback(callback))
+
     @staticmethod
-    def add_future(future, callback):
-        IOLoop.current().add_future(future, callback)
+    def warn_slow_callback(callback):
+        if options.slow_callback_threshold_ms is None:
+            return callback
+
+        def _wrapper(*args, **kwargs):
+            start_time = IOLoop.current().time()
+            result = callback(*args, **kwargs)
+            callback_duration = (IOLoop.current().time() - start_time) * 1000
+
+            if callback_duration >= options.slow_callback_threshold_ms:
+                SLOW_CALLBACK_LOGGER.warning('slow callback %s took %s ms', callback, callback_duration)
+
+            return result
+
+        return _wrapper
 
     # Requests handling
 

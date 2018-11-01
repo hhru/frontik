@@ -578,7 +578,7 @@ class HttpClient(object):
             result = self._parse_response(response, parse_response, parse_on_error)
 
             if callable(callback):
-                callback(result.data, result.response)
+                self.handler.warn_slow_callback(callback)(result.data, result.response)
 
             future.set_result(result)
 
