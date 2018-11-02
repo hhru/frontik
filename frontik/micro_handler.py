@@ -4,8 +4,9 @@ from collections import namedtuple
 from functools import partial
 
 from tornado.concurrent import Future
+from tornado.web import HTTPError
 
-from frontik.handler import BaseHandler, HTTPError
+from frontik.handler import BaseHandler
 from frontik.http_client import RequestResult
 
 

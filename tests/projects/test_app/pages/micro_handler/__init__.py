@@ -1,6 +1,6 @@
 # coding=utf-8
 
-from frontik.handler import HTTPError
+from frontik.handler import HTTPErrorWithPostprocessors
 from frontik.micro_handler import MicroHandler
 from frontik.preprocessors import preprocessor
 
@@ -27,9 +27,9 @@ class Page(MicroHandler):
             'delete': self.DELETE(self.request.host, self.request.path, data={'invalid_dict_value': 'true'}),
         }
 
-    @staticmethod
-    def get_page_requests_failed(name, data, response):
-        raise HTTPError(403, json={'fail_on_error': True})
+    def get_page_requests_failed(self, name, data, response):
+        self.json.replace({'fail_on_error': True})
+        raise HTTPErrorWithPostprocessors(403)
 
     def get_page_requests_done(self, results):
         assert results['post'].response.code == 200
@@ -56,7 +56,8 @@ class Page(MicroHandler):
 
     def put_page(self):
         # Testing parse_on_error=True
-        raise HTTPError(int(self.get_argument('code')), json={'error': 'forbidden'})
+        self.json.put({'error': 'forbidden'})
+        raise HTTPErrorWithPostprocessors(int(self.get_argument('code')))
 
     def delete_page(self):
         # Testing invalid return values

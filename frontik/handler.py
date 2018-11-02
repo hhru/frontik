@@ -11,6 +11,7 @@ import tornado.web
 from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.options import options
+from tornado.web import asynchronous, RequestHandler
 
 import frontik.auth
 import frontik.handler_active_limit
@@ -27,32 +28,15 @@ from frontik.util import raise_future_exception
 SLOW_CALLBACK_LOGGER = logging.getLogger('slow_callback')
 
 
-class HTTPError(tornado.web.HTTPError):
-    """Extends tornado.web.HTTPError with several keyword-only arguments and allows using
-    some extended HTTP codes.
-
-    :arg dict headers: Custom HTTP headers to pass along with the error response.
-    :arg string text: Plain text override for error response.
-    :arg etree xml: XML node to be added to `self.doc`. If present, error page will be
-        produced with `application/xml` content type.
-    :arg dict json: JSON dict to be used as error response. If present, error page
-        will be produced with `application/json` content type.
-    """
-    def __init__(self, status_code, log_message=None, *args, **kwargs):
-        headers = kwargs.pop('headers', {})
-        for data in ('text', 'xml', 'json'):
-            setattr(self, data, kwargs.pop(data, None))
-
-        status_code = _fallback_status_code(status_code)
-        super(HTTPError, self).__init__(status_code, log_message, *args, **kwargs)
-        self.headers = headers
-
-
 def _fallback_status_code(status_code):
     return status_code if status_code in http.client.responses else http.client.SERVICE_UNAVAILABLE
 
 
-class BaseHandler(tornado.web.RequestHandler):
+class HTTPErrorWithPostprocessors(tornado.web.HTTPError):
+    pass
+
+
+class BaseHandler(RequestHandler):
 
     preprocessors = ()
 
@@ -184,28 +168,28 @@ class BaseHandler(tornado.web.RequestHandler):
         preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(page_handler_method.__func__)
         self.add_future(self._run_preprocessors(preprocessors, self), wrapped_page_handler_method)
 
-    @tornado.web.asynchronous
+    @asynchronous
     def get(self, *args, **kwargs):
         self._execute_page_handler_after_preprocessor_completion(self.get_page)
 
-    @tornado.web.asynchronous
+    @asynchronous
     def post(self, *args, **kwargs):
         self._execute_page_handler_after_preprocessor_completion(self.post_page)
 
-    @tornado.web.asynchronous
+    @asynchronous
     def head(self, *args, **kwargs):
         self._execute_page_handler_after_preprocessor_completion(self.get_page)
 
-    @tornado.web.asynchronous
+    @asynchronous
     def delete(self, *args, **kwargs):
         self._execute_page_handler_after_preprocessor_completion(self.delete_page)
 
-    @tornado.web.asynchronous
+    @asynchronous
     def put(self, *args, **kwargs):
         self._execute_page_handler_after_preprocessor_completion(self.put_page)
 
     def options(self, *args, **kwargs):
-        raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
+        self.__return_405()
 
     def _create_handler_method_wrapper(self, handler_method):
         @wraps(handler_method)
@@ -229,22 +213,26 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def get_page(self):
         """ This method can be implemented in the subclass """
-        raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
+        self.__return_405()
 
     def post_page(self):
         """ This method can be implemented in the subclass """
-        raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
+        self.__return_405()
 
     def put_page(self):
         """ This method can be implemented in the subclass """
-        raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
+        self.__return_405()
 
     def delete_page(self):
         """ This method can be implemented in the subclass """
-        raise HTTPError(405, headers={'Allow': ', '.join(self.__get_allowed_methods())})
+        self.__return_405()
 
-    def __get_allowed_methods(self):
-        return [name for name in ('get', 'post', 'put', 'delete') if '{0}_page'.format(name) in vars(self.__class__)]
+    def __return_405(self):
+        allowed_methods = [
+            name for name in ('get', 'post', 'put', 'delete') if '{}_page'.format(name) in vars(self.__class__)
+        ]
+        self.set_header('Allow', ', '.join(allowed_methods))
+        self.set_status(405)
 
     # HTTP client methods
 
@@ -321,13 +309,16 @@ class BaseHandler(tornado.web.RequestHandler):
         if self._headers_written:
             super(BaseHandler, self).send_error(status_code, **kwargs)
 
-        self.clear()
-
         reason = kwargs.get('reason')
         if 'exc_info' in kwargs:
             exception = kwargs['exc_info'][1]
-            if isinstance(exception, HTTPError) and exception.reason:
+            if isinstance(exception, tornado.web.HTTPError) and exception.reason:
                 reason = exception.reason
+        else:
+            exception = None
+
+        if not isinstance(exception, HTTPErrorWithPostprocessors):
+            self.clear()
 
         self.set_status(status_code, reason=reason)
 
@@ -339,8 +330,8 @@ class BaseHandler(tornado.web.RequestHandler):
                 self.finish()
 
     def write_error(self, status_code=500, **kwargs):
-        """`write_error` can call `finish` asynchronously.
-        This allows, for example, asynchronous templating on error pages.
+        """
+        `write_error` can call `finish` asynchronously if HTTPErrorWithPostprocessors is raised.
         """
 
         if 'exc_info' in kwargs:
@@ -348,29 +339,7 @@ class BaseHandler(tornado.web.RequestHandler):
         else:
             exception = None
 
-        headers = getattr(exception, 'headers', None)
-        override_content = any(getattr(exception, x, None) is not None for x in ('text', 'xml', 'json'))
-        finish_with_exception = isinstance(exception, HTTPError) and override_content
-
-        if headers:
-            for (name, value) in headers.items():
-                self.set_header(name, value)
-
-        if finish_with_exception:
-            self.json.clear()
-
-            if getattr(exception, 'text', None) is not None:
-                self.doc.clear()
-                self.text = exception.text
-            elif getattr(exception, 'json', None) is not None:
-                self.text = None
-                self.doc.clear()
-                self.json.put(exception.json)
-            elif getattr(exception, 'xml', None) is not None:
-                self.text = None
-                # cannot clear self.doc due to backwards compatibility, a bug actually
-                self.doc.put(exception.xml)
-
+        if isinstance(exception, HTTPErrorWithPostprocessors):
             self.finish_with_postprocessors()
             return
 
@@ -438,6 +407,10 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def _generic_producer(self, callback):
         self.log.debug('finishing plaintext')
+
+        if self._headers.get('Content-Type') is None:
+            self.set_header('Content-Type', 'text/html; charset=UTF-8')
+
         callback(self.text)
 
     def xml_from_file(self, filename):

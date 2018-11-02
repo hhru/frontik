@@ -1,6 +1,7 @@
 # coding=utf-8
 
-from frontik.handler import HTTPError
+from tornado.web import HTTPError
+
 from frontik.micro_handler import MicroHandler
 
 

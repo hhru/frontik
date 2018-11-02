@@ -1,6 +1,6 @@
 # coding=utf-8
 
-from frontik.handler import HTTPError
+from tornado.web import HTTPError
 
 
 def check_all_servers_occupied(handler, name):

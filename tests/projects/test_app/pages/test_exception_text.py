@@ -1,12 +1,10 @@
 # coding=utf-8
 
-import frontik.handler
+from frontik.handler import HTTPErrorWithPostprocessors, PageHandler
 
 
-class Page(frontik.handler.PageHandler):
+class Page(PageHandler):
     def get_page(self):
-        self.text = 'old bad text'
-
         def callback_post(element, response):
             assert False
 
@@ -15,4 +13,5 @@ class Page(frontik.handler.PageHandler):
         self.post_url(self.request.host, self.request.path, callback=callback_post)
         self.post_url(self.request.host, self.request.path, callback=callback_post)
 
-        raise frontik.handler.HTTPError(403, text='This is just a plain text')
+        self.text = 'This is just a plain text'
+        raise HTTPErrorWithPostprocessors(403)

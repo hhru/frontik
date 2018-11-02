@@ -1,14 +1,15 @@
 # coding=utf-8
 
-import frontik.handler
-from frontik.handler import HTTPError
+from tornado.web import HTTPError
+
+from frontik.handler import PageHandler
 from frontik.futures import AsyncGroup
 
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
-class Page(frontik.handler.PageHandler):
+class Page(PageHandler):
     def get_page(self):
         self.application.http_client_factory.register_upstream('retry_non_idempotent_503',
                                                                {'retry_policy': 'non_idempotent_503'},

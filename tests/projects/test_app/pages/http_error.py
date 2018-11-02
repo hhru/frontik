@@ -1,14 +1,9 @@
-import frontik.handler
+from tornado.web import HTTPError
+
+from frontik.handler import PageHandler
 
 
-class Page(frontik.handler.PageHandler):
+class Page(PageHandler):
     def get_page(self):
-        throw_error = self.get_argument('throw', 'true') == 'true'
         code = int(self.get_argument('code', '200'))
-
-        self.text = 'success'
-
-        if throw_error:
-            raise frontik.handler.HTTPError(code, headers={'X-Foo': 'Bar'})
-        else:
-            self.set_status(code)
+        raise HTTPError(code)

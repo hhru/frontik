@@ -1,6 +1,7 @@
-import frontik.handler
+from frontik.handler import HTTPErrorWithPostprocessors, PageHandler
 
 
-class Page(frontik.handler.PageHandler):
+class Page(PageHandler):
     def get_page(self):
-        raise frontik.handler.HTTPError(400, json={'reason': 'bad argument'})
+        self.json.put({'reason': 'bad argument'})
+        raise HTTPErrorWithPostprocessors(400)

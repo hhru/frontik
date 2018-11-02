@@ -2,10 +2,10 @@
 
 from tornado.escape import to_unicode
 
-import frontik.handler
+from frontik.handler import HTTPErrorWithPostprocessors, PageHandler
 
 
-class Page(frontik.handler.PageHandler):
+class Page(PageHandler):
     def get_page(self):
         self.json.put(self.post_url(self.request.host, self.request.path, parse_on_error=True))
         self.json.put(self.put_url(self.request.host, self.request.path, parse_on_error=False))
@@ -16,10 +16,12 @@ class Page(frontik.handler.PageHandler):
         self.json.put({'delete': to_unicode(data)})
 
     def post_page(self):
-        raise frontik.handler.HTTPError(400, json={'post': True})
+        self.json.put({'post': True})
+        raise HTTPErrorWithPostprocessors(400)
 
     def put_page(self):
-        raise frontik.handler.HTTPError(400, json={'put': True})
+        self.json.put({'put': True})
+        raise HTTPErrorWithPostprocessors(400)
 
     def delete_page(self):
         self.text = 'deleted'
