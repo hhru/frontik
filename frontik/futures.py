@@ -64,7 +64,6 @@ class AsyncGroup(object):
 
     def _dec(self):
         self._counter -= 1
-        async_logger.debug('%s: %s requests pending', self, self._counter)
 
     def add(self, intermediate_cb):
         self._inc()
