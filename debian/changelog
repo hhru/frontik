@@ -1,3 +1,9 @@
+frontik (5.3.0) unstable; urgency=medium
+
+  * HH-84844 remove custom HTTPError
+
+ -- Automated Build <an.sumin@hh.ru>  Fri, 02 Nov 2018 14:12:20 +0300
+
 frontik (5.2.0) unstable; urgency=medium
 
   * HH-84865 add functools.wraps for some wrappers
