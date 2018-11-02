@@ -407,7 +407,7 @@ class DebugTransform(OutputTransform):
         start_time = time.time()
 
         debug_log_data = RequestContext.get('log_handler').produce_all()
-        debug_log_data.set('code', str(self.status_code))
+        debug_log_data.set('code', str(int(self.status_code)))
         debug_log_data.set('handler-name', RequestContext.get('handler_name'))
         debug_log_data.set('started', _format_number(self.request._start_time))
         debug_log_data.set('request-id', str(self.request.request_id))

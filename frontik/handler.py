@@ -414,14 +414,11 @@ class PageHandler(RequestHandler):
     def _chain_functions(self, functions, callback, chain_type, *args):
         try:
             func = next(functions)
-            start_time = time.time()
 
             def _callback(*args):
-                time_delta = (time.time() - start_time) * 1000
-                self.log.debug('finished %s "%r" in %.2fms', chain_type, func, time_delta)
                 self._chain_functions(functions, callback, chain_type, *args)
 
-            func(self, *(args + (_callback,)))
+            self.warn_slow_callback(func)(self, *(args + (_callback,)))
         except StopIteration:
             callback(*args)
 
