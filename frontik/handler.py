@@ -3,12 +3,14 @@
 import http.client
 import logging
 import time
+from collections import namedtuple
 from functools import partial, wraps
 
 import tornado.curl_httpclient
 import tornado.httputil
 import tornado.web
 from tornado import gen
+from tornado.concurrent import is_future
 from tornado.ioloop import IOLoop
 from tornado.options import options
 from tornado.web import asynchronous, RequestHandler
@@ -20,6 +22,7 @@ import frontik.producers.xml_producer
 import frontik.util
 from frontik.futures import AsyncGroup
 from frontik.debug import DebugMode
+from frontik.http_client import RequestResult
 from frontik.loggers.request import RequestLogger
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors
 from frontik.request_context import RequestContext
@@ -36,7 +39,7 @@ class HTTPErrorWithPostprocessors(tornado.web.HTTPError):
     pass
 
 
-class BaseHandler(RequestHandler):
+class PageHandler(RequestHandler):
 
     preprocessors = ()
 
@@ -53,7 +56,7 @@ class BaseHandler(RequestHandler):
         for initializer in application.loggers_initializers:
             initializer(self)
 
-        super(BaseHandler, self).__init__(application, request, **kwargs)
+        super(PageHandler, self).__init__(application, request, **kwargs)
 
         self._debug_access = None
         self._page_aborted = False
@@ -79,7 +82,7 @@ class BaseHandler(RequestHandler):
 
         self._prepared = True
 
-        super(BaseHandler, self).prepare()
+        super(PageHandler, self).prepare()
 
     def require_debug_access(self, login=None, passwd=None):
         if self._debug_access is None:
@@ -101,7 +104,7 @@ class BaseHandler(RequestHandler):
 
     def decode_argument(self, value, name=None):
         try:
-            return super(BaseHandler, self).decode_argument(value, name)
+            return super(PageHandler, self).decode_argument(value, name)
         except (UnicodeError, tornado.web.HTTPError):
             self.log.warning('cannot decode utf-8 query parameter, trying other charsets')
 
@@ -113,11 +116,11 @@ class BaseHandler(RequestHandler):
 
     def set_status(self, status_code, reason=None):
         status_code = _fallback_status_code(status_code)
-        super(BaseHandler, self).set_status(status_code, reason=reason)
+        super(PageHandler, self).set_status(status_code, reason=reason)
 
     def redirect(self, url, *args, **kwargs):
         self.log.info('redirecting to: %s', url)
-        return super(BaseHandler, self).redirect(url, *args, **kwargs)
+        return super(PageHandler, self).redirect(url, *args, **kwargs)
 
     def reverse_url(self, name, *args, **kwargs):
         return self.application.reverse_url(name, *args, **kwargs)
@@ -159,7 +162,7 @@ class BaseHandler(RequestHandler):
 
     def _execute(self, transforms, *args, **kwargs):
         RequestContext.set('handler_name', repr(self))
-        return super(BaseHandler, self)._execute(transforms, *args, **kwargs)
+        return super(PageHandler, self)._execute(transforms, *args, **kwargs)
 
     def _execute_page_handler_after_preprocessor_completion(self, page_handler_method):
         self.log.stage_tag('prepare')
@@ -192,6 +195,21 @@ class BaseHandler(RequestHandler):
         self.__return_405()
 
     def _create_handler_method_wrapper(self, handler_method):
+        def _future_fail_on_error_handler(name, future):
+            result = future.result()
+            if not isinstance(result, RequestResult):
+                return
+
+            if not result.response.error and not result.exception:
+                return
+
+            error_method_name = handler_method.__name__ + '_requests_failed'
+            if hasattr(self, error_method_name):
+                getattr(self, error_method_name)(name, result.data, result.response)
+
+            status_code = result.response.code if 300 <= result.response.code < 500 else 502
+            raise tornado.web.HTTPError(status_code, 'HTTP request failed with code {}'.format(result.response.code))
+
         @wraps(handler_method)
         def _handle_future(future):
             if future.exception():
@@ -203,9 +221,19 @@ class BaseHandler(RequestHandler):
 
             return_value = handler_method()
 
-            if hasattr(self, 'handle_return_value'):
-                method_name = handler_method.__name__
-                self.handle_return_value(method_name, return_value)
+            if isinstance(return_value, dict):
+                futures = {}
+                for name, future in return_value.items():
+                    if not is_future(future):
+                        raise Exception('Invalid PageHandler return value: {!r}'.format(future))
+
+                    if getattr(future, 'fail_on_error', False):
+                        self.add_future(future, self.finish_group.add(partial(_future_fail_on_error_handler, name)))
+
+                    futures[name] = future
+
+                done_method_name = handler_method.__name__ + '_requests_done'
+                self._http_client.group(futures, getattr(self, done_method_name, None), name='requests')
 
             self._handler_finished_notification()
 
@@ -294,7 +322,7 @@ class BaseHandler(RequestHandler):
         self._exception_hooks.append(exception_hook)
 
     def log_exception(self, typ, value, tb):
-        super(BaseHandler, self).log_exception(typ, value, tb)
+        super(PageHandler, self).log_exception(typ, value, tb)
 
         for exception_hook in self._exception_hooks:
             exception_hook(typ, value, tb)
@@ -307,7 +335,7 @@ class BaseHandler(RequestHandler):
         self.log.stage_tag('page')
 
         if self._headers_written:
-            super(BaseHandler, self).send_error(status_code, **kwargs)
+            super(PageHandler, self).send_error(status_code, **kwargs)
 
         reason = kwargs.get('reason')
         if 'exc_info' in kwargs:
@@ -344,7 +372,7 @@ class BaseHandler(RequestHandler):
             return
 
         self.set_header('Content-Type', 'text/html; charset=UTF-8')
-        return super(BaseHandler, self).write_error(status_code, **kwargs)
+        return super(PageHandler, self).write_error(status_code, **kwargs)
 
     def cleanup(self):
         if hasattr(self, 'active_limit'):
@@ -356,7 +384,7 @@ class BaseHandler(RequestHandler):
         if self._status_code in (204, 304) or (100 <= self._status_code < 200):
             chunk = None
 
-        super(BaseHandler, self).finish(chunk)
+        super(PageHandler, self).finish(chunk)
         self.cleanup()
 
     # Preprocessors and postprocessors
@@ -422,8 +450,61 @@ class BaseHandler(RequestHandler):
     def set_template(self, filename):
         return self.json_producer.set_template(filename)
 
+    # HTTP client methods
 
-class PageHandler(BaseHandler):
+    _Request = namedtuple('_Request', ('method', 'host', 'uri', 'kwargs'))
+
+    def GET(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None,
+            max_timeout_tries=None, follow_redirects=True, fail_on_error=False):
+        future = self._http_client.get_url(
+            host, uri,
+            data=data, headers=headers,
+            connect_timeout=connect_timeout, request_timeout=request_timeout,
+            max_timeout_tries=max_timeout_tries,
+            follow_redirects=follow_redirects, parse_on_error=True
+        )
+        future.fail_on_error = fail_on_error
+        return future
+
+    def POST(self, host, uri, data='', headers=None, files=None, connect_timeout=None, request_timeout=None,
+             max_timeout_tries=None, idempotent=False, follow_redirects=True, content_type=None, fail_on_error=False):
+        future = self._http_client.post_url(
+            host, uri,
+            data=data, headers=headers, files=files,
+            connect_timeout=connect_timeout, request_timeout=request_timeout,
+            max_timeout_tries=max_timeout_tries, idempotent=idempotent,
+            follow_redirects=follow_redirects, content_type=content_type,
+            parse_on_error=True
+        )
+        future.fail_on_error = fail_on_error
+        return future
+
+    def PUT(self, host, uri, data='', headers=None, connect_timeout=None, request_timeout=None,
+            max_timeout_tries=None, content_type=None, fail_on_error=False):
+        future = self._http_client.put_url(
+            host, uri,
+            data=data, headers=headers,
+            connect_timeout=connect_timeout, request_timeout=request_timeout,
+            max_timeout_tries=max_timeout_tries,
+            content_type=content_type,
+            parse_on_error=True
+        )
+        future.fail_on_error = fail_on_error
+        return future
+
+    def DELETE(self, host, uri, data=None, headers=None, connect_timeout=None, request_timeout=None,
+               max_timeout_tries=None, content_type=None, fail_on_error=False):
+        future = self._http_client.delete_url(
+            host, uri,
+            data=data, headers=headers,
+            connect_timeout=connect_timeout, request_timeout=request_timeout,
+            max_timeout_tries=max_timeout_tries,
+            content_type=content_type,
+            parse_on_error=True
+        )
+        future.fail_on_error = fail_on_error
+        return future
+
     def group(self, futures, callback=None, name=None):
         return self._http_client.group(futures, callback, name)
 

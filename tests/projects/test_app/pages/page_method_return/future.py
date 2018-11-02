@@ -3,10 +3,10 @@
 from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 
-from frontik.micro_handler import MicroHandler
+from frontik.handler import PageHandler
 
 
-class Page(MicroHandler):
+class Page(PageHandler):
     def get_page(self):
         fail_on_error_future = self.get_argument('fail_on_error_future', 'false') == 'true'
         fail_future = self.get_argument('fail_future', 'false') == 'true'
