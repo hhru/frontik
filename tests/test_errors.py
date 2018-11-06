@@ -2,7 +2,9 @@
 
 import unittest
 
-from .instances import frontik_re_app, frontik_test_app
+import requests
+
+from .instances import frontik_test_app
 
 
 class TestHttpError(unittest.TestCase):
@@ -28,6 +30,11 @@ class TestHttpError(unittest.TestCase):
     def test_raise_unknown_code(self):
         response = frontik_test_app.get_page('http_error?code=599')
         self.assertEqual(response.status_code, 503)
+
+    def test_405(self):
+        response = frontik_test_app.get_page('http_error', method=requests.put)
+        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.headers['allow'], 'get')
 
     def test_finish_200(self):
         for code, actual_code in self._CODES_MAPPING.items():
@@ -67,3 +74,9 @@ class TestHttpError(unittest.TestCase):
         response = frontik_test_app.get_page('write_error?fail_write_error=true')
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.content, b'')
+
+    def test_write_error_405(self):
+        response = frontik_test_app.get_page('write_error', method=requests.put)
+        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.headers['allow'], 'get')
+        self.assertEqual(response.content, b'{"write_error": true}')
