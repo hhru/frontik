@@ -1,3 +1,9 @@
+frontik (5.4.2) unstable; urgency=medium
+
+  * HH-84940 fix 405 errors
+
+ -- Automated Build <an.sumin@hh.ru>  Tue, 06 Nov 2018 15:53:09 +0300
+
 frontik (5.4.1) unstable; urgency=medium
 
   * HH-84906 small logging improvements
