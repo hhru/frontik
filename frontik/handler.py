@@ -260,7 +260,7 @@ class PageHandler(RequestHandler):
             name for name in ('get', 'post', 'put', 'delete') if '{}_page'.format(name) in vars(self.__class__)
         ]
         self.set_header('Allow', ', '.join(allowed_methods))
-        self.set_status(405)
+        raise HTTPErrorWithPostprocessors(405)
 
     # HTTP client methods
 
