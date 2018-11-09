@@ -106,3 +106,5 @@ def bootstrap_core_logging():
 
     if not ROOT_LOGGER.handlers:
         ROOT_LOGGER.addHandler(logging.NullHandler())
+
+    logging.captureWarnings(True)
