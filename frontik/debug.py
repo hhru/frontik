@@ -43,13 +43,13 @@ def response_to_xml(response):
     try_charsets = (charset, 'cp1251')
 
     try:
-        if 'text/html' in content_type:
+        if not response.body:
+            body = ''
+        elif 'text/html' in content_type:
             mode = 'html'
             body = frontik.util.decode_string_from_charset(response.body, try_charsets)
         elif 'protobuf' in content_type:
             body = repr(response.body)
-        elif response.body is None:
-            body = ''
         elif 'xml' in content_type:
             mode = 'xml'
             body = _pretty_print_xml(etree.fromstring(response.body))
