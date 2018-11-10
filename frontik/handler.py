@@ -331,7 +331,8 @@ class PageHandler(RequestHandler):
         if isinstance(exception, FailFastError):
             result = exception.failed_request
             self.log.warning(
-                'FailFastError: request %s failed with %s code', exception.failed_request.name, result.response.code
+                'FailFastError: request to %s failed with %s code',
+                exception.failed_request.balanced_request.get_host(), result.response.code
             )
 
             try:

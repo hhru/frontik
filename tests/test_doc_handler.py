@@ -21,4 +21,4 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
         xml = frontik_test_app.get_page_xml('compose_doc?invalid=true')
 
         self.assertIsNotNone(xml.find('error'))
-        self.assertEqual(xml.find('error').get('reason'), 'invalid XML')
+        self.assertEqual(xml.find('error').get('reason'), 'invalid xml')

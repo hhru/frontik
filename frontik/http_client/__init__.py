@@ -26,7 +26,7 @@ def _string_to_dict(s):
     return {name: value for (name, value) in (v.split('=') for v in s.split(' ') if v)}
 
 
-http_logger = logging.getLogger('frontik.http_client')
+http_client_logger = logging.getLogger('frontik.http_client')
 
 
 class FailFastError(Exception):
@@ -205,12 +205,12 @@ class Upstream(object):
                 server.fails = 0
 
     def _disable_server(self, server):
-        http_logger.info('disabling server %s for upstream %s', server.address, self.name)
+        http_client_logger.info('disabling server %s for upstream %s', server.address, self.name)
         server.disable()
         IOLoop.current().add_timeout(IOLoop.current().time() + self.fail_timeout, partial(self._restore_server, server))
 
     def _restore_server(self, server):
-        http_logger.info('restoring server %s for upstream %s', server.address, self.name)
+        http_client_logger.info('restoring server %s for upstream %s', server.address, self.name)
         server.restore(self.get_join_strategy())
 
     def update(self, config, servers):
@@ -462,17 +462,17 @@ class HttpClientFactory(object):
         if not servers:
             if upstream is not None:
                 del self.upstreams[name]
-                http_logger.info('delete %s upstream', name)
+                http_client_logger.info('delete %s upstream', name)
             return
 
         if upstream is None:
             upstream = Upstream(name, upstream_config, servers)
             self.upstreams[name] = upstream
-            http_logger.info('add %s upstream: %s', name, str(upstream))
+            http_client_logger.info('add %s upstream: %s', name, str(upstream))
             return
 
         upstream.update(upstream_config, servers)
-        http_logger.info('update %s upstream: %s', name, str(upstream))
+        http_client_logger.info('update %s upstream: %s', name, str(upstream))
 
 
 class HttpClient(object):
@@ -588,11 +588,12 @@ class HttpClient(object):
                 return
 
             result = self._parse_response(response, parse_response, parse_on_error)
+            result.balanced_request = balanced_request
 
             if callable(callback):
                 self.handler.warn_slow_callback(callback)(result.data, result.response)
 
-            if fail_fast and (result.response.error or result.exception):
+            if fail_fast and (result.response.error or result.data_parse_error is not None):
                 raise FailFastError(result)
             else:
                 future.set_result(result)
@@ -713,79 +714,67 @@ class HttpClient(object):
             time=response.request_time * 1000
         )
 
-        log_method = self.handler.log.warn if response.code >= 500 else self.handler.log.info
+        log_method = self.handler.log.warning if response.code >= 500 else self.handler.log.info
         log_method(log_message, extra=debug_extra)
 
     def _parse_response(self, response, parse_response, parse_on_error):
-        data = None
         result = RequestResult()
+        result.response = response
 
-        try:
-            if response.error and not parse_on_error:
-                self._set_response_error(response)
-            elif not parse_response:
-                data = response.body
-            elif response.code != 204:
-                content_type = response.headers.get('Content-Type', '')
-                for k, v in DEFAULT_REQUEST_TYPES.items():
-                    if k.search(content_type):
-                        data = v(response, logger=self.handler.log)
-                        break
-        except FailedRequestException as ex:
-            result.set_exception(ex)
+        if response.error and not parse_on_error:
+            data_or_error = DataParseError(reason=str(response.error), code=response.code)
+        elif not parse_response or response.code == 204:
+            data_or_error = response.body
+        else:
+            data_or_error = None
+            content_type = response.headers.get('Content-Type', '')
+            for k, v in DEFAULT_REQUEST_TYPES.items():
+                if k.search(content_type):
+                    data_or_error = v(result.response)
+                    break
 
-        result.set(data, response)
+        if isinstance(data_or_error, DataParseError):
+            result.data_parse_error = data_or_error
+        else:
+            result.data = data_or_error
 
         return result
 
-    def _set_response_error(self, response):
-        log_func = self.handler.log.error if response.code >= 500 else self.handler.log.warning
-        log_func('{code} failed {url} ({reason!s})'.format(
-            code=response.code, url=response.effective_url, reason=response.error)
-        )
 
-        raise FailedRequestException(reason=str(response.error), code=response.code)
+class DataParseError:
+    __slots__ = ('attrs',)
 
-
-class FailedRequestException(Exception):
-    def __init__(self, **kwargs):
-        self.attrs = kwargs
+    def __init__(self, **attrs):
+        self.attrs = attrs
 
 
 class RequestResult(object):
-    __slots__ = ('name', 'data', 'response', 'exception')
+    __slots__ = ('balanced_request', 'data', 'data_parse_error', 'response')
 
     ResponseData = namedtuple('ResponseData', ('data', 'response'))
 
     def __init__(self):
-        self.name = None
+        self.balanced_request = None
         self.data = None
+        self.data_parse_error = None
         self.response = None
-        self.exception = None
-
-    def set(self, data, response):
-        self.data = data
-        self.response = response
-
-    def set_exception(self, exception):
-        self.exception = exception
 
     def to_dict(self):
-        if self.exception is not None:
+        if isinstance(self.data_parse_error, DataParseError):
             return {
-                'error': {k: v for k, v in self.exception.attrs.items()}
+                'error': {k: v for k, v in self.data_parse_error.attrs.items()}
             }
 
         return self.data
 
     def to_etree_element(self):
-        if self.exception is not None:
-            return etree.Element('error', **{k: str(v) for k, v in self.exception.attrs.items()})
+        if isinstance(self.data_parse_error, DataParseError):
+            return etree.Element('error', **{k: str(v) for k, v in self.data_parse_error.attrs.items()})
 
         return self.data
 
 
-def _parse_response(response, logger, parser=None, response_type=None):
+def _parse_response(response, parser, response_type):
     try:
         return parser(response.body)
     except Exception:
@@ -801,24 +790,25 @@ def _parse_response(response, logger, parser=None, response_type=None):
         except Exception:
             body_preview = 'is unavailable, could not covert to unicode'
 
-        logger.exception(
-            'failed to parse %s response from %s, body excerpt %s', response_type, response.effective_url, body_preview
+        http_client_logger.exception(
+            'failed to parse %s response from %s, body excerpt %s',
+            response_type, response.effective_url, body_preview
         )
 
-        raise FailedRequestException(url=response.effective_url, reason='invalid {}'.format(response_type))
+        return DataParseError(reason='invalid {}'.format(response_type))
 
 
 _xml_parser = etree.XMLParser(strip_cdata=False)
-_parse_response_xml = partial(_parse_response,
-                              parser=lambda body: etree.fromstring(body, parser=_xml_parser),
-                              response_type='XML')
+_parse_response_xml = partial(
+    _parse_response, parser=lambda body: etree.fromstring(body, parser=_xml_parser), response_type='xml'
+)
 
-_parse_response_json = partial(_parse_response,
-                               parser=lambda body: json.loads(to_unicode(body)),
-                               response_type='JSON')
+_parse_response_json = partial(_parse_response, parser=lambda body: json.loads(to_unicode(body)), response_type='json')
+
+_parse_response_text = partial(_parse_response, parser=to_unicode, response_type='text')
 
 DEFAULT_REQUEST_TYPES = {
     re.compile('.*xml.?'): _parse_response_xml,
     re.compile('.*json.?'): _parse_response_json,
-    re.compile('.*text/plain.?'): (lambda response, logger: to_unicode(response.body)),
+    re.compile('.*text/plain.?'): _parse_response_text,
 }
