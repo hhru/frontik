@@ -119,7 +119,7 @@ class RpcChannel(object):
             extra={'_protobuf': request}
         )
 
-        self.post_url(self.host, url_concat(url, self.query_params), payload,
+        self.post_url(self.host, url_concat(url, self.query_params), data=payload,
                       content_type=RpcChannel.PROTOBUF_CONTENT_TYPE,
                       callback=_cb,
                       **self.kwargs)
