@@ -1,20 +1,9 @@
-import os
 import sys
 
 from setuptools import setup
-from setuptools.command.build_py import build_py
 from setuptools.command.test import test
 
-from frontik import version
-
-
-class BuildHook(build_py):
-    def run(self):
-        build_py.run(self)
-
-        build_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), self.build_lib, 'frontik')
-        with open(os.path.join(build_dir, 'version.py'), 'w') as version_file:
-            version_file.write('version = "{0}"\n'.format(version))
+from frontik.version import version
 
 
 class TestHook(test):
@@ -38,12 +27,11 @@ install_requires = [
 
 setup(
     name='frontik',
-    version=__import__('frontik').__version__,
+    version=version,
     description='Frontik is an asyncronous Tornado-based application server',
     long_description=open('README.md').read(),
     url='https://github.com/hhru/frontik',
     cmdclass={
-        'build_py': BuildHook,
         'test': TestHook
     },
     packages=[

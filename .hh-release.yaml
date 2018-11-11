@@ -1,5 +1,6 @@
 version_var: ver_frontik
 build_image: registry.pyn.ru:5000/hhbuild:16.04
-build_method: deb_build
-update_method: deb_update
-deploy_method: deb_deploy
+build_method: nope_build
+update_method: python_update
+python_version_file: frontik/version.py
+deploy_method: nope_deploy
