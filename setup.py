@@ -54,6 +54,7 @@ setup(
     package_data={
         'frontik': ['debug/*.xsl'],
     },
+    scripts=['scripts/frontik'],
     install_requires=install_requires,
     test_suite='tests',
     tests_require=[
