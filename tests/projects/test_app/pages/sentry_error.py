@@ -20,7 +20,7 @@ class Page(PageHandler):
 
     def finish(self, chunk=None):
         # delay page finish to make sure that sentry mock got the exception
-        self.add_timeout(IOLoop.current().time() + 1.0, partial(super(Page, self).finish, chunk))
+        self.add_timeout(IOLoop.current().time() + 0.3, partial(super(Page, self).finish, chunk))
 
     def initialize_sentry_logger(self, sentry_logger):
         sentry_logger.update_user_info(user_id='123456')

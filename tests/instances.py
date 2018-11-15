@@ -106,6 +106,8 @@ class FrontikTestInstance(object):
             auth = kwargs['auth']
             kwargs['auth'] = HTTPBasicAuth(auth[1], auth[2])
 
+        kwargs['timeout'] = 1
+
         return method(url, **kwargs)
 
     def get_page_xml(self, page, notpl=False):

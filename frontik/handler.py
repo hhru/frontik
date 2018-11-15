@@ -2,18 +2,17 @@
 
 import http.client
 import logging
-import time
 from collections import namedtuple
 from functools import partial, wraps
 
 import tornado.curl_httpclient
 import tornado.httputil
 import tornado.web
-from tornado import gen
+from tornado import gen, stack_context
 from tornado.concurrent import is_future
 from tornado.ioloop import IOLoop
 from tornado.options import options
-from tornado.web import asynchronous, RequestHandler
+from tornado.web import RequestHandler
 
 import frontik.auth
 import frontik.handler_active_limit
@@ -26,7 +25,6 @@ from frontik.http_client import RequestResult
 from frontik.loggers.request import RequestLogger
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors
 from frontik.request_context import RequestContext
-from frontik.util import raise_future_exception
 
 SLOW_CALLBACK_LOGGER = logging.getLogger('slow_callback')
 
@@ -162,39 +160,37 @@ class PageHandler(RequestHandler):
 
     def _execute(self, transforms, *args, **kwargs):
         RequestContext.set('handler_name', repr(self))
-        return super(PageHandler, self)._execute(transforms, *args, **kwargs)
+        with stack_context.ExceptionStackContext(self._stack_context_handle_exception):
+            return super(PageHandler, self)._execute(transforms, *args, **kwargs)
 
-    def _execute_page_handler_after_preprocessor_completion(self, page_handler_method):
-        self.log.stage_tag('prepare')
-        wrapped_page_handler_method = self._create_handler_method_wrapper(page_handler_method)
-
-        preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(page_handler_method.__func__)
-        self.add_future(self._run_preprocessors(preprocessors, self), wrapped_page_handler_method)
-
-    @asynchronous
+    @gen.coroutine
     def get(self, *args, **kwargs):
-        self._execute_page_handler_after_preprocessor_completion(self.get_page)
+        yield self._execute_page(self.get_page)
 
-    @asynchronous
+    @gen.coroutine
     def post(self, *args, **kwargs):
-        self._execute_page_handler_after_preprocessor_completion(self.post_page)
+        yield self._execute_page(self.post_page)
 
-    @asynchronous
+    @gen.coroutine
     def head(self, *args, **kwargs):
-        self._execute_page_handler_after_preprocessor_completion(self.get_page)
+        yield self._execute_page(self.get_page)
 
-    @asynchronous
+    @gen.coroutine
     def delete(self, *args, **kwargs):
-        self._execute_page_handler_after_preprocessor_completion(self.delete_page)
+        yield self._execute_page(self.delete_page)
 
-    @asynchronous
+    @gen.coroutine
     def put(self, *args, **kwargs):
-        self._execute_page_handler_after_preprocessor_completion(self.put_page)
+        yield self._execute_page(self.put_page)
 
     def options(self, *args, **kwargs):
         self.__return_405()
 
-    def _create_handler_method_wrapper(self, handler_method):
+    @gen.coroutine
+    def _execute_page(self, page_handler_method):
+        self._auto_finish = False
+        self.log.stage_tag('prepare')
+
         def _future_fail_on_error_handler(name, future):
             result = future.result()
             if not isinstance(result, RequestResult):
@@ -203,23 +199,22 @@ class PageHandler(RequestHandler):
             if not result.response.error and not result.exception:
                 return
 
-            error_method_name = handler_method.__name__ + '_requests_failed'
+            error_method_name = page_handler_method.__name__ + '_requests_failed'
             if hasattr(self, error_method_name):
                 getattr(self, error_method_name)(name, result.data, result.response)
 
             status_code = result.response.code if 300 <= result.response.code < 500 else 502
             raise tornado.web.HTTPError(status_code, 'HTTP request failed with code {}'.format(result.response.code))
 
-        @wraps(handler_method)
-        def _handle_future(future):
-            if future.exception():
-                raise_future_exception(future)
+        preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(page_handler_method.__func__)
+        preprocessors_finished = yield self._run_preprocessors(preprocessors, self)
 
-            if not future.result():
-                self.log.info('preprocessors chain was broken, skipping page method')
-                return
-
-            return_value = handler_method()
+        if not preprocessors_finished:
+            self.log.info('preprocessors chain was broken, skipping page method')
+        elif self.is_finished():
+            self.log.info('page was finished in preprocessors, skipping page method')
+        else:
+            return_value = page_handler_method()
 
             if isinstance(return_value, dict):
                 futures = {}
@@ -232,12 +227,12 @@ class PageHandler(RequestHandler):
 
                     futures[name] = future
 
-                done_method_name = handler_method.__name__ + '_requests_done'
+                done_method_name = page_handler_method.__name__ + '_requests_done'
                 self._http_client.group(futures, getattr(self, done_method_name, None), name='requests')
 
             self._handler_finished_notification()
 
-        return self.check_finished(_handle_future)
+        yield self.preprocessors_group.get_finish_future()
 
     def get_page(self):
         """ This method can be implemented in the subclass """
@@ -395,7 +390,6 @@ class PageHandler(RequestHandler):
     @gen.coroutine
     def _run_preprocessors(self, preprocessors, *args, **kwargs):
         self.preprocessors_group = AsyncGroup(lambda: None, name='preprocessors')
-        preprocessors_group_notification = self.preprocessors_group.add_notification()
 
         for p in preprocessors:
             yield gen.coroutine(p)(*args, **kwargs)
@@ -403,7 +397,7 @@ class PageHandler(RequestHandler):
                 self.log.warning('page has already started finishing, breaking preprocessors chain')
                 raise gen.Return(False)
 
-        preprocessors_group_notification()
+        self.preprocessors_group.try_finish()
         yield self.preprocessors_group.get_finish_future()
 
         raise gen.Return(True)
