@@ -1,3 +1,11 @@
+frontik (5.4.3) unstable; urgency=medium
+
+  * HH-85064 install frontik launcher from setup.py
+  * HH-85064 capture warnings by logging module
+  * HH-85064 remove asynchronous decorator usages
+
+ -- Automated Build <an.sumin@hh.ru>  Thu, 15 Nov 2018 16:55:00 +0300
+
 frontik (5.4.2) unstable; urgency=medium
 
   * HH-84940 fix 405 errors
