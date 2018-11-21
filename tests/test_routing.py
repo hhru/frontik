@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import unittest
 
 from frontik.routing import MAX_MODULE_NAME_LENGTH

@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import jinja2
 
 from frontik.app import FrontikApplication

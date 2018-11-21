@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import lxml.etree as etree
 
 from tornado.concurrent import Future

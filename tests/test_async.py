@@ -1,4 +1,3 @@
-# coding=utf-8
 from tornado.concurrent import Future
 from tornado.testing import AsyncTestCase
 

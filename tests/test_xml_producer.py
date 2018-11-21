@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import unittest
 
 from .instances import frontik_test_app

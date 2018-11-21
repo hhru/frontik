@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import time
 import logging
 from collections import namedtuple

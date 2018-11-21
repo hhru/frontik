@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import unittest
 
 from lxml import etree
@@ -21,7 +19,7 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
         self.assertXmlEqual(d.to_etree_element(), b'<a/>')
 
         node = etree.Element('b')
-        node.text = u'тест'
+        node.text = 'тест'
         d.put(node)
 
         self.assertFalse(d.is_empty())
@@ -55,7 +53,7 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
         f.set_result([etree.Comment('ccc'), etree.Element('bbb')])
         d.put(f)
 
-        self.assertXmlEqual(d.to_etree_element(), u"""<?xml version='1.0'?>\n<a><!--ccc--><bbb/></a>""")
+        self.assertXmlEqual(d.to_etree_element(), """<?xml version='1.0'?>\n<a><!--ccc--><bbb/></a>""")
 
     def test_failed_future(self):
         d = Doc('a')
@@ -66,7 +64,7 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
         d.put(f)
 
         self.assertXmlEqual(
-            d.to_etree_element(), u"""<?xml version='1.0'?>\n<a><error reason="error" code="code"/></a>"""
+            d.to_etree_element(), """<?xml version='1.0'?>\n<a><error reason="error" code="code"/></a>"""
         )
 
     def test_doc_nested(self):

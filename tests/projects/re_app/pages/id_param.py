@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import lxml.etree as etree
 
 import frontik.handler

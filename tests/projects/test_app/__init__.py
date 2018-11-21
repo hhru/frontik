@@ -1,5 +1,3 @@
-# coding=utf-8
-
 from frontik.app import FrontikApplication
 
 from tests.projects.test_app import config

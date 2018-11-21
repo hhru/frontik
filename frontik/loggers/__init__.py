@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import logging
 import socket
 from logging.handlers import SysLogHandler

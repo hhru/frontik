@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import base64
 import http.client
 import unittest
@@ -34,13 +32,13 @@ class DebugTestCase(unittest.TestCase):
         # Extra output and different types of content
 
         extra_output = (
-            u'&lt;child2&gt;тест&lt;/child2&gt;',
-            u'юникод\ndebug',
-            u'"тест": "value"',
-            u'SomeProtobufObject()',
-            u'&lt;response&gt;some xml&lt;/response&gt;',
-            u'document.body.write("Привет")',
-            u'привет charset',
+            '&lt;child2&gt;тест&lt;/child2&gt;',
+            'юникод\ndebug',
+            '"тест": "value"',
+            'SomeProtobufObject()',
+            '&lt;response&gt;some xml&lt;/response&gt;',
+            'document.body.write("Привет")',
+            'привет charset',
         )
 
         for msg in extra_output:

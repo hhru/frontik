@@ -1,5 +1,3 @@
-# coding=utf-8
-
 from frontik.routing import FileMappingRouter
 
 from . import pages

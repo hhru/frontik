@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import unittest
 from collections import OrderedDict
 
@@ -27,7 +25,7 @@ class TestUtil(unittest.TestCase):
         self.assertQueriesEqual(make_qs(query_args), '')
 
     def test_make_qs_encode(self):
-        query_args = {'a': u'тест', 'b': 'тест'}
+        query_args = {'a': 'тест', 'b': 'тест'}
         qs = make_qs(query_args)
         self.assertIsInstance(qs, str)
         self.assertQueriesEqual(qs, 'a=%D1%82%D0%B5%D1%81%D1%82&b=%D1%82%D0%B5%D1%81%D1%82')
@@ -39,7 +37,7 @@ class TestUtil(unittest.TestCase):
 
     def test_make_qs_unicode_params(self):
         self.assertQueriesEqual(
-            make_qs({'при': 'вет', u'по': u'ка'}),
+            make_qs({'при': 'вет', 'по': 'ка'}),
             '%D0%BF%D1%80%D0%B8=%D0%B2%D0%B5%D1%82&%D0%BF%D0%BE=%D0%BA%D0%B0'
         )
 
@@ -55,8 +53,8 @@ class TestUtil(unittest.TestCase):
         )
 
         self.assertEqual(
-            make_url(u'http://тест.рф/path?k=v', param=u'тест'),
-            u'http://тест.рф/path?k=v&param=%D1%82%D0%B5%D1%81%D1%82'
+            make_url('http://тест.рф/path?k=v', param='тест'),
+            'http://тест.рф/path?k=v&param=%D1%82%D0%B5%D1%81%D1%82'
         )
 
     def assertQueriesEqual(self, qs1, qs2):
@@ -65,16 +63,16 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(qs1_list, qs2_list)
 
     def test_any_to_unicode(self):
-        self.assertEqual(any_to_unicode(5), u'5')
-        self.assertEqual(any_to_unicode(None), u'None')
-        self.assertEqual(any_to_unicode(u'тест'), u'тест')
-        self.assertEqual(any_to_unicode(u'тест'.encode('utf-8')), u'тест')
+        self.assertEqual(any_to_unicode(5), '5')
+        self.assertEqual(any_to_unicode(None), 'None')
+        self.assertEqual(any_to_unicode('тест'), 'тест')
+        self.assertEqual(any_to_unicode('тест'.encode('utf-8')), 'тест')
 
     def test_any_to_bytes(self):
         self.assertEqual(any_to_bytes(5), b'5')
         self.assertEqual(any_to_bytes(None), b'None')
-        self.assertEqual(any_to_bytes(u'тест'), u'тест'.encode('utf-8'))
-        self.assertEqual(any_to_bytes(u'тест'.encode('utf-8')), u'тест'.encode('utf-8'))
+        self.assertEqual(any_to_bytes('тест'), 'тест'.encode('utf-8'))
+        self.assertEqual(any_to_bytes('тест'.encode('utf-8')), 'тест'.encode('utf-8'))
 
     def test_make_mfd(self):
         args, files = {}, {}

@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import unittest
 
 # noinspection PyUnresolvedReferences
@@ -44,7 +42,7 @@ class CurlStringTestCase(unittest.TestCase):
 
     def test_curl_string_binary(self):
         request = BalancedHttpRequest('http://test.com', Upstream.get_single_host_upstream(), '/path',
-                                      data=u'тест',
+                                      data='тест',
                                       method='POST',
                                       content_type='text/plain').make_request()
 

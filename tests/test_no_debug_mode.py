@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import unittest
 
 from .instances import create_basic_auth_header, frontik_no_debug_app

@@ -1,5 +1,3 @@
-# coding=utf-8
-
 from lxml.builder import E
 
 import frontik.handler
@@ -11,7 +9,7 @@ class Page(frontik.handler.PageHandler):
 
         def _exception_trace():
             def _inner():
-                raise ValueError(u'Testing an exception юникод')
+                raise ValueError('Testing an exception юникод')
             _inner()
 
         try:
@@ -39,17 +37,17 @@ class Page(frontik.handler.PageHandler):
             self.log.debug('testing xslt profiling')
             self.set_xsl('simple.xsl')
 
-        self.log.debug('testing xml output', extra={'_xml': E.root(E.child1(param=u'тест'), E.child2(u'тест'))})
+        self.log.debug('testing xml output', extra={'_xml': E.root(E.child1(param='тест'), E.child2('тест'))})
         self.log.debug('testing utf-8 text output', extra={'_text': 'some\nmultiline\nюникод\ndebug'})
-        self.log.debug('testing unicode text output', extra={'_text': u'some\nmultiline\nюникод\ndebug'})
+        self.log.debug('testing unicode text output', extra={'_text': 'some\nmultiline\nюникод\ndebug'})
 
     def post_page(self):
         self.log.debug('this page returns json')
 
         self.json.put({
             'param1': 'value',
-            'param2': u'тест',
-            u'тест': 'value'
+            'param2': 'тест',
+            'тест': 'value'
         })
 
     def put_page(self):
@@ -68,4 +66,4 @@ class Page(frontik.handler.PageHandler):
             self.text = 'document.body.write("Привет")'
         elif content_type == 'text':
             self.set_header('Content-Type', 'text/plain; charset=utf-8')
-            self.text = u'привет charset'.encode('utf-8')
+            self.text = 'привет charset'.encode('utf-8')

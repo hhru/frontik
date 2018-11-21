@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import base64
 import copy
 import inspect
@@ -43,13 +41,13 @@ def response_to_xml(response):
     try_charsets = (charset, 'cp1251')
 
     try:
-        if 'text/html' in content_type:
+        if not response.body:
+            body = ''
+        elif 'text/html' in content_type:
             mode = 'html'
             body = frontik.util.decode_string_from_charset(response.body, try_charsets)
         elif 'protobuf' in content_type:
             body = repr(response.body)
-        elif response.body is None:
-            body = ''
         elif 'xml' in content_type:
             mode = 'xml'
             body = _pretty_print_xml(etree.fromstring(response.body))
@@ -175,7 +173,7 @@ def response_from_debug(request, response):
 
 def request_to_curl_string(request):
     def _escape_apos(string):
-        return string.replace(u"'", u"'\"'\"'")
+        return string.replace("'", "'\"'\"'")
 
     try:
         request_body = _escape_apos(request.body.decode('ascii')) if request.body else None
@@ -189,21 +187,21 @@ def request_to_curl_string(request):
         curl_headers['Content-Length'] = len(request.body)
 
     if is_binary_body:
-        curl_echo_data = u"echo -e {} |".format(request_body)
-        curl_data_string = u'--data-binary @-'
+        curl_echo_data = "echo -e {} |".format(request_body)
+        curl_data_string = '--data-binary @-'
     else:
         curl_echo_data = ''
-        curl_data_string = u"--data '{}'".format(request_body) if request_body else ''
+        curl_data_string = "--data '{}'".format(request_body) if request_body else ''
 
     def _format_header(key):
         header_value = frontik.util.any_to_unicode(curl_headers[key])
-        return u"-H '{0}: {1}'".format(key, _escape_apos(header_value))
+        return "-H '{0}: {1}'".format(key, _escape_apos(header_value))
 
-    return u"{echo} curl -X {method} '{url}' {headers} {data}".format(
+    return "{echo} curl -X {method} '{url}' {headers} {data}".format(
         echo=curl_echo_data,
         method=request.method,
         url=to_unicode(request.url),
-        headers=u' '.join(_format_header(k) for k in sorted(curl_headers.keys())),
+        headers=' '.join(_format_header(k) for k in sorted(curl_headers.keys())),
         data=curl_data_string
     ).strip()
 
