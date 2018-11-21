@@ -1,3 +1,11 @@
+frontik (5.4.4) unstable; urgency=medium
+
+  * HH-85510 remove coding=utf-8
+  * HH-85510 remove u prefix
+  * HH-85510 fix empty xml in debug
+
+ -- Automated Build <an.sumin@hh.ru>  Wed, 21 Nov 2018 17:24:00 +0300
+
 frontik (5.4.3) unstable; urgency=medium
 
   * HH-85064 install frontik launcher from setup.py
