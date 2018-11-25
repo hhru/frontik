@@ -77,7 +77,7 @@ class FrontikApplication(Application):
         self.router = FrontikRouter(self)
         self.loggers_initializers = bootstrap_app_loggers(self)
 
-        super(FrontikApplication, self).__init__([
+        super().__init__([
             (r'/version/?', VersionHandler),
             (r'/status/?', StatusHandler),
             (r'.*', self.router),
@@ -98,7 +98,7 @@ class FrontikApplication(Application):
                     return func(*args, **kwargs)
             return wrapper
 
-        delegate = wrapped_in_context(super(FrontikApplication, self).find_handler)(request, **kwargs)
+        delegate = wrapped_in_context(super().find_handler)(request, **kwargs)
         delegate.headers_received = wrapped_in_context(delegate.headers_received)
         delegate.data_received = wrapped_in_context(delegate.data_received)
         delegate.finish = wrapped_in_context(delegate.finish)
@@ -154,7 +154,7 @@ class FrontikApplication(Application):
         }
 
     def log_request(self, handler):
-        super(FrontikApplication, self).log_request(handler)
+        super().log_request(handler)
         if isinstance(getattr(handler, 'log', None), request.RequestLogger):
             handler.log.stage_tag('flush')
             handler.log.log_stages(handler.get_status())

@@ -52,7 +52,7 @@ class PageHandler(RequestHandler):
         for initializer in application.loggers_initializers:
             initializer(self)
 
-        super(PageHandler, self).__init__(application, request, **kwargs)
+        super().__init__(application, request, **kwargs)
 
         self._debug_access = None
         self._page_aborted = False
@@ -78,7 +78,7 @@ class PageHandler(RequestHandler):
 
         self._prepared = True
 
-        super(PageHandler, self).prepare()
+        super().prepare()
 
     def require_debug_access(self, login=None, passwd=None):
         if self._debug_access is None:
@@ -100,7 +100,7 @@ class PageHandler(RequestHandler):
 
     def decode_argument(self, value, name=None):
         try:
-            return super(PageHandler, self).decode_argument(value, name)
+            return super().decode_argument(value, name)
         except (UnicodeError, tornado.web.HTTPError):
             self.log.warning('cannot decode utf-8 query parameter, trying other charsets')
 
@@ -112,11 +112,11 @@ class PageHandler(RequestHandler):
 
     def set_status(self, status_code, reason=None):
         status_code = _fallback_status_code(status_code)
-        super(PageHandler, self).set_status(status_code, reason=reason)
+        super().set_status(status_code, reason=reason)
 
     def redirect(self, url, *args, **kwargs):
         self.log.info('redirecting to: %s', url)
-        return super(PageHandler, self).redirect(url, *args, **kwargs)
+        return super().redirect(url, *args, **kwargs)
 
     def reverse_url(self, name, *args, **kwargs):
         return self.application.reverse_url(name, *args, **kwargs)
@@ -159,7 +159,7 @@ class PageHandler(RequestHandler):
     def _execute(self, transforms, *args, **kwargs):
         RequestContext.set('handler_name', repr(self))
         with stack_context.ExceptionStackContext(self._stack_context_handle_exception):
-            return super(PageHandler, self)._execute(transforms, *args, **kwargs)
+            return super()._execute(transforms, *args, **kwargs)
 
     @gen.coroutine
     def get(self, *args, **kwargs):
@@ -315,7 +315,7 @@ class PageHandler(RequestHandler):
         self._exception_hooks.append(exception_hook)
 
     def log_exception(self, typ, value, tb):
-        super(PageHandler, self).log_exception(typ, value, tb)
+        super().log_exception(typ, value, tb)
 
         for exception_hook in self._exception_hooks:
             exception_hook(typ, value, tb)
@@ -328,7 +328,7 @@ class PageHandler(RequestHandler):
         self.log.stage_tag('page')
 
         if self._headers_written:
-            super(PageHandler, self).send_error(status_code, **kwargs)
+            super().send_error(status_code, **kwargs)
 
         reason = kwargs.get('reason')
         if 'exc_info' in kwargs:
@@ -365,7 +365,7 @@ class PageHandler(RequestHandler):
             return
 
         self.set_header('Content-Type', 'text/html; charset=UTF-8')
-        return super(PageHandler, self).write_error(status_code, **kwargs)
+        return super().write_error(status_code, **kwargs)
 
     def cleanup(self):
         if hasattr(self, 'active_limit'):
@@ -377,7 +377,7 @@ class PageHandler(RequestHandler):
         if self._status_code in (204, 304) or (100 <= self._status_code < 200):
             chunk = None
 
-        super(PageHandler, self).finish(chunk)
+        super().finish(chunk)
         self.cleanup()
 
     # Preprocessors and postprocessors

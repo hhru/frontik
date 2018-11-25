@@ -34,7 +34,7 @@ class ContextFilter(logging.Filter):
 
 class BufferedHandler(logging.Handler):
     def __init__(self, level=logging.NOTSET):
-        super(BufferedHandler, self).__init__(level)
+        super().__init__(level)
         self.records = []
 
     def handle(self, record):

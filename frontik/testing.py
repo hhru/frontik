@@ -28,7 +28,7 @@ class FrontikTestCase(AsyncHTTPTestCase):
         Any additional kwargs will be passed to `AsyncHTTPTestCase.fetch`.
         """
         query = {} if query is None else query
-        return super(FrontikTestCase, self).fetch(make_url(path, **query), **kwargs)
+        return super().fetch(make_url(path, **query), **kwargs)
 
     def fetch_xml(self, path, query=None, **kwargs):
         """Fetch the request and parse xml document from response body."""

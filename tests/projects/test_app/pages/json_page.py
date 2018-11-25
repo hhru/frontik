@@ -12,7 +12,7 @@ class Page(frontik.handler.PageHandler):
 
             self.jinja_context_provider = jinja_context_provider
 
-        super(Page, self).prepare()
+        super().prepare()
 
     def get_page(self):
         invalid_json = self.get_argument('invalid', 'false')
