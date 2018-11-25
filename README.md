@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/hhru/frontik.svg?branch=master)](https://travis-ci.org/hhru/frontik)
-
+[![Coverage Status](https://coveralls.io/repos/github/hhru/frontik/badge.svg?branch=HH-85666)](https://coveralls.io/github/hhru/frontik?branch=HH-85666)
 
 ## What is Frontik?
 

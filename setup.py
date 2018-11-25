@@ -15,7 +15,7 @@ class TestHook(test):
 
     def run_tests(self):
         import pytest
-        sys.exit(pytest.main(['tests']))
+        sys.exit(pytest.main(['tests', '--tb', 'native']))
 
 
 install_requires = [
