@@ -1,7 +1,7 @@
 import mimetypes
 import os.path
 import re
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import urlencode
 from uuid import uuid4
 
 from tornado.concurrent import Future
@@ -83,11 +83,6 @@ def decode_string_from_charset(string, charsets=('cp1251',)):
         raise UnicodeError('Could not decode string (tried: {0})'.format(', '.join(charsets)))
 
     return decoded_body
-
-
-def get_query_parameters(url):
-    url = 'http://' + url if not re.match(r'[a-z]+://.+\??.*', url, re.IGNORECASE) else url
-    return parse_qs(urlparse(url).query, True)
 
 
 def choose_boundary():

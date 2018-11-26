@@ -57,7 +57,7 @@ if has_raven:
 
         def __init__(self, *args, **kwargs):
             self.http_client = kwargs.pop('http_client', None)
-            super(AsyncSentryClient, self).__init__(*args, **kwargs)
+            super().__init__(*args, **kwargs)
 
         def _send_remote(self, url, data, headers=None, callback=None):
             """

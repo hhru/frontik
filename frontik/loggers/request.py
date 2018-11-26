@@ -18,7 +18,7 @@ class RequestLogger(logging.LoggerAdapter):
         self._last_stage_time = self._start_time = request._start_time
         self.stages = []
 
-        super(RequestLogger, self).__init__(_logger, {})
+        super().__init__(_logger, {})
 
         # backcompatibility with logger
         self.warn = self.warning

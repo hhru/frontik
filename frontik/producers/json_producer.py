@@ -7,7 +7,7 @@ import sys
 import tornado.ioloop
 from jinja2.utils import concat
 from tornado.concurrent import Future
-from tornado.escape import to_unicode, utf8
+from tornado.escape import to_unicode
 from tornado.options import options
 
 import frontik.json_builder
@@ -90,8 +90,8 @@ class JsonProducer(object):
             while True:
                 try:
                     next_statement_render_result = next(template_stream, None)
-                except Exception:
-                    render_future.set_exc_info(sys.exc_info())
+                except Exception as e:
+                    render_future.set_exception(e)
                     return
 
                 if next_statement_render_result is None:

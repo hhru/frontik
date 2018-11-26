@@ -52,6 +52,7 @@ tornado.options.define('http_client_allow_cross_datacenter_requests', default=Fa
 
 tornado.options.define('statsd_host', default=None, type=str)
 tornado.options.define('statsd_port', default=None, type=int)
+tornado.options.define('generic_metrics_send_interval_ms', default=None, type=int)
 
 tornado.options.define('timeout_multiplier', default=1.0, type=float)
 

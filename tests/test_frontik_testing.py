@@ -32,7 +32,7 @@ class CheckConfigHandler(PageHandler):
 
 class TestFrontikTesting(FrontikTestCase):
     def setUp(self):
-        super(TestFrontikTesting, self).setUp()
+        super().setUp()
         self.configure_app(serviceHost='http://service.host')
 
     def get_app(self):
