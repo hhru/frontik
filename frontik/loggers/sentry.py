@@ -4,6 +4,8 @@ from tornado.httpclient import AsyncHTTPClient
 from tornado.options import options
 from tornado.web import HTTPError
 
+from frontik.http_client import FailFastError
+
 try:
     from raven.contrib.tornado import AsyncSentryClient as OriginalAsyncSentryClient
     has_raven = True
@@ -41,7 +43,7 @@ def bootstrap_logger(app):
 
         # Defer logger creation after exception actually occurs
         def log_exception_to_sentry(typ, value, tb):
-            if isinstance(value, HTTPError):
+            if isinstance(value, (HTTPError, FailFastError)):
                 return
 
             handler.get_sentry_logger().capture_exception(exc_info=(typ, value, tb))

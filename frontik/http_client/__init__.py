@@ -1,7 +1,6 @@
 import json
 import re
 import time
-from collections import namedtuple
 from functools import partial
 from random import shuffle, random
 
@@ -591,6 +590,7 @@ class HttpClient(object):
 
             result = self._parse_response(response, parse_response, parse_on_error)
             result.request = balanced_request
+            result.name = balanced_request.name
 
             if callable(callback):
                 self.handler.warn_slow_callback(callback)(result.data, result.response)
@@ -751,11 +751,10 @@ class DataParseError:
 
 
 class RequestResult(object):
-    __slots__ = ('request', 'data', 'data_parse_error', 'response')
-
-    ResponseData = namedtuple('ResponseData', ('data', 'response'))
+    __slots__ = ('name', 'request', 'data', 'data_parse_error', 'response')
 
     def __init__(self):
+        self.name = None
         self.request = None
         self.data = None
         self.data_parse_error = None

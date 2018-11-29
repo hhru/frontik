@@ -6,16 +6,15 @@ from frontik.handler import PageHandler
 
 class Page(PageHandler):
     def get_page(self):
-        fail_fast_future = self.get_argument('fail_fast_future', 'false') == 'true'
         fail_future = self.get_argument('fail_future', 'false') == 'true'
 
         results = yield {
-            'future': self.get_future('future_result', exception=fail_future, fail_fast=fail_fast_future)
+            'future': self.get_future('future_result', exception=fail_future)
         }
 
         self.json.put(results)
 
-    def get_future(self, result, exception=False, fail_fast=False):
+    def get_future(self, result, exception=False):
         future = Future()
 
         def _finish_future():

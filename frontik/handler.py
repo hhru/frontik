@@ -288,6 +288,27 @@ class PageHandler(RequestHandler):
         for exception_hook in self._exception_hooks:
             exception_hook(typ, value, tb)
 
+    def _handle_request_exception(self, e):
+        if isinstance(e, FailFastError):
+            response = e.failed_request.response
+            request = e.failed_request.request
+
+            self.log.warning(
+                'FailFastError: request %s failed with %s code', request.name or request.get_host(), response.code
+            )
+
+            try:
+                error_method_name = '{}_page_fail_fast'.format(self.request.method.lower())
+                if hasattr(self, error_method_name):
+                    getattr(self, error_method_name)(e.failed_request)
+                else:
+                    status_code = response.code if 300 <= response.code < 500 else 502
+                    self.send_error(status_code)
+            except Exception as exc:
+                super()._handle_request_exception(exc)
+        else:
+            super()._handle_request_exception(e)
+
     def send_error(self, status_code=500, **kwargs):
         """`send_error` is adapted to support `write_error` that can call
         `finish` asynchronously.
@@ -297,6 +318,7 @@ class PageHandler(RequestHandler):
 
         if self._headers_written:
             super().send_error(status_code, **kwargs)
+            return
 
         reason = kwargs.get('reason')
         if 'exc_info' in kwargs:
@@ -328,29 +350,7 @@ class PageHandler(RequestHandler):
         else:
             exception = None
 
-        if isinstance(exception, FailFastError):
-            response = exception.failed_request.response
-            request = exception.failed_request.request
-
-            self.log.warning(
-                'FailFastError: request %s failed with %s code', request.name or request.get_host(), response.code
-            )
-
-            try:
-                error_method_name = '{}_page_fail_fast'.format(self.request.method.lower())
-                if hasattr(self, error_method_name):
-                    getattr(self, error_method_name)(exception.failed_request)
-                else:
-                    status_code = response.code if 300 <= response.code < 500 else 502
-                    self.set_status(status_code)
-
-                self.finish_with_postprocessors()
-                return
-            except Exception:
-                self.log.exception('Uncaught exception while handling FailFastError')
-                self.set_status(500)
-
-        elif isinstance(exception, HTTPErrorWithPostprocessors):
+        if isinstance(exception, HTTPErrorWithPostprocessors):
             self.finish_with_postprocessors()
             return
 
