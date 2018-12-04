@@ -1,5 +1,5 @@
 def preprocessor(function_or_list):
-    """Creates a preprocessor decorator for `BaseHandler.get_page`, `BaseHandler.post_page` etc.
+    """Creates a preprocessor decorator for `PageHandler.get_page`, `PageHandler.post_page` etc.
 
     Preprocessor is a function that accepts handler instance as its only parameter.
     Preprocessor can return a ``Future`` (any other value is ignored) and is considered

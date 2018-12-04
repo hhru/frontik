@@ -21,4 +21,4 @@ class TestJsonResponse(unittest.TestCase):
 
         data = json.loads(to_unicode(response.content))
         self.assertEqual(data['req1']['result'], '1')
-        self.assertEqual(data['req2']['error']['reason'], 'invalid JSON')
+        self.assertEqual(data['req2']['error']['reason'], 'invalid json')

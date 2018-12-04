@@ -21,5 +21,5 @@ class Page(PageHandler):
             self.text = str(self.acc)
 
         grp = AsyncGroup(final_cb, name='acc')
-        self.get_url(self.request.host, self.request.path, {'n': str(n - 1)}, callback=grp.add(intermediate_cb))
-        self.get_url(self.request.host, self.request.path, {'n': str(n - 2)}, callback=grp.add(intermediate_cb))
+        self.get_url(self.request.host, self.request.path, data={'n': str(n - 1)}, callback=grp.add(intermediate_cb))
+        self.get_url(self.request.host, self.request.path, data={'n': str(n - 2)}, callback=grp.add(intermediate_cb))

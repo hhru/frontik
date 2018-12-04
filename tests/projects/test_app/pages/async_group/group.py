@@ -28,7 +28,7 @@ class Page(frontik.handler.PageHandler):
                     '2': self.post_url(self.request.host, self.request.path + '?data=2',
                                        callback=_maybe_failing_callback),
                     '3': self.post_url(self.request.host, self.request.path,
-                                       data={'data': '3' if not fail_request else None})
+                                       data={'data': '3' if not fail_request else None}, parse_on_error=False)
                 },
                 _final_callback,
                 name='test async'

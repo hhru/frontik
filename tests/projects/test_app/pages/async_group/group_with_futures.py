@@ -1,7 +1,6 @@
 from tornado.concurrent import Future
 
 import frontik.handler
-from frontik.http_client import FailedRequestException
 
 
 class Page(frontik.handler.PageHandler):
@@ -9,7 +8,7 @@ class Page(frontik.handler.PageHandler):
         future = Future()
 
         if self.get_argument('failed_future', 'false') == 'true':
-            future.set_exception(FailedRequestException(reason='error', code='code'))
+            future.set_exception(Exception('failed future exception'))
         else:
             future.set_result({'1': 'yay'})
 

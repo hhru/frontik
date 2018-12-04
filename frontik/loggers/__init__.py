@@ -5,23 +5,25 @@ from logging.handlers import SysLogHandler
 from tornado.log import LogFormatter
 from tornado.options import options
 
-from frontik.loggers import sentry, statsd, metrics
 from frontik.request_context import RequestContext
 
-"""Contains a list of all available third-party loggers, that can be used in the request handler.
-
-Each third-party logger must be implemented as a separate module in `frontik.loggers` package.
-The module must contain a callable named `bootstrap_logger`, which takes an instance of Tornado application
-as the only parameter. `bootstrap_logger` is called only once when the application is loading and should contain
-all initialization logic for the logger.
-
-If the initialization was successful, `bootstrap_logger` should return a callable, which takes an instance of a
-request handler. It will be called when a request handler is starting and should provide an initialization code
-for this request handler (for example, add some specific methods for the handler or register hooks).
-"""
-LOGGERS = (sentry, statsd, metrics)
-
 ROOT_LOGGER = logging.root
+
+
+def get_loggers():
+    """Returns a list of all available third-party loggers.
+
+    Each third-party logger must be implemented as a separate module in `frontik.loggers` package.
+    The module must contain a callable named `bootstrap_logger`, which takes an instance of Tornado application
+    as the only parameter. `bootstrap_logger` is called only once when the application is loading and should contain
+    all initialization logic for the logger.
+
+    If the initialization was successful, `bootstrap_logger` should return a callable, which takes an instance of a
+    request handler. It will be called when a request handler is starting and should provide an initialization code
+    for this request handler (for example, add some specific methods for the handler or register hooks).
+    """
+    from frontik.loggers import sentry, statsd, metrics
+    return sentry, statsd, metrics
 
 
 class ContextFilter(logging.Filter):
@@ -51,7 +53,7 @@ class GlobalLogHandler(logging.Handler):
 
 
 def bootstrap_app_loggers(app):
-    return [logger.bootstrap_logger(app) for logger in LOGGERS if logger is not None]
+    return [logger.bootstrap_logger(app) for logger in get_loggers() if logger is not None]
 
 
 def bootstrap_core_logging():
