@@ -22,7 +22,9 @@ class Page(PageHandler):
         results = yield {
             'get': self.get_url(self.request.host, self.request.path, data={'return_none': 'true'}, fail_fast=True),
             'post': self.post_url(self.request.host, self.request.path, data={'param': 'post'}),
-            'put': self.put_url(self.request.host, self.request.path + '?code=401', fail_fast=fail_fast),
+            'put': self.put_url(
+                self.request.host, self.request.path + '?code=401', fail_fast=fail_fast, parse_on_error=True
+            ),
             'delete': self.delete_url(self.request.host, self.request.path, data={'invalid_dict_value': 'true'}),
         }
 

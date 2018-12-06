@@ -17,7 +17,7 @@ import frontik.producers.xml_producer
 import frontik.util
 from frontik.futures import AsyncGroup
 from frontik.debug import DebugMode
-from frontik.http_client import FailFastError
+from frontik.http_client import FailFastError, RequestResult
 from frontik.loggers.request import RequestLogger
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors
 from frontik.request_context import RequestContext
@@ -223,6 +223,21 @@ class PageHandler(RequestHandler):
         self.set_header('Allow', ', '.join(allowed_methods))
         raise HTTPErrorWithPostprocessors(405)
 
+    def get_page_fail_fast(self, request_result: RequestResult):
+        self.__return_error(request_result.response.code)
+
+    def post_page_fail_fast(self, request_result: RequestResult):
+        self.__return_error(request_result.response.code)
+
+    def put_page_fail_fast(self, request_result: RequestResult):
+        self.__return_error(request_result.response.code)
+
+    def delete_page_fail_fast(self, request_result: RequestResult):
+        self.__return_error(request_result.response.code)
+
+    def __return_error(self, response_code):
+        self.send_error(response_code if 300 <= response_code < 500 else 502)
+
     # HTTP client methods
 
     def modify_http_client_request(self, balanced_request):
@@ -293,17 +308,20 @@ class PageHandler(RequestHandler):
             response = e.failed_request.response
             request = e.failed_request.request
 
-            self.log.warning(
-                'FailFastError: request %s failed with %s code', request.name or request.get_host(), response.code
-            )
+            if self.log.isEnabledFor(logging.WARNING):
+                _max_uri_length = 24
+
+                request_name = request.get_host() + request.uri[:_max_uri_length]
+                if len(request.uri) > _max_uri_length:
+                    request_name += '...'
+                if request.name:
+                    request_name = '{} ({})'.format(request_name, request.name)
+
+                self.log.warning('FailFastError: request %s failed with %s code', request_name, response.code)
 
             try:
                 error_method_name = '{}_page_fail_fast'.format(self.request.method.lower())
-                if hasattr(self, error_method_name):
-                    getattr(self, error_method_name)(e.failed_request)
-                else:
-                    status_code = response.code if 300 <= response.code < 500 else 502
-                    self.send_error(status_code)
+                getattr(self, error_method_name)(e.failed_request)
             except Exception as exc:
                 super()._handle_request_exception(exc)
         else:
@@ -458,7 +476,7 @@ class PageHandler(RequestHandler):
     def post_url(self, host, uri, *,
                  name=None, data='', headers=None, files=None, content_type=None, follow_redirects=True,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=False,
-                 callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=True,
+                 callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=False,
                  fail_fast=False):
 
         return self._http_client.post_url(
@@ -471,7 +489,7 @@ class PageHandler(RequestHandler):
 
     def put_url(self, host, uri, *, name=None, data='', headers=None, content_type=None,
                 connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=False, fail_fast=False):
 
         return self._http_client.put_url(
             host, uri, name=name, data=data, headers=headers, content_type=content_type,
@@ -482,7 +500,7 @@ class PageHandler(RequestHandler):
 
     def delete_url(self, host, uri, *, name=None, data=None, headers=None, content_type=None,
                    connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                   callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                   callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=False, fail_fast=False):
 
         return self._http_client.delete_url(
             host, uri, name=name, data=data, headers=headers, content_type=content_type,
