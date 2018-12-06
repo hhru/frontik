@@ -14,7 +14,7 @@ class TestFailFast(unittest.TestCase):
         self.assertEqual(json['put']['error'], 'forbidden')
         self.assertEqual(json['post'], {'POST': 'post'})
         self.assertEqual(json['preprocessor'], True)
-        self.assertEqual(json['delete'], None)
+        self.assertEqual(json['delete']['error'], {'reason': 'HTTP 500: Internal Server Error', 'code': 500})
 
     def test_fail_fast(self):
         response = frontik_test_app.get_page('fail_fast?fail_fast=true')

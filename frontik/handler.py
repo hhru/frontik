@@ -458,7 +458,7 @@ class PageHandler(RequestHandler):
     def post_url(self, host, uri, *,
                  name=None, data='', headers=None, files=None, content_type=None, follow_redirects=True,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=False,
-                 callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=True,
+                 callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=False,
                  fail_fast=False):
 
         return self._http_client.post_url(
@@ -471,7 +471,7 @@ class PageHandler(RequestHandler):
 
     def put_url(self, host, uri, *, name=None, data='', headers=None, content_type=None,
                 connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=False, fail_fast=False):
 
         return self._http_client.put_url(
             host, uri, name=name, data=data, headers=headers, content_type=content_type,
@@ -482,7 +482,7 @@ class PageHandler(RequestHandler):
 
     def delete_url(self, host, uri, *, name=None, data=None, headers=None, content_type=None,
                    connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                   callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                   callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=False, fail_fast=False):
 
         return self._http_client.delete_url(
             host, uri, name=name, data=data, headers=headers, content_type=content_type,
