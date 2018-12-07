@@ -4,8 +4,6 @@ from collections import namedtuple
 
 from frontik.request_context import RequestContext
 
-logger = None  # for smooth transition from LoggerAdapter instances to the global logger
-
 _logger = logging.getLogger('frontik.handler')
 
 

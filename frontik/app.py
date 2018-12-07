@@ -16,7 +16,7 @@ import frontik.producers.xml_producer
 from frontik.debug import DebugTransform
 from frontik.handler import ErrorHandler
 from frontik.http_client import HttpClientFactory
-from frontik.loggers import bootstrap_app_loggers, request
+from frontik.loggers import bootstrap_app_loggers, CUSTOM_JSON_EXTRA, REQUESTS_LOGGER
 from frontik.request_context import RequestContext
 from frontik.routing import FileMappingRouter, FrontikRouter
 from frontik.version import version
@@ -154,7 +154,18 @@ class FrontikApplication(Application):
         }
 
     def log_request(self, handler):
-        super().log_request(handler)
-        if isinstance(getattr(handler, 'log', None), request.RequestLogger):
-            handler.log.stage_tag('flush')
-            handler.log.log_stages(handler.get_status())
+        request_time = int(1000.0 * handler.request.request_time())
+        extra = {
+            'ip': handler.request.remote_ip,
+            'rid': RequestContext.get('request_id'),
+            'status': handler.get_status(),
+            'time': request_time,
+            'method': handler.request.method,
+            'uri': handler.request.uri,
+        }
+
+        handler_name = RequestContext.get('handler_name')
+        if handler_name:
+            extra['controller'] = handler_name
+
+        REQUESTS_LOGGER.info('', extra={CUSTOM_JSON_EXTRA: extra})

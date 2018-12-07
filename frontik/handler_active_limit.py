@@ -3,7 +3,8 @@ import logging
 from tornado.options import options
 from tornado.web import HTTPError
 
-handler_limit_logger = logging.getLogger('frontik.handler_active_limit')
+# TODO: replace with statsd
+handlers_count_logger = logging.getLogger('handlers_count')
 
 
 class PageHandlerActiveLimit(object):
@@ -13,7 +14,7 @@ class PageHandlerActiveLimit(object):
         self.acquired = False
 
         if PageHandlerActiveLimit.working_handlers_count > options.handlers_count:
-            handler_limit_logger.warning(
+            handlers_count_logger.warning(
                 'dropping %s %s: too many handlers (%d)',
                 request.method, request.uri, PageHandlerActiveLimit.working_handlers_count
             )
@@ -26,10 +27,10 @@ class PageHandlerActiveLimit(object):
         if not self.acquired:
             PageHandlerActiveLimit.working_handlers_count += 1
             self.acquired = True
-            handler_limit_logger.info('handlers count + 1 = %d', PageHandlerActiveLimit.working_handlers_count)
+            handlers_count_logger.info('handlers count + 1 = %d', PageHandlerActiveLimit.working_handlers_count)
 
     def release(self):
         if self.acquired:
             PageHandlerActiveLimit.working_handlers_count -= 1
             self.acquired = False
-            handler_limit_logger.info('handlers count - 1 = %d', PageHandlerActiveLimit.working_handlers_count)
+            handlers_count_logger.info('handlers count - 1 = %d', PageHandlerActiveLimit.working_handlers_count)

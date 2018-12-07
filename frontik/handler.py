@@ -290,6 +290,10 @@ class PageHandler(RequestHandler):
         self.log.log_stages(408)
         self.cleanup()
 
+    def on_finish(self):
+        self.log.stage_tag('flush')
+        self.log.log_stages(self.get_status())
+
     def register_exception_hook(self, exception_hook):
         """
         Adds a function to the list of hooks, which are executed when `log_exception` is called.
