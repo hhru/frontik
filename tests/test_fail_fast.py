@@ -22,6 +22,10 @@ class TestFailFast(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.content, b'{"fail_fast": true}')
 
+    def test_fail_fast_unknown_method(self):
+        response = frontik_test_app.get_page('fail_fast?fail_fast=true', method=requests.head)
+        self.assertEqual(response.status_code, 401)
+
     def test_fail_fast_without_done(self):
         response = frontik_test_app.get_page('fail_fast/fail_fast_without_done')
         self.assertEqual(response.status_code, 401)
