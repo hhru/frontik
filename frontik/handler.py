@@ -321,7 +321,12 @@ class PageHandler(RequestHandler):
 
             try:
                 error_method_name = '{}_page_fail_fast'.format(self.request.method.lower())
-                getattr(self, error_method_name)(e.failed_request)
+                method = getattr(self, error_method_name, None)
+                if callable(method):
+                    method(e.failed_request)
+                else:
+                    self.__return_error(e.failed_request.response.code)
+
             except Exception as exc:
                 super()._handle_request_exception(exc)
         else:
