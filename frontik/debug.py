@@ -297,8 +297,8 @@ def _string_to_color(value):
 
 
 class DebugBufferedHandler(BufferedHandler):
-    FIELDS = ['created', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs',
-              'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName']
+    FIELDS = ('created', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs',
+              'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName')
 
     def produce_all(self):
         log_data = etree.Element('log')

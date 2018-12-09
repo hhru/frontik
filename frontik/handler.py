@@ -22,8 +22,6 @@ from frontik.loggers.request import RequestLogger
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors
 from frontik.request_context import RequestContext
 
-SLOW_CALLBACK_LOGGER = logging.getLogger('slow_callback')
-
 
 def _fallback_status_code(status_code):
     return status_code if status_code in http.client.responses else http.client.SERVICE_UNAVAILABLE
@@ -121,11 +119,11 @@ class PageHandler(RequestHandler):
 
     @classmethod
     def add_callback(cls, callback, *args, **kwargs):
-        IOLoop.current().add_callback(cls.warn_slow_callback(callback), *args, **kwargs)
+        IOLoop.current().add_callback(callback, *args, **kwargs)
 
     @classmethod
     def add_timeout(cls, deadline, callback, *args, **kwargs):
-        return IOLoop.current().add_timeout(deadline, cls.warn_slow_callback(callback), *args, **kwargs)
+        return IOLoop.current().add_timeout(deadline, callback, *args, **kwargs)
 
     @staticmethod
     def remove_timeout(timeout):
@@ -133,24 +131,7 @@ class PageHandler(RequestHandler):
 
     @classmethod
     def add_future(cls, future, callback):
-        IOLoop.current().add_future(future, cls.warn_slow_callback(callback))
-
-    @staticmethod
-    def warn_slow_callback(callback):
-        if options.slow_callback_threshold_ms is None:
-            return callback
-
-        def _wrapper(*args, **kwargs):
-            start_time = IOLoop.current().time()
-            result = callback(*args, **kwargs)
-            callback_duration = (IOLoop.current().time() - start_time) * 1000
-
-            if callback_duration >= options.slow_callback_threshold_ms:
-                SLOW_CALLBACK_LOGGER.warning('slow callback %s took %s ms', callback, callback_duration)
-
-            return result
-
-        return _wrapper
+        IOLoop.current().add_future(future, callback)
 
     # Requests handling
 
@@ -423,7 +404,7 @@ class PageHandler(RequestHandler):
             def _callback(*args):
                 self._chain_functions(functions, callback, chain_type, *args)
 
-            self.warn_slow_callback(func)(self, *(args + (_callback,)))
+            func(self, *(args + (_callback,)))
         except StopIteration:
             callback(*args)
 

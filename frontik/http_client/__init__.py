@@ -593,7 +593,7 @@ class HttpClient(object):
             result.name = balanced_request.name
 
             if callable(callback):
-                self.handler.warn_slow_callback(callback)(result.data, result.response)
+                callback(result.data, result.response)
 
             if fail_fast and (result.response.error or result.data_parse_error is not None):
                 raise FailFastError(result)
