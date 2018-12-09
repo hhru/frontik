@@ -1,5 +1,7 @@
+import json
+
 from lxml import etree
-from tornado.escape import json_decode, utf8
+from tornado.escape import utf8
 from tornado.httpclient import AsyncHTTPClient
 from tornado.testing import AsyncHTTPTestCase
 from tornado_mock.httpclient import patch_http_client, safe_template, set_stub
@@ -36,7 +38,7 @@ class FrontikTestCase(AsyncHTTPTestCase):
 
     def fetch_json(self, path, query=None, **kwargs):
         """Fetch the request and parse JSON tree from response body."""
-        return json_decode(self.fetch(path, query, **kwargs).body)
+        return json.loads(self.fetch(path, query, **kwargs).body)
 
     def patch_app_http_client(self, app):
         """Patches application HTTPClient to enable requests stubbing."""

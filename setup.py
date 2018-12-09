@@ -18,13 +18,6 @@ class TestHook(test):
         sys.exit(pytest.main(['tests', '--tb', 'native']))
 
 
-install_requires = [
-    'jinja2 >= 2.8',
-    'lxml >= 3.5.0',
-    'pycurl >= 7.43.0',
-    'tornado >= 5.0, < 5.1',
-]
-
 setup(
     name='frontik',
     version=version,
@@ -41,7 +34,13 @@ setup(
         'frontik': ['debug/*.xsl'],
     },
     scripts=['scripts/frontik'],
-    install_requires=install_requires,
+    python_requires='>=3.6',
+    install_requires=[
+        'jinja2 >= 2.8',
+        'lxml >= 3.5.0',
+        'pycurl >= 7.43.0',
+        'tornado >= 5.0, < 5.1',
+    ],
     test_suite='tests',
     tests_require=[
         'pytest <= 3.8.2',
