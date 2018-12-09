@@ -61,8 +61,7 @@ class TestSyslog(unittest.TestCase):
             {
                 'priority': '14',
                 'message': {
-                    'lvl': 'INFO', 'logger': r'frontik\.server',
-                    'msg': r'starting application tests\.projects\.test_app'
+                    'lvl': 'INFO', 'logger': r'server', 'msg': r'starting application tests\.projects\.test_app'
                 }
             },
             {
