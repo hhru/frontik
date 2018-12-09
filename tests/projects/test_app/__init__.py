@@ -1,4 +1,7 @@
+import logging
+
 from frontik.app import FrontikApplication
+from frontik.loggers import bootstrap_logger
 
 from tests.projects.test_app import config
 
@@ -6,6 +9,8 @@ from tests.projects.test_app import config
 class TestApplication(FrontikApplication):
     def __init__(self, **settings):
         settings['sentry_dsn'] = 'http://key:secret@127.0.0.1:{}/sentry'.format(settings['port'])
+
+        bootstrap_logger('custom_logger', logging.DEBUG, False)
 
         super().__init__(**settings)
 

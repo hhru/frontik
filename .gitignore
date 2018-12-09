@@ -9,21 +9,12 @@
 
 .pybuild/
 build
-debian/*.debhelper
-debian/*.substvars
-debian/files
-debian/python-frontik
-debian/python3-frontik
-debian/pycompat
-debian/debhelper-build-stamp
-debian/python-module-stampdir/
 dist/
 frontik.egg-info/
 .eggs/
 .pytest_cache/
 
 *.log
-*.pid
 .coverage*
 !.coveragerc
 .tox/

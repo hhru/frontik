@@ -1,6 +1,5 @@
 import base64
 import json
-import os
 import socket
 import subprocess
 import sys
@@ -10,8 +9,6 @@ from distutils.spawn import find_executable
 import requests
 from lxml import etree
 from tornado.escape import to_unicode, utf8
-
-from . import FRONTIK_ROOT
 
 try:
     import coverage
@@ -26,16 +23,11 @@ def run_command(command, port):
     else:
         template = '{exe} {command} {args}'
 
-    args = '--port={port} --logfile={logfile}'.format(
-        port=port,
-        logfile=os.path.join(FRONTIK_ROOT, 'frontik_test.log')
-    )
-
     executable = template.format(
         exe=sys.executable,
         coverage=find_executable('coverage'),
         command=command,
-        args=args,
+        args='--port={port}'.format(port=port),
     )
 
     return subprocess.Popen(executable.split())
@@ -43,13 +35,14 @@ def run_command(command, port):
 
 def find_free_port(from_port=9000, to_port=10000):
     for port in range(from_port, to_port):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind(('', port))
-            s.close()
             break
         except Exception:
             pass
+        finally:
+            s.close()
     else:
         raise AssertionError('No empty port in range {}..{} for frontik test instance'.format(from_port, to_port))
 
@@ -61,7 +54,7 @@ def create_basic_auth_header(credentials):
 
 
 class FrontikTestInstance(object):
-    def __init__(self, command=None):
+    def __init__(self, command: str):
         self.command = command
         self.popen = None
         self.port = None
@@ -129,29 +122,29 @@ class FrontikTestInstance(object):
 
 
 frontik_test_app = FrontikTestInstance(
-    command='./frontik-test --app=tests.projects.test_app --config=tests/projects/frontik_debug.cfg'
+    './frontik-test --app=tests.projects.test_app --config=tests/projects/frontik_debug.cfg --log_dir=.'
 )
 
 frontik_re_app = FrontikTestInstance(
-    command='./frontik-test --app=tests.projects.re_app --config=tests/projects/frontik_debug.cfg'
+    './frontik-test --app=tests.projects.re_app --config=tests/projects/frontik_debug.cfg --log_dir=.'
 )
 
 frontik_no_debug_app = FrontikTestInstance(
-    command='./frontik-test --app=tests.projects.no_debug_app --config=tests/projects/frontik_no_debug.cfg'
+    './frontik-test --app=tests.projects.no_debug_app --config=tests/projects/frontik_no_debug.cfg --log_dir=.'
 )
 
 frontik_broken_config_app = FrontikTestInstance(
-    command='./frontik-test --app=tests.projects.broken_config_app --config=tests/projects/frontik_debug.cfg'
+    './frontik-test --app=tests.projects.broken_config_app --config=tests/projects/frontik_debug.cfg --log_dir=.'
 )
 
 frontik_broken_init_async_app = FrontikTestInstance(
-    command='./frontik-test --app=tests.projects.broken_async_init_app --config=tests/projects/frontik_debug.cfg'
+    './frontik-test --app=tests.projects.broken_async_init_app --config=tests/projects/frontik_debug.cfg --log_dir=.'
 )
 
 frontik_balancer_app = FrontikTestInstance(
-    command='./frontik-test --app=tests.projects.balancer_app --config=tests/projects/frontik_debug.cfg'
+    './frontik-test --app=tests.projects.balancer_app --config=tests/projects/frontik_debug.cfg --log_dir=.'
 )
 
 frontik_broken_balancer_app = FrontikTestInstance(
-    command='./frontik-test --app=tests.projects.broken_balancer_app --config=tests/projects/frontik_debug.cfg'
+    './frontik-test --app=tests.projects.broken_balancer_app --config=tests/projects/frontik_debug.cfg --log_dir=.'
 )
