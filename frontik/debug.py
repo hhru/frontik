@@ -54,7 +54,7 @@ def response_to_xml(response):
             body = _pretty_print_xml(etree.fromstring(response.body))
         elif 'json' in content_type:
             mode = 'javascript'
-            body = _pretty_print_json(json.loads(to_unicode(response.body)))
+            body = _pretty_print_json(json.loads(response.body))
         else:
             if 'javascript' in content_type:
                 mode = 'javascript'
@@ -95,7 +95,7 @@ def request_to_xml(request):
     if request.body:
         try:
             if 'json' in content_type:
-                body.text = _pretty_print_json(json.loads(to_unicode(request.body)))
+                body.text = _pretty_print_json(json.loads(request.body))
             elif 'protobuf' in content_type:
                 body.text = repr(request.body)
             else:

@@ -804,7 +804,7 @@ _parse_response_xml = partial(
     _parse_response, parser=lambda body: etree.fromstring(body, parser=_xml_parser), response_type='xml'
 )
 
-_parse_response_json = partial(_parse_response, parser=lambda body: json.loads(to_unicode(body)), response_type='json')
+_parse_response_json = partial(_parse_response, parser=json.loads, response_type='json')
 
 _parse_response_text = partial(_parse_response, parser=to_unicode, response_type='text')
 
