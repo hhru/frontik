@@ -69,8 +69,6 @@ Producers options:
 | `xml_root`                          | `str`  | `None`        | Root directory for XML files                          |
 | `xsl_cache_limit`                   | `int`  | `None`        | Upper limit for XSL LRU files cache                   |
 | `xml_cache_limit`                   | `int`  | `None`        | Upper limit for XML LRU files cache                   |
-| `xsl_cache_step`                    | `int`  | `None`        | Increase in weight for XSL cache entry after each get |
-| `xml_cache_step`                    | `int`  | `None`        | Increase in weight for XML cache entry after each get |
 | `xsl_executor_pool_size`            | `int`  | `1`           | Number of background threads for XSLT processing      |
 | `jinja_template_root`               | `str`  | `None`        | Root directory for Jinja templates                    |
 | `jinja_template_cache_limit`        | `int`  | `50`          | Upper limit for Jinja templates cache                 |

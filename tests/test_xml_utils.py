@@ -3,6 +3,7 @@ import unittest
 
 from lxml import etree
 from lxml_asserts.testcase import LxmlTestCaseMixin
+from tornado.testing import ExpectLog
 
 from frontik.xml_util import dict_to_xml, xml_from_file, xml_to_dict
 
@@ -72,29 +73,16 @@ class TestXmlUtils(unittest.TestCase, LxmlTestCaseMixin):
     XML_MISSING_FILE = os.path.join(os.path.dirname(__file__), 'bbb.xml')
     XML_SYNTAX_ERROR_FILE = os.path.join(os.path.dirname(__file__), 'projects', 'test_app', 'xsl', 'syntax_error.xsl')
 
-    class MockLog:
-        def __init__(self):
-            self.message = None
-
-        def error(self, message, *args):
-            self.message = message % args
-
     def test_xml_from_file(self):
-        result = xml_from_file(self.XML_FILE, TestXmlUtils.MockLog())
+        result = xml_from_file(self.XML_FILE)
         self.assertEqual(result.text, 'aaa')
 
     def test_xml_from_file_does_not_exist(self):
-        log = TestXmlUtils.MockLog()
-
         with self.assertRaises(IOError):
-            xml_from_file(self.XML_MISSING_FILE, log)
-
-        self.assertIn('failed to read xml file', log.message)
+            with ExpectLog('frontik.xml_util', "failed to read xml file.*"):
+                xml_from_file(self.XML_MISSING_FILE)
 
     def test_xml_from_file_syntax_error(self):
-        log = TestXmlUtils.MockLog()
-
         with self.assertRaises(etree.XMLSyntaxError):
-            xml_from_file(self.XML_SYNTAX_ERROR_FILE, log)
-
-        self.assertIn('failed to parse xml file', log.message)
+            with ExpectLog('frontik.xml_util', "failed to parse xml file.*"):
+                xml_from_file(self.XML_SYNTAX_ERROR_FILE)
