@@ -13,7 +13,7 @@ class TestUtil(unittest.TestCase):
         self.assertQueriesEqual(make_qs(query_args), 'a=1&b=2')
 
     def test_make_qs_not_str(self):
-        query_args = {'a': 1, 'b': 2.0, 'c': True}
+        query_args = {'a': 1, 'b': 2.0, 'c': True, 'd': None}
         self.assertQueriesEqual(make_qs(query_args), 'a=1&b=2.0&c=True')
 
     def test_make_qs_iterables(self):

@@ -29,25 +29,8 @@ def any_to_bytes(s):
     return utf8(str(s))
 
 
-def _encode(s):
-    if isinstance(s, str):
-        return utf8(s)
-
-    return s
-
-
 def make_qs(query_args):
-    kv_pairs = []
-    for key, val in query_args.items():
-        if val is not None:
-            encoded_key = _encode(key)
-            if isinstance(val, (set, frozenset, list, tuple)):
-                for v in val:
-                    kv_pairs.append((encoded_key, _encode(v)))
-            else:
-                kv_pairs.append((encoded_key, _encode(val)))
-
-    return urlencode(kv_pairs)
+    return urlencode([(k, v) for k, v in query_args.items() if v is not None], doseq=True)
 
 
 def make_body(data):
@@ -90,7 +73,7 @@ def choose_boundary():
     Our embarassingly-simple replacement for mimetools.choose_boundary.
     See https://github.com/kennethreitz/requests/blob/master/requests/packages/urllib3/filepost.py
     """
-    return _encode(uuid4().hex)
+    return utf8(uuid4().hex)
 
 
 BOUNDARY = choose_boundary()
