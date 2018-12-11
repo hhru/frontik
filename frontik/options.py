@@ -1,3 +1,5 @@
+import logging.handlers
+
 import tornado.options
 
 tornado.options.define('app', default=None, type=str)
@@ -15,20 +17,21 @@ tornado.options.define('autoreload', False, bool)
 tornado.options.define('stop_timeout', 3, int)
 tornado.options.define('slow_callback_threshold_ms', None, int)
 
-tornado.options.define('loglevel', default='info', type=str, help='Log level')
-tornado.options.define('logformat', default='[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s', type=str,
-                       help='Log format for files and syslog')
-tornado.options.define('logfile', default=None, type=str, help='Log file name')
+tornado.options.define('log_dir', default=None, type=str, help='Log file name')
+tornado.options.define('log_level', default='info', type=str, help='Log level')
+tornado.options.define('log_json', default=True, type=bool, help='Enable JSON logging for files and syslog')
+tornado.options.define('log_text_format', default='[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s',
+                       type=str, help='Log format for files and syslog when JSON logging is disabled')
 
 tornado.options.define('stderr_log', default=False, type=bool,
                        help='Send log output to stderr (colorized if possible).')
 tornado.options.define('stderr_format', default='%(color)s[%(levelname)1.1s %(asctime)s %(name)s '
                                                 '%(module)s:%(lineno)d]%(end_color)s %(message)s', type=str)
-tornado.options.define('stderr_dateformat', default='%y.%m.%d %H:%M:%S', type=str)
+tornado.options.define('stderr_dateformat', default='%H:%M:%S', type=str)
 
 tornado.options.define('syslog', default=False, type=bool)
-tornado.options.define('syslog_address', default='/dev/log', type=str)
-tornado.options.define('syslog_port', default=None, type=int)
+tornado.options.define('syslog_host', default='127.0.0.1', type=str)
+tornado.options.define('syslog_port', default=logging.handlers.SYSLOG_UDP_PORT, type=int)
 tornado.options.define('syslog_facility', default='user', type=str)
 
 tornado.options.define('suppressed_loggers', default=['tornado.curl_httpclient'], type=list)
