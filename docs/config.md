@@ -42,6 +42,7 @@ Logging options:
 | `sentry_dsn`                 | `str`   | `None`        | Enable Sentry and set Sentry DSN for sending errors                    |
 | `statsd_host`                | `str`   | `None`        | Stats server host for metrics                                          |
 | `statsd_port`                | `int`   | `None`        | Stats server port for metrics                                          |
+| `asyncio_task_threshold_sec` | `int`   | `None`        | Threshold for logging long-running asyncio tasks                       |
 
 HTTP client options:
 
