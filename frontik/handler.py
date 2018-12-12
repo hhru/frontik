@@ -66,7 +66,7 @@ class PageHandler(RequestHandler):
         return '.'.join([self.__module__, self.__class__.__name__])
 
     def prepare(self):
-        self.active_limit = frontik.handler_active_limit.PageHandlerActiveLimit(self.request)
+        self.active_limit = frontik.handler_active_limit.ActiveHandlersLimit(self.statsd_client)
         self.debug_mode = DebugMode(self)
         self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish')
         self._handler_finished_notification = self.finish_group.add_notification()

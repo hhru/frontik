@@ -234,9 +234,6 @@ def bootstrap_core_logging():
     bootstrap_logger((ROOT_LOGGER, 'service'), level, use_json_formatter=options.log_json)
     bootstrap_logger((REQUESTS_LOGGER, 'requests'), level, use_json_formatter=options.log_json)
 
-    # TODO: replace with statsd
-    bootstrap_logger('handlers_count', level, use_json_formatter=False)
-
     for logger_name in options.suppressed_loggers:
         logging.getLogger(logger_name).setLevel(logging.WARN)
 
