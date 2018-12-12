@@ -18,7 +18,7 @@ import frontik.util
 from frontik.futures import AsyncGroup
 from frontik.debug import DebugMode
 from frontik.http_client import FailFastError, RequestResult
-from frontik.loggers.request import RequestLogger
+from frontik.loggers.stages import StagesLogger
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors
 from frontik.request_context import RequestContext
 
@@ -31,6 +31,9 @@ class HTTPErrorWithPostprocessors(tornado.web.HTTPError):
     pass
 
 
+handler_logger = logging.getLogger('handler')
+
+
 class PageHandler(RequestHandler):
 
     preprocessors = ()
@@ -40,13 +43,15 @@ class PageHandler(RequestHandler):
         self.name = self.__class__.__name__
         self.request_id = request.request_id = RequestContext.get('request_id')
         self.config = application.config
-        self.log = RequestLogger(request)
+        self.log = handler_logger
         self.text = None
 
         self._exception_hooks = []
 
         for initializer in application.loggers_initializers:
             initializer(self)
+
+        self.stages_logger = StagesLogger(request, self.statsd_client)
 
         super().__init__(application, request, **kwargs)
 
@@ -166,7 +171,7 @@ class PageHandler(RequestHandler):
     @gen.coroutine
     def _execute_page(self, page_handler_method):
         self._auto_finish = False
-        self.log.stage_tag('prepare')
+        self.stages_logger.commit_stage('prepare')
 
         preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(page_handler_method.__func__)
         preprocessors_finished = yield self._run_preprocessors(preprocessors, self)
@@ -251,7 +256,7 @@ class PageHandler(RequestHandler):
 
     def _finish_page_cb(self):
         def _callback():
-            self.log.stage_tag('page')
+            self.stages_logger.commit_stage('page')
 
             if self.text is not None:
                 producer = self._generic_producer
@@ -267,13 +272,13 @@ class PageHandler(RequestHandler):
 
     def on_connection_close(self):
         self.finish_group.abort()
-        self.log.stage_tag('page')
-        self.log.log_stages(408)
+        self.stages_logger.commit_stage('page')
+        self.stages_logger.flush_stages(408)
         self.cleanup()
 
     def on_finish(self):
-        self.log.stage_tag('flush')
-        self.log.log_stages(self.get_status())
+        self.stages_logger.commit_stage('flush')
+        self.stages_logger.flush_stages(self.get_status())
 
     def register_exception_hook(self, exception_hook):
         """
@@ -322,7 +327,7 @@ class PageHandler(RequestHandler):
         `finish` asynchronously.
         """
 
-        self.log.stage_tag('page')
+        self.stages_logger.commit_stage('page')
 
         if self._headers_written:
             super().send_error(status_code, **kwargs)
@@ -370,7 +375,7 @@ class PageHandler(RequestHandler):
             self.active_limit.release()
 
     def finish(self, chunk=None):
-        self.log.stage_tag('postprocess')
+        self.stages_logger.commit_stage('postprocess')
 
         if self._status_code in (204, 304) or (100 <= self._status_code < 200):
             chunk = None
