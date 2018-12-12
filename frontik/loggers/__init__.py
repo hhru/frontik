@@ -5,13 +5,13 @@ import socket
 import time
 from logging.handlers import SysLogHandler
 
-from tornado.log import LogFormatter
+from tornado.log import access_log, LogFormatter
 from tornado.options import options
 
 from frontik.request_context import RequestContext
 
 ROOT_LOGGER = logging.root
-REQUESTS_LOGGER = logging.getLogger('requests')
+JSON_REQUESTS_LOGGER = logging.getLogger('requests')
 
 CUSTOM_JSON_EXTRA = 'custom_json'
 
@@ -232,7 +232,9 @@ def bootstrap_core_logging():
     ROOT_LOGGER.setLevel(logging.NOTSET)
 
     bootstrap_logger((ROOT_LOGGER, 'service'), level, use_json_formatter=options.log_json)
-    bootstrap_logger((REQUESTS_LOGGER, 'requests'), level, use_json_formatter=options.log_json)
+
+    if options.log_json:
+        bootstrap_logger((JSON_REQUESTS_LOGGER, 'requests'), level, use_json_formatter=True)
 
     for logger_name in options.suppressed_loggers:
         logging.getLogger(logger_name).setLevel(logging.WARN)
