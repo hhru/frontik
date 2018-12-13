@@ -64,7 +64,7 @@ def run_server(app: FrontikApplication):
                 old_run(self)
                 delta = self._loop.time() - start_time
                 if delta >= options.asyncio_task_threshold_sec:
-                    slow_tasks_logger.warning('%s took %.2fms', self, delta)
+                    slow_tasks_logger.warning('%s took %.2fms', self, delta * 1000)
 
             asyncio.Handle._run = run
 

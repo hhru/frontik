@@ -73,32 +73,32 @@ class TestSyslog(unittest.TestCase):
             {
                 'priority': '15',
                 'message': {
-                    'lvl': 'DEBUG', 'logger': r'frontik\.handler', 'msg': 'debug'
+                    'lvl': 'DEBUG', 'logger': r'handler', 'msg': 'debug'
                 }
             },
             {
                 'priority': '14',
                 'message': {
-                    'lvl': 'INFO', 'logger': r'frontik.handler', 'msg': 'info'
+                    'lvl': 'INFO', 'logger': r'handler', 'msg': 'info'
                 }
             },
             {
                 'priority': '11',
                 'message': {
-                    'lvl': 'ERROR', 'logger': r'frontik.handler', 'msg': 'exception', 'exception': '.*raise Exception.*'
+                    'lvl': 'ERROR', 'logger': r'handler', 'msg': 'exception', 'exception': '.*raise Exception.*'
                 }
             },
             {
                 'priority': '11',
                 'message': {
-                    'lvl': 'ERROR', 'logger': r'frontik.handler', 'msg': 'error',
+                    'lvl': 'ERROR', 'logger': r'handler', 'msg': 'error',
                     'exception': r".*self\.log\.error\('error', stack_info=True\)"
                 }
             },
             {
                 'priority': '10',
                 'message': {
-                    'lvl': 'CRITICAL', 'logger': r'frontik.handler', 'msg': 'critical'
+                    'lvl': 'CRITICAL', 'logger': r'handler', 'msg': 'critical'
                 }
             },
         ]

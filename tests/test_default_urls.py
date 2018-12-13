@@ -1,8 +1,6 @@
 import json
 import unittest
 
-from tornado.escape import to_unicode
-
 from .instances import frontik_re_app, frontik_test_app
 
 
@@ -32,7 +30,7 @@ class TestDefaultUrls(unittest.TestCase):
 
         self.assertEqual(response.headers['Content-Type'], 'application/json; charset=UTF-8')
 
-        json_response = json.loads(to_unicode(response.content))
+        json_response = json.loads(response.content)
         self.assertIn('uptime', json_response)
 
         self.assertIn('workers', json_response)
