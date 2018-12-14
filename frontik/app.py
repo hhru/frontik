@@ -11,6 +11,7 @@ from tornado.options import options
 from tornado.stack_context import StackContext
 from tornado.web import Application, RequestHandler
 
+from frontik import media_types
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
 from frontik.debug import DebugTransform
@@ -47,7 +48,7 @@ class VersionHandler(RequestHandler):
 
 class StatusHandler(RequestHandler):
     def get(self):
-        self.set_header('Content-Type', 'application/json; charset=UTF-8')
+        self.set_header('Content-Type', media_types.APPLICATION_JSON)
         self.finish(self.application.get_current_status())
 
 

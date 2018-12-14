@@ -1,7 +1,7 @@
-import frontik.handler
+from frontik import handler, media_types
 
 
-class Page(frontik.handler.PageHandler):
+class Page(handler.PageHandler):
     def prepare(self):
         if self.get_argument('custom_render', 'false') == 'true':
             def jinja_context_provider(handler):
@@ -36,5 +36,5 @@ class Page(frontik.handler.PageHandler):
                 'result': self.get_argument('param')
             })
         else:
-            self.set_header('Content-Type', 'application/json')
+            self.set_header('Content-Type', media_types.APPLICATION_JSON)
             self.text = '{"result": FAIL}'

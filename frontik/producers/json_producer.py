@@ -157,7 +157,7 @@ class JsonProducer(object):
     def _finish_with_json(self, callback):
         self.log.debug('finishing without templating')
         if self.handler._headers.get('Content-Type') is None:
-            self.handler.set_header('Content-Type', 'application/json; charset=utf-8')
+            self.handler.set_header('Content-Type', media_types.APPLICATION_JSON)
         callback(self.json.to_string())
 
     def __repr__(self):
