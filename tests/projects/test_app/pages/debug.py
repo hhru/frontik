@@ -54,7 +54,7 @@ class Page(handler.PageHandler):
         content_type = self.get_argument('type')
 
         if content_type == 'html':
-            self.set_header('Content-Type', 'text/html')
+            self.set_header('Content-Type', media_types.TEXT_HTML)
             self.text = '<html><h1>ok</h1></html>'
         elif content_type == 'protobuf':
             self.set_header('Content-Type', 'application/x-protobuf')

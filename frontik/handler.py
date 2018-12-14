@@ -15,6 +15,7 @@ import frontik.handler_active_limit
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
 import frontik.util
+from frontik import media_types
 from frontik.futures import AsyncGroup
 from frontik.debug import DebugMode
 from frontik.http_client import FailFastError, RequestResult
@@ -367,7 +368,7 @@ class PageHandler(RequestHandler):
             self.finish_with_postprocessors()
             return
 
-        self.set_header('Content-Type', 'text/html; charset=UTF-8')
+        self.set_header('Content-Type', media_types.TEXT_HTML)
         return super().write_error(status_code, **kwargs)
 
     def cleanup(self):
@@ -429,7 +430,7 @@ class PageHandler(RequestHandler):
         self.log.debug('finishing plaintext')
 
         if self._headers.get('Content-Type') is None:
-            self.set_header('Content-Type', 'text/html; charset=UTF-8')
+            self.set_header('Content-Type', media_types.TEXT_HTML)
 
         callback(self.text)
 

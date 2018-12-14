@@ -1,6 +1,7 @@
 from lxml import etree
 
 import frontik.handler
+from frontik import media_types
 from frontik.doc import Doc
 
 
@@ -18,5 +19,5 @@ class Page(frontik.handler.PageHandler):
         if not invalid_xml:
             self.doc.root_node = etree.Element('bbb')
         else:
-            self.set_header('Content-Type', 'application/xml')
+            self.set_header('Content-Type', media_types.APPLICATION_XML)
             self.text = 'FAIL'
