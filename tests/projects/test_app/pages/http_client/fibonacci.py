@@ -1,3 +1,4 @@
+from frontik import media_types
 from frontik.futures import AsyncGroup
 from frontik.handler import PageHandler
 
@@ -6,7 +7,7 @@ class Page(PageHandler):
     def get_page(self):
         n = int(self.get_argument('n'))
 
-        self.add_header('Content-Type', 'text/plain')
+        self.add_header('Content-Type', media_types.TEXT_PLAIN)
 
         if n < 2:
             self.text = '1'

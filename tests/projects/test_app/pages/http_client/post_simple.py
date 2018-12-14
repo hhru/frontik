@@ -1,7 +1,7 @@
-import frontik.handler
+from frontik import handler, media_types
 
 
-class Page(frontik.handler.PageHandler):
+class Page(handler.PageHandler):
     def get_page(self):
 
         def callback_post(text, response):
@@ -10,5 +10,5 @@ class Page(frontik.handler.PageHandler):
         self.post_url(self.request.host, self.request.path, callback=callback_post)
 
     def post_page(self):
-        self.add_header('Content-Type', 'text/plain')
+        self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'post_url success'

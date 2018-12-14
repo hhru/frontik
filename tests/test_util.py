@@ -4,6 +4,7 @@ from collections import OrderedDict
 from tornado.escape import to_unicode
 from tornado.httputil import HTTPFile, parse_body_arguments
 
+from frontik import media_types
 from frontik.util import any_to_bytes, any_to_unicode, make_mfd, make_qs, make_url, reverse_regex_named_groups
 
 
@@ -105,7 +106,7 @@ class TestUtil(unittest.TestCase):
 
         self.assertEqual(files['file2'][0]['filename'], 'file2.txt')
         self.assertEqual(files['file2'][0]['body'], b'TEXT')
-        self.assertEqual(files['file2'][0]['content_type'], 'text/plain')
+        self.assertEqual(files['file2'][0]['content_type'], media_types.TEXT_PLAIN)
 
         self.assertEqual(files['file3'][0]['filename'], r'file3-"part1".unknown')
         self.assertEqual(files['file3'][0]['body'], b'BODY1')

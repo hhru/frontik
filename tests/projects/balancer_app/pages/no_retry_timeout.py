@@ -1,11 +1,11 @@
-import frontik.handler
+from frontik import handler, media_types
 from frontik.futures import AsyncGroup
 
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
-class Page(frontik.handler.PageHandler):
+class Page(handler.PageHandler):
     def get_page(self):
         self.application.http_client_factory.register_upstream('no_retry_timeout', {},
                                                                [get_server(self, 'broken'), get_server(self, 'normal')])
@@ -26,5 +26,5 @@ class Page(frontik.handler.PageHandler):
                       request_timeout=0.2)
 
     def post_page(self):
-        self.add_header('Content-Type', 'text/plain')
+        self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'

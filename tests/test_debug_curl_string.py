@@ -34,7 +34,7 @@ class CurlStringTestCase(unittest.TestCase):
         request = BalancedHttpRequest('http://test.com', Upstream.get_single_host_upstream(), '/path', 'test',
                                       data='DATA',
                                       method='PUT',
-                                      content_type='text/plain').make_request()
+                                      content_type=media_types.TEXT_PLAIN).make_request()
 
         self.assertEqual(
             request_to_curl_string(request),
@@ -45,7 +45,7 @@ class CurlStringTestCase(unittest.TestCase):
         request = BalancedHttpRequest('http://test.com', Upstream.get_single_host_upstream(), '/path', 'test',
                                       data='тест',
                                       method='POST',
-                                      content_type='text/plain').make_request()
+                                      content_type=media_types.TEXT_PLAIN).make_request()
 
         self.assertEqual(
             request_to_curl_string(request),

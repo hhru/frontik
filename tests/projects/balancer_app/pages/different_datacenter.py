@@ -1,5 +1,6 @@
 from tornado.web import HTTPError
 
+from frontik import media_types
 from frontik.handler import PageHandler
 
 from tests.projects.balancer_app import get_server
@@ -29,5 +30,5 @@ class Page(PageHandler):
         self.post_url('different_datacenter', self.request.path, callback=callback)
 
     def post_page(self):
-        self.add_header('Content-Type', 'text/plain')
+        self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'
