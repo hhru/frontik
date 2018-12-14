@@ -6,6 +6,7 @@
 .pydevproject
 .ropeproject/
 .settings/
+.vscode
 
 .pybuild/
 build
