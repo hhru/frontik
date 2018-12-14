@@ -8,6 +8,8 @@ from tornado.concurrent import Future
 from tornado.escape import to_unicode, utf8
 from tornado.util import raise_exc_info
 
+from frontik import media_types
+
 
 def list_unique(l):
     return list(set(l))
@@ -103,7 +105,7 @@ def make_mfd(fields, files):
 
     def create_file_field(name, filename, data, content_type):
         if content_type == 'application/unknown':
-            content_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+            content_type = mimetypes.guess_type(filename)[0] or media_types.APPLICATION_OCTET_STREAM
         else:
             content_type = content_type.replace('\n', ' ').replace('\r', ' ')
 

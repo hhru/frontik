@@ -110,10 +110,10 @@ class TestUtil(unittest.TestCase):
 
         self.assertEqual(files['file3'][0]['filename'], r'file3-"part1".unknown')
         self.assertEqual(files['file3'][0]['body'], b'BODY1')
-        self.assertEqual(files['file3'][0]['content_type'], 'application/octet-stream')
+        self.assertEqual(files['file3'][0]['content_type'], media_types.APPLICATION_OCTET_STREAM)
         self.assertEqual(files['file3'][1]['filename'], r'file3-\part2\.unknown')
         self.assertEqual(files['file3'][1]['body'], b'BODY2')
-        self.assertEqual(files['file3'][1]['content_type'], 'application/octet-stream')
+        self.assertEqual(files['file3'][1]['content_type'], media_types.APPLICATION_OCTET_STREAM)
 
     def test_reverse_regex_named_groups(self):
         two_ids = r'/id/(?P<id1>[^/]+)/(?P<id2>[^/]+)'

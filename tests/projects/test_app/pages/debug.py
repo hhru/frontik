@@ -57,7 +57,7 @@ class Page(handler.PageHandler):
             self.set_header('Content-Type', media_types.TEXT_HTML)
             self.text = '<html><h1>ok</h1></html>'
         elif content_type == 'protobuf':
-            self.set_header('Content-Type', 'application/x-protobuf')
+            self.set_header('Content-Type', media_types.APPLICATION_PROTOBUF)
             self.text = 'SomeProtobufObject()'
         elif content_type == 'xml':
             self.doc.put(E.response('some xml'))
