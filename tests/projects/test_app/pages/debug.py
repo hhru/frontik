@@ -62,7 +62,7 @@ class Page(handler.PageHandler):
         elif content_type == 'xml':
             self.doc.put(E.response('some xml'))
         elif content_type == 'javascript':
-            self.set_header('Content-Type', 'application/javascript')
+            self.set_header('Content-Type', media_types.APPLICATION_JAVASCRIPT)
             self.text = 'document.body.write("Привет")'
         elif content_type == 'text':
             self.set_header('Content-Type', media_types.TEXT_PLAIN)

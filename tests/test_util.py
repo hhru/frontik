@@ -83,7 +83,7 @@ class TestUtil(unittest.TestCase):
             },
             {
                 'file0': [HTTPFile(filename='file0.rar', body='ARCHIVE', content_type='some/type\r\n\r\nBAD DATA')],
-                'file1': [HTTPFile(filename='file1.png', body='CAT PICTURE', content_type='image/png')],
+                'file1': [HTTPFile(filename='file1.png', body='CAT PICTURE', content_type=media_types.IMAGE_PNG)],
                 'file2': [HTTPFile(filename='file2.txt', body='TEXT')],
                 'file3': [
                     HTTPFile(filename=r'file3-"part1".unknown', body='BODY1'),
@@ -102,7 +102,7 @@ class TestUtil(unittest.TestCase):
 
         self.assertEqual(files['file1'][0]['filename'], 'file1.png')
         self.assertEqual(files['file1'][0]['body'], b'CAT PICTURE')
-        self.assertEqual(files['file1'][0]['content_type'], 'image/png')
+        self.assertEqual(files['file1'][0]['content_type'], media_types.IMAGE_PNG)
 
         self.assertEqual(files['file2'][0]['filename'], 'file2.txt')
         self.assertEqual(files['file2'][0]['body'], b'TEXT')
