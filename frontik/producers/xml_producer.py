@@ -3,15 +3,15 @@ import time
 import weakref
 from concurrent.futures import ThreadPoolExecutor
 
-import tornado.ioloop
 from lxml import etree
+from tornado.concurrent import Future
 from tornado.options import options
 
 import frontik.doc
 import frontik.util
 from frontik import file_cache, media_types
 from frontik.producers import ProducerFactory
-from frontik.util import get_abs_path, raise_future_exception
+from frontik.util import get_abs_path
 from frontik.xml_util import xml_from_file, xsl_from_file
 
 
@@ -45,7 +45,6 @@ class XmlProducer:
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
         self.executor = executor
-        self.ioloop = tornado.ioloop.IOLoop.current()
 
         self.xml_cache = xml_cache
         self.xsl_cache = xsl_cache
@@ -54,16 +53,14 @@ class XmlProducer:
         self.transform = None
         self.transform_filename = None
 
-    def __call__(self, callback):
+    def __call__(self):
         if any(frontik.util.get_cookie_or_url_param_value(self.handler, p) is not None for p in ('noxsl', 'notpl')):
             self.handler.require_debug_access()
             self.log.debug('ignoring XSLT because noxsl/notpl parameter is passed')
-            self._finish_with_xml(callback)
-            return
+            return self._finish_with_xml()
 
         if not self.transform_filename:
-            self._finish_with_xml(callback)
-            return
+            return self._finish_with_xml()
 
         try:
             self.transform = self.xsl_cache.load(self.transform_filename, self.log)
@@ -77,12 +74,12 @@ class XmlProducer:
             self.log.error('failed loading XSL file %s', self.transform_filename)
             raise
 
-        self._finish_with_xslt(callback)
+        return self._finish_with_xslt()
 
     def set_xsl(self, filename):
         self.transform_filename = filename
 
-    def _finish_with_xslt(self, callback):
+    def _finish_with_xslt(self):
         self.log.debug('finishing with XSLT')
 
         if self.handler._headers.get('Content-Type') is None:
@@ -94,12 +91,14 @@ class XmlProducer:
                                     profile_run=self.handler.debug_mode.profile_xslt)
             return start_time, str(result), result.xslt_profile
 
+        result_future = Future()
+
         def job_callback(future):
             if future.exception() is not None:
                 self.log.error('failed transformation with XSL %s', self.transform_filename)
                 self.log.error(get_xsl_log())
 
-                raise_future_exception(future)
+                result_future.set_exception(future.exception())
                 return
 
             start_time, xml_result, xslt_profile = future.result()
@@ -113,21 +112,24 @@ class XmlProducer:
                 self.log.warning(get_xsl_log())
 
             self.handler.stages_logger.commit_stage('xsl')
-            callback(xml_result)
+            result_future.set_result(xml_result)
 
         def get_xsl_log():
             xsl_line = 'XSLT {0.level_name} in file "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
             return '\n'.join(map(xsl_line.format, self.transform.error_log))
 
-        future = self.executor.submit(job)
-        self.ioloop.add_future(future, self.handler.check_finished(job_callback))
-        return future
+        render_future = self.executor.submit(job)
+        self.handler.add_future(render_future, self.handler.check_finished(job_callback))
+        return result_future
 
-    def _finish_with_xml(self, callback):
+    def _finish_with_xml(self):
         self.log.debug('finishing without XSLT')
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.APPLICATION_XML)
-        callback(self.doc.to_string())
+
+        future = Future()
+        future.set_result(self.doc.to_string())
+        return future
 
     def xml_from_file(self, filename):
         return self.xml_cache.load(filename, self.log)
