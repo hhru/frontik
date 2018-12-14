@@ -451,7 +451,7 @@ class DebugTransform(OutputTransform):
         original_response = {
             'buffer': base64.b64encode(response_buffer),
             'headers': dict(self.headers),
-            'code': self.status_code
+            'code': int(self.status_code)
         }
 
         debug_log_data.append(frontik.xml_util.dict_to_xml(original_response, 'original-response'))
