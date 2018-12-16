@@ -54,7 +54,7 @@ class StatusHandler(RequestHandler):
 class FrontikApplication(Application):
     request_id = 0
 
-    class DefaultConfig(object):
+    class DefaultConfig:
         pass
 
     def __init__(self, **settings):

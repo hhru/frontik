@@ -37,7 +37,7 @@ class JsonProducerFactory(ProducerFactory):
         )
 
 
-class JsonProducer(object):
+class JsonProducer:
     def __init__(self, handler, environment=None, json_encoder=None, jinja_context_provider=None):
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)

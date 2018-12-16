@@ -33,7 +33,7 @@ class FailFastError(Exception):
         self.failed_request = failed_request
 
 
-class Server(object):
+class Server:
     @classmethod
     def from_config(cls, properties):
         params = {key: properties[key] for key in ('weight', 'rack', 'dc') if key in properties}
@@ -73,7 +73,7 @@ class Server(object):
         self.join_strategy = join_strategy
 
 
-class RetryPolicy(object):
+class RetryPolicy:
     _mapping = {
         'timeout': (599, False),
         'http_503': (503, False),
@@ -95,7 +95,7 @@ class RetryPolicy(object):
         return idempotent or self.statuses.get(response.code), True
 
 
-class Upstream(object):
+class Upstream:
     _single_host_upstream = None
 
     @classmethod
@@ -265,7 +265,7 @@ class Upstream(object):
         return '[{}]'.format(','.join(server.address for server in self.servers if server is not None))
 
 
-class DefaultJoinStrategy(object):
+class DefaultJoinStrategy:
     @staticmethod
     def is_complete():
         return True
@@ -282,7 +282,7 @@ class DefaultJoinStrategy(object):
         return '<DefaultJoinStrategy>'
 
 
-class DelayedSlowStartJoinStrategy(object):
+class DelayedSlowStartJoinStrategy:
     def __init__(self, slow_start_interval, slow_start_requests):
         self.initial_delay_end_time = time.time() + random() * slow_start_interval
         self.slow_start_requests = slow_start_requests
@@ -307,7 +307,7 @@ class DelayedSlowStartJoinStrategy(object):
             self.initial_delay_end_time, self.slow_start_requests)
 
 
-class BalancedHttpRequest(object):
+class BalancedHttpRequest:
     def __init__(self, host, upstream, uri, name, method='GET', data=None, headers=None, files=None, content_type=None,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None,
                  follow_redirects=True, idempotent=True):
@@ -427,7 +427,7 @@ class BalancedHttpRequest(object):
         return len(self.tried_hosts) if self.tried_hosts else 0
 
 
-class HttpClientFactory(object):
+class HttpClientFactory:
     def __init__(self, upstreams):
         AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
 
@@ -475,7 +475,7 @@ class HttpClientFactory(object):
         http_client_logger.info('update %s upstream: %s', name, str(upstream))
 
 
-class HttpClient(object):
+class HttpClient:
     def __init__(self, handler, http_client_impl, modify_http_request_hook, upstreams, statsd_client):
         self.handler = handler
         self.modify_http_request_hook = modify_http_request_hook
@@ -750,7 +750,7 @@ class DataParseError:
         self.attrs = attrs
 
 
-class RequestResult(object):
+class RequestResult:
     __slots__ = ('name', 'request', 'data', 'data_parse_error', 'response')
 
     def __init__(self):

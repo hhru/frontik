@@ -482,7 +482,7 @@ class DebugTransform(OutputTransform):
         return log_document
 
 
-class DebugMode(object):
+class DebugMode:
     def __init__(self, handler):
         debug_value = frontik.util.get_cookie_or_url_param_value(handler, 'debug')
 

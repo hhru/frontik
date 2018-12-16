@@ -40,7 +40,7 @@ class XMLProducerFactory(ProducerFactory):
         return XmlProducer(handler, xml_cache=self.xml_cache, xsl_cache=self.xsl_cache, executor=self.executor)
 
 
-class XmlProducer(object):
+class XmlProducer:
     def __init__(self, handler, xml_cache=None, xsl_cache=None, executor=None):
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)

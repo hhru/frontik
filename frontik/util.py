@@ -147,7 +147,7 @@ def get_cookie_or_url_param_value(handler, param_name):
 
 
 def reverse_regex_named_groups(pattern, *args, **kwargs):
-    class GroupReplacer(object):
+    class GroupReplacer:
         def __init__(self, args, kwargs):
             self.args, self.kwargs = args, kwargs
             self.current_arg = 0

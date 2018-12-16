@@ -13,7 +13,7 @@ def _is_valid_element(node):
     return True
 
 
-class Doc(object):
+class Doc:
     __slots__ = ('root_node', 'data')
 
     def __init__(self, root_node='doc'):

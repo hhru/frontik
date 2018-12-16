@@ -61,7 +61,7 @@ class HTTPClientKeepAliveTestCase(unittest.TestCase):
             self.assertEqual(b'', backend_socket.recv(1024), 'backend socket is not closed')
 
 
-class Client(object):
+class Client:
     def __init__(self, port):
         self.port = port
         self.socket = socket.socket()
@@ -81,7 +81,7 @@ class Client(object):
         self.socket.close()
 
 
-class Backend(object):
+class Backend:
     def __init__(self):
         self.port = find_free_port()
         self.socket = socket.socket()

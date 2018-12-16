@@ -67,7 +67,7 @@ class TestJsonBuilder(unittest.TestCase):
         self.assertSetEqual(set(j.to_dict()['a']['b']), {1, 2, 3})
 
     def test_encoder(self):
-        class CustomValue(object):
+        class CustomValue:
             def __iter__(self):
                 return iter((1, 2, 3))
 
@@ -180,7 +180,7 @@ class TestJsonBuilder(unittest.TestCase):
         self.assertRaises(ValueError, j.to_dict)
 
     def test_to_dict(self):
-        class Serializable(object):
+        class Serializable:
             def __init__(self, name, values):
                 self.name = name
                 self.values = values

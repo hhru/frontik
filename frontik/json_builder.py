@@ -41,7 +41,7 @@ class FrontikJsonEncoder(json.JSONEncoder):
         return _encode_value(obj)
 
 
-class JsonBuilder(object):
+class JsonBuilder:
     __slots__ = ('_data', '_encoder', 'root_node')
 
     def __init__(self, root_node=None, json_encoder=None):

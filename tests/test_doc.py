@@ -77,7 +77,7 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
         )
 
     def test_serializable(self):
-        class Serializable(object):
+        class Serializable:
             def __init__(self, tag, value):
                 self.tag = tag
                 self.value = value
