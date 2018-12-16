@@ -72,7 +72,7 @@ class TestXmlUtils(unittest.TestCase, LxmlTestCaseMixin):
     XML_MISSING_FILE = os.path.join(os.path.dirname(__file__), 'bbb.xml')
     XML_SYNTAX_ERROR_FILE = os.path.join(os.path.dirname(__file__), 'projects', 'test_app', 'xsl', 'syntax_error.xsl')
 
-    class MockLog(object):
+    class MockLog:
         def __init__(self):
             self.message = None
 

@@ -1,7 +1,7 @@
 import threading
 
 
-class RequestContext(object):
+class RequestContext:
     """Keeps track of current request data.
 
     Usage::

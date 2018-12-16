@@ -53,7 +53,7 @@ class TestFileCache(unittest.TestCase):
 
     CACHE_DIR = os.path.join(os.path.dirname(__file__), 'projects', 'test_app', 'xsl')
 
-    class MockLog(object):
+    class MockLog:
         def __init__(self):
             self.message = None
 

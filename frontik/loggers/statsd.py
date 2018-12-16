@@ -37,7 +37,7 @@ def _encode_str(some):
     return some if isinstance(some, (bytes, bytearray)) else some.encode('utf-8')
 
 
-class StatsDClientStub(object):
+class StatsDClientStub:
     def __init__(self):
         pass
 
@@ -57,7 +57,7 @@ class StatsDClientStub(object):
         pass
 
 
-class StatsDClient(object):
+class StatsDClient:
     def __init__(self, host, port, app=None, max_udp_size=508, reconnect_timeout=2):
         self.host = host
         self.port = port

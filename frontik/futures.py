@@ -10,7 +10,7 @@ async_logger = logging.getLogger('frontik.futures')
 
 # AsyncGroup will become legacy in future releases
 # It will be replaced with FutureGroup
-class AsyncGroup(object):
+class AsyncGroup:
     """
     Grouping of several async requests and final callback in such way that final callback is invoked
     after the last request is finished.
