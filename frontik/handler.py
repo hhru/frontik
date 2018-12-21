@@ -391,6 +391,7 @@ class PageHandler(RequestHandler):
     @gen.coroutine
     def _run_preprocessors(self, preprocessors, *args, **kwargs):
         self.preprocessors_group = AsyncGroup(lambda: None, name='preprocessors')
+        preprocessors_group_notification = self.preprocessors_group.add_notification()
 
         for p in preprocessors:
             yield gen.coroutine(p)(*args, **kwargs)
@@ -398,7 +399,7 @@ class PageHandler(RequestHandler):
                 self.log.warning('page has already started finishing, breaking preprocessors chain')
                 raise gen.Return(False)
 
-        self.preprocessors_group.try_finish()
+        preprocessors_group_notification()
         yield self.preprocessors_group.get_finish_future()
 
         raise gen.Return(True)
