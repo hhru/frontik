@@ -1,5 +1,6 @@
 import time
 
+from tornado import gen
 from tornado.concurrent import Future
 
 from frontik.handler import PageHandler
@@ -23,6 +24,14 @@ def waiting_preprocessor(sleep_time_sec, preprocessor_name, add_to_preprocessors
     return pp
 
 
+@preprocessor
+def pp_1(handler):
+    future = Future()
+    handler.add_to_preprocessors_group(future)
+    future.set_result(None)
+    yield gen.sleep(0.1)  # give time for future callbacks to complete
+
+
 class Page(PageHandler):
 
     @waiting_preprocessor(0.7, "should_finish_after_page_finish", False)
@@ -33,3 +42,8 @@ class Page(PageHandler):
     def get_page(self):
         assert hasattr(self, 'completed_preprocessors')
         self.json.put({'preprocessors': self.completed_preprocessors})
+
+    @pp_1
+    @pp_1  # preprocessors_group must not finish until all preprocessors are completed
+    def post_page(self):
+        pass

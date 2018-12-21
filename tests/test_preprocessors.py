@@ -1,5 +1,7 @@
 import unittest
 
+import requests
+
 from .instances import frontik_test_app
 
 
@@ -65,3 +67,7 @@ class TestPreprocessors(unittest.TestCase):
                 ]
             }
         )
+
+    def test_preprocessors_group_must_not_finish_prematurely(self):
+        response = frontik_test_app.get_page('preprocessors_group', method=requests.post)
+        self.assertEqual(response.status_code, 200)
