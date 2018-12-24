@@ -1,0 +1,15 @@
+APPLICATION_FORM_URLENCODED = 'application/x-www-form-urlencoded'
+APPLICATION_JSON = 'application/json'
+APPLICATION_JAVASCRIPT = 'application/javascript'
+APPLICATION_MSWORD = 'application/msword'
+APPLICATION_OCTET_STREAM = 'application/octet-stream'
+APPLICATION_PDF = 'application/pdf'
+APPLICATION_RTF = 'application/rtf'
+APPLICATION_PROTOBUF = 'application/x-protobuf'
+APPLICATION_RSS_XML = 'application/rss+xml'
+APPLICATION_XML = 'application/xml'
+
+IMAGE_PNG = 'image/png'
+
+TEXT_HTML = 'text/html'
+TEXT_PLAIN = 'text/plain'

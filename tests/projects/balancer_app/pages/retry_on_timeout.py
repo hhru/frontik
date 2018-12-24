@@ -1,5 +1,6 @@
 from tornado.web import HTTPError
 
+from frontik import media_types
 from frontik.handler import PageHandler
 from frontik.futures import AsyncGroup
 
@@ -27,5 +28,5 @@ class Page(PageHandler):
                         connect_timeout=0.1, request_timeout=0.3, max_timeout_tries=2)
 
     def delete_page(self):
-        self.add_header('Content-Type', 'text/plain')
+        self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'

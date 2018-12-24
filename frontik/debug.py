@@ -23,6 +23,7 @@ from tornado.web import OutputTransform
 
 import frontik.util
 import frontik.xml_util
+from frontik import media_types
 from frontik.loggers import BufferedHandler
 from frontik.request_context import RequestContext
 
@@ -387,10 +388,10 @@ class DebugTransform(OutputTransform):
         self.chunks = [chunk]
 
         if not self.is_inherited():
-            headers = HTTPHeaders({'Content-Type': 'text/html'})
+            headers = HTTPHeaders({'Content-Type': media_types.TEXT_HTML})
         else:
             headers = HTTPHeaders({
-                'Content-Type': 'application/xml',
+                'Content-Type': media_types.APPLICATION_XML,
                 DEBUG_HEADER_NAME: 'true'
             })
 

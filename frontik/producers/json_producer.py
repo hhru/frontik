@@ -3,14 +3,13 @@ import weakref
 from functools import partial
 
 import jinja2
-import sys
 import tornado.ioloop
 from jinja2.utils import concat
 from tornado.concurrent import Future
 from tornado.escape import to_unicode
 from tornado.options import options
 
-import frontik.json_builder
+from frontik import json_builder, media_types
 from frontik.util import get_abs_path, get_cookie_or_url_param_value, raise_future_exception
 from frontik.producers import ProducerFactory
 
@@ -43,7 +42,7 @@ class JsonProducer(object):
         self.log = weakref.proxy(self.handler.log)
         self.ioloop = tornado.ioloop.IOLoop.current()
 
-        self.json = frontik.json_builder.JsonBuilder(json_encoder=json_encoder)
+        self.json = json_builder.JsonBuilder(json_encoder=json_encoder)
         self.template_filename = None
         self.environment = environment
         self.jinja_context_provider = jinja_context_provider
@@ -123,7 +122,7 @@ class JsonProducer(object):
             raise Exception('Cannot apply template, no Jinja2 environment configured')
 
         if self.handler._headers.get('Content-Type') is None:
-            self.handler.set_header('Content-Type', 'text/html; charset=utf-8')
+            self.handler.set_header('Content-Type', media_types.TEXT_HTML)
 
         render_future = self._render_template_stream_on_ioloop(options.jinja_streaming_render_timeout_ms)
 
@@ -157,7 +156,7 @@ class JsonProducer(object):
     def _finish_with_json(self, callback):
         self.log.debug('finishing without templating')
         if self.handler._headers.get('Content-Type') is None:
-            self.handler.set_header('Content-Type', 'application/json; charset=utf-8')
+            self.handler.set_header('Content-Type', media_types.APPLICATION_JSON)
         callback(self.json.to_string())
 
     def __repr__(self):

@@ -1,9 +1,9 @@
 from lxml.builder import E
 
-import frontik.handler
+from frontik import handler, media_types
 
 
-class Page(frontik.handler.PageHandler):
+class Page(handler.PageHandler):
     def get_page(self):
         self.log.debug('debug: starting debug page')
 
@@ -54,16 +54,16 @@ class Page(frontik.handler.PageHandler):
         content_type = self.get_argument('type')
 
         if content_type == 'html':
-            self.set_header('Content-Type', 'text/html')
+            self.set_header('Content-Type', media_types.TEXT_HTML)
             self.text = '<html><h1>ok</h1></html>'
         elif content_type == 'protobuf':
-            self.set_header('Content-Type', 'application/x-protobuf')
+            self.set_header('Content-Type', media_types.APPLICATION_PROTOBUF)
             self.text = 'SomeProtobufObject()'
         elif content_type == 'xml':
             self.doc.put(E.response('some xml'))
         elif content_type == 'javascript':
-            self.set_header('Content-Type', 'application/javascript')
+            self.set_header('Content-Type', media_types.APPLICATION_JAVASCRIPT)
             self.text = 'document.body.write("Привет")'
         elif content_type == 'text':
-            self.set_header('Content-Type', 'text/plain; charset=utf-8')
+            self.set_header('Content-Type', media_types.TEXT_PLAIN)
             self.text = 'привет charset'.encode('utf-8')

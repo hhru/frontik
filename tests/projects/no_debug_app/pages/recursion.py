@@ -1,12 +1,12 @@
 from tornado.escape import to_unicode
 
-import frontik.handler
+from frontik import handler, media_types
 
 
-class Page(frontik.handler.PageHandler):
+class Page(handler.PageHandler):
     def get_page(self):
         def _cb(text, response):
-            self.set_header('Content-Type', 'text/plain')
+            self.set_header('Content-Type', media_types.TEXT_PLAIN)
             if response.error:
                 self.text = str(response.code)
             else:

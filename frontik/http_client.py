@@ -15,6 +15,7 @@ from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPResponse, HTTPE
 from tornado.httputil import HTTPHeaders
 from tornado.options import options
 
+from frontik import media_types
 from frontik.futures import AsyncGroup
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.debug import DEBUG_HEADER_NAME, response_from_debug
@@ -344,7 +345,7 @@ class BalancedHttpRequest(object):
                 self.body = make_body(data)
 
             if content_type is None:
-                content_type = self.headers.get('Content-Type', 'application/x-www-form-urlencoded')
+                content_type = self.headers.get('Content-Type', media_types.APPLICATION_FORM_URLENCODED)
 
             self.headers['Content-Length'] = str(len(self.body))
         elif self.method == 'PUT':

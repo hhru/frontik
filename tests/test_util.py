@@ -4,6 +4,7 @@ from collections import OrderedDict
 from tornado.escape import to_unicode
 from tornado.httputil import HTTPFile, parse_body_arguments
 
+from frontik import media_types
 from frontik.util import any_to_bytes, any_to_unicode, make_mfd, make_qs, make_url, reverse_regex_named_groups
 
 
@@ -82,7 +83,7 @@ class TestUtil(unittest.TestCase):
             },
             {
                 'file0': [HTTPFile(filename='file0.rar', body='ARCHIVE', content_type='some/type\r\n\r\nBAD DATA')],
-                'file1': [HTTPFile(filename='file1.png', body='CAT PICTURE', content_type='image/png')],
+                'file1': [HTTPFile(filename='file1.png', body='CAT PICTURE', content_type=media_types.IMAGE_PNG)],
                 'file2': [HTTPFile(filename='file2.txt', body='TEXT')],
                 'file3': [
                     HTTPFile(filename=r'file3-"part1".unknown', body='BODY1'),
@@ -101,18 +102,18 @@ class TestUtil(unittest.TestCase):
 
         self.assertEqual(files['file1'][0]['filename'], 'file1.png')
         self.assertEqual(files['file1'][0]['body'], b'CAT PICTURE')
-        self.assertEqual(files['file1'][0]['content_type'], 'image/png')
+        self.assertEqual(files['file1'][0]['content_type'], media_types.IMAGE_PNG)
 
         self.assertEqual(files['file2'][0]['filename'], 'file2.txt')
         self.assertEqual(files['file2'][0]['body'], b'TEXT')
-        self.assertEqual(files['file2'][0]['content_type'], 'text/plain')
+        self.assertEqual(files['file2'][0]['content_type'], media_types.TEXT_PLAIN)
 
         self.assertEqual(files['file3'][0]['filename'], r'file3-"part1".unknown')
         self.assertEqual(files['file3'][0]['body'], b'BODY1')
-        self.assertEqual(files['file3'][0]['content_type'], 'application/octet-stream')
+        self.assertEqual(files['file3'][0]['content_type'], media_types.APPLICATION_OCTET_STREAM)
         self.assertEqual(files['file3'][1]['filename'], r'file3-\part2\.unknown')
         self.assertEqual(files['file3'][1]['body'], b'BODY2')
-        self.assertEqual(files['file3'][1]['content_type'], 'application/octet-stream')
+        self.assertEqual(files['file3'][1]['content_type'], media_types.APPLICATION_OCTET_STREAM)
 
     def test_reverse_regex_named_groups(self):
         two_ids = r'/id/(?P<id1>[^/]+)/(?P<id2>[^/]+)'

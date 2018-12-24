@@ -3,6 +3,7 @@ import unittest
 import requests
 
 from .instances import frontik_test_app
+from frontik import media_types
 
 
 class TestHttpError(unittest.TestCase):
@@ -19,7 +20,7 @@ class TestHttpError(unittest.TestCase):
         response = frontik_test_app.get_page('http_error?code=401')
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.raw.reason, 'Unauthorized')
-        self.assertEqual(response.headers['content-type'], 'text/html; charset=UTF-8')
+        self.assertEqual(response.headers['content-type'], media_types.TEXT_HTML)
         self.assertEqual(
             response.content,
             b'<html><title>401: Unauthorized</title><body>401: Unauthorized</body></html>'

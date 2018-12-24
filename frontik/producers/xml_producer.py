@@ -9,7 +9,7 @@ from tornado.options import options
 
 import frontik.doc
 import frontik.util
-from frontik import file_cache
+from frontik import file_cache, media_types
 from frontik.producers import ProducerFactory
 from frontik.util import get_abs_path, raise_future_exception
 from frontik.xml_util import xml_from_file, xsl_from_file
@@ -86,7 +86,7 @@ class XmlProducer(object):
         self.log.debug('finishing with XSLT')
 
         if self.handler._headers.get('Content-Type') is None:
-            self.handler.set_header('Content-Type', 'text/html; charset=utf-8')
+            self.handler.set_header('Content-Type', media_types.TEXT_HTML)
 
         def job():
             start_time = time.time()
@@ -126,7 +126,7 @@ class XmlProducer(object):
     def _finish_with_xml(self, callback):
         self.log.debug('finishing without XSLT')
         if self.handler._headers.get('Content-Type') is None:
-            self.handler.set_header('Content-Type', 'application/xml; charset=utf-8')
+            self.handler.set_header('Content-Type', media_types.APPLICATION_XML)
         callback(self.doc.to_string())
 
     def xml_from_file(self, filename):

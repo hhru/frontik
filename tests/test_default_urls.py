@@ -28,7 +28,7 @@ class TestDefaultUrls(unittest.TestCase):
     def test_status(self):
         response = frontik_test_app.get_page('status')
 
-        self.assertEqual(response.headers['Content-Type'], 'application/json; charset=UTF-8')
+        self.assertTrue(response.headers['Content-Type'].startswith('application/json'))
 
         json_response = json.loads(response.content)
         self.assertIn('uptime', json_response)

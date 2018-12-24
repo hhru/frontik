@@ -1,5 +1,6 @@
 from tornado.web import HTTPError
 
+from frontik import media_types
 from frontik.handler import PageHandler
 from frontik.futures import AsyncGroup
 
@@ -31,5 +32,5 @@ class Page(PageHandler):
         check_all_servers_occupied(self, 'retry_error')
 
     def put_page(self):
-        self.add_header('Content-Type', 'text/plain')
+        self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'
