@@ -75,6 +75,12 @@ class Server(object):
 
 
 class RetryPolicy(object):
+    _retryable_errors = [
+        'HTTP 599: Failed to connect',
+        'HTTP 599: Connection timed out',
+        'HTTP 599: Empty reply from server',
+    ]
+
     _mapping = {
         'timeout': (599, False),
         'http_503': (503, False),
@@ -87,7 +93,7 @@ class RetryPolicy(object):
     def check_retry(self, response, idempotent):
         if response.code == 599:
             error = str(response.error)
-            if error.startswith('HTTP 599: Failed to connect') or error.startswith('HTTP 599: Connection timed out'):
+            if any(error.startswith(retryable_error) for retryable_error in RetryPolicy._retryable_errors):
                 return True, True
 
         if response.code not in self.statuses:

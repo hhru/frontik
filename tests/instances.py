@@ -148,3 +148,7 @@ frontik_balancer_app = FrontikTestInstance(
 frontik_broken_balancer_app = FrontikTestInstance(
     './frontik-test --app=tests.projects.broken_balancer_app --config=tests/projects/frontik_debug.cfg --log_dir=.'
 )
+
+frontik_suicidal_app = FrontikTestInstance(
+    './frontik-test --app=tests.projects.suicidal_app --config=tests/projects/frontik_debug.cfg --log_dir=.'
+)

@@ -1,6 +1,6 @@
 import unittest
 
-from .instances import find_free_port, frontik_balancer_app, frontik_broken_balancer_app
+from .instances import find_free_port, frontik_balancer_app, frontik_broken_balancer_app, frontik_suicidal_app
 
 
 class TestHttpError(unittest.TestCase):
@@ -8,11 +8,12 @@ class TestHttpError(unittest.TestCase):
     def setUpClass(cls):
         frontik_balancer_app.start()
         frontik_broken_balancer_app.start()
+        frontik_suicidal_app.start()
         cls.free_port = find_free_port(from_port=10000, to_port=20000)
 
     def make_url(self, url):
-        return '{}?normal={}&broken={}&free={}'.format(
-            url, frontik_balancer_app.port, frontik_broken_balancer_app.port, self.free_port)
+        return '{}?normal={}&broken={}&free={}&exit={}'.format(
+            url, frontik_balancer_app.port, frontik_broken_balancer_app.port, self.free_port, frontik_suicidal_app.port)
 
     def test_retry_connect(self):
         response = frontik_balancer_app.get_page(self.make_url('retry_connect'))
@@ -28,6 +29,11 @@ class TestHttpError(unittest.TestCase):
         response = frontik_balancer_app.get_page(self.make_url('retry_error'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'resultresultresult')
+
+    def test_retry_closed_socket(self):
+        response = frontik_balancer_app.get_page(self.make_url('empty_reply_from_server'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'result')
 
     def test_no_retry_error(self):
         response = frontik_balancer_app.get_page(self.make_url('no_retry_error'))

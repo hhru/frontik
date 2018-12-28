@@ -1,8 +1,5 @@
 import unittest
 
-from lxml import etree
-from tornado.escape import utf8
-
 from .instances import frontik_test_app
 
 
