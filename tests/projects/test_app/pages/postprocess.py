@@ -3,7 +3,7 @@ from tornado.web import HTTPError
 from frontik.handler import PageHandler
 
 
-class ContentPostprocessor(object):
+class ContentPostprocessor:
     def __call__(self, handler, tpl, callback):
         callback(tpl.replace('%%content%%', 'CONTENT'))
 

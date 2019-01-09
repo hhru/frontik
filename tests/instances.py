@@ -53,7 +53,7 @@ def create_basic_auth_header(credentials):
     return 'Basic {}'.format(to_unicode(base64.b64encode(utf8(credentials))))
 
 
-class FrontikTestInstance(object):
+class FrontikTestInstance:
     def __init__(self, command: str):
         self.command = command
         self.popen = None

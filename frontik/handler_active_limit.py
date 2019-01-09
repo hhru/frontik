@@ -6,7 +6,7 @@ from tornado.web import HTTPError
 handlers_count_logger = logging.getLogger('handlers_count')
 
 
-class ActiveHandlersLimit(object):
+class ActiveHandlersLimit:
     count = 0
     high_watermark_ratio = 0.75
 

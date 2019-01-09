@@ -13,7 +13,7 @@ class MyOtherException(MyException):
     pass
 
 
-class FutureProbe(object):
+class FutureProbe:
     _DEFAULT = object
 
     def __init__(self, future_to_check, stop_cb=None):

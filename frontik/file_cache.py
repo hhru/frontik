@@ -36,7 +36,7 @@ class LimitedDict(dict):
             self.pop(self._order.pop(0))
 
 
-class FileCache(object):
+class FileCache:
     """
     load_fn :: filename -> (status, result)
     """
@@ -59,7 +59,7 @@ class FileCache(object):
         return result
 
 
-class InvalidOptionCache(object):
+class InvalidOptionCache:
     def __init__(self, option):
         self.option = option
 
