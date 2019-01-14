@@ -26,7 +26,7 @@ def _string_to_dict(s):
     return {name: value for (name, value) in (v.split('=') for v in s.split(' ') if v)}
 
 
-http_client_logger = logging.getLogger('frontik.http_client')
+http_client_logger = logging.getLogger('http_client')
 
 
 class FailFastError(Exception):
@@ -586,7 +586,7 @@ class HttpClient:
                                          status=response.code)
 
             if self.handler.is_finished():
-                self.handler.log.warning('page was already finished, {} ignored'.format(callback))
+                http_client_logger.warning('page was already finished, {} ignored'.format(callback))
                 return
 
             result = self._parse_response(response, parse_response, parse_on_error)
@@ -641,7 +641,7 @@ class HttpClient:
 
     def _fetch(self, balanced_request, callback):
         if self.handler.is_finished():
-            self.handler.log.warning(
+            http_client_logger.warning(
                 'attempted to make http request to %s %s when page is finished, ignoring',
                 balanced_request.get_host(),
                 balanced_request.uri
@@ -677,7 +677,7 @@ class HttpClient:
                 self._prepare_curl_callback, next_callback=request.prepare_curl_callback
             )
 
-        self.http_client_impl.fetch(request, callback)
+        self.http_client_impl.fetch(request, callback, raise_error=False)
 
     def _prepare_curl_callback(self, curl, next_callback):
         curl.setopt(pycurl.NOSIGNAL, 1)
@@ -702,7 +702,7 @@ class HttpClient:
                                     '_datacenter': balanced_request.current_datacenter,
                                     '_balanced_request': balanced_request})
         except Exception:
-            self.handler.log.exception('Cannot get response from debug')
+            http_client_logger.exception('Cannot get response from debug')
 
         return response, debug_extra
 
@@ -717,8 +717,12 @@ class HttpClient:
             time=response.request_time * 1000
         )
 
-        log_method = self.handler.log.warning if response.code >= 500 else self.handler.log.info
+        log_method = http_client_logger.warning if response.code >= 500 else http_client_logger.info
         log_method(log_message, extra=debug_extra)
+
+        if response.code == 599:
+            timings_info = ('{}={}ms'.format(stage, int(timing * 1000)) for stage, timing in response.time_info.items())
+            http_client_logger.info('Curl timings: %s', ' '.join(timings_info))
 
     def _parse_response(self, response, parse_response, parse_on_error):
         result = RequestResult()
