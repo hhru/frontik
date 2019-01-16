@@ -609,6 +609,9 @@ class HttpClient:
                 request_finished_callback(None)
                 return
 
+            if isinstance(response.error, Exception) and not isinstance(response.error, HTTPError):
+                raise response.error
+
             request = balanced_request.pop_last_request()
             retries_count = balanced_request.get_retries_count()
 
@@ -786,18 +789,23 @@ def _parse_response(response, parser, response_type):
     except Exception:
         _preview_len = 100
 
-        if len(response.body) > _preview_len:
+        if response.body is None:
+            body_preview = None
+        elif len(response.body) > _preview_len:
             body_preview = response.body[:_preview_len]
         else:
             body_preview = response.body
 
-        try:
-            body_preview = ': "{}"'.format(to_unicode(body_preview))
-        except Exception:
-            body_preview = 'is unavailable, could not covert to unicode'
+        if body_preview is not None:
+            try:
+                body_preview = 'excerpt: {}'.format(to_unicode(body_preview))
+            except Exception:
+                body_preview = 'could not be converted to unicode, excerpt: {}'.format(str(body_preview))
+        else:
+            body_preview = 'is None'
 
         http_client_logger.exception(
-            'failed to parse %s response from %s, body excerpt %s',
+            'failed to parse %s response from %s, body %s',
             response_type, response.effective_url, body_preview
         )
 
