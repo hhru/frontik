@@ -1,8 +1,5 @@
 import unittest
 
-from lxml import etree
-from tornado.escape import utf8
-
 from .instances import frontik_test_app
 
 
@@ -54,3 +51,7 @@ class TestHttpClient(unittest.TestCase):
     def test_http_client_method_future(self):
         json = frontik_test_app.get_page_json('http_client/future')
         self.assertEqual(json, {'main_callback_called': True, 'additional_callback_called': True})
+
+    def test_http_raise_error(self):
+        text = frontik_test_app.get_page_text('http_client/raise_error')
+        self.assertEqual(text, 'UnicodeEncodeError')
