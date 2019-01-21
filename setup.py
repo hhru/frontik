@@ -50,7 +50,7 @@ setup(
         'tornado-httpclient-mock',
     ],
     dependency_links=[
-        'https://github.com/hhru/tornado/archive/tornado5.zip',
+        'https://github.com/hhru/tornado/archive/master.zip',
     ],
     extras_require={
         'sentry': ['raven']

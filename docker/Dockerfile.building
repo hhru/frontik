@@ -1,0 +1,15 @@
+FROM registry.pyn.ru:5000/python3.7-ubuntu18-production:2019.01.15
+
+RUN mkdir -p /home/building
+WORKDIR /home/building
+
+COPY frontik frontik
+COPY tests tests
+COPY examples examples
+COPY frontik-test frontik-test
+COPY setup.py setup.py
+COPY README.md README.md
+COPY MANIFEST.in MANIFEST.in
+
+RUN pip3 install raven
+RUN python3.7 setup.py test
