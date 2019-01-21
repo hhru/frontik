@@ -126,6 +126,9 @@ class FrontikApplication(Application):
         version.text = 'unknown'
         return [version]
 
+    def application_version(self):
+        return None
+
     def init_async(self):
         init_future = Future()
         init_future.set_result(None)
