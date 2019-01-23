@@ -28,6 +28,7 @@ def bootstrap_logger(app):
 
     sentry_client = AsyncSentryClient(
         dsn=dsn, http_client=app.http_client_factory.tornado_http_client,
+        release=app.application_version(),
         # breadcrumbs have serious performance penalties
         enable_breadcrumbs=False, install_logging_hook=False, install_sys_hook=False
     )
