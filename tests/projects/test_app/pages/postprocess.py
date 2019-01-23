@@ -17,11 +17,11 @@ class Page(PageHandler):
             self.add_postprocessor(self._pp_2)
 
         if self.get_argument('header', None) is not None:
-            self.add_template_postprocessor(Page._header_pp)
+            self.add_render_postprocessor(Page._header_pp)
 
         if self.get_argument('content', None) is not None:
             content_postprocessor = ContentPostprocessor()
-            self.add_template_postprocessor(content_postprocessor.postprocessor)
+            self.add_render_postprocessor(content_postprocessor.postprocessor)
 
         self.set_template('postprocess.html')
         self.json.put({'content': '%%content%%'})

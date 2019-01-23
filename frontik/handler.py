@@ -53,6 +53,7 @@ class PageHandler(RequestHandler):
         self.log = handler_logger
         self.text = None
 
+        self._preprocessor_futures = []
         self._exception_hooks = []
 
         for integration in application.available_integrations:
@@ -63,7 +64,7 @@ class PageHandler(RequestHandler):
         super().__init__(application, request, **kwargs)
 
         self._debug_access = None
-        self._template_postprocessors = []
+        self._render_postprocessors = []
         self._postprocessors = []
 
         self._http_client = self.application.http_client_factory.get_http_client(self, self.modify_http_client_request)
@@ -270,16 +271,16 @@ class PageHandler(RequestHandler):
             return
 
         if self.text is not None:
-            producer = self._generic_producer
+            renderer = self._generic_producer
         elif not self.json.is_empty():
-            producer = self.json_producer
+            renderer = self.json_producer
         else:
-            producer = self.xml_producer
+            renderer = self.xml_producer
 
-        self.log.debug('using %s producer', producer)
-        produced_result = yield producer()
+        self.log.debug('using %s renderer', renderer)
+        rendered_result = yield renderer()
 
-        postprocessed_result = yield self._run_postprocessors(self._template_postprocessors, produced_result)
+        postprocessed_result = yield self._run_postprocessors(self._render_postprocessors, rendered_result)
         return postprocessed_result
 
     def on_connection_close(self):
@@ -406,26 +407,24 @@ class PageHandler(RequestHandler):
     # Preprocessors and postprocessors
 
     def add_preprocessor_future(self, future):
-        if self.preprocessor_futures is None:
+        if self._preprocessor_futures is None:
             raise Exception(
                 'preprocessors chain is already finished, calling add_preprocessor_future at this time is incorrect'
             )
 
-        self.preprocessor_futures.append(future)
+        self._preprocessor_futures.append(future)
 
     @gen.coroutine
     def _run_preprocessors(self, preprocessors):
-        self.preprocessor_futures = []
-
         for p in preprocessors:
             yield gen.coroutine(p)(self)
             if self._finished:
                 self.log.info('page was already finished, breaking preprocessors chain')
                 return False
 
-        yield gen.multi(self.preprocessor_futures)
+        yield gen.multi(self._preprocessor_futures)
 
-        self.preprocessor_futures = None
+        self._preprocessor_futures = None
 
         if self._finished:
             self.log.info('page was already finished, breaking preprocessors chain')
@@ -448,8 +447,8 @@ class PageHandler(RequestHandler):
 
         return pp_result if pp_result is not None else True
 
-    def add_template_postprocessor(self, postprocessor):
-        self._template_postprocessors.append(postprocessor)
+    def add_render_postprocessor(self, postprocessor):
+        self._render_postprocessors.append(postprocessor)
 
     def add_postprocessor(self, postprocessor):
         self._postprocessors.append(postprocessor)
