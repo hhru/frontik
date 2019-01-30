@@ -113,6 +113,16 @@ class TestJsonBuilder(unittest.TestCase):
         self.assertEqual(j.to_dict()['a'], 'b')
         self.assertEqual(j.to_string(), """{"a": "b"}""")
 
+    def test_future_string_value(self):
+        j = JsonBuilder()
+        f = Future()
+        result = RequestResult()
+        result.data = """i'm poor jlogic"""
+        f.set_result(result)
+        j.put(f)
+
+        self.assertEqual(j.to_dict(), {})
+
     def test_failed_future(self):
         j = JsonBuilder()
         f = Future()

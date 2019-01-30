@@ -67,6 +67,18 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
             d.to_etree_element(), """<?xml version='1.0'?>\n<a><error reason="error" code="code"/></a>"""
         )
 
+    def test_future_string_value(self):
+        d = Doc('a')
+        f = Future()
+        result = RequestResult()
+        result.data = 'plain_text'
+        f.set_result(result)
+        d.put(f)
+
+        self.assertXmlEqual(
+            d.to_etree_element(), """<?xml version='1.0'?>\n<a></a>"""
+        )
+
     def test_doc_nested(self):
         a = Doc('a')
         b = Doc('b')
