@@ -44,7 +44,7 @@ setup(
     test_suite='tests',
     tests_require=[
         'pytest <= 3.8.2',
-        'pycodestyle == 2.4.0',
+        'pycodestyle == 2.5.0',
         'requests <= 2.20.0',
         'lxml-asserts',
         'tornado-httpclient-mock',
@@ -53,6 +53,7 @@ setup(
         'https://github.com/hhru/tornado/archive/master.zip',
     ],
     extras_require={
+        'influxdb': ['aioinflux'],
         'sentry': ['raven']
     },
     zip_safe=False

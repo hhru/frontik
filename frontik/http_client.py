@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 import time
@@ -446,7 +447,7 @@ class HttpClientFactory:
 
     def get_http_client(self, handler, modify_http_request_hook):
         return HttpClient(handler, self.tornado_http_client, modify_http_request_hook,
-                          self.upstreams, handler.statsd_client)
+                          self.upstreams, handler.statsd_client, getattr(handler, 'influxdb_client', None))
 
     def update_upstream(self, name, config):
         if config is None:
@@ -477,12 +478,13 @@ class HttpClientFactory:
 
 
 class HttpClient:
-    def __init__(self, handler, http_client_impl, modify_http_request_hook, upstreams, statsd_client):
+    def __init__(self, handler, http_client_impl, modify_http_request_hook, upstreams, statsd_client, influxdb_client):
         self.handler = handler
         self.modify_http_request_hook = modify_http_request_hook
         self.http_client_impl = http_client_impl
         self.upstreams = upstreams
         self.statsd_client = statsd_client
+        self.influxdb_client = influxdb_client
 
     def get_upstream(self, host):
         return self.upstreams.get(host, Upstream.get_single_host_upstream())
@@ -620,16 +622,38 @@ class HttpClient:
 
             self._log_response(balanced_request, response, retries_count, do_retry, debug_extra)
             self.statsd_client.stack()
-            self.statsd_client.count('http.client.requests', 1,
-                                     upstream=balanced_request.get_host(),
-                                     server=balanced_request.current_host,
-                                     datacenter=balanced_request.current_datacenter,
-                                     final=str(not do_retry),
-                                     status=response.code)
-            self.statsd_client.time('http.client.request.time', int(response.request_time * 1000),
-                                    datacenter=balanced_request.current_datacenter,
-                                    upstream=balanced_request.get_host())
+            self.statsd_client.count(
+                'http.client.requests', 1,
+                upstream=balanced_request.get_host(),
+                datacenter=balanced_request.current_datacenter,
+                final='false' if do_retry else 'true',
+                status=response.code
+            )
+            self.statsd_client.time(
+                'http.client.request.time',
+                int(response.request_time * 1000),
+                datacenter=balanced_request.current_datacenter,
+                upstream=balanced_request.get_host()
+            )
             self.statsd_client.flush()
+
+            if self.influxdb_client is not None:
+                asyncio.get_event_loop().create_task(
+                    self.influxdb_client.write(
+                        'request,app={app},dc={dc},final={final},server={host},status={status},upstream={upstream}'
+                        ' response_time={time}'.format(
+                            app=self.handler.application.app,
+                            dc=balanced_request.current_datacenter,
+                            final='false' if do_retry else 'true',
+                            host=balanced_request.current_host,
+                            status=response.code,
+                            upstream=balanced_request.get_host(),
+                            time=int(response.request_time * 1000)
+                        ),
+                        db=options.influxdb_metrics_db,
+                        rp=options.influxdb_metrics_rp
+                    )
+                )
 
             if do_retry:
                 self._fetch(balanced_request, retry_callback)
