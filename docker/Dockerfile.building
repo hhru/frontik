@@ -11,5 +11,5 @@ COPY setup.py setup.py
 COPY README.md README.md
 COPY MANIFEST.in MANIFEST.in
 
-RUN pip3 install raven
+RUN pip3 install raven aioinflux
 RUN python3.7 setup.py test
