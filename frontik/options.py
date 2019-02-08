@@ -53,6 +53,11 @@ tornado.options.define('http_proxy_host', default=None, type=str)
 tornado.options.define('http_proxy_port', default=3128, type=int)
 tornado.options.define('http_client_allow_cross_datacenter_requests', default=False, type=bool)
 
+tornado.options.define('influxdb_host', default=None, type=str)
+tornado.options.define('influxdb_port', default=None, type=int)
+tornado.options.define('influxdb_metrics_db', default=None, type=str)
+tornado.options.define('influxdb_metrics_rp', default=None, type=str)
+
 tornado.options.define('statsd_host', default=None, type=str)
 tornado.options.define('statsd_port', default=None, type=int)
 tornado.options.define('generic_metrics_send_interval_ms', default=None, type=int)

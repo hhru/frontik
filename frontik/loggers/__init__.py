@@ -5,7 +5,7 @@ import socket
 import time
 from logging.handlers import SysLogHandler
 
-from tornado.log import access_log, LogFormatter
+from tornado.log import LogFormatter
 from tornado.options import options
 
 from frontik.request_context import RequestContext
@@ -28,8 +28,8 @@ def get_loggers():
     request handler. It will be called when a request handler is starting and should provide an initialization code
     for this request handler (for example, add some specific methods for the handler or register hooks).
     """
-    from frontik.loggers import sentry, statsd, metrics
-    return sentry, statsd, metrics
+    from frontik.loggers import influxdb, sentry, statsd, metrics
+    return influxdb, sentry, statsd, metrics
 
 
 def bootstrap_app_loggers(app):
