@@ -11,13 +11,13 @@ from tornado.options import options
 from tornado.stack_context import StackContext
 from tornado.web import Application, RequestHandler
 
-from frontik import media_types
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
+from frontik import integrations, media_types
 from frontik.debug import DebugTransform
 from frontik.handler import ErrorHandler
 from frontik.http_client import HttpClientFactory
-from frontik.loggers import bootstrap_app_loggers, CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
+from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.request_context import RequestContext
 from frontik.routing import FileMappingRouter, FrontikRouter
 from frontik.version import version
@@ -65,7 +65,6 @@ class FrontikApplication(Application):
         if tornado_settings is None:
             tornado_settings = {}
 
-        self.app_settings = settings
         self.config = self.application_config()
         self.app = settings.get('app')
         self.app_root = settings.get('app_root')
@@ -76,7 +75,7 @@ class FrontikApplication(Application):
         self.http_client_factory = HttpClientFactory(getattr(self.config, 'http_upstreams', {}))
 
         self.router = FrontikRouter(self)
-        self.loggers_initializers = bootstrap_app_loggers(self)
+        self.available_integrations = integrations.load_integrations(self)
 
         super().__init__([
             (r'/version/?', VersionHandler),

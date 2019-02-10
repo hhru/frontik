@@ -49,8 +49,8 @@ class PageHandler(RequestHandler):
 
         self._exception_hooks = []
 
-        for initializer in application.loggers_initializers:
-            initializer(self)
+        for integration in application.available_integrations:
+            integration.initialize_handler(self)
 
         self.stages_logger = StagesLogger(request, self.statsd_client)
 

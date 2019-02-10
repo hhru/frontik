@@ -7,7 +7,7 @@ from tornado.escape import to_unicode
 from .instances import FrontikTestInstance
 
 
-class TestInfluxdb(unittest.TestCase):
+class TestInfluxdbIntegration(unittest.TestCase):
     def test_send_to_influxdb(self):
         influxdb_socket = socket.socket()
         influxdb_socket.bind(('127.0.0.1', 0))
