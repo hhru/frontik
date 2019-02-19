@@ -1,24 +1,28 @@
 import gc
-import logging
 import time
 from functools import partial
 
 from tornado.ioloop import PeriodicCallback
-from tornado.options import options
 
-metrics_logger = logging.getLogger('frontik.loggers.metrics')
+from frontik.integrations import Integration, integrations_logger
+from frontik.options import options
 
 
-def bootstrap_logger(app):
-    if options.generic_metrics_send_interval_ms is None or options.generic_metrics_send_interval_ms <= 0:
-        return lambda *args: None
+class GCMetricsCollectorIntegration(Integration):
+    def initialize_app(self, app):
+        if options.gc_metrics_send_interval_ms is None or options.gc_metrics_send_interval_ms <= 0:
+            integrations_logger.info(
+                'GC metrics collector integration is disabled: gc_metrics_send_interval_ms option is not configured'
+            )
+            return
 
-    gc.callbacks.append(gc_callback)
+        gc.callbacks.append(gc_metrics_collector)
 
-    periodic_callback = PeriodicCallback(partial(send_metrics, app), options.generic_metrics_send_interval_ms)
-    periodic_callback.start()
+        periodic_callback = PeriodicCallback(partial(send_metrics, app), options.gc_metrics_send_interval_ms)
+        periodic_callback.start()
 
-    return lambda *args: None
+    def initialize_handler(self, handler):
+        pass
 
 
 class GCStats:
@@ -33,7 +37,7 @@ class GCStats:
 GC_STATS = GCStats()
 
 
-def gc_callback(phase, info):
+def gc_metrics_collector(phase, info):
     if phase == 'start':
         GC_STATS.start = time.time()
     elif phase == 'stop' and GC_STATS.start is not None:

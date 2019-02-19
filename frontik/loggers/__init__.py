@@ -16,26 +16,6 @@ JSON_REQUESTS_LOGGER = logging.getLogger('requests')
 CUSTOM_JSON_EXTRA = 'custom_json'
 
 
-def get_loggers():
-    """Returns a list of all available third-party loggers.
-
-    Each third-party logger must be implemented as a separate module in `frontik.loggers` package.
-    The module must contain a callable named `bootstrap_logger`, which takes an instance of Tornado application
-    as the only parameter. `bootstrap_logger` is called only once when the application is loading and should contain
-    all initialization logic for the logger.
-
-    If the initialization was successful, `bootstrap_logger` should return a callable, which takes an instance of a
-    request handler. It will be called when a request handler is starting and should provide an initialization code
-    for this request handler (for example, add some specific methods for the handler or register hooks).
-    """
-    from frontik.loggers import influxdb, sentry, statsd, metrics
-    return influxdb, sentry, statsd, metrics
-
-
-def bootstrap_app_loggers(app):
-    return [logger.bootstrap_logger(app) for logger in get_loggers() if logger is not None]
-
-
 class ContextFilter(logging.Filter):
     def filter(self, record):
         handler_name = RequestContext.get('handler_name')

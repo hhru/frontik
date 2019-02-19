@@ -3,13 +3,17 @@ import unittest
 
 import requests
 
-from frontik.loggers.sentry import has_raven
+try:
+    import raven
+    has_raven = True
+except Exception:
+    has_raven = False
 
 from .instances import frontik_re_app, frontik_test_app
 
 
 @unittest.skipIf(not has_raven, 'raven library not found')
-class TestSentry(unittest.TestCase):
+class TestSentryIntegration(unittest.TestCase):
     def test_sentry_exception(self):
         frontik_test_app.get_page('api/sentry/store', method=requests.delete)
         frontik_test_app.get_page('sentry_error')

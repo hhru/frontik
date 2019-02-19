@@ -1,6 +1,7 @@
 import asyncio
 import json
 import re
+import socket
 import time
 from functools import partial
 from random import shuffle, random
@@ -9,7 +10,7 @@ import pycurl
 import logging
 from lxml import etree
 from tornado.escape import to_unicode
-from tornado.ioloop import IOLoop
+from tornado.ioloop import IOLoop, PeriodicCallback
 from tornado.concurrent import Future
 from tornado.curl_httpclient import CurlAsyncHTTPClient
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPResponse, HTTPError
@@ -483,8 +484,21 @@ class HttpClient:
         self.modify_http_request_hook = modify_http_request_hook
         self.http_client_impl = http_client_impl
         self.upstreams = upstreams
+        self.hostname = socket.gethostname()
         self.statsd_client = statsd_client
         self.influxdb_client = influxdb_client
+
+        self.influxdb_metrics_enabled = (
+            self.influxdb_client is not None and
+            options.influxdb_metrics_db is not None and options.influxdb_metrics_rp is not None
+        )
+        self.influxdb_heartbeat_enabled = (
+            self.influxdb_client is not None and
+            options.influxdb_heartbeat_db is not None and options.influxdb_heartbeat_rp is not None
+        )
+
+        if self.influxdb_heartbeat_enabled:
+            PeriodicCallback(self._influx_heartbeat, options.influxdb_heartbeat_period_ms).start()
 
     def get_upstream(self, host):
         return self.upstreams.get(host, Upstream.get_single_host_upstream())
@@ -570,6 +584,20 @@ class HttpClient:
             request, callback, add_to_finish_group, parse_response, parse_on_error, fail_fast
         )
 
+    def _influx_heartbeat(self):
+        asyncio.get_event_loop().create_task(
+            self.influxdb_client.write(
+                'heartbeat,app={app},dc={dc},hostname={hostname} ts={ts}'.format(
+                    app=self.handler.application.app,
+                    dc=options.datacenter,
+                    hostname=self.hostname,
+                    ts=int(time.time() * 1000)
+                ),
+                db=options.influxdb_heartbeat_db,
+                rp=options.influxdb_heartbeat_rp
+            )
+        )
+
     def _fetch_with_retry(self, balanced_request, callback, add_to_finish_group, parse_response, parse_on_error,
                           fail_fast):
         future = Future()
@@ -637,15 +665,15 @@ class HttpClient:
             )
             self.statsd_client.flush()
 
-            if self.influxdb_client is not None:
+            if self.influxdb_metrics_enabled and response.code >= 500:
                 asyncio.get_event_loop().create_task(
                     self.influxdb_client.write(
-                        'request,app={app},dc={dc},final={final},server={host},status={status},upstream={upstream}'
+                        'request,app={app},dc={dc},final={final},server={server},status={status},upstream={upstream}'
                         ' response_time={time}'.format(
                             app=self.handler.application.app,
                             dc=balanced_request.current_datacenter,
                             final='false' if do_retry else 'true',
-                            host=balanced_request.current_host,
+                            server=balanced_request.current_host,
                             status=response.code,
                             upstream=balanced_request.get_host(),
                             time=int(response.request_time * 1000)

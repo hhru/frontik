@@ -1,25 +1,27 @@
 import socket
-import logging
 import collections
 
 from tornado.ioloop import IOLoop
-from tornado.options import options
 
-statsd_logger = logging.getLogger('frontik.loggers.statsd')
+from frontik.integrations import Integration, integrations_logger
+from frontik.options import options
 
 
-def bootstrap_logger(app):
-    if options.statsd_host is not None and options.statsd_port is not None:
-        statsd_client = StatsDClient(options.statsd_host, options.statsd_port, app=app.app)
-    else:
-        statsd_client = StatsDClientStub()
+class StatsdIntegration(Integration):
+    def __init__(self):
+        self.statsd_client = None
 
-    app.statsd_client = statsd_client
+    def initialize_app(self, app):
+        if options.statsd_host is None or options.statsd_port is None:
+            self.statsd_client = StatsDClientStub()
+            integrations_logger.info(
+                'statsd integration is disabled: statsd_host / statsd_port options are not configured'
+            )
+        else:
+            self.statsd_client = StatsDClient(options.statsd_host, options.statsd_port, app=app.app)
 
-    def logger_initializer(handler):
-        handler.statsd_client = statsd_client
-
-    return logger_initializer
+    def initialize_handler(self, handler):
+        handler.statsd_client = self.statsd_client
 
 
 def _convert_tag(name, value):
@@ -71,7 +73,7 @@ class StatsDClient:
         self._connect()
 
     def _connect(self):
-        statsd_logger.info('connecting to %s:%d', self.host, self.port)
+        integrations_logger.info('statsd: connecting to %s:%d', self.host, self.port)
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.setblocking(False)
@@ -79,7 +81,7 @@ class StatsDClient:
         try:
             self.socket.connect((self.host, self.port))
         except socket.error as e:
-            statsd_logger.warning("connect error: %s", e)
+            integrations_logger.warning('statsd: connect error: %s', e)
             self._close()
             return
 
@@ -90,7 +92,7 @@ class StatsDClient:
 
     def _send(self, message):
         if len(message) > self.max_udp_size:
-            statsd_logger.debug('message {} is too long, dropping', message)
+            integrations_logger.debug('statsd: message %s is too long, dropping', message)
 
         if self.stacking:
             self.buffer.append(message)
@@ -100,13 +102,13 @@ class StatsDClient:
 
     def _write(self, data):
         if self.socket is None:
-            statsd_logger.debug('trying to write to closed socket, dropping')
+            integrations_logger.debug('statsd: trying to write to closed socket, dropping')
             return
 
         try:
             self.socket.send(_encode_str(data))
         except (socket.error, IOError, OSError) as e:
-            statsd_logger.warning("writing error: %s", e)
+            integrations_logger.warning('statsd: writing error: %s', e)
             self._close()
 
     def stack(self):

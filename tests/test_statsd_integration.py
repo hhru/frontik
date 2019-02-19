@@ -6,7 +6,7 @@ from tornado.escape import to_unicode
 from .instances import FrontikTestInstance
 
 
-class TestStatsd(unittest.TestCase):
+class TestStatsdIntegration(unittest.TestCase):
     def test_send_to_statsd(self):
         statsd_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         statsd_socket.settimeout(0.1)
