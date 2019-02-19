@@ -587,10 +587,10 @@ class HttpClient:
     def _influx_heartbeat(self):
         asyncio.get_event_loop().create_task(
             self.influxdb_client.write(
-                'heartbeat,app={app},current_dc={current_dc}current_server={current_server} ts={ts}'.format(
+                'heartbeat,app={app},dc={dc},hostname={hostname} ts={ts}'.format(
                     app=self.handler.application.app,
-                    current_dc=options.datacenter,
-                    current_server=self.hostname,
+                    dc=options.datacenter,
+                    hostname=self.hostname,
                     ts=int(time.time() * 1000)
                 ),
                 db=options.influxdb_heartbeat_db,
@@ -668,11 +668,9 @@ class HttpClient:
             if self.influxdb_metrics_enabled and response.code >= 500:
                 asyncio.get_event_loop().create_task(
                     self.influxdb_client.write(
-                        'request,app={app},current_dc={current_dc},current_server={current_server},dc={dc},'
-                        'final={final},server={server},status={status},upstream={upstream} response_time={time}'.format(
+                        'request,app={app},dc={dc},final={final},server={server},status={status},upstream={upstream}'
+                        ' response_time={time}'.format(
                             app=self.handler.application.app,
-                            current_dc=options.datacenter,
-                            current_server=self.hostname,
                             dc=balanced_request.current_datacenter,
                             final='false' if do_retry else 'true',
                             server=balanced_request.current_host,
