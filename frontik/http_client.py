@@ -498,7 +498,7 @@ class HttpClient:
         )
 
         if self.influxdb_heartbeat_enabled:
-            PeriodicCallback(self._influx_heartbeat, 10000).start()
+            PeriodicCallback(self._influx_heartbeat, options.influxdb_heartbeat_period_ms).start()
 
     def get_upstream(self, host):
         return self.upstreams.get(host, Upstream.get_single_host_upstream())

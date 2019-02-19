@@ -60,6 +60,7 @@ define('influxdb_metrics_db', default=None, type=str)
 define('influxdb_metrics_rp', default=None, type=str)
 define('influxdb_heartbeat_db', default=None, type=str)
 define('influxdb_heartbeat_rp', default=None, type=str)
+define('influxdb_heartbeat_period_ms', default=10000, type=str)
 
 define('statsd_host', default=None, type=str)
 define('statsd_port', default=None, type=int)
