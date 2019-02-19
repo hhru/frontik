@@ -57,6 +57,8 @@ tornado.options.define('influxdb_host', default=None, type=str)
 tornado.options.define('influxdb_port', default=None, type=int)
 tornado.options.define('influxdb_metrics_db', default=None, type=str)
 tornado.options.define('influxdb_metrics_rp', default=None, type=str)
+tornado.options.define('influxdb_heartbeat_db', default=None, type=str)
+tornado.options.define('influxdb_heartbeat_rp', default=None, type=str)
 
 tornado.options.define('statsd_host', default=None, type=str)
 tornado.options.define('statsd_port', default=None, type=int)

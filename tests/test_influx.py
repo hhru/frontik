@@ -16,7 +16,7 @@ class TestInfluxdb(unittest.TestCase):
         port = influxdb_socket.getsockname()[1]
 
         test_app = FrontikTestInstance(
-            './frontik-test --app=tests.projects.test_app --config=tests/projects/frontik_debug.cfg '
+            './frontik-test --app=tests.projects.test_app --config=tests/projects/frontik_debug.cfg --datacenter=test '
             '--influxdb_host=127.0.0.1 --influxdb_port={} '
             '--influxdb_metrics_db=metrics --influxdb_metrics_rp=hour'.format(port)
         )
@@ -49,8 +49,8 @@ class TestInfluxdb(unittest.TestCase):
         self.assertEqual('POST /write?db=metrics&rp=hour HTTP/1.1', metrics[0].split('\r\n')[0])
         self.assertRegexpMatches(
             metrics[1],
-            'request,app=tests.projects.test_app,dc=None,final=true,server=127.0.0.1:{port},status=404,'
-            'upstream=127.0.0.1:{port} response_time=[0-9]+'.format(
+            'request,app=tests.projects.test_app,current_dc=test,current_server=[^,]+,dc=None,final=true,'
+            'server=127.0.0.1:{port},status=500,upstream=127.0.0.1:{port} response_time=[0-9]+'.format(
                 port=test_app_port
             )
         )
