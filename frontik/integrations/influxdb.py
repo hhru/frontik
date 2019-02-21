@@ -15,7 +15,7 @@ class InfluxdbIntegration(Integration):
             )
             return
 
-        self.influxdb_client = InfluxDBClient(options.influxdb_host, options.influxdb_port)
+        app.influxdb_client = self.influxdb_client = InfluxDBClient(options.influxdb_host, options.influxdb_port)
 
     def initialize_handler(self, handler):
         handler.influxdb_client = self.influxdb_client

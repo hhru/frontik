@@ -20,6 +20,8 @@ class StatsdIntegration(Integration):
         else:
             self.statsd_client = StatsDClient(options.statsd_host, options.statsd_port, app=app.app)
 
+        app.statsd_client = self.statsd_client
+
     def initialize_handler(self, handler):
         handler.statsd_client = self.statsd_client
 
