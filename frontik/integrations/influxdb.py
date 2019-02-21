@@ -1,3 +1,4 @@
+from aiohttp.client import ClientTimeout
 from aioinflux import InfluxDBClient
 
 from frontik.integrations import Integration, integrations_logger
@@ -15,7 +16,13 @@ class InfluxdbIntegration(Integration):
             )
             return
 
-        app.influxdb_client = self.influxdb_client = InfluxDBClient(options.influxdb_host, options.influxdb_port)
+        self.influxdb_client = InfluxDBClient(options.influxdb_host, options.influxdb_port)
+        self.influxdb_client._session._timeout = ClientTimeout(
+            connect=options.influxdb_connect_timeout,
+            total=options.influxdb_request_timeout
+        )
+
+        app.influxdb_client = self.influxdb_client
 
     def initialize_handler(self, handler):
         handler.influxdb_client = self.influxdb_client
