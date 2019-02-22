@@ -41,7 +41,6 @@ matrix:
       - pip3 uninstall pycurl
       - pip3 install --install-option="--with-openssl" --install-option="--openssl-dir=/usr/local/opt/openssl" pycurl==7.43.0
 install:
-  - pip3 install aioinflux
   - if [[ $OSX != 1 ]]; then sudo apt-get install libgnutls28-dev libcurl4-gnutls-dev; fi
   - if [[ $TORNADO_VERSION == 'HH' ]]; then pip3 install https://github.com/hhru/tornado/archive/master.zip; else pip3 install tornado==$TORNADO_VERSION; fi
   - if [[ $WITH_RAVEN == 1 ]]; then pip3 install raven; fi

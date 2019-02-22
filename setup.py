@@ -53,7 +53,6 @@ setup(
         'https://github.com/hhru/tornado/archive/master.zip',
     ],
     extras_require={
-        'influxdb': ['aioinflux'],
         'sentry': ['raven']
     },
     zip_safe=False
