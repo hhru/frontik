@@ -492,12 +492,8 @@ class HttpClient:
             self.influxdb_client is not None and
             options.influxdb_metrics_db is not None and options.influxdb_metrics_rp is not None
         )
-        self.influxdb_heartbeat_enabled = (
-            self.influxdb_client is not None and
-            options.influxdb_heartbeat_db is not None and options.influxdb_heartbeat_rp is not None
-        )
 
-        if self.influxdb_heartbeat_enabled:
+        if self.influxdb_metrics_enabled:
             PeriodicCallback(self._influx_heartbeat, options.influxdb_heartbeat_period_ms).start()
 
     def get_upstream(self, host):
@@ -593,8 +589,8 @@ class HttpClient:
                     hostname=self.hostname,
                     ts=int(time.time() * 1000)
                 ),
-                db=options.influxdb_heartbeat_db,
-                rp=options.influxdb_heartbeat_rp
+                db=options.influxdb_metrics_db,
+                rp=options.influxdb_metrics_rp
             )
         )
 
@@ -665,14 +661,13 @@ class HttpClient:
             )
             self.statsd_client.flush()
 
-            if self.influxdb_metrics_enabled and response.code >= 500:
+            if self.influxdb_metrics_enabled and response.code >= 500 and not do_retry:
                 asyncio.get_event_loop().create_task(
                     self.influxdb_client.write(
-                        'request,app={app},dc={dc},final={final},server={server},status={status},upstream={upstream}'
+                        'request,app={app},dc={dc},server={server},status={status},upstream={upstream}'
                         ' response_time={time}'.format(
                             app=self.handler.application.app,
                             dc=balanced_request.current_datacenter,
-                            final='false' if do_retry else 'true',
                             server=balanced_request.current_host,
                             status=response.code,
                             upstream=balanced_request.get_host(),
