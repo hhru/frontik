@@ -826,13 +826,13 @@ class RequestResult:
                 'error': {k: v for k, v in self.data_parse_error.attrs.items()}
             }
 
-        return self.data
+        return self.data if isinstance(self.data, (dict, list)) else None
 
     def to_etree_element(self):
         if isinstance(self.data_parse_error, DataParseError):
             return etree.Element('error', **{k: str(v) for k, v in self.data_parse_error.attrs.items()})
 
-        return self.data
+        return self.data if isinstance(self.data, etree._Element) else None
 
 
 def _parse_response(response, parser, response_type):
