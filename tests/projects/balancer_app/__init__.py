@@ -7,7 +7,7 @@ def get_server(handler, type):
 
 
 def get_non_listening_server():
-    return Server('http://example.com:81')
+    return Server('http://10.0.0.0:12345')
 
 
 class TestApplication(FrontikApplication):
