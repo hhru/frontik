@@ -399,6 +399,7 @@ class PageHandler(RequestHandler):
         self.stages_logger.commit_stage('postprocess')
 
         if self._status_code in (204, 304) or (100 <= self._status_code < 200):
+            self._write_buffer = []
             chunk = None
 
         super().finish(chunk)
