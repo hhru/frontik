@@ -1,4 +1,3 @@
-import asyncio
 import json
 import re
 import socket
@@ -10,7 +9,7 @@ import pycurl
 import logging
 from lxml import etree
 from tornado.escape import to_unicode
-from tornado.ioloop import IOLoop, PeriodicCallback
+from tornado.ioloop import IOLoop
 from tornado.concurrent import Future
 from tornado.curl_httpclient import CurlAsyncHTTPClient
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPResponse, HTTPError
@@ -479,6 +478,8 @@ class HttpClientFactory:
 
 
 class HttpClient:
+    _last_influx_heartbeat = time.time()
+
     def __init__(self, handler, http_client_impl, modify_http_request_hook, upstreams, statsd_client):
         self.handler = handler
         self.modify_http_request_hook = modify_http_request_hook
@@ -491,9 +492,6 @@ class HttpClient:
             options.influxdb_host is not None and
             options.influxdb_metrics_db is not None and options.influxdb_metrics_rp is not None
         )
-
-        if self.influxdb_metrics_enabled:
-            PeriodicCallback(self._influx_heartbeat, options.influxdb_heartbeat_period_ms).start()
 
     def get_upstream(self, host):
         return self.upstreams.get(host, Upstream.get_single_host_upstream())
@@ -579,22 +577,6 @@ class HttpClient:
             request, callback, add_to_finish_group, parse_response, parse_on_error, fail_fast
         )
 
-    def _influx_heartbeat(self):
-        self.post_url(
-            options.influxdb_host,
-            '/write?db={}&rp={}'.format(options.influxdb_metrics_db, options.influxdb_metrics_rp),
-            data='heartbeat,app={app},dc={dc},hostname={hostname} ts={ts}'.format(
-                app=self.handler.application.app,
-                dc=options.datacenter,
-                hostname=self.hostname,
-                ts=int(time.time() * 1000)
-            ),
-            connect_timeout=options.influxdb_connect_timeout,
-            request_timeout=options.influxdb_request_timeout,
-            add_to_finish_group=False,
-            parse_response=False
-        )
-
     def _fetch_with_retry(self, balanced_request, callback, add_to_finish_group, parse_response, parse_on_error,
                           fail_fast):
         future = Future()
@@ -662,24 +644,44 @@ class HttpClient:
             )
             self.statsd_client.flush()
 
-            if self.influxdb_metrics_enabled and response.code >= 500 and not do_retry:
-                self.post_url(
-                    options.influxdb_host,
-                    '/write?db={}&rp={}'.format(options.influxdb_metrics_db, options.influxdb_metrics_rp),
-                    data='request,app={app},dc={dc},server={server},status={status},upstream={upstream}'
-                         ' response_time={time}'.format(
-                        app=self.handler.application.app,
-                        dc=balanced_request.current_datacenter,
-                        server=balanced_request.current_host,
-                        status=response.code,
-                        upstream=balanced_request.get_host(),
-                        time=int(response.request_time * 1000)
-                    ),
-                    connect_timeout=options.influxdb_connect_timeout,
-                    request_timeout=options.influxdb_request_timeout,
-                    add_to_finish_group=False,
-                    parse_response=False
-                )
+            if self.influxdb_metrics_enabled:
+                if response.code >= 500 and not do_retry:
+                    self.post_url(
+                        options.influxdb_host,
+                        '/write?db={}&rp={}'.format(options.influxdb_metrics_db, options.influxdb_metrics_rp),
+                        data='request,app={app},dc={dc},server={server},status={status},upstream={upstream}'
+                             ' response_time={time}'.format(
+                            app=self.handler.application.app,
+                            dc=balanced_request.current_datacenter,
+                            server=balanced_request.current_host,
+                            status=response.code,
+                            upstream=balanced_request.get_host(),
+                            time=int(response.request_time * 1000)
+                        ),
+                        connect_timeout=options.influxdb_connect_timeout_sec,
+                        request_timeout=options.influxdb_request_timeout_sec,
+                        add_to_finish_group=False,
+                        parse_response=False
+                    )
+                else:
+                    current_time = time.time()
+                    if self._last_influx_heartbeat + options.influxdb_heartbeat_period_sec < current_time:
+                        self._last_influx_heartbeat = current_time
+
+                        self.post_url(
+                            options.influxdb_host,
+                            '/write?db={}&rp={}'.format(options.influxdb_metrics_db, options.influxdb_metrics_rp),
+                            data='heartbeat,app={app},dc={dc},hostname={hostname} ts={ts}'.format(
+                                app=self.handler.application.app,
+                                dc=options.datacenter,
+                                hostname=self.hostname,
+                                ts=int(time.time() * 1000)
+                            ),
+                            connect_timeout=options.influxdb_connect_timeout_sec,
+                            request_timeout=options.influxdb_request_timeout_sec,
+                            add_to_finish_group=False,
+                            parse_response=False
+                        )
 
             if do_retry:
                 self._fetch(balanced_request, retry_callback)
