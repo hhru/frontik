@@ -9,7 +9,7 @@ import pycurl
 import logging
 from lxml import etree
 from tornado.escape import to_unicode
-from tornado.ioloop import IOLoop
+from tornado.ioloop import IOLoop, PeriodicCallback
 from tornado.concurrent import Future
 from tornado.curl_httpclient import CurlAsyncHTTPClient
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPResponse, HTTPError
@@ -434,6 +434,7 @@ class HttpClientFactory:
         AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
 
         self.tornado_http_client = AsyncHTTPClient()
+        self.hostname = socket.gethostname()
 
         if options.max_http_clients_connects is not None:
             self.tornado_http_client._multi.setopt(pycurl.M_MAXCONNECTS, options.max_http_clients_connects)
@@ -445,9 +446,23 @@ class HttpClientFactory:
             shuffle(servers)
             self.register_upstream(name, upstream['config'], servers)
 
+        influxdb_metrics_enabled = (
+            options.influxdb_host is not None and
+            options.influxdb_metrics_db is not None and options.influxdb_metrics_rp is not None
+        )
+
+        if influxdb_metrics_enabled:
+            self.influxdb_endpoint = make_url(
+                '{}/write'.format(options.influxdb_host), db=options.influxdb_metrics_db, rp=options.influxdb_metrics_rp
+            )
+
+            PeriodicCallback(self._influx_heartbeat, options.influxdb_heartbeat_period_ms).start()
+        else:
+            self.influxdb_endpoint = None
+
     def get_http_client(self, handler, modify_http_request_hook):
         return HttpClient(handler, self.tornado_http_client, modify_http_request_hook,
-                          self.upstreams, handler.statsd_client)
+                          self.upstreams, handler.statsd_client, self.influxdb_endpoint)
 
     def update_upstream(self, name, config):
         if config is None:
@@ -476,27 +491,33 @@ class HttpClientFactory:
         upstream.update(upstream_config, servers)
         http_client_logger.info('update %s upstream: %s', name, str(upstream))
 
+    def _influx_heartbeat(self):
+        request = HTTPRequest(
+            self.influxdb_endpoint, method='POST',
+            body=(
+                'heartbeat,app={app},dc={dc},hostname={hostname} ts={ts}'.format(
+                    app=options.app,
+                    dc=options.datacenter,
+                    hostname=self.hostname,
+                    ts=int(time.time() * 1000)
+                )
+            ),
+            connect_timeout=options.influxdb_connect_timeout_sec,
+            request_timeout=options.influxdb_request_timeout_sec,
+        )
+
+        self.tornado_http_client.fetch(request, raise_error=False)
+
 
 class HttpClient:
-    def __init__(self, handler, http_client_impl, modify_http_request_hook, upstreams, statsd_client):
+    def __init__(self, handler, http_client_impl, modify_http_request_hook, upstreams,
+                 statsd_client, influxdb_endpoint):
         self.handler = handler
         self.modify_http_request_hook = modify_http_request_hook
         self.http_client_impl = http_client_impl
         self.upstreams = upstreams
-        self.hostname = socket.gethostname()
         self.statsd_client = statsd_client
-
-        self.influxdb_metrics_enabled = (
-            options.influxdb_host is not None and
-            options.influxdb_metrics_db is not None and options.influxdb_metrics_rp is not None
-        )
-
-        if self.influxdb_metrics_enabled:
-            self.influxdb_endpoint = make_url(
-                '{}/write'.format(options.influxdb_host), db=options.influxdb_metrics_db, rp=options.influxdb_metrics_rp
-            )
-        else:
-            self.influxdb_endpoint = None
+        self.influxdb_endpoint = influxdb_endpoint
 
     def get_upstream(self, host):
         return self.upstreams.get(host, Upstream.get_single_host_upstream())
@@ -649,7 +670,7 @@ class HttpClient:
             )
             self.statsd_client.flush()
 
-            if self.influxdb_metrics_enabled and response.code >= 500 and not do_retry:
+            if self.influxdb_endpoint is not None and response.code >= 500 and not do_retry:
                 request = HTTPRequest(
                     self.influxdb_endpoint, method='POST',
                     body=(

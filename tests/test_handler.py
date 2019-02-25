@@ -35,3 +35,7 @@ class TestHandler(unittest.TestCase):
     def test_delete_post_arguments(self):
         response = frontik_test_app.get_page('handler/delete', method=requests.delete)
         self.assertEqual(response.status_code, 400)
+
+    def test_204(self):
+        response = frontik_test_app.get_page('finish_204')
+        self.assertEqual(response.status_code, 204)
