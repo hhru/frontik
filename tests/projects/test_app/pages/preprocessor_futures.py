@@ -7,7 +7,7 @@ from frontik.handler import PageHandler
 from frontik.preprocessors import preprocessor
 
 
-def waiting_preprocessor(sleep_time_sec, preprocessor_name, add_to_preprocessors_group):
+def waiting_preprocessor(sleep_time_sec, preprocessor_name, add_preprocessor_future):
     @preprocessor
     def pp(handler):
         def _put_to_completed():
@@ -18,18 +18,23 @@ def waiting_preprocessor(sleep_time_sec, preprocessor_name, add_to_preprocessors
         wait_future = Future()
         handler.add_timeout(time.time() + sleep_time_sec, _put_to_completed)
 
-        if add_to_preprocessors_group:
-            handler.add_to_preprocessors_group(wait_future)
+        if add_preprocessor_future:
+            handler.add_preprocessor_future(wait_future)
 
     return pp
 
 
 @preprocessor
 def pp_1(handler):
+    def _done(_):
+        handler.add_timeout(
+            time.time() + 0.2, handler.finish_group.add(lambda: handler.add_preprocessor_future(Future()))
+        )
+
     future = Future()
-    handler.add_to_preprocessors_group(future)
+    handler.add_future(future, handler.finish_group.add(_done))
     future.set_result(None)
-    yield gen.sleep(0.1)  # give time for future callbacks to complete
+    yield future
 
 
 class Page(PageHandler):
@@ -44,6 +49,5 @@ class Page(PageHandler):
         self.json.put({'preprocessors': self.completed_preprocessors})
 
     @pp_1
-    @pp_1  # preprocessors_group must not finish until all preprocessors are completed
     def post_page(self):
         pass

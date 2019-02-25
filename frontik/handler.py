@@ -1,11 +1,12 @@
 import http.client
 import logging
-from functools import partial, wraps
+from functools import wraps
 
 import tornado.curl_httpclient
 import tornado.httputil
 import tornado.web
 from tornado import gen, stack_context
+from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 from tornado.options import options
 from tornado.web import RequestHandler
@@ -28,6 +29,11 @@ def _fallback_status_code(status_code):
     return status_code if status_code in http.client.responses else http.client.SERVICE_UNAVAILABLE
 
 
+class FinishWithPostprocessors(Exception):
+    def __init__(self, wait_finish_group=False):
+        self.wait_finish_group = wait_finish_group
+
+
 class HTTPErrorWithPostprocessors(tornado.web.HTTPError):
     pass
 
@@ -47,6 +53,7 @@ class PageHandler(RequestHandler):
         self.log = handler_logger
         self.text = None
 
+        self._preprocessor_futures = []
         self._exception_hooks = []
 
         for integration in application.available_integrations:
@@ -57,8 +64,7 @@ class PageHandler(RequestHandler):
         super().__init__(application, request, **kwargs)
 
         self._debug_access = None
-        self._page_aborted = False
-        self._template_postprocessors = []
+        self._render_postprocessors = []
         self._postprocessors = []
 
         self._http_client = self.application.http_client_factory.get_http_client(self, self.modify_http_client_request)
@@ -69,7 +75,7 @@ class PageHandler(RequestHandler):
     def prepare(self):
         self.active_limit = frontik.handler_active_limit.ActiveHandlersLimit(self.statsd_client)
         self.debug_mode = DebugMode(self)
-        self.finish_group = AsyncGroup(self.check_finished(self._finish_page_cb), name='finish')
+        self.finish_group = AsyncGroup(lambda: None, name='finish')
         self._handler_finished_notification = self.finish_group.add_notification()
 
         self.json_producer = self.application.json.get_producer(self)
@@ -171,21 +177,23 @@ class PageHandler(RequestHandler):
 
     @gen.coroutine
     def _execute_page(self, page_handler_method):
-        self._auto_finish = False
         self.stages_logger.commit_stage('prepare')
 
         preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(page_handler_method.__func__)
-        preprocessors_finished = yield self._run_preprocessors(preprocessors, self)
+        preprocessors_completed = yield self._run_preprocessors(preprocessors)
 
-        if not preprocessors_finished:
-            self.log.info('preprocessors chain was broken, skipping page method')
-        elif self.is_finished():
-            self.log.info('page was finished in preprocessors, skipping page method')
-        else:
-            yield gen.coroutine(page_handler_method)()
-            self._handler_finished_notification()
+        if not preprocessors_completed:
+            self.log.info('page was already finished, skipping page method')
+            return
 
-        yield self.preprocessors_group.get_finish_future()
+        yield gen.coroutine(page_handler_method)()
+
+        self._handler_finished_notification()
+        yield self.finish_group.get_finish_future()
+
+        response_data = yield self._postprocess()
+        if response_data is not None:
+            self.write(response_data)
 
     def get_page(self):
         """ This method can be implemented in the subclass """
@@ -225,11 +233,6 @@ class PageHandler(RequestHandler):
     def __return_error(self, response_code):
         self.send_error(response_code if 300 <= response_code < 500 else 502)
 
-    # HTTP client methods
-
-    def modify_http_client_request(self, balanced_request):
-        pass
-
     # Finish page
 
     def is_finished(self):
@@ -248,28 +251,37 @@ class PageHandler(RequestHandler):
     def finish_with_postprocessors(self):
         self.finish_group.finish()
 
-    def abort_preprocessors(self, wait_finish_group=True):
-        self._page_aborted = True
-        if wait_finish_group:
-            self._handler_finished_notification()
+        def _cb(future):
+            if future.result() is not None:
+                self.finish(future.result())
+
+        self.add_future(self._postprocess(), _cb)
+
+    @gen.coroutine
+    def _postprocess(self):
+        if self._finished:
+            self.log.info('page was already finished, skipping postprocessors')
+            return
+
+        postprocessors_completed = yield self._run_postprocessors(self._postprocessors)
+        self.stages_logger.commit_stage('page')
+
+        if not postprocessors_completed:
+            self.log.info('page was already finished, skipping page producer')
+            return
+
+        if self.text is not None:
+            renderer = self._generic_producer
+        elif not self.json.is_empty():
+            renderer = self.json_producer
         else:
-            self.finish_with_postprocessors()
+            renderer = self.xml_producer
 
-    def _finish_page_cb(self):
-        def _callback():
-            self.stages_logger.commit_stage('page')
+        self.log.debug('using %s renderer', renderer)
+        rendered_result = yield renderer()
 
-            if self.text is not None:
-                producer = self._generic_producer
-            elif not self.json.is_empty():
-                producer = self.json_producer
-            else:
-                producer = self.xml_producer
-
-            self.log.debug('using %s producer', producer)
-            producer(partial(self._call_postprocessors, self._template_postprocessors, self.finish))
-
-        self._call_postprocessors(self._postprocessors, _callback)
+        postprocessed_result = yield self._run_postprocessors(self._render_postprocessors, rendered_result)
+        return postprocessed_result
 
     def on_connection_close(self):
         self.finish_group.abort()
@@ -295,7 +307,14 @@ class PageHandler(RequestHandler):
             exception_hook(typ, value, tb)
 
     def _handle_request_exception(self, e):
-        if isinstance(e, FailFastError):
+        if isinstance(e, FinishWithPostprocessors):
+            if e.wait_finish_group:
+                self._handler_finished_notification()
+                self.add_future(self.finish_group.get_finish_future(), lambda _: self.finish_with_postprocessors())
+            else:
+                self.finish_with_postprocessors()
+
+        elif isinstance(e, FailFastError):
             response = e.failed_request.response
             request = e.failed_request.request
 
@@ -320,6 +339,7 @@ class PageHandler(RequestHandler):
 
             except Exception as exc:
                 super()._handle_request_exception(exc)
+
         else:
             super()._handle_request_exception(e)
 
@@ -386,54 +406,64 @@ class PageHandler(RequestHandler):
 
     # Preprocessors and postprocessors
 
-    def add_to_preprocessors_group(self, future):
-        return self.preprocessors_group.add_future(future)
+    def add_preprocessor_future(self, future):
+        if self._preprocessor_futures is None:
+            raise Exception(
+                'preprocessors chain is already finished, calling add_preprocessor_future at this time is incorrect'
+            )
+
+        self._preprocessor_futures.append(future)
 
     @gen.coroutine
-    def _run_preprocessors(self, preprocessors, *args, **kwargs):
-        self.preprocessors_group = AsyncGroup(lambda: None, name='preprocessors')
-        preprocessors_group_notification = self.preprocessors_group.add_notification()
-
+    def _run_preprocessors(self, preprocessors):
         for p in preprocessors:
-            yield gen.coroutine(p)(*args, **kwargs)
-            if self._finished or self._page_aborted:
-                self.log.warning('page has already started finishing, breaking preprocessors chain')
-                raise gen.Return(False)
+            yield gen.coroutine(p)(self)
+            if self._finished:
+                self.log.info('page was already finished, breaking preprocessors chain')
+                return False
 
-        preprocessors_group_notification()
-        yield self.preprocessors_group.get_finish_future()
+        yield gen.multi(self._preprocessor_futures)
 
-        raise gen.Return(True)
+        self._preprocessor_futures = None
 
-    def _call_postprocessors(self, postprocessors, callback, *args):
-        self._chain_functions(iter(postprocessors), callback, 'postprocessor', *args)
+        if self._finished:
+            self.log.info('page was already finished, breaking preprocessors chain')
+            return False
 
-    def _chain_functions(self, functions, callback, chain_type, *args):
-        try:
-            func = next(functions)
+        return True
 
-            def _callback(*args):
-                self._chain_functions(functions, callback, chain_type, *args)
+    @gen.coroutine
+    def _run_postprocessors(self, postprocessors, *args):
+        pp_result = args[0] if args else None
 
-            func(self, *(args + (_callback,)))
-        except StopIteration:
-            callback(*args)
+        for p in postprocessors:
+            pp_result = yield gen.coroutine(p)(self, *args)
+            if args and pp_result is not None:
+                args = [pp_result]
 
-    def add_template_postprocessor(self, postprocessor):
-        self._template_postprocessors.append(postprocessor)
+            if self._finished:
+                self.log.warning('page was already finished, breaking postprocessors chain')
+                return False
+
+        return pp_result if pp_result is not None else True
+
+    def add_render_postprocessor(self, postprocessor):
+        self._render_postprocessors.append(postprocessor)
 
     def add_postprocessor(self, postprocessor):
         self._postprocessors.append(postprocessor)
 
     # Producers
 
-    def _generic_producer(self, callback):
+    def _generic_producer(self):
         self.log.debug('finishing plaintext')
 
         if self._headers.get('Content-Type') is None:
             self.set_header('Content-Type', media_types.TEXT_HTML)
 
-        callback(self.text)
+        future = Future()
+        future.set_result(self.text)
+        return future
 
     def xml_from_file(self, filename):
         return self.xml_producer.xml_from_file(filename)
@@ -445,6 +475,9 @@ class PageHandler(RequestHandler):
         return self.json_producer.set_template(filename)
 
     # HTTP client methods
+
+    def modify_http_client_request(self, balanced_request):
+        pass
 
     def group(self, futures, callback=None, name=None):
         return self._http_client.group(futures, callback, name)

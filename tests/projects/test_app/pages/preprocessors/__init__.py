@@ -1,7 +1,7 @@
 import time
 
+from tornado import gen
 from tornado.concurrent import Future
-from tornado.web import HTTPError
 
 from frontik.handler import PageHandler
 from frontik.preprocessors import preprocessor
@@ -41,18 +41,7 @@ def pp2(handler):
     handler.run.append('pp2')
     handler.pp2_future = future
 
-    if handler.get_argument('raise_error', 'false') != 'false':
-        raise HTTPError(400)
-    elif handler.get_argument('abort_and_run_postprocessors', 'false') != 'false':
-        handler.abort_preprocessors(wait_finish_group=False)
-    elif handler.get_argument('wait_and_run_postprocessors', 'false') != 'false':
-        handler.abort_preprocessors(wait_finish_group=True)
-    elif handler.get_argument('redirect', 'false') != 'false':
-        handler.redirect(handler.request.host + handler.request.path + '?redirected=true')
-    elif handler.get_argument('finish', 'false') != 'false':
-        handler.finish('finished')
-    else:
-        yield future
+    yield future
 
 
 @preprocessor
@@ -67,8 +56,6 @@ class Page(PageHandler):
     def prepare(self):
         super().prepare()
 
-        self._use_new_preprocessors = True
-
         self.run = []
         self.json.put({
             'run': self.run
@@ -79,16 +66,12 @@ class Page(PageHandler):
     @pp1
     @preprocessor([pp2, pp3])
     def get_page(self):
-        if self.get_argument('redirected', 'false') != 'false':
-            self.json.replace({'redirected': True})
-            return
-
         self.run.append('get_page')
 
     def put_page(self):
         self.text = {'put_request_preprocessors': self.run}
 
     @staticmethod
-    def postprocessor(handler, callback):
+    def postprocessor(handler):
         handler.json.put({'postprocessor': True})
-        handler.add_timeout(time.time() + 0.1, callback)
+        yield gen.sleep(0.1)
