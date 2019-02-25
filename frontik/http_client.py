@@ -488,6 +488,7 @@ class HttpClient:
         self.statsd_client = statsd_client
 
         self.influxdb_metrics_enabled = (
+            options.influxdb_host is not None and
             options.influxdb_metrics_db is not None and options.influxdb_metrics_rp is not None
         )
 
