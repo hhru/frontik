@@ -55,7 +55,6 @@ define('http_proxy_port', default=3128, type=int)
 define('http_client_allow_cross_datacenter_requests', default=False, type=bool)
 
 define('influxdb_host', default=None, type=str)
-define('influxdb_port', default=None, type=int)
 define('influxdb_connect_timeout', default=0.2, type=float)
 define('influxdb_request_timeout', default=0.5, type=float)
 define('influxdb_metrics_db', default=None, type=str)

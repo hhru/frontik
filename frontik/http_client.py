@@ -448,7 +448,7 @@ class HttpClientFactory:
 
     def get_http_client(self, handler, modify_http_request_hook):
         return HttpClient(handler, self.tornado_http_client, modify_http_request_hook,
-                          self.upstreams, handler.statsd_client, getattr(handler, 'influxdb_client', None))
+                          self.upstreams, handler.statsd_client)
 
     def update_upstream(self, name, config):
         if config is None:
@@ -479,17 +479,15 @@ class HttpClientFactory:
 
 
 class HttpClient:
-    def __init__(self, handler, http_client_impl, modify_http_request_hook, upstreams, statsd_client, influxdb_client):
+    def __init__(self, handler, http_client_impl, modify_http_request_hook, upstreams, statsd_client):
         self.handler = handler
         self.modify_http_request_hook = modify_http_request_hook
         self.http_client_impl = http_client_impl
         self.upstreams = upstreams
         self.hostname = socket.gethostname()
         self.statsd_client = statsd_client
-        self.influxdb_client = influxdb_client
 
         self.influxdb_metrics_enabled = (
-            self.influxdb_client is not None and
             options.influxdb_metrics_db is not None and options.influxdb_metrics_rp is not None
         )
 
@@ -581,17 +579,19 @@ class HttpClient:
         )
 
     def _influx_heartbeat(self):
-        asyncio.get_event_loop().create_task(
-            self.influxdb_client.write(
-                'heartbeat,app={app},dc={dc},hostname={hostname} ts={ts}'.format(
-                    app=self.handler.application.app,
-                    dc=options.datacenter,
-                    hostname=self.hostname,
-                    ts=int(time.time() * 1000)
-                ),
-                db=options.influxdb_metrics_db,
-                rp=options.influxdb_metrics_rp
-            )
+        self.post_url(
+            options.influxdb_host,
+            '/write?db={}&rp={}'.format(options.influxdb_metrics_db, options.influxdb_metrics_rp),
+            data='heartbeat,app={app},dc={dc},hostname={hostname} ts={ts}'.format(
+                app=self.handler.application.app,
+                dc=options.datacenter,
+                hostname=self.hostname,
+                ts=int(time.time() * 1000)
+            ),
+            connect_timeout=options.influxdb_connect_timeout,
+            request_timeout=options.influxdb_request_timeout,
+            add_to_finish_group=False,
+            parse_response=False
         )
 
     def _fetch_with_retry(self, balanced_request, callback, add_to_finish_group, parse_response, parse_on_error,
@@ -662,20 +662,22 @@ class HttpClient:
             self.statsd_client.flush()
 
             if self.influxdb_metrics_enabled and response.code >= 500 and not do_retry:
-                asyncio.get_event_loop().create_task(
-                    self.influxdb_client.write(
-                        'request,app={app},dc={dc},server={server},status={status},upstream={upstream}'
-                        ' response_time={time}'.format(
-                            app=self.handler.application.app,
-                            dc=balanced_request.current_datacenter,
-                            server=balanced_request.current_host,
-                            status=response.code,
-                            upstream=balanced_request.get_host(),
-                            time=int(response.request_time * 1000)
-                        ),
-                        db=options.influxdb_metrics_db,
-                        rp=options.influxdb_metrics_rp
-                    )
+                self.post_url(
+                    options.influxdb_host,
+                    '/write?db={}&rp={}'.format(options.influxdb_metrics_db, options.influxdb_metrics_rp),
+                    data='request,app={app},dc={dc},server={server},status={status},upstream={upstream}'
+                         ' response_time={time}'.format(
+                        app=self.handler.application.app,
+                        dc=balanced_request.current_datacenter,
+                        server=balanced_request.current_host,
+                        status=response.code,
+                        upstream=balanced_request.get_host(),
+                        time=int(response.request_time * 1000)
+                    ),
+                    connect_timeout=options.influxdb_connect_timeout,
+                    request_timeout=options.influxdb_request_timeout,
+                    add_to_finish_group=False,
+                    parse_response=False
                 )
 
             if do_retry:

@@ -1,3 +1,4 @@
+import json
 import unittest
 
 import requests
@@ -6,7 +7,7 @@ from .instances import frontik_test_app
 
 
 class TestPreprocessors(unittest.TestCase):
-    def test_preprocessors_new(self):
+    def test_preprocessors(self):
         response_json = frontik_test_app.get_page_json('preprocessors')
         self.assertEqual(
             response_json,
@@ -20,43 +21,8 @@ class TestPreprocessors(unittest.TestCase):
             }
         )
 
-    def test_preprocessors_new_abort_and_run_postprocessors(self):
-        response_json = frontik_test_app.get_page_json('preprocessors?abort_and_run_postprocessors=true')
-        self.assertEqual(
-            response_json,
-            {
-                'run': ['pp01', 'pp02', 'pp1-before', 'pp1-between', 'pp1-after', 'pp2'],
-                'postprocessor': True
-            }
-        )
-
-    def test_preprocessors_new_wait_and_run_postprocessors(self):
-        response_json = frontik_test_app.get_page_json('preprocessors?wait_and_run_postprocessors=true')
-        self.assertEqual(
-            response_json,
-            {
-                'run': ['pp01', 'pp02', 'pp1-before', 'pp1-between', 'pp1-after', 'pp2'],
-                'put_request_finished': True,
-                'postprocessor': True
-            }
-        )
-
-    def test_preprocessors_new_raise_error(self):
-        response = frontik_test_app.get_page('preprocessors?raise_error=true')
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.content, b'<html><title>400: Bad Request</title><body>400: Bad Request</body></html>')
-
-    def test_preprocessors_new_finish(self):
-        response = frontik_test_app.get_page_text('preprocessors?finish=true')
-        self.assertEqual(response, 'finished')
-
-    def test_preprocessors_new_redirect(self):
-        response = frontik_test_app.get_page('preprocessors?redirect=true', allow_redirects=False)
-        self.assertEqual(response.status_code, 302)
-        self.assertIn('redirected', response.headers.get('Location'))
-
-    def test_preprocessors_group(self):
-        response_json = frontik_test_app.get_page_json('preprocessors_group')
+    def test_preprocessor_futures(self):
+        response_json = frontik_test_app.get_page_json('preprocessor_futures')
         self.assertEqual(
             response_json,
             {
@@ -68,6 +34,46 @@ class TestPreprocessors(unittest.TestCase):
             }
         )
 
-    def test_preprocessors_group_must_not_finish_prematurely(self):
-        response = frontik_test_app.get_page('preprocessors_group', method=requests.post)
+    def test_add_preprocessor_future_after_preprocessors(self):
+        response = frontik_test_app.get_page('preprocessor_futures', method=requests.post)
+        self.assertEqual(response.status_code, 500)
+
+    def test_preprocessors_abort(self):
+        response_json = frontik_test_app.get_page_json('preprocessors/aborted?abort_preprocessors=true')
+        self.assertEqual(
+            response_json, {'run': ['before', 'pp'], 'put_request_finished': True, 'postprocessor': True}
+        )
+
+    def test_preprocessors_abort_nowait(self):
+        response_json = frontik_test_app.get_page_json('preprocessors/aborted?abort_preprocessors_nowait=true')
+        self.assertEqual(
+            response_json, {'run': ['before', 'pp'], 'postprocessor': True}
+        )
+
+    def test_preprocessors_raise_error(self):
+        response = frontik_test_app.get_page('preprocessors/aborted?raise_error=true')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.content, b'<html><title>400: Bad Request</title><body>400: Bad Request</body></html>')
+
+    def test_preprocessors_raise_custom_error(self):
+        response = frontik_test_app.get_page('preprocessors/aborted?raise_custom_error=true')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(json.loads(response.content), {'custom_error': True, 'postprocessor': True})
+
+    def test_preprocessors_finish(self):
+        response = frontik_test_app.get_page_text('preprocessors/aborted?finish=true')
+        self.assertEqual(response, 'finished')
+
+    def test_preprocessors_redirect(self):
+        response = frontik_test_app.get_page('preprocessors/aborted?redirect=true', allow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('redirected', response.headers.get('Location'))
+
+    def test_finish_in_nonblocking_group_preprocessor(self):
+        response = frontik_test_app.get_page('preprocessors/aborted_nonblocking_group?finish=true')
+        self.assertEqual(response.content, b'DONE_IN_PP')
+        self.assertEqual(response.status_code, 400)
+
+    def test_abort_in_nonblocking_group_preprocessor(self):
+        response = frontik_test_app.get_page('preprocessors/aborted_nonblocking_group?abort=true')
         self.assertEqual(response.status_code, 200)

@@ -23,5 +23,5 @@ class Page(PageHandler):
             else:
                 future.set_result(result)
 
-        self.add_timeout(IOLoop.current().time() + 0.5, _finish_future)
+        self.add_timeout(IOLoop.current().time() + 0.3, _finish_future)
         return future
