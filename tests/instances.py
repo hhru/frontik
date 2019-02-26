@@ -101,24 +101,24 @@ class FrontikTestInstance:
 
         return method(url, **kwargs)
 
-    def get_page_xml(self, page, notpl=False):
-        content = utf8(self.get_page(page, notpl).content)
+    def get_page_xml(self, page, notpl=False, method=requests.get):
+        content = utf8(self.get_page(page, notpl=notpl, method=method).content)
 
         try:
             return etree.fromstring(content)
         except Exception as e:
             raise Exception('failed to parse xml ({}): "{}"'.format(e, content))
 
-    def get_page_json(self, page, notpl=False):
-        content = self.get_page_text(page, notpl)
+    def get_page_json(self, page, notpl=False, method=requests.get):
+        content = self.get_page_text(page, notpl=notpl, method=method)
 
         try:
             return json.loads(content)
         except Exception as e:
             raise Exception('failed to parse json ({}): "{}"'.format(e, content))
 
-    def get_page_text(self, page, notpl=False):
-        return to_unicode(self.get_page(page, notpl).content)
+    def get_page_text(self, page, notpl=False, method=requests.get):
+        return to_unicode(self.get_page(page, notpl=notpl, method=method).content)
 
 
 frontik_test_app = FrontikTestInstance(

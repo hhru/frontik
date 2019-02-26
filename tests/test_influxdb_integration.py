@@ -48,7 +48,7 @@ class TestInfluxdbIntegration(unittest.TestCase):
         metrics = ''.join(metrics)
 
         self.assertEqual('POST /write?db=metrics&rp=hour HTTP/1.1', metrics.split('\r\n')[0])
-        self.assertRegexpMatches(
+        self.assertRegex(
             metrics.split('\r\n\r\n')[1],
             'request,app=tests.projects.test_app,dc=None,server=127.0.0.1:{port},status=500,'
             'upstream=127.0.0.1:{port} response_time=[0-9]+'.format(
