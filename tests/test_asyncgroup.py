@@ -39,7 +39,6 @@ class TestAsyncGroup(unittest.TestCase):
         cb2()
 
         self.assertEqual(ag._finished, True)
-        self.assertEqual(ag._aborted, False)
         self.assertEqual(data, [1, 2, 3])
 
     def test_notifications(self):
@@ -57,7 +56,6 @@ class TestAsyncGroup(unittest.TestCase):
         not2('params', are='ignored')
 
         self.assertEqual(ag._finished, True)
-        self.assertEqual(ag._aborted, False)
         self.assertEqual(f.result(), True)
 
         with ExpectLog(async_logger, r'.*trying to finish already finished AsyncGroup\(name=None\)'):
@@ -73,7 +71,6 @@ class TestAsyncGroup(unittest.TestCase):
         ag.finish()
 
         self.assertEqual(ag._finished, True)
-        self.assertEqual(ag._aborted, False)
         self.assertEqual(f.result(), True)
 
     def test_exception_in_first(self):
@@ -91,14 +88,12 @@ class TestAsyncGroup(unittest.TestCase):
         cb2 = ag.add(callback2)
 
         self.assertRaises(Exception, cb1)
-        self.assertEqual(ag._finished, False)
-        self.assertEqual(ag._aborted, True)
+        self.assertEqual(ag._finished, True)
 
         with ExpectLog(async_logger, r'.*ignoring response because of already finished AsyncGroup\(name=test_group\)'):
             cb2()
 
-        self.assertEqual(ag._finished, False)
-        self.assertEqual(ag._aborted, True)
+        self.assertEqual(ag._finished, True)
 
     def test_exception_in_last(self):
         def callback2():
@@ -116,8 +111,7 @@ class TestAsyncGroup(unittest.TestCase):
         with ExpectLog(async_logger, r'.*aborting AsyncGroup\(name=test_group\) due to unhandled exception'):
             self.assertRaises(Exception, cb2)
 
-        self.assertEqual(ag._finished, False)
-        self.assertEqual(ag._aborted, True)
+        self.assertEqual(ag._finished, True)
 
     def test_exception_in_final(self):
         def finish_callback():
@@ -127,4 +121,3 @@ class TestAsyncGroup(unittest.TestCase):
 
         self.assertRaises(Exception, ag.try_finish)
         self.assertEqual(ag._finished, True)
-        self.assertEqual(ag._aborted, False)
