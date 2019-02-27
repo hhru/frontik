@@ -192,6 +192,7 @@ class PageHandler(RequestHandler):
         finish_group_completed = yield self.finish_group.get_finish_future()
 
         if not finish_group_completed:
+            self._auto_finish = False
             self.log.info('page was aborted, skipping postprocessing')
             return
 
