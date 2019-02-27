@@ -1,5 +1,7 @@
 import unittest
 
+import requests
+
 from .instances import frontik_test_app
 
 
@@ -17,3 +19,10 @@ class TestFinishWithPostprocessors(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content, content)
             self.assertEqual(response.headers['X-Foo'], 'Bar')
+
+    def test_abort_handler(self):
+        get_response = frontik_test_app.get_page('write_after_finish')
+        post_result = frontik_test_app.get_page_json('write_after_finish', method=requests.post)
+
+        self.assertEqual(get_response.status_code, 200)
+        self.assertEqual(post_result['counter'], 1)

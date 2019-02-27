@@ -23,14 +23,14 @@ class AsyncGroup:
         self._counter = 0
         self._finish_cb = finish_cb
         self._finished = False
-        self._aborted = False
         self._name = name
         self._future = Future()
         self._start_time = time.time()
 
     def abort(self):
         async_logger.info('aborting %s', self)
-        self._aborted = True
+        self._finished = True
+        self._future.set_result(False)
 
     def finish(self):
         if self._finished:
@@ -39,7 +39,7 @@ class AsyncGroup:
 
         async_logger.debug('%s done in %.2fms', self, (time.time() - self._start_time) * 1000.)
         self._finished = True
-        self._future.set_result(None)
+        self._future.set_result(True)
 
         try:
             self._finish_cb()
@@ -68,7 +68,7 @@ class AsyncGroup:
 
         @wraps(intermediate_cb)
         def new_cb(*args, **kwargs):
-            if self._finished or self._aborted:
+            if self._finished:
                 async_logger.info('ignoring response because of already finished %s', self)
                 return
 
@@ -78,7 +78,7 @@ class AsyncGroup:
             except Exception:
                 async_logger.error('aborting %s due to unhandled exception in callback', self)
                 async_logger.debug('%s done in %.2fms', self, (time.time() - self._start_time) * 1000.)
-                self._aborted = True
+                self._finished = True
                 raise
 
             self.try_finish()
