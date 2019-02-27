@@ -21,6 +21,9 @@ class Page(PageHandler):
             # create race condition between postprocessors
             if handler.counter == 1:
                 yield gen.sleep(0.1)
+                handler.json.put({
+                    'postprocessor_completed': True
+                })
 
     def get_page(self):
         def _cb(_, __):

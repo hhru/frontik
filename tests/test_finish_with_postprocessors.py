@@ -21,8 +21,8 @@ class TestFinishWithPostprocessors(unittest.TestCase):
             self.assertEqual(response.headers['X-Foo'], 'Bar')
 
     def test_abort_handler(self):
-        get_response = frontik_test_app.get_page('write_after_finish')
+        get_result = frontik_test_app.get_page_json('write_after_finish')
         post_result = frontik_test_app.get_page_json('write_after_finish', method=requests.post)
 
-        self.assertEqual(get_response.status_code, 200)
+        self.assertEqual(get_result['postprocessor_completed'], True)
         self.assertEqual(post_result['counter'], 1)
