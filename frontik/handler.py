@@ -6,7 +6,6 @@ import tornado.curl_httpclient
 import tornado.httputil
 import tornado.web
 from tornado import gen, stack_context
-from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 from tornado.options import options
 from tornado.web import RequestHandler
@@ -196,9 +195,9 @@ class PageHandler(RequestHandler):
             self.log.info('page was aborted, skipping postprocessing')
             return
 
-        response_data = yield self._postprocess()
-        if response_data is not None:
-            self.write(response_data)
+        render_result = yield self._postprocess()
+        if render_result is not None:
+            self.write(render_result)
 
     def get_page(self):
         """ This method can be implemented in the subclass """
@@ -286,7 +285,7 @@ class PageHandler(RequestHandler):
         self.log.debug('using %s renderer', renderer)
         rendered_result = yield renderer()
 
-        postprocessed_result = yield self._run_postprocessors(self._render_postprocessors, rendered_result)
+        postprocessed_result = yield self._run_template_postprocessors(self._render_postprocessors, rendered_result)
         return postprocessed_result
 
     def on_connection_close(self):
@@ -444,19 +443,26 @@ class PageHandler(RequestHandler):
         return True
 
     @gen.coroutine
-    def _run_postprocessors(self, postprocessors, *args):
-        pp_result = args[0] if args else None
-
+    def _run_postprocessors(self, postprocessors):
         for p in postprocessors:
-            pp_result = yield gen.coroutine(p)(self, *args)
-            if args and pp_result is not None:
-                args = [pp_result]
+            yield gen.coroutine(p)(self)
 
             if self._finished:
                 self.log.warning('page was already finished, breaking postprocessors chain')
                 return False
 
-        return pp_result if pp_result is not None else True
+        return True
+
+    @gen.coroutine
+    def _run_template_postprocessors(self, postprocessors, rendered_template):
+        for p in postprocessors:
+            rendered_template = yield gen.coroutine(p)(self, rendered_template)
+
+            if self._finished:
+                self.log.warning('page was already finished, breaking postprocessors chain')
+                return None
+
+        return rendered_template
 
     def add_render_postprocessor(self, postprocessor):
         self._render_postprocessors.append(postprocessor)
@@ -466,15 +472,14 @@ class PageHandler(RequestHandler):
 
     # Producers
 
+    @gen.coroutine
     def _generic_producer(self):
         self.log.debug('finishing plaintext')
 
         if self._headers.get('Content-Type') is None:
             self.set_header('Content-Type', media_types.TEXT_HTML)
 
-        future = Future()
-        future.set_result(self.text)
-        return future
+        return self.text
 
     def xml_from_file(self, filename):
         return self.xml_producer.xml_from_file(filename)

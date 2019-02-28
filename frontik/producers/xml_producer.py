@@ -4,7 +4,7 @@ import weakref
 from concurrent.futures import ThreadPoolExecutor
 
 from lxml import etree
-from tornado.concurrent import Future
+from tornado import gen
 from tornado.options import options
 
 import frontik.doc
@@ -79,6 +79,7 @@ class XmlProducer:
     def set_xsl(self, filename):
         self.transform_filename = filename
 
+    @gen.coroutine
     def _finish_with_xslt(self):
         self.log.debug('finishing with XSLT')
 
@@ -91,17 +92,16 @@ class XmlProducer:
                                     profile_run=self.handler.debug_mode.profile_xslt)
             return start_time, str(result), result.xslt_profile
 
-        result_future = Future()
+        def get_xsl_log():
+            xsl_line = 'XSLT {0.level_name} in file "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
+            return '\n'.join(map(xsl_line.format, self.transform.error_log))
 
-        def job_callback(future):
-            if future.exception() is not None:
-                self.log.error('failed transformation with XSL %s', self.transform_filename)
-                self.log.error(get_xsl_log())
+        try:
+            xslt_result = yield self.executor.submit(job)
+            if self.handler.is_finished():
+                return None
 
-                result_future.set_exception(future.exception())
-                return
-
-            start_time, xml_result, xslt_profile = future.result()
+            start_time, xml_result, xslt_profile = xslt_result
 
             self.log.info('applied XSL %s in %.2fms', self.transform_filename, (time.time() - start_time) * 1000)
 
@@ -112,24 +112,20 @@ class XmlProducer:
                 self.log.warning(get_xsl_log())
 
             self.handler.stages_logger.commit_stage('xsl')
-            result_future.set_result(xml_result)
+            return xml_result
 
-        def get_xsl_log():
-            xsl_line = 'XSLT {0.level_name} in file "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
-            return '\n'.join(map(xsl_line.format, self.transform.error_log))
+        except Exception as e:
+            self.log.error('failed XSLT %s', self.transform_filename)
+            self.log.error(get_xsl_log())
+            raise e
 
-        render_future = self.executor.submit(job)
-        self.handler.add_future(render_future, self.handler.check_finished(job_callback))
-        return result_future
-
+    @gen.coroutine
     def _finish_with_xml(self):
         self.log.debug('finishing without XSLT')
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.APPLICATION_XML)
 
-        future = Future()
-        future.set_result(self.doc.to_string())
-        return future
+        return self.doc.to_string()
 
     def xml_from_file(self, filename):
         return self.xml_cache.load(filename, self.log)
