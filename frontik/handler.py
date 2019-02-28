@@ -17,7 +17,7 @@ import frontik.producers.json_producer
 import frontik.producers.xml_producer
 import frontik.util
 from frontik import media_types
-from frontik.futures import AsyncGroup
+from frontik.futures import AbortAsyncGroup, AsyncGroup
 from frontik.debug import DebugMode
 from frontik.http_client import FailFastError, RequestResult
 from frontik.loggers.stages import StagesLogger
@@ -313,7 +313,10 @@ class PageHandler(RequestHandler):
             exception_hook(typ, value, tb)
 
     def _handle_request_exception(self, e):
-        if isinstance(e, FinishWithPostprocessors):
+        if isinstance(e, AbortAsyncGroup):
+            pass
+
+        elif isinstance(e, FinishWithPostprocessors):
             if e.wait_finish_group:
                 self._handler_finished_notification()
                 self.add_future(self.finish_group.get_finish_future(), lambda _: self.finish_with_postprocessors())
