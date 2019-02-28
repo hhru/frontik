@@ -8,6 +8,10 @@ from tornado.concurrent import Future
 async_logger = logging.getLogger('frontik.futures')
 
 
+class AbortAsyncGroup(Exception):
+    pass
+
+
 # AsyncGroup will become legacy in future releases
 # It will be replaced with FutureGroup
 class AsyncGroup:
@@ -57,7 +61,10 @@ class AsyncGroup:
             IOLoop.current().add_callback(self.finish)
 
     def _inc(self):
-        assert not self._finished
+        if self._finished:
+            async_logger.info('ignoring adding callback in %s', self)
+            raise AbortAsyncGroup()
+
         self._counter += 1
 
     def _dec(self):
@@ -69,7 +76,7 @@ class AsyncGroup:
         @wraps(intermediate_cb)
         def new_cb(*args, **kwargs):
             if self._finished:
-                async_logger.info('ignoring response because of already finished %s', self)
+                async_logger.info('ignoring executing callback in %s', self)
                 return
 
             try:
@@ -102,7 +109,7 @@ class AsyncGroup:
         return self._future
 
     def __str__(self):
-        return 'AsyncGroup(name={})'.format(self._name)
+        return 'AsyncGroup(name={}, finished={})'.format(self._name, str(self._finished).lower())
 
 
 def future_fold(future, result_mapper=None, exception_mapper=None):

@@ -58,7 +58,7 @@ class TestAsyncGroup(unittest.TestCase):
         self.assertEqual(ag._finished, True)
         self.assertEqual(f.result(), True)
 
-        with ExpectLog(async_logger, r'.*trying to finish already finished AsyncGroup\(name=None\)'):
+        with ExpectLog(async_logger, r'.*trying to finish already finished AsyncGroup\(name=None, finished=true\)'):
             ag.finish()
 
     def test_finish(self):
@@ -90,7 +90,7 @@ class TestAsyncGroup(unittest.TestCase):
         self.assertRaises(Exception, cb1)
         self.assertEqual(ag._finished, True)
 
-        with ExpectLog(async_logger, r'.*ignoring response because of already finished AsyncGroup\(name=test_group\)'):
+        with ExpectLog(async_logger, r'.*ignoring executing callback in AsyncGroup\(name=test_group, finished=true\)'):
             cb2()
 
         self.assertEqual(ag._finished, True)
@@ -108,7 +108,9 @@ class TestAsyncGroup(unittest.TestCase):
 
         cb1()
 
-        with ExpectLog(async_logger, r'.*aborting AsyncGroup\(name=test_group\) due to unhandled exception'):
+        with ExpectLog(
+            async_logger, r'.*aborting AsyncGroup\(name=test_group, finished=false\) due to unhandled exception'
+        ):
             self.assertRaises(Exception, cb2)
 
         self.assertEqual(ag._finished, True)
