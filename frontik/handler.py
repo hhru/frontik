@@ -188,12 +188,7 @@ class PageHandler(RequestHandler):
         yield gen.coroutine(page_handler_method)()
 
         self._handler_finished_notification()
-        finish_group_completed = yield self.finish_group.get_finish_future()
-
-        if not finish_group_completed:
-            self._auto_finish = False
-            self.log.info('page was aborted, skipping postprocessing')
-            return
+        yield self.finish_group.get_finish_future()
 
         render_result = yield self._postprocess()
         if render_result is not None:
@@ -313,7 +308,7 @@ class PageHandler(RequestHandler):
 
     def _handle_request_exception(self, e):
         if isinstance(e, AbortAsyncGroup):
-            pass
+            self.log.info('page was aborted, skipping postprocessing')
 
         elif isinstance(e, FinishWithPostprocessors):
             if e.wait_finish_group:
