@@ -22,7 +22,7 @@ class TestPreprocessors(unittest.TestCase):
         )
 
     def test_preprocessor_futures(self):
-        response_json = frontik_test_app.get_page_json('preprocessor_futures')
+        response_json = frontik_test_app.get_page_json('preprocessors/preprocessor_futures')
         self.assertEqual(
             response_json,
             {
@@ -35,8 +35,12 @@ class TestPreprocessors(unittest.TestCase):
         )
 
     def test_add_preprocessor_future_after_preprocessors(self):
-        response = frontik_test_app.get_page('preprocessor_futures', method=requests.post)
+        response = frontik_test_app.get_page('preprocessors/preprocessor_futures', method=requests.post)
         self.assertEqual(response.status_code, 500)
+
+    def test_add_preprocessor_future_return_value(self):
+        response_json = frontik_test_app.get_page_json('preprocessors/preprocessor_future_return')
+        self.assertEqual(response_json, {'test': 'test'})
 
     def test_preprocessors_abort(self):
         response_json = frontik_test_app.get_page_json('preprocessors/aborted?abort_preprocessors=true')
