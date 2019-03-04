@@ -423,6 +423,7 @@ class PageHandler(RequestHandler):
             )
 
         self._preprocessor_futures.append(future)
+        return future
 
     @gen.coroutine
     def _run_preprocessors(self, preprocessors):

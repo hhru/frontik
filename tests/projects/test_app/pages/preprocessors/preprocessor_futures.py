@@ -1,6 +1,5 @@
 import time
 
-from tornado import gen
 from tornado.concurrent import Future
 
 from frontik.handler import PageHandler
