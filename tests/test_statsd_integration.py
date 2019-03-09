@@ -16,7 +16,7 @@ class TestStatsdIntegration(unittest.TestCase):
 
         test_app = FrontikTestInstance(
             './frontik-test --app=tests.projects.test_app --config=tests/projects/frontik_debug.cfg '
-            '--statsd_host=127.0.0.1 --statsd_port={}'.format(port)
+            f'--statsd_host=127.0.0.1 --statsd_port={port}'
         )
 
         test_app.get_page('statsd')

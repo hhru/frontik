@@ -59,7 +59,7 @@ def decode_string_from_charset(string, charsets=('cp1251',)):
             continue
 
     if decoded_body is None:
-        raise UnicodeError('Could not decode string (tried: {0})'.format(', '.join(charsets)))
+        raise UnicodeError('Could not decode string (tried: {})'.format(', '.join(charsets)))
 
     return decoded_body
 

@@ -27,7 +27,7 @@ def run_command(command, port):
         exe=sys.executable,
         coverage=find_executable('coverage'),
         command=command,
-        args='--port={port}'.format(port=port),
+        args=f'--port={port}',
     )
 
     return subprocess.Popen(executable.split())
@@ -44,7 +44,7 @@ def find_free_port(from_port=9000, to_port=10000):
         finally:
             s.close()
     else:
-        raise AssertionError('No empty port in range {}..{} for frontik test instance'.format(from_port, to_port))
+        raise AssertionError(f'No empty port in range {from_port}..{to_port} for frontik test instance')
 
     return port
 
@@ -107,7 +107,7 @@ class FrontikTestInstance:
         try:
             return etree.fromstring(content)
         except Exception as e:
-            raise Exception('failed to parse xml ({}): "{}"'.format(e, content))
+            raise Exception(f'failed to parse xml ({e}): "{content}"')
 
     def get_page_json(self, page, notpl=False, method=requests.get):
         content = self.get_page_text(page, notpl=notpl, method=method)
@@ -115,7 +115,7 @@ class FrontikTestInstance:
         try:
             return json.loads(content)
         except Exception as e:
-            raise Exception('failed to parse json ({}): "{}"'.format(e, content))
+            raise Exception(f'failed to parse json ({e}): "{content}"')
 
     def get_page_text(self, page, notpl=False, method=requests.get):
         return to_unicode(self.get_page(page, notpl=notpl, method=method).content)

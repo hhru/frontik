@@ -45,7 +45,7 @@ def preprocessor(function_or_list):
     else:
         dep_name = [f.__name__ for f in function_or_list]
 
-    preprocessor_decorator.func_name = 'preprocessor_decorator({})'.format(dep_name)
+    preprocessor_decorator.func_name = f'preprocessor_decorator({dep_name})'
 
     return preprocessor_decorator
 

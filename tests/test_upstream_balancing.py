@@ -41,15 +41,17 @@ def _upstream(weights):
 class TestHttpError(unittest.TestCase):
     def check_distribution(self, requests, weights):
         if len(requests) != len(weights) or len(requests) <= 1:
-            raise ValueError('invalid input data: {}, {}'.format(requests, weights))
+            raise ValueError(f'invalid input data: {requests}, {weights}')
 
         for i in range(1, len(requests)):
             request_ratio = float(requests[i]) / float(requests[i - 1])
             weights_ratio = float(weights[i]) / float(weights[i - 1])
 
-            self.assertTrue(abs(request_ratio - weights_ratio) <= 0.3,
-                            '{} and {} ratio difference for elements {} and {} is too big: {} vs {}'.format(
-                                requests, weights, i - 1, i, request_ratio, weights_ratio))
+            self.assertTrue(
+                abs(request_ratio - weights_ratio) <= 0.3,
+                f'{requests} and {weights} ratio difference for elements {i - 1} and {i} is too big: '
+                f'{request_ratio} vs {weights_ratio}'
+            )
 
     def test_sparse_requests(self):
         weights = [50, 100, 200]

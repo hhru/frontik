@@ -117,7 +117,7 @@ class StderrFormatter(LogFormatter):
         record.name = '.'.join(filter(None, [record.name, handler_name, request_id]))
 
         if not record.msg:
-            record.msg = ', '.join('{}={}'.format(k, v) for k, v in getattr(record, CUSTOM_JSON_EXTRA, {}).items())
+            record.msg = ', '.join(f'{k}={v}' for k, v in getattr(record, CUSTOM_JSON_EXTRA, {}).items())
 
         return super().format(record)
 
@@ -153,7 +153,7 @@ def bootstrap_logger(logger_info, logger_level, use_json_formatter=True, formatt
     handlers = []
 
     if options.log_dir:
-        file_handler = logging.handlers.WatchedFileHandler(os.path.join(options.log_dir, '{}.log'.format(logger_name)))
+        file_handler = logging.handlers.WatchedFileHandler(os.path.join(options.log_dir, f'{logger_name}.log'))
         if use_json_formatter:
             file_handler.setFormatter(_JSON_FORMATTER)
         elif formatter is not None:
@@ -181,7 +181,7 @@ def bootstrap_logger(logger_info, logger_level, use_json_formatter=True, formatt
                 facility=SysLogHandler.facility_names[options.syslog_facility],
                 socktype=socket.SOCK_DGRAM
             )
-            syslog_handler.ident = '{}: '.format(logger_name)
+            syslog_handler.ident = f'{logger_name}: '
             if use_json_formatter:
                 syslog_handler.setFormatter(_JSON_FORMATTER)
             elif formatter is not None:

@@ -22,7 +22,7 @@ class TestSyslog(unittest.TestCase):
 
         cls.test_app = FrontikTestInstance(
             './frontik-test --app=tests.projects.test_app --config=tests/projects/frontik_debug.cfg '
-            '--syslog=true --syslog_host=127.0.0.1 --syslog_port={}'.format(port)
+            f'--syslog=true --syslog_host=127.0.0.1 --syslog_port={port}'
         )
 
     @classmethod
@@ -140,7 +140,7 @@ class TestSyslog(unittest.TestCase):
                 ):
                     break
             else:
-                self.fail('Log message not found: {}'.format(expected_log))
+                self.fail(f'Log message not found: {expected_log}')
 
     def assert_text_logs_match(self, expected_logs, parsed_logs):
         for expected_log in expected_logs:
@@ -151,4 +151,4 @@ class TestSyslog(unittest.TestCase):
                 if priority == expected_log['priority'] and re.match(expected_log['message'], message):
                     break
             else:
-                self.fail('Log message not found: {}'.format(expected_log))
+                self.fail(f'Log message not found: {expected_log}')
