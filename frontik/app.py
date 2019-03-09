@@ -13,12 +13,11 @@ from tornado.web import Application, RequestHandler
 
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
-from frontik import integrations, media_types
+from frontik import integrations, media_types, request_context
 from frontik.debug import DebugTransform
 from frontik.handler import ErrorHandler
 from frontik.http_client import HttpClientFactory
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
-from frontik.request_context import RequestContext
 from frontik.routing import FileMappingRouter, FrontikRouter
 from frontik.version import version as frontik_version
 
@@ -90,12 +89,18 @@ class FrontikApplication(Application):
         if request_id is None:
             request_id = FrontikApplication.next_request_id()
 
-        context = partial(RequestContext, {'request_id': request_id})
+        context = partial(request_context.RequestContext, {'request_id': request_id})
 
         def wrapped_in_context(func):
             def wrapper(*args, **kwargs):
-                with StackContext(context):
-                    return func(*args, **kwargs)
+                token = request_context.initialize(request_id)
+
+                try:
+                    with StackContext(context):
+                        return func(*args, **kwargs)
+                finally:
+                    request_context.reset(token)
+
             return wrapper
 
         delegate = wrapped_in_context(super().find_handler)(request, **kwargs)
@@ -164,14 +169,14 @@ class FrontikApplication(Application):
         request_time = int(1000.0 * handler.request.request_time())
         extra = {
             'ip': handler.request.remote_ip,
-            'rid': RequestContext.get('request_id'),
+            'rid': request_context.get_request_id(),
             'status': handler.get_status(),
             'time': request_time,
             'method': handler.request.method,
             'uri': handler.request.uri,
         }
 
-        handler_name = RequestContext.get('handler_name')
+        handler_name = request_context.get_handler_name()
         if handler_name:
             extra['controller'] = handler_name
 

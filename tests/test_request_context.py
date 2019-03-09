@@ -10,7 +10,6 @@ class TestRequestContext(unittest.TestCase):
         self.assertEqual(json, {
             'page': 'request_context',
             'callback': 'request_context',
-            'null_context_callback': None,
             'executor': None,
             'future': 'request_context',
             'coroutine_before_yield': 'request_context',

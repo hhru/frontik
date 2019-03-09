@@ -8,14 +8,6 @@ matrix:
   include:
     - os: linux
       dist: xenial
-      python: "3.6"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=1
-    - os: linux
-      dist: xenial
-      python: "3.6"
-      env: TORNADO_VERSION=5.0.2 ; WITH_RAVEN=0
-    - os: linux
-      dist: xenial
       python: "3.7"
       env: TORNADO_VERSION=HH ; WITH_RAVEN=0
     - os: linux

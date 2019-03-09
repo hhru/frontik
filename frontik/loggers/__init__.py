@@ -8,7 +8,7 @@ from logging.handlers import SysLogHandler
 from tornado.log import LogFormatter
 from tornado.options import options
 
-from frontik.request_context import RequestContext
+from frontik import request_context
 
 ROOT_LOGGER = logging.root
 JSON_REQUESTS_LOGGER = logging.getLogger('requests')
@@ -18,8 +18,8 @@ CUSTOM_JSON_EXTRA = 'custom_json'
 
 class ContextFilter(logging.Filter):
     def filter(self, record):
-        handler_name = RequestContext.get('handler_name')
-        request_id = RequestContext.get('request_id')
+        handler_name = request_context.get_handler_name()
+        request_id = request_context.get_request_id()
         record.name = '.'.join(filter(None, [record.name, handler_name, request_id]))
         return True
 
@@ -41,8 +41,8 @@ class BufferedHandler(logging.Handler):
 
 class GlobalLogHandler(logging.Handler):
     def handle(self, record):
-        if RequestContext.get('log_handler'):
-            RequestContext.get('log_handler').handle(record)
+        if request_context.get_log_handler():
+            request_context.get_log_handler().handle(record)
 
 
 class JSONFormatter(logging.Formatter):
@@ -80,11 +80,11 @@ class JSONFormatter(logging.Formatter):
             'thread': self.PID
         }
 
-        handler_name = RequestContext.get('handler_name')
+        handler_name = request_context.get_handler_name()
         if handler_name:
             mdc['controller'] = handler_name
 
-        request_id = RequestContext.get('request_id')
+        request_id = request_context.get_request_id()
         if request_id:
             mdc['rid'] = request_id
 
@@ -112,8 +112,8 @@ _JSON_FORMATTER = JSONFormatter()
 
 class StderrFormatter(LogFormatter):
     def format(self, record):
-        handler_name = RequestContext.get('handler_name')
-        request_id = RequestContext.get('request_id')
+        handler_name = request_context.get_handler_name()
+        request_id = request_context.get_request_id()
         record.name = '.'.join(filter(None, [record.name, handler_name, request_id]))
 
         if not record.msg:

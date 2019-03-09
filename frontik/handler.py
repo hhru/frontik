@@ -15,13 +15,12 @@ import frontik.handler_active_limit
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
 import frontik.util
-from frontik import media_types
+from frontik import media_types, request_context
 from frontik.futures import AbortAsyncGroup, AsyncGroup
 from frontik.debug import DebugMode
 from frontik.http_client import FailFastError, RequestResult
 from frontik.loggers.stages import StagesLogger
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors
-from frontik.request_context import RequestContext
 from frontik.version import version as frontik_version
 
 
@@ -48,7 +47,7 @@ class PageHandler(RequestHandler):
     def __init__(self, application, request, **kwargs):
         self._prepared = False
         self.name = self.__class__.__name__
-        self.request_id = request.request_id = RequestContext.get('request_id')
+        self.request_id = request.request_id = request_context.get_request_id()
         self.config = application.config
         self.log = handler_logger
         self.text = None
@@ -148,7 +147,7 @@ class PageHandler(RequestHandler):
     # Requests handling
 
     def _execute(self, transforms, *args, **kwargs):
-        RequestContext.set('handler_name', repr(self))
+        request_context.set_handler_name(repr(self))
         with stack_context.ExceptionStackContext(self._stack_context_handle_exception):
             return super()._execute(transforms, *args, **kwargs)
 
