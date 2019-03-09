@@ -84,14 +84,13 @@ class DebugTestCase(unittest.TestCase):
 
     def test_debug_by_basic_auth(self):
         for param in ('debug', 'noxsl', 'notpl'):
-            response = self.assertDebugResponseCode(page='simple?{}'.format(param),
-                                                    expected_code=http.client.UNAUTHORIZED)
+            response = self.assertDebugResponseCode(f'simple?{param}', http.client.UNAUTHORIZED)
             self.assertIn('Www-Authenticate', response.headers)
             self.assertRegex(response.headers['Www-Authenticate'], 'Basic realm="[^"]+"')
 
-            self.assertDebugResponseCode(page='simple?{}'.format(param),
-                                         headers={'Authorization': self.DEBUG_BASIC_AUTH},
-                                         expected_code=http.client.OK)
+            self.assertDebugResponseCode(
+                f'simple?{param}', http.client.OK, headers={'Authorization': self.DEBUG_BASIC_AUTH}
+            )
 
     def test_debug_by_basic_auth_with_invalid_header(self):
         invalid_headers = (
@@ -111,17 +110,17 @@ class DebugTestCase(unittest.TestCase):
 
     def test_debug_by_header(self):
         for param in ('debug', 'noxsl', 'notpl'):
-            response = self.assertDebugResponseCode('simple?{}'.format(param), http.client.UNAUTHORIZED)
+            response = self.assertDebugResponseCode(f'simple?{param}', http.client.UNAUTHORIZED)
 
             self.assertIn('Www-Authenticate', response.headers)
             self.assertEqual('Basic realm="Secure Area"', response.headers['Www-Authenticate'])
 
             self.assertDebugResponseCode(
-                'simple?{}'.format(param), http.client.OK, headers={'Frontik-Debug-Auth': 'user:god'}
+                f'simple?{param}', http.client.OK, headers={'Frontik-Debug-Auth': 'user:god'}
             )
 
             self.assertDebugResponseCode(
-                'simple?{}'.format(param), http.client.OK,
+                f'simple?{param}', http.client.OK,
                 headers={'Frontik-Debug-Auth': 'user:god', 'Authorization': 'Basic bad'}
             )
 
@@ -137,10 +136,10 @@ class DebugTestCase(unittest.TestCase):
     def test_debug_by_cookie(self):
         for param in ('debug', 'noxsl', 'notpl'):
             self.assertDebugResponseCode(
-                'simple', http.client.UNAUTHORIZED, headers={'Cookie': '{}=true'.format(param)}
+                'simple', http.client.UNAUTHORIZED, headers={'Cookie': f'{param}=true'}
             )
 
             self.assertDebugResponseCode(
                 'simple', http.client.OK,
-                headers={'Cookie': '{}=true;'.format(param), 'Authorization': self.DEBUG_BASIC_AUTH}
+                headers={'Cookie': f'{param}=true;', 'Authorization': self.DEBUG_BASIC_AUTH}
             )

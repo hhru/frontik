@@ -21,7 +21,7 @@ class Doc:
             root_node = etree.Element(root_node)
 
         if not (_is_valid_element(root_node) or isinstance(root_node, Doc)):
-            raise TypeError('Cannot set {} as root node'.format(root_node))
+            raise TypeError(f'Cannot set {root_node} as root node')
 
         self.root_node = root_node
         self.data = []
@@ -63,7 +63,7 @@ class Doc:
                 yield chunk
 
             elif chunk is not None:
-                raise ValueError('Unexpected value of type {} in doc'.format(type(chunk)))
+                raise ValueError(f'Unexpected value of type {type(chunk)} in doc')
 
         for chunk_element in chunk_to_element(self.data):
             res.append(chunk_element)

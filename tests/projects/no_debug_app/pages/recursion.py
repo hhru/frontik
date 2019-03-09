@@ -10,11 +10,11 @@ class Page(handler.PageHandler):
             if response.error:
                 self.text = str(response.code)
             else:
-                self.text = '200 {}'.format(to_unicode(text))
+                self.text = f'200 {to_unicode(text)}'
 
         n = int(self.get_argument('n'))
         if n > 0:
             self.get_url(
-                self.request.host, self.request.path + '?n={}'.format(n - 1),
+                self.request.host, self.request.path + f'?n={n - 1}',
                 callback=_cb
             )

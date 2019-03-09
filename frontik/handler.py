@@ -22,6 +22,7 @@ from frontik.http_client import FailFastError, RequestResult
 from frontik.loggers.stages import StagesLogger
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors
 from frontik.request_context import RequestContext
+from frontik.version import version as frontik_version
 
 
 def _fallback_status_code(status_code):
@@ -101,7 +102,7 @@ class PageHandler(RequestHandler):
 
     def set_default_headers(self):
         self._headers = tornado.httputil.HTTPHeaders({
-            'Server': 'Frontik/{0}'.format(frontik.version),
+            'Server': f'Frontik/{frontik_version}',
             'X-Request-Id': self.request_id,
         })
 
@@ -212,7 +213,7 @@ class PageHandler(RequestHandler):
 
     def __return_405(self):
         allowed_methods = [
-            name for name in ('get', 'post', 'put', 'delete') if '{}_page'.format(name) in vars(self.__class__)
+            name for name in ('get', 'post', 'put', 'delete') if f'{name}_page' in vars(self.__class__)
         ]
         self.set_header('Allow', ', '.join(allowed_methods))
         self.set_status(405)
@@ -329,12 +330,12 @@ class PageHandler(RequestHandler):
                 if len(request.uri) > _max_uri_length:
                     request_name += '...'
                 if request.name:
-                    request_name = '{} ({})'.format(request_name, request.name)
+                    request_name = f'{request_name} ({request.name})'
 
                 self.log.warning('FailFastError: request %s failed with %s code', request_name, response.code)
 
             try:
-                error_method_name = '{}_page_fail_fast'.format(self.request.method.lower())
+                error_method_name = f'{self.request.method.lower()}_page_fail_fast'
                 method = getattr(self, error_method_name, None)
                 if callable(method):
                     method(e.failed_request)

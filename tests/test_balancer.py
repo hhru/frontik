@@ -11,8 +11,9 @@ class TestHttpError(unittest.TestCase):
         cls.free_port = find_free_port(from_port=10000, to_port=20000)
 
     def make_url(self, url):
-        return '{}?normal={}&broken={}&free={}'.format(
-            url, frontik_balancer_app.port, frontik_broken_balancer_app.port, self.free_port)
+        return (
+            f'{url}?normal={frontik_balancer_app.port}&broken={frontik_broken_balancer_app.port}&free={self.free_port}'
+        )
 
     def test_retry_connect(self):
         response = frontik_balancer_app.get_page(self.make_url('retry_connect'))
