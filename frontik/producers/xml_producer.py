@@ -1,10 +1,11 @@
+import contextvars
 import copy
 import time
 import weakref
 from concurrent.futures import ThreadPoolExecutor
 
 from lxml import etree
-from tornado import gen
+from tornado.ioloop import IOLoop
 from tornado.options import options
 
 import frontik.doc
@@ -79,8 +80,7 @@ class XmlProducer:
     def set_xsl(self, filename):
         self.transform_filename = filename
 
-    @gen.coroutine
-    def _finish_with_xslt(self):
+    async def _finish_with_xslt(self):
         self.log.debug('finishing with XSLT')
 
         if self.handler._headers.get('Content-Type') is None:
@@ -97,7 +97,8 @@ class XmlProducer:
             return '\n'.join(map(xsl_line.format, self.transform.error_log))
 
         try:
-            xslt_result = yield self.executor.submit(job)
+            ctx = contextvars.copy_context()
+            xslt_result = await IOLoop.current().run_in_executor(self.executor, lambda: ctx.run(job))
             if self.handler.is_finished():
                 return None
 
@@ -119,8 +120,7 @@ class XmlProducer:
             self.log.error(get_xsl_log())
             raise e
 
-    @gen.coroutine
-    def _finish_with_xml(self):
+    async def _finish_with_xml(self):
         self.log.debug('finishing without XSLT')
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.APPLICATION_XML)
