@@ -11,7 +11,7 @@ from frontik.preprocessors import preprocessor
 
 
 @preprocessor
-def auth_preprocessor(handler):
+async def auth_preprocessor(handler):
     user_cookie = handler.get_cookie('user')
     if not is_authenticated(user_cookie):
         raise HTTPError(403, 'unauthorized user')

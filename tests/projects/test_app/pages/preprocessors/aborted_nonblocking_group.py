@@ -3,12 +3,12 @@ from frontik.preprocessors import preprocessor
 
 
 @preprocessor
-def pp1(handler):
+async def pp1(handler):
     handler.set_header('content-type', 'text/plain')
 
 
 @preprocessor
-def pp2(handler):
+async def pp2(handler):
     def _cb(*_):
         if handler.get_argument('finish', None):
             handler.set_status(400)

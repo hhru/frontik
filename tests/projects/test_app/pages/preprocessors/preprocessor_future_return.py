@@ -3,7 +3,7 @@ from frontik.preprocessors import preprocessor
 
 
 @preprocessor
-def pp1(handler):
+async def pp1(handler):
     def _cb(_, __):
         handler.future_result = 'test'
 
@@ -13,8 +13,8 @@ def pp1(handler):
 
 
 @preprocessor
-def pp2(handler):
-    yield handler.future
+async def pp2(handler):
+    await handler.future
     handler.json.put({
         'test': handler.future_result
     })

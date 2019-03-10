@@ -8,7 +8,7 @@ from frontik.preprocessors import preprocessor
 
 def waiting_preprocessor(sleep_time_sec, preprocessor_name, add_preprocessor_future):
     @preprocessor
-    def pp(handler):
+    async def pp(handler):
         def _put_to_completed():
             handler.completed_preprocessors = getattr(handler, 'completed_preprocessors', [])
             handler.completed_preprocessors.append(preprocessor_name)
@@ -23,19 +23,6 @@ def waiting_preprocessor(sleep_time_sec, preprocessor_name, add_preprocessor_fut
     return pp
 
 
-@preprocessor
-def pp_1(handler):
-    def _done(_):
-        handler.add_timeout(
-            time.time() + 0.2, handler.finish_group.add(lambda: handler.add_preprocessor_future(Future()))
-        )
-
-    future = Future()
-    handler.add_future(future, handler.finish_group.add(_done))
-    future.set_result(None)
-    yield future
-
-
 class Page(PageHandler):
 
     @waiting_preprocessor(0.7, "should_finish_after_page_finish", False)
@@ -47,6 +34,5 @@ class Page(PageHandler):
         assert hasattr(self, 'completed_preprocessors')
         self.json.put({'preprocessors': self.completed_preprocessors})
 
-    @pp_1
     def post_page(self):
-        pass
+        self.add_preprocessor_future(Future())

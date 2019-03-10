@@ -5,12 +5,12 @@ from frontik.preprocessors import preprocessor
 
 
 @preprocessor
-def pp_before(handler):
+async def pp_before(handler):
     handler.run.append('before')
 
 
 @preprocessor
-def pp(handler):
+async def pp(handler):
     def _cb(_, __):
         handler.json.put({'put_request_finished': True})
 
@@ -31,11 +31,11 @@ def pp(handler):
     elif handler.get_argument('finish', 'false') != 'false':
         handler.finish('finished')
     else:
-        yield future
+        await future
 
 
 @preprocessor
-def pp_after(handler):
+async def pp_after(handler):
     handler.run.append('after')
 
 
