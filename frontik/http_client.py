@@ -632,12 +632,19 @@ class HttpClient:
             result = RequestResult(balanced_request, response, parse_response, parse_on_error)
 
             if callable(callback):
-                callback(result.data, result.response)
+                try:
+                    callback(result.data, result.response)
+                except Exception as e:
+                    future.set_exception(e)
+                    raise
 
             if fail_fast and result.failed:
-                raise FailFastError(result)
-
-            future.set_result(result)
+                exc = FailFastError(result)
+                if not future.done():
+                    future.set_exception(exc)
+                raise exc
+            elif not future.done():
+                future.set_result(result)
 
         if add_to_finish_group and not self.handler.is_finished():
             request_finished_callback = self.handler.finish_group.add(request_finished_callback)
