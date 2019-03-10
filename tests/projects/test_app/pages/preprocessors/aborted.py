@@ -48,7 +48,10 @@ class Page(PageHandler):
             'run': self.run
         })
 
-        self.add_postprocessor(lambda handler: handler.json.put({'postprocessor': True}))
+        async def postprocessor(handler):
+            handler.json.put({'postprocessor': True})
+
+        self.add_postprocessor(postprocessor)
 
     @pp_before
     @pp

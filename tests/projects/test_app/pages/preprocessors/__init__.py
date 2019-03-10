@@ -1,6 +1,6 @@
+import asyncio
 import time
 
-from tornado import gen
 from tornado.concurrent import Future
 
 from frontik.handler import PageHandler
@@ -72,6 +72,6 @@ class Page(PageHandler):
         self.text = {'put_request_preprocessors': self.run}
 
     @staticmethod
-    def postprocessor(handler):
+    async def postprocessor(handler):
         handler.json.put({'postprocessor': True})
-        yield gen.sleep(0.1)
+        await asyncio.sleep(0.1)

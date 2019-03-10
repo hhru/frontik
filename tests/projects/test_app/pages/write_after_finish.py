@@ -1,4 +1,4 @@
-from tornado import gen
+import asyncio
 
 from frontik.handler import PageHandler
 
@@ -13,14 +13,14 @@ class Page(PageHandler):
         self.add_postprocessor(self._pp)
 
     @classmethod
-    def _pp(cls, handler):
+    async def _pp(cls, handler):
         if handler.request.method != 'POST':
             handler.counter += 1
             cls.counter_static = handler.counter
 
             # create race condition between postprocessors
             if handler.counter == 1:
-                yield gen.sleep(0.1)
+                await asyncio.sleep(0.1)
                 handler.json.put({
                     'postprocessor_completed': True
                 })

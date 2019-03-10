@@ -29,7 +29,12 @@ from frontik.util import make_url
 from frontik.version import version as frontik_version
 
 if TYPE_CHECKING:
+    from typing import Optional
+
+    from aiokafka import AIOKafkaProducer
+
     from frontik.http_client import BalancedHttpRequest
+    from frontik.integrations.sentry import SentryLogger
 
 
 def _fallback_status_code(status_code):
@@ -448,10 +453,9 @@ class PageHandler(RequestHandler):
 
         return True
 
-    @gen.coroutine
-    def _run_postprocessors(self, postprocessors):
+    async def _run_postprocessors(self, postprocessors):
         for p in postprocessors:
-            yield gen.coroutine(p)(self)
+            await p(self)
 
             if self._finished:
                 self.log.warning('page was already finished, breaking postprocessors chain')
@@ -459,10 +463,9 @@ class PageHandler(RequestHandler):
 
         return True
 
-    @gen.coroutine
-    def _run_template_postprocessors(self, postprocessors, rendered_template):
+    async def _run_template_postprocessors(self, postprocessors, rendered_template):
         for p in postprocessors:
-            rendered_template = yield gen.coroutine(p)(self, rendered_template)
+            rendered_template = await p(self, rendered_template)
 
             if self._finished:
                 self.log.warning('page was already finished, breaking postprocessors chain')
@@ -614,6 +617,14 @@ class PageHandler(RequestHandler):
             self.finish_group.add_future(future)
 
         return future
+
+    # Integrations stubs
+
+    def get_sentry_logger(self) -> 'Optional[SentryLogger]':  # pragma: no cover
+        return None
+
+    def get_kafka_producer(self, producer_name: str) -> 'Optional[AIOKafkaProducer]':  # pragma: no cover
+        return None
 
 
 class ErrorHandler(PageHandler, tornado.web.ErrorHandler):
