@@ -2,6 +2,7 @@ import asyncio
 import time
 
 from tornado.concurrent import Future
+from tornado.web import HTTPError
 
 from frontik.handler import PageHandler
 from frontik.preprocessors import preprocessor
@@ -16,7 +17,7 @@ def pp0(name):
 
 
 @preprocessor
-async def pp1(handler):
+async def pp_await_future(handler):
     handler.run.append('pp1-before')
 
     ready_future = Future()
@@ -33,7 +34,7 @@ async def pp1(handler):
 
 
 @preprocessor
-async def pp2(handler):
+async def pp_waited_callback(handler):
     def _cb(_, __):
         handler.json.put({'put_request_finished': True})
 
@@ -45,9 +46,14 @@ async def pp2(handler):
 
 
 @preprocessor
-async def pp3(handler):
+async def pp_not_waited_callback(handler):
+    def _cb(_, __):
+        if handler.get_argument('raise_error_in_callback', 'false') == 'true':
+            raise HTTPError(403)
+
     handler.run.append('pp3')
     handler.json.put(handler.pp2_future.result())
+    handler.put_url(handler.request.host, handler.request.path, callback=_cb)
 
 
 class Page(PageHandler):
@@ -63,8 +69,8 @@ class Page(PageHandler):
 
         self.add_postprocessor(self.postprocessor)
 
-    @pp1
-    @preprocessor([pp2, pp3])
+    @pp_await_future
+    @preprocessor([pp_waited_callback, pp_not_waited_callback])
     def get_page(self):
         self.run.append('get_page')
 

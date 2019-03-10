@@ -602,16 +602,23 @@ class HttpClient:
             result = RequestResult(balanced_request, response, parse_response, parse_on_error)
 
             if callable(callback):
-                callback(result.data, result.response)
+                try:
+                    callback(result.data, result.response)
+                except Exception as e:
+                    future.set_exception(e)
+                    return
 
             if fail_fast and result.failed:
-                raise FailFastError(result)
+                exc = FailFastError(result)
+                future.set_exception(exc)
 
-            future.set_result(result)
+            elif not future.done():
+                future.set_result(result)
 
         def retry_callback(response):
             if isinstance(response.error, Exception) and not isinstance(response.error, HTTPError):
-                raise response.error
+                future.set_exception(response.error)
+                return
 
             request = balanced_request.pop_last_request()
             retries_count = balanced_request.get_retries_count()

@@ -55,7 +55,7 @@ class Doc:
                     yield etree_element
 
             elif isinstance(chunk, Future):
-                if chunk.done():
+                if chunk.done() and not chunk.exception():
                     for i in chunk_to_element(chunk.result()):
                         yield i
 

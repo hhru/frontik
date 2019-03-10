@@ -27,9 +27,13 @@ class AsyncGroup:
         self._counter = 0
         self._finish_cb = finish_cb
         self._finished = False
+        self._aborted = False
         self._name = name
         self._future = Future()
         self._start_time = time.time()
+
+    def is_aborted(self):
+        return self._finished
 
     def is_finished(self):
         return self._finished
@@ -37,6 +41,7 @@ class AsyncGroup:
     def abort(self):
         async_logger.info('aborting %s', self)
         self._finished = True
+        self._aborted = True
         if not self._future.done():
             self._future.set_exception(AbortAsyncGroup())
 

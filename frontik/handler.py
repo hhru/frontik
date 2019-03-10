@@ -255,7 +255,7 @@ class PageHandler(RequestHandler):
     def check_finished(self, callback):
         @wraps(callback)
         def wrapper(*args, **kwargs):
-            if self.is_finished():
+            if self.is_finished() or self.finish_group.is_aborted():
                 self.log.warning('page was already finished, %s ignored', callback)
             else:
                 return callback(*args, **kwargs)
@@ -615,6 +615,18 @@ class PageHandler(RequestHandler):
 
         if waited:
             self.finish_group.add_future(future)
+
+        def handle_exception(future):
+            if future.exception():
+                try:
+                    raise future.exception()
+                except Exception as e:
+                    if not self.is_finished():
+                        self._handle_request_exception(e)
+                    else:
+                        self.log.exception('exception in finished page')
+
+        future.add_done_callback(handle_exception)
 
         return future
 

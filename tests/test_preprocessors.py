@@ -21,6 +21,10 @@ class TestPreprocessors(unittest.TestCase):
             }
         )
 
+    def test_error_in_callback(self):
+        response = frontik_test_app.get_page('preprocessors?raise_error_in_callback=true')
+        self.assertEqual(response.status_code, 403)
+
     def test_preprocessor_futures(self):
         response_json = frontik_test_app.get_page_json('preprocessors/preprocessor_futures')
         self.assertEqual(
