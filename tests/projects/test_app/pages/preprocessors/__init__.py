@@ -9,31 +9,31 @@ from frontik.preprocessors import preprocessor
 
 def pp0(name):
     @preprocessor
-    def pp(handler):
+    async def pp(handler):
         handler.run.append(name)
 
     return pp
 
 
 @preprocessor
-def pp1(handler):
+async def pp1(handler):
     handler.run.append('pp1-before')
 
     ready_future = Future()
     ready_future.set_result('pp1-between')
-    result = yield ready_future
+    result = await ready_future
 
     handler.run.append(result)
 
     wait_future = Future()
     handler.add_timeout(time.time() + 0.1, lambda: wait_future.set_result('pp1-after'))
-    result = yield wait_future
+    result = await wait_future
 
     handler.run.append(result)
 
 
 @preprocessor
-def pp2(handler):
+async def pp2(handler):
     def _cb(_, __):
         handler.json.put({'put_request_finished': True})
 
@@ -41,11 +41,11 @@ def pp2(handler):
     handler.run.append('pp2')
     handler.pp2_future = future
 
-    yield future
+    await future
 
 
 @preprocessor
-def pp3(handler):
+async def pp3(handler):
     handler.run.append('pp3')
     handler.json.put(handler.pp2_future.result())
 

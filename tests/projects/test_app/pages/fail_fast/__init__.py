@@ -3,7 +3,7 @@ from frontik.preprocessors import preprocessor
 
 
 @preprocessor
-def get_page_preprocessor(handler):
+async def get_page_preprocessor(handler):
     handler.json.put({
         'preprocessor': True
     })

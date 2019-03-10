@@ -1,3 +1,4 @@
+import asyncio
 import http.client
 import logging
 import time
@@ -435,15 +436,14 @@ class PageHandler(RequestHandler):
         self._preprocessor_futures.append(future)
         return future
 
-    @gen.coroutine
-    def _run_preprocessors(self, preprocessors):
+    async def _run_preprocessors(self, preprocessors):
         for p in preprocessors:
-            yield gen.coroutine(p)(self)
+            await p(self)
             if self._finished:
                 self.log.info('page was already finished, breaking preprocessors chain')
                 return False
 
-        yield gen.multi(self._preprocessor_futures)
+        await asyncio.gather(*self._preprocessor_futures)
 
         self._preprocessor_futures = None
 
