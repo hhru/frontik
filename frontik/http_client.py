@@ -612,13 +612,14 @@ class HttpClient:
                 return
 
             if balanced_request.tried_hosts is not None:
-                self.statsd_client.count('http.client.retries', 1,
-                                         upstream=balanced_request.get_host(),
-                                         server=balanced_request.current_host,
-                                         datacenter=balanced_request.current_datacenter,
-                                         first_upstream_status=balanced_request.first_status,
-                                         tries=len(balanced_request.tried_hosts),
-                                         status=response.code)
+                self.statsd_client.count(
+                    'http.client.retries', 1,
+                    upstream=balanced_request.get_host(),
+                    dc=balanced_request.current_datacenter,
+                    first_status=balanced_request.first_status,
+                    tries=len(balanced_request.tried_hosts),
+                    status=response.code
+                )
 
             if self.handler.is_finished() and callback is not None:
                 http_client_logger.warning('page was already finished, {} ignored'.format(callback))
@@ -658,14 +659,14 @@ class HttpClient:
             self.statsd_client.count(
                 'http.client.requests', 1,
                 upstream=balanced_request.get_host(),
-                datacenter=balanced_request.current_datacenter,
+                dc=balanced_request.current_datacenter,
                 final='false' if do_retry else 'true',
                 status=response.code
             )
             self.statsd_client.time(
                 'http.client.request.time',
                 int(response.request_time * 1000),
-                datacenter=balanced_request.current_datacenter,
+                dc=balanced_request.current_datacenter,
                 upstream=balanced_request.get_host()
             )
             self.statsd_client.flush()
