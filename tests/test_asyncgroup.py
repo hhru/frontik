@@ -108,9 +108,7 @@ class TestAsyncGroup(unittest.TestCase):
 
         cb1()
 
-        with ExpectLog(
-            async_logger, r'.*aborting AsyncGroup\(name=test_group, finished=false\) due to unhandled exception'
-        ):
+        with ExpectLog(async_logger, r'.*aborting AsyncGroup\(name=test_group, finished=false\)'):
             self.assertRaises(Exception, cb2)
 
         self.assertEqual(ag._finished, True)

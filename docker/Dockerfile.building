@@ -1,15 +1,12 @@
-FROM registry.pyn.ru:5000/python3.7-ubuntu18-production:2019.02.08
+FROM registry.pyn.ru:5000/python3.7-ubuntu18-production:2019.02.25
 
-RUN mkdir -p /home/building
+COPY frontik-test setup.py README.md MANIFEST.in /home/building/
+COPY frontik /home/building/frontik/
+COPY tests /home/building/tests/
+COPY examples /home/building/examples/
+COPY scripts /home/building/scripts/
 WORKDIR /home/building
 
-COPY frontik frontik
-COPY tests tests
-COPY examples examples
-COPY frontik-test frontik-test
-COPY setup.py setup.py
-COPY README.md README.md
-COPY MANIFEST.in MANIFEST.in
-
 RUN pip3 install raven
+RUN python3.7 setup.py install
 RUN python3.7 setup.py test
