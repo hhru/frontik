@@ -215,7 +215,8 @@ class PageHandler(RequestHandler):
             name for name in ('get', 'post', 'put', 'delete') if '{}_page'.format(name) in vars(self.__class__)
         ]
         self.set_header('Allow', ', '.join(allowed_methods))
-        raise HTTPErrorWithPostprocessors(405)
+        self.set_status(405)
+        self.finish()
 
     def get_page_fail_fast(self, request_result: RequestResult):
         self.__return_error(request_result.response.code)

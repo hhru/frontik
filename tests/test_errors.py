@@ -78,4 +78,4 @@ class TestHttpError(unittest.TestCase):
         response = frontik_test_app.get_page('write_error', method=requests.put)
         self.assertEqual(response.status_code, 405)
         self.assertEqual(response.headers['allow'], 'get')
-        self.assertEqual(response.content, b'{"write_error": true}')
+        self.assertEqual(response.content, b'')
