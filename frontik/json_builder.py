@@ -46,7 +46,7 @@ class JsonBuilder:
 
     def __init__(self, root_node=None, json_encoder=None):
         if root_node is not None and not isinstance(root_node, str):
-            raise TypeError('Cannot set {} as root node'.format(root_node))
+            raise TypeError(f'Cannot set {root_node} as root node')
 
         self._data = []
         self._encoder = json_encoder

@@ -11,6 +11,6 @@ class Page(PageHandler):
         def cb(*args, **kw):
             raise HTTPError(400)
 
-        self.get_url('http://localhost:{}'.format(port), '/page/simple/', callback=cb)
-        self.get_url('http://localhost:{}'.format(port), '/page/simple/', callback=cb)
-        self.get_url('http://localhost:{}'.format(port), '/page/simple/', callback=cb)
+        self.get_url(f'http://localhost:{port}', '/page/simple/', callback=cb)
+        self.get_url(f'http://localhost:{port}', '/page/simple/', callback=cb)
+        self.get_url(f'http://localhost:{port}', '/page/simple/', callback=cb)

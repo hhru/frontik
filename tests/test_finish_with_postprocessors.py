@@ -15,7 +15,7 @@ class TestFinishWithPostprocessors(unittest.TestCase):
         }
 
         for content_type, content in type_to_content.items():
-            response = frontik_test_app.get_page('finish_with_postprocessors?type={}'.format(content_type))
+            response = frontik_test_app.get_page(f'finish_with_postprocessors?type={content_type}')
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content, content)
             self.assertEqual(response.headers['X-Foo'], 'Bar')

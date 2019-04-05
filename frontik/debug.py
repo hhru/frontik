@@ -67,7 +67,7 @@ def response_to_xml(response):
 
     try:
         for name, value in response.time_info.items():
-            time_info.append(E.time('{} ms'.format(value * 1000), name=name))
+            time_info.append(E.time(f'{value * 1000} ms', name=name))
     except Exception:
         debug_log.exception('cannot append time info')
 
@@ -189,15 +189,15 @@ def request_to_curl_string(request):
         curl_headers['Content-Length'] = len(request.body)
 
     if is_binary_body:
-        curl_echo_data = "echo -e {} |".format(request_body)
+        curl_echo_data = f'echo -e {request_body} |'
         curl_data_string = '--data-binary @-'
     else:
         curl_echo_data = ''
-        curl_data_string = "--data '{}'".format(request_body) if request_body else ''
+        curl_data_string = f"--data '{request_body}'" if request_body else ''
 
     def _format_header(key):
         header_value = frontik.util.any_to_unicode(curl_headers[key])
-        return "-H '{0}: {1}'".format(key, _escape_apos(header_value))
+        return f"-H '{key}: {_escape_apos(header_value)}'"
 
     return "{echo} curl -X {method} '{url}' {headers} {data}".format(
         echo=curl_echo_data,
@@ -470,9 +470,9 @@ class DebugTransform(OutputTransform):
                 debug_log.exception('XSLT debug file error')
 
                 try:
-                    debug_log.error('XSL error log entries:\n{}'.format('\n'.join(
+                    debug_log.error('XSL error log entries:\n' + '\n'.join(
                         '{0.filename}:{0.line}:{0.column}\n\t{0.message}'.format(m) for m in transform.error_log
-                    )))
+                    ))
                 except Exception:
                     pass
 

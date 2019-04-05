@@ -107,7 +107,7 @@ class AsyncGroup:
         return self._future
 
     def __str__(self):
-        return 'AsyncGroup(name={}, finished={})'.format(self._name, str(self._finished).lower())
+        return f'AsyncGroup(name={self._name}, finished={self._finished})'
 
 
 def future_fold(future, result_mapper=None, exception_mapper=None):

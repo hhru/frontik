@@ -20,13 +20,13 @@ from frontik.http_client import HttpClientFactory
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.request_context import RequestContext
 from frontik.routing import FileMappingRouter, FrontikRouter
-from frontik.version import version
+from frontik.version import version as frontik_version
 
 
 def get_frontik_and_apps_versions(application):
     versions = etree.Element('versions')
 
-    etree.SubElement(versions, 'frontik').text = version
+    etree.SubElement(versions, 'frontik').text = frontik_version
     etree.SubElement(versions, 'tornado').text = tornado.version
     etree.SubElement(versions, 'lxml.etree.LXML').text = '.'.join(str(x) for x in etree.LXML_VERSION)
     etree.SubElement(versions, 'lxml.etree.LIBXML').text = '.'.join(str(x) for x in etree.LIBXML_VERSION)
@@ -111,7 +111,7 @@ class FrontikApplication(Application):
 
     def application_urls(self):
         return [
-            ('', FileMappingRouter(importlib.import_module('{}.pages'.format(self.app))))
+            ('', FileMappingRouter(importlib.import_module(f'{self.app}.pages')))
         ]
 
     def application_404_handler(self, request):

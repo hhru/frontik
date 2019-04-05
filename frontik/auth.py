@@ -32,9 +32,9 @@ def check_debug_auth(handler, login, password):
     header_name = DEBUG_AUTH_HEADER_NAME
     debug_auth_header = handler.request.headers.get(header_name)
     if debug_auth_header is not None:
-        debug_access = (debug_auth_header == '{}:{}'.format(login, password))
+        debug_access = (debug_auth_header == f'{login}:{password}')
         if not debug_access:
-            handler.set_header('WWW-Authenticate', '{}-Header realm="Secure Area"'.format(header_name))
+            handler.set_header('WWW-Authenticate', f'{header_name}-Header realm="Secure Area"')
             handler.set_status(http.client.UNAUTHORIZED)
             raise DebugUnauthorizedError()
     else:

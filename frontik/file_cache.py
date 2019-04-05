@@ -64,7 +64,7 @@ class InvalidOptionCache:
         self.option = option
 
     def load(self, filename, *args, **kwargs):
-        raise Exception('{0} option is undefined'.format(self.option))
+        raise Exception(f'{self.option} option is undefined')
 
 
 def make_file_cache(cache_name, option_name, root_dir, fun, max_len=None, step=None, deepcopy=False):

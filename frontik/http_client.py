@@ -305,8 +305,11 @@ class DelayedSlowStartJoinStrategy:
         self.slow_start_requests -= 1
 
     def __repr__(self):
-        return '<DelayedSlowStartJoinStrategy(initial_delay_end_time={}, slow_start_requests={})>'.format(
-            self.initial_delay_end_time, self.slow_start_requests)
+        return (
+            '<DelayedSlowStartJoinStrategy('
+            f'initial_delay_end_time={self.initial_delay_end_time}, slow_start_requests={self.slow_start_requests}'
+            ')>'
+        )
 
 
 class BalancedHttpRequest:
@@ -453,7 +456,7 @@ class HttpClientFactory:
 
         if influxdb_metrics_enabled:
             self.influxdb_endpoint = make_url(
-                '{}/write'.format(options.influxdb_host), db=options.influxdb_metrics_db, rp=options.influxdb_metrics_rp
+                f'{options.influxdb_host}/write', db=options.influxdb_metrics_db, rp=options.influxdb_metrics_rp
             )
 
             PeriodicCallback(self._influx_heartbeat, options.influxdb_heartbeat_period_ms).start()
@@ -621,8 +624,8 @@ class HttpClient:
                     status=response.code
                 )
 
-            if self.handler.is_finished() and callback is not None:
-                http_client_logger.warning('page was already finished, {} ignored'.format(callback))
+            if callback is not None and self.handler.is_finished():
+                http_client_logger.warning(f'page was already finished, {callback} ignored')
                 return
 
             result = self._parse_response(response, parse_response, parse_on_error)
@@ -858,9 +861,9 @@ def _parse_response(response, parser, response_type):
 
         if body_preview is not None:
             try:
-                body_preview = 'excerpt: {}'.format(to_unicode(body_preview))
+                body_preview = f'excerpt: {to_unicode(body_preview)}'
             except Exception:
-                body_preview = 'could not be converted to unicode, excerpt: {}'.format(str(body_preview))
+                body_preview = f'could not be converted to unicode, excerpt: {str(body_preview)}'
         else:
             body_preview = 'is None'
 
@@ -869,7 +872,7 @@ def _parse_response(response, parser, response_type):
             response_type, response.effective_url, body_preview
         )
 
-        return DataParseError(reason='invalid {}'.format(response_type))
+        return DataParseError(reason=f'invalid {response_type}')
 
 
 _xml_parser = etree.XMLParser(strip_cdata=False)

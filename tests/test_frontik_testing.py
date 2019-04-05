@@ -66,7 +66,7 @@ class TestFrontikTesting(FrontikTestCase):
 
     def test_json_stub(self):
         self.set_stub(
-            'http://127.0.0.1:{}/delete'.format(self.get_http_port()), request_method='DELETE',
+            f'http://127.0.0.1:{self.get_http_port()}/delete', request_method='DELETE',
             response_file='tests/stub.json', param='param'
         )
 

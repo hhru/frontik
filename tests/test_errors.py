@@ -37,14 +37,14 @@ class TestHttpError(unittest.TestCase):
 
     def test_finish_200(self):
         for code, actual_code in self._CODES_MAPPING.items():
-            response = frontik_test_app.get_page('finish?code={}&throw=false'.format(code))
+            response = frontik_test_app.get_page(f'finish?code={code}&throw=false')
             self.assertEqual(response.status_code, actual_code)
             self.assertEqual(response.headers['x-foo'], 'Bar')
             self.assertEqual(response.content, b'success')
 
     def test_finish_exception(self):
         for code, actual_code in self._CODES_MAPPING.items():
-            response = frontik_test_app.get_page('finish?code={}&throw=true'.format(code))
+            response = frontik_test_app.get_page(f'finish?code={code}&throw=true')
             self.assertEqual(response.status_code, actual_code)
             self.assertEqual(response.headers['x-foo'], 'Bar')
             self.assertEqual(response.content, b'success')
