@@ -1,4 +1,47 @@
+import contextvars
 import threading
+
+
+class _Context:
+    __slots__ = ('request_id', 'handler_name', 'log_handler')
+
+    def __init__(self, request_id):
+        self.request_id = request_id
+        self.handler_name = None
+        self.log_handler = None
+
+
+_context = contextvars.ContextVar('context', default=_Context(None))
+
+
+def initialize(request_id):
+    return _context.set(_Context(request_id))
+
+
+def reset(token):
+    _context.reset(token)
+
+
+def get_request_id():
+    return RequestContext.get('request_id') or _context.get().request_id
+
+
+def get_handler_name():
+    return RequestContext.get('handler_name') or _context.get().handler_name
+
+
+def set_handler_name(handler_name):
+    RequestContext.set('handler_name', handler_name)
+    _context.get().handler_name = handler_name
+
+
+def get_log_handler():
+    return RequestContext.get('log_handler') or _context.get().log_handler
+
+
+def set_log_handler(log_handler):
+    RequestContext.set('log_handler', log_handler)
+    _context.get().log_handler = log_handler
 
 
 class RequestContext:

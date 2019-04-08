@@ -2,7 +2,7 @@ import logging
 import time
 from collections import namedtuple
 
-from frontik.request_context import RequestContext
+from frontik import request_context
 
 stages_logger = logging.getLogger('stages')
 
@@ -43,7 +43,7 @@ class StagesLogger:
         stages_logger.info(
             'timings for %(page)s : %(stages)s',
             {
-                'page': RequestContext.get('handler_name'),
+                'page': request_context.get_handler_name(),
                 'stages': '{0} total={1:.2f} code={2}'.format(stages_str, total, status_code)
             },
         )
