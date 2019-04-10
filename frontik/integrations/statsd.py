@@ -1,5 +1,7 @@
 import socket
 import collections
+from asyncio import Future
+from typing import Optional
 
 from tornado.ioloop import IOLoop
 
@@ -11,7 +13,7 @@ class StatsdIntegration(Integration):
     def __init__(self):
         self.statsd_client = None
 
-    def initialize_app(self, app):
+    def initialize_app(self, app) -> Optional[Future]:
         if options.statsd_host is None or options.statsd_port is None:
             self.statsd_client = StatsDClientStub()
             integrations_logger.info(
@@ -21,6 +23,7 @@ class StatsdIntegration(Integration):
             self.statsd_client = StatsDClient(options.statsd_host, options.statsd_port, app=app.app)
 
         app.statsd_client = self.statsd_client
+        return None
 
     def initialize_handler(self, handler):
         handler.statsd_client = self.statsd_client

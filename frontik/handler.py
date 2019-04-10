@@ -45,12 +45,13 @@ class PageHandler(RequestHandler):
     preprocessors = ()
 
     def __init__(self, application, request, **kwargs):
-        self._prepared = False
         self.name = self.__class__.__name__
         self.request_id = request.request_id = request_context.get_request_id()
         self.config = application.config
         self.log = handler_logger
         self.text = None
+
+        super().__init__(application, request, **kwargs)
 
         self._preprocessor_futures = []
         self._exception_hooks = []
@@ -60,18 +61,16 @@ class PageHandler(RequestHandler):
 
         self.stages_logger = StagesLogger(request, self.statsd_client)
 
-        super().__init__(application, request, **kwargs)
-
         self._debug_access = None
         self._render_postprocessors = []
         self._postprocessors = []
-
-        self._http_client = self.application.http_client_factory.get_http_client(self, self.modify_http_client_request)
 
     def __repr__(self):
         return '.'.join([self.__module__, self.__class__.__name__])
 
     def prepare(self):
+        self._http_client = self.application.http_client_factory.get_http_client(self, self.modify_http_client_request)
+
         self.active_limit = frontik.handler_active_limit.ActiveHandlersLimit(self.statsd_client)
         self.debug_mode = DebugMode(self)
         self.finish_group = AsyncGroup(lambda: None, name='finish')
@@ -82,8 +81,6 @@ class PageHandler(RequestHandler):
 
         self.xml_producer = self.application.xml.get_producer(self)
         self.doc = self.xml_producer.doc
-
-        self._prepared = True
 
         super().prepare()
 

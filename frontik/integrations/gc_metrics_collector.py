@@ -1,6 +1,8 @@
 import gc
 import time
+from asyncio import Future
 from functools import partial
+from typing import Optional
 
 from tornado.ioloop import PeriodicCallback
 
@@ -9,7 +11,7 @@ from frontik.options import options
 
 
 class GCMetricsCollectorIntegration(Integration):
-    def initialize_app(self, app):
+    def initialize_app(self, app) -> Optional[Future]:
         if options.gc_metrics_send_interval_ms is None or options.gc_metrics_send_interval_ms <= 0:
             integrations_logger.info(
                 'GC metrics collector integration is disabled: gc_metrics_send_interval_ms option is not configured'
