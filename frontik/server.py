@@ -8,6 +8,7 @@ import time
 import tornado.autoreload
 import tornado.httpserver
 import tornado.ioloop
+from tornado import gen
 from tornado.options import parse_command_line, parse_config_file
 
 from frontik.app import FrontikApplication
@@ -129,24 +130,25 @@ def main(config_file=None):
     application = getattr(module, options.app_class) if options.app_class is not None else FrontikApplication
 
     try:
-        tornado_app = application(app_root=os.path.dirname(module.__file__), **options.as_dict())
+        app = application(app_root=os.path.dirname(module.__file__), **options.as_dict())
         ioloop = tornado.ioloop.IOLoop.current()
 
         def _async_init_cb():
             try:
-                init_futures = list(tornado_app.init_async())
+                init_futures = app.default_init_futures + list(app.init_async())
 
-                def await_features(future):
-                    if future.exception() is not None:
-                        log.error('failed to initialize application, init_async returned: %s', future.exception())
-                        sys.exit(1)
+                if init_futures:
+                    def await_init(future):
+                        if future.exception() is not None:
+                            log.error('failed to initialize application, init_async returned: %s', future.exception())
+                            sys.exit(1)
 
-                    init_futures.pop()
-                    if not init_futures:
-                        run_server(tornado_app)
+                        run_server(app)
 
-                for future in init_futures:
-                    ioloop.add_future(future, await_features)
+                    ioloop.add_future(gen.multi(init_futures), await_init)
+                else:
+                    run_server(app)
+
             except Exception:
                 log.exception('failed to initialize application')
                 sys.exit(1)

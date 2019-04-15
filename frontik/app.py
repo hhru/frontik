@@ -6,7 +6,6 @@ from functools import partial
 import pycurl
 import tornado
 from lxml import etree
-from tornado.concurrent import Future
 from tornado.options import options
 from tornado.stack_context import StackContext
 from tornado.web import Application, RequestHandler
@@ -71,10 +70,10 @@ class FrontikApplication(Application):
         self.xml = frontik.producers.xml_producer.XMLProducerFactory(self)
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
-        self.http_client_factory = HttpClientFactory(getattr(self.config, 'http_upstreams', {}))
+        self.http_client_factory = HttpClientFactory(self, getattr(self.config, 'http_upstreams', {}))
 
         self.router = FrontikRouter(self)
-        self.available_integrations = integrations.load_integrations(self)
+        self.available_integrations, self.default_init_futures = integrations.load_integrations(self)
 
         super().__init__([
             (r'/version/?', VersionHandler),
@@ -134,9 +133,7 @@ class FrontikApplication(Application):
         return None
 
     def init_async(self):
-        init_future = Future()
-        init_future.set_result(None)
-        return (init_future,)
+        return []
 
     @staticmethod
     def next_request_id():

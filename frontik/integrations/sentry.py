@@ -1,3 +1,6 @@
+from asyncio import Future
+from typing import Optional
+
 from raven.contrib.tornado import AsyncSentryClient
 from tornado.web import HTTPError
 
@@ -10,7 +13,7 @@ class SentryIntegration(Integration):
     def __init__(self):
         self.sentry_client = None
 
-    def initialize_app(self, app):
+    def initialize_app(self, app) -> Optional[Future]:
         if not options.sentry_dsn:
             integrations_logger.info('sentry integration is disabled: sentry_dsn option is not configured')
             return
@@ -21,6 +24,7 @@ class SentryIntegration(Integration):
             # breadcrumbs have serious performance penalties
             enable_breadcrumbs=False, install_logging_hook=False, install_sys_hook=False
         )
+        return None
 
     def initialize_handler(self, handler):
         if self.sentry_client is None:
