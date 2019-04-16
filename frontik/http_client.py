@@ -464,6 +464,7 @@ class HttpClientFactory:
 
         self._send_metrics_to_kafka = send_metrics_to_kafka
         self._metrics_heartbeat = None
+        self._kafka_cluster = kafka_cluster
 
     def get_http_client(self, handler, modify_http_request_hook):
         if self._metrics_heartbeat is None and self._send_metrics_to_kafka:
@@ -474,7 +475,7 @@ class HttpClientFactory:
 
         return HttpClient(
             handler, self.tornado_http_client, modify_http_request_hook, self.upstreams, handler.statsd_client,
-            options.http_client_metrics_kafka_cluster
+            self._kafka_cluster
         )
 
     def update_upstream(self, name, config):
@@ -505,7 +506,10 @@ class HttpClientFactory:
         http_client_logger.info('update %s upstream: %s', name, str(upstream))
 
     def _metrics_heartbeat_callback(self):
-        kafka_producer = self.app.get_kafka_producer(options.http_client_metrics_kafka_cluster)
+        kafka_producer = (
+            self.app.get_kafka_producer(self._kafka_cluster) if hasattr(self.app, 'get_kafka_producer') else None
+        )
+
         if kafka_producer:
             asyncio.get_event_loop().create_task(kafka_producer.send(
                 'metrics_heartbeat',
@@ -519,13 +523,15 @@ class HttpClientFactory:
 
 
 class HttpClient:
-    def __init__(self, handler, http_client_impl, modify_http_request_hook, upstreams, statsd_client, kafka_producer):
+    def __init__(self, handler, http_client_impl, modify_http_request_hook, upstreams, statsd_client, kafka_cluster):
         self.handler = handler
         self.modify_http_request_hook = modify_http_request_hook
         self.http_client_impl = http_client_impl
         self.upstreams = upstreams
         self.statsd_client = statsd_client
-        self.kafka_producer = handler.get_kafka_producer(kafka_producer)
+        self.kafka_producer = (
+            handler.get_kafka_producer(kafka_cluster) if hasattr(handler, 'get_kafka_producer') else None
+        )
 
     def get_upstream(self, host):
         return self.upstreams.get(host, Upstream.get_single_host_upstream())
