@@ -1,9 +1,9 @@
+import asyncio
 import time
 import weakref
 
 import jinja2
 from jinja2.utils import concat
-from tornado import gen
 from tornado.escape import to_unicode
 from tornado.options import options
 
@@ -64,8 +64,7 @@ class JsonProducer:
         else:
             return self.json.to_dict()
 
-    @gen.coroutine
-    def _render_template_stream_on_ioloop(self, batch_render_timeout_ms):
+    async def _render_template_stream_on_ioloop(self, batch_render_timeout_ms):
         template_render_start_time = time.time()
         template = self.environment.get_template(self.template_filename)
 
@@ -105,11 +104,10 @@ class JsonProducer:
 
             if whole_template_render_finished:
                 return template_render_start_time, concat(template_parts)
-            else:
-                yield
 
-    @gen.coroutine
-    def _finish_with_template(self):
+            await asyncio.sleep(0)
+
+    async def _finish_with_template(self):
         if not self.environment:
             raise Exception('Cannot apply template, no Jinja2 environment configured')
 
@@ -117,7 +115,7 @@ class JsonProducer:
             self.handler.set_header('Content-Type', media_types.TEXT_HTML)
 
         try:
-            render_result = yield self._render_template_stream_on_ioloop(options.jinja_streaming_render_timeout_ms)
+            render_result = await self._render_template_stream_on_ioloop(options.jinja_streaming_render_timeout_ms)
             if self.handler.is_finished():
                 return None
 
@@ -141,8 +139,7 @@ class JsonProducer:
 
             raise e
 
-    @gen.coroutine
-    def _finish_with_json(self):
+    async def _finish_with_json(self):
         self.log.debug('finishing without templating')
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.APPLICATION_JSON)

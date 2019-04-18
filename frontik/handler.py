@@ -465,8 +465,7 @@ class PageHandler(RequestHandler):
 
     # Producers
 
-    @gen.coroutine
-    def _generic_producer(self):
+    async def _generic_producer(self):
         self.log.debug('finishing plaintext')
 
         if self._headers.get('Content-Type') is None:
