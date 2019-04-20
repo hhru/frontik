@@ -17,18 +17,14 @@ except ImportError:
     USE_COVERAGE = False
 
 
-def run_command(command, port):
-    if USE_COVERAGE:
-        template = '{exe} {coverage} run {command} {args}'
-    else:
-        template = '{exe} {command} {args}'
+def _run_command(command, port):
+    python = sys.executable
 
-    executable = template.format(
-        exe=sys.executable,
-        coverage=find_executable('coverage'),
-        command=command,
-        args=f'--port={port}',
-    )
+    if USE_COVERAGE:
+        coverage = find_executable('coverage')
+        executable = f'{python} {coverage} run {command} --port={port}'
+    else:
+        executable = f'{python} {command} --port={port}'
 
     return subprocess.Popen(executable.split())
 
@@ -61,7 +57,7 @@ class FrontikTestInstance:
 
     def start(self):
         self.port = find_free_port()
-        self.popen = run_command(self.command, self.port)
+        self.popen = _run_command(self.command, self.port)
 
         for i in range(10):
             try:
