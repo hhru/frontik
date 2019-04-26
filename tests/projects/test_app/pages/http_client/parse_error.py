@@ -11,7 +11,12 @@ class Page(frontik.handler.PageHandler):
                 assert False
 
         self.post_url(self.request.host, self.request.path + '?mode=xml', callback=callback_error)
-        self.post_url(self.request.host, self.request.path + '?mode=json', callback=callback_error)
+
+        result = yield self.post_url(self.request.host, self.request.path + '?mode=json')
+        if result.failed:
+            self.text = 'Parse error occured'
+        else:
+            assert False
 
     def post_page(self):
         if self.get_argument('mode') == "xml":

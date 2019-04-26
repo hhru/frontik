@@ -3,6 +3,7 @@ import json
 import re
 import socket
 import time
+from asyncio import Future
 from functools import partial
 from random import shuffle, random
 
@@ -11,7 +12,6 @@ import logging
 from lxml import etree
 from tornado.escape import to_unicode, utf8
 from tornado.ioloop import IOLoop, PeriodicCallback
-from tornado.concurrent import Future
 from tornado.curl_httpclient import CurlAsyncHTTPClient
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPResponse, HTTPError
 from tornado.httputil import HTTPHeaders
@@ -314,7 +314,8 @@ class DelayedSlowStartJoinStrategy:
 
 
 class BalancedHttpRequest:
-    def __init__(self, host, upstream, uri, name, method='GET', data=None, headers=None, files=None, content_type=None,
+    def __init__(self, host: str, upstream: Upstream, uri: str, name: str,
+                 method='GET', data=None, headers=None, files=None, content_type=None,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None,
                  follow_redirects=True, idempotent=True):
         self.uri = uri if uri.startswith('/') else '/' + uri
@@ -618,7 +619,7 @@ class HttpClient:
         )
 
     def _fetch_with_retry(self, balanced_request, callback, add_to_finish_group, parse_response, parse_on_error,
-                          fail_fast):
+                          fail_fast) -> 'Future[RequestResult]':
         future = Future()
 
         def request_finished_callback(response):
@@ -639,17 +640,15 @@ class HttpClient:
                 http_client_logger.warning(f'page was already finished, {callback} ignored')
                 return
 
-            result = self._parse_response(response, parse_response, parse_on_error)
-            result.request = balanced_request
-            result.name = balanced_request.name
+            result = RequestResult(balanced_request, response, parse_response, parse_on_error)
 
             if callable(callback):
                 callback(result.data, result.response)
 
-            if fail_fast and (result.response.error or result.data_parse_error is not None):
+            if fail_fast and result.failed:
                 raise FailFastError(result)
-            else:
-                future.set_result(result)
+
+            future.set_result(result)
 
         if add_to_finish_group and not self.handler.is_finished():
             request_finished_callback = self.handler.finish_group.add(request_finished_callback)
@@ -795,29 +794,6 @@ class HttpClient:
             timings_info = ('{}={}ms'.format(stage, int(timing * 1000)) for stage, timing in response.time_info.items())
             http_client_logger.info('Curl timings: %s', ' '.join(timings_info))
 
-    def _parse_response(self, response, parse_response, parse_on_error):
-        result = RequestResult()
-        result.response = response
-
-        if response.error and not parse_on_error:
-            data_or_error = DataParseError(reason=str(response.error), code=response.code)
-        elif not parse_response or response.code == 204:
-            data_or_error = response.body
-        else:
-            data_or_error = None
-            content_type = response.headers.get('Content-Type', '')
-            for k, v in DEFAULT_REQUEST_TYPES.items():
-                if k.search(content_type):
-                    data_or_error = v(result.response)
-                    break
-
-        if isinstance(data_or_error, DataParseError):
-            result.data_parse_error = data_or_error
-        else:
-            result.data = data_or_error
-
-        return result
-
 
 class DataParseError:
     __slots__ = ('attrs',)
@@ -827,28 +803,76 @@ class DataParseError:
 
 
 class RequestResult:
-    __slots__ = ('name', 'request', 'data', 'data_parse_error', 'response')
+    __slots__ = (
+        'name', 'request', 'response', 'parse_on_error', 'parse_response', '_content_type', '_data', '_data_parse_error'
+    )
 
-    def __init__(self):
-        self.name = None
-        self.request = None
-        self.data = None
-        self.data_parse_error = None
-        self.response = None
+    def __init__(self, request: BalancedHttpRequest, response: HTTPResponse,
+                 parse_response: bool, parse_on_error: bool):
+        self.name = request.name
+        self.request = request
+        self.response = response
+        self.parse_response = parse_response
+        self.parse_on_error = parse_on_error
+
+        self._content_type = None
+        self._data = None
+        self._data_parse_error = None
+
+    def _parse_data(self):
+        if self._data is not None or self._data_parse_error is not None:
+            return
+
+        if self.response.error and not self.parse_on_error:
+            data_or_error = DataParseError(reason=str(self.response.error), code=self.response.code)
+        elif not self.parse_response or self.response.code == 204:
+            data_or_error = self.response.body
+            self._content_type = 'raw'
+        else:
+            data_or_error = None
+            content_type = self.response.headers.get('Content-Type', '')
+            for name, (regex, parser) in RESPONSE_CONTENT_TYPES.items():
+                if regex.search(content_type):
+                    data_or_error = parser(self.response)
+                    self._content_type = name
+                    break
+
+        if isinstance(data_or_error, DataParseError):
+            self._data_parse_error = data_or_error
+        else:
+            self._data = data_or_error
+
+    @property
+    def data(self):
+        self._parse_data()
+        return self._data
+
+    @property
+    def data_parsing_failed(self) -> bool:
+        self._parse_data()
+        return self._data_parse_error is not None
+
+    @property
+    def failed(self):
+        return self.response.error or self.data_parsing_failed
 
     def to_dict(self):
-        if isinstance(self.data_parse_error, DataParseError):
+        self._parse_data()
+
+        if isinstance(self._data_parse_error, DataParseError):
             return {
-                'error': {k: v for k, v in self.data_parse_error.attrs.items()}
+                'error': {k: v for k, v in self._data_parse_error.attrs.items()}
             }
 
-        return self.data if isinstance(self.data, (dict, list)) else None
+        return self.data if self._content_type == 'json' else None
 
     def to_etree_element(self):
-        if isinstance(self.data_parse_error, DataParseError):
-            return etree.Element('error', **{k: str(v) for k, v in self.data_parse_error.attrs.items()})
+        self._parse_data()
 
-        return self.data if isinstance(self.data, etree._Element) else None
+        if isinstance(self._data_parse_error, DataParseError):
+            return etree.Element('error', **{k: str(v) for k, v in self._data_parse_error.attrs.items()})
+
+        return self.data if self._content_type == 'xml' else None
 
 
 def _parse_response(response, parser, response_type):
@@ -889,8 +913,8 @@ _parse_response_json = partial(_parse_response, parser=json.loads, response_type
 
 _parse_response_text = partial(_parse_response, parser=to_unicode, response_type='text')
 
-DEFAULT_REQUEST_TYPES = {
-    re.compile('.*xml.?'): _parse_response_xml,
-    re.compile('.*json.?'): _parse_response_json,
-    re.compile('.*text/plain.?'): _parse_response_text,
+RESPONSE_CONTENT_TYPES = {
+    'xml': (re.compile('.*xml.?'), _parse_response_xml),
+    'json': (re.compile('.*json.?'), _parse_response_json),
+    'text': (re.compile('.*text/plain.?'), _parse_response_text),
 }

@@ -58,8 +58,8 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
     def test_failed_future(self):
         d = Doc('a')
         f = Future()
-        result = RequestResult()
-        result.data_parse_error = DataParseError(reason='error', code='code')
+        result = self.get_test_request_result()
+        result._data_parse_error = DataParseError(reason='error', code='code')
         f.set_result(result)
         d.put(f)
 
@@ -70,8 +70,9 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
     def test_future_string_value(self):
         d = Doc('a')
         f = Future()
-        result = RequestResult()
-        result.data = 'plain_text'
+        result = self.get_test_request_result()
+        result._content_type = 'text'
+        result._data = 'plain_text'
         f.set_result(result)
         d.put(f)
 
@@ -137,3 +138,10 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
 
     def test_root_node_invalid(self):
         self.assertRaises(TypeError, Doc, root_node=etree.Comment('invalid root doc'))
+
+    @staticmethod
+    def get_test_request_result():
+        class FakeRequest:
+            name = 'name'
+
+        return RequestResult(FakeRequest(), None, False, False)

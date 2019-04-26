@@ -4,7 +4,8 @@ import unittest
 from tornado.concurrent import Future
 
 from frontik.json_builder import JsonBuilder
-from frontik.http_client import DataParseError, RequestResult
+from frontik.http_client import DataParseError
+from .test_doc import TestDoc
 
 
 class TestJsonBuilder(unittest.TestCase):
@@ -115,8 +116,9 @@ class TestJsonBuilder(unittest.TestCase):
     def test_future_string_value(self):
         j = JsonBuilder()
         f = Future()
-        result = RequestResult()
-        result.data = """i'm poor jlogic"""
+        result = TestDoc.get_test_request_result()
+        result._content_type = 'xml'
+        result._data = '<test>test</test>'
         f.set_result(result)
         j.put(f)
 
@@ -125,8 +127,8 @@ class TestJsonBuilder(unittest.TestCase):
     def test_failed_future(self):
         j = JsonBuilder()
         f = Future()
-        result = RequestResult()
-        result.data_parse_error = DataParseError(reason='error', code='code')
+        result = TestDoc.get_test_request_result()
+        result._data_parse_error = DataParseError(reason='error', code='code')
         f.set_result(result)
         j.put(f)
 
@@ -157,8 +159,8 @@ class TestJsonBuilder(unittest.TestCase):
         j.put(f1)
 
         self.assertEqual(j.to_string(), """{"nested": null}""")
-        result = RequestResult()
-        result.data_parse_error = DataParseError(reason='error', code='code')
+        result = TestDoc.get_test_request_result()
+        result._data_parse_error = DataParseError(reason='error', code='code')
 
         f2.set_result(
             {'a': result}

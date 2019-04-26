@@ -18,7 +18,7 @@ import frontik.util
 from frontik import media_types, request_context
 from frontik.futures import AbortAsyncGroup, AsyncGroup
 from frontik.debug import DebugMode
-from frontik.http_client import FailFastError, RequestResult
+from frontik.http_client import FailFastError, HttpClient, RequestResult
 from frontik.loggers.stages import StagesLogger
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors
 from frontik.version import version as frontik_version
@@ -69,7 +69,9 @@ class PageHandler(RequestHandler):
         return '.'.join([self.__module__, self.__class__.__name__])
 
     def prepare(self):
-        self._http_client = self.application.http_client_factory.get_http_client(self, self.modify_http_client_request)
+        self._http_client = self.application.http_client_factory.get_http_client(
+            self, self.modify_http_client_request
+        )  # type: HttpClient
 
         self.active_limit = frontik.handler_active_limit.ActiveHandlersLimit(self.statsd_client)
         self.debug_mode = DebugMode(self)

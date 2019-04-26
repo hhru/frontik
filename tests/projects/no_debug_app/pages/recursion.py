@@ -10,7 +10,7 @@ class Page(handler.PageHandler):
             if response.error:
                 self.text = str(response.code)
             else:
-                self.text = f'200 {to_unicode(text)}'
+                self.text = f'200 {text}'
 
         n = int(self.get_argument('n'))
         if n > 0:
