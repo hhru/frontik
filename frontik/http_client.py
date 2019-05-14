@@ -666,7 +666,7 @@ class HttpClient:
                     'metrics_requests',
                     utf8(json.dumps({
                         'app': options.app,
-                        'dc': balanced_request.current_datacenter,
+                        'dc': balanced_request.current_datacenter or options.datacenter,
                         'hostname': balanced_request.current_host,
                         'requestId': self.handler.request_id,
                         'status': response.code,
