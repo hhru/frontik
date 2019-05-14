@@ -464,19 +464,14 @@ class HttpClientFactory:
             http_client_logger.info('kafka metrics are %s', 'enabled' if send_metrics_to_kafka else 'disabled')
 
         self._send_metrics_to_kafka = send_metrics_to_kafka
-        self._metrics_heartbeat = None
         self._kafka_cluster = kafka_cluster
 
     def get_http_client(self, handler, modify_http_request_hook):
-        if self._metrics_heartbeat is None and self._send_metrics_to_kafka:
-            self._metrics_heartbeat = PeriodicCallback(
-                self._metrics_heartbeat_callback, options.http_client_metrics_heartbeat_interval_sec * 1000
-            )
-            self._metrics_heartbeat.start()
+        kafka_producer = handler.get_kafka_producer(self._kafka_cluster) if self._send_metrics_to_kafka else None
 
         return HttpClient(
             handler, self.tornado_http_client, modify_http_request_hook, self.upstreams, handler.statsd_client,
-            self._kafka_cluster
+            kafka_producer
         )
 
     def update_upstream(self, name, config):
@@ -506,33 +501,15 @@ class HttpClientFactory:
         upstream.update(upstream_config, servers)
         http_client_logger.info('update %s upstream: %s', name, str(upstream))
 
-    def _metrics_heartbeat_callback(self):
-        kafka_producer = (
-            self.app.get_kafka_producer(self._kafka_cluster) if hasattr(self.app, 'get_kafka_producer') else None
-        )
-
-        if kafka_producer:
-            asyncio.get_event_loop().create_task(kafka_producer.send(
-                'metrics_heartbeat',
-                utf8(json.dumps({
-                    'app': options.app,
-                    'dc': options.datacenter,
-                    'hostname': self.hostname,
-                    'ts': int(time.time()),
-                }, ensure_ascii=False))
-            ))
-
 
 class HttpClient:
-    def __init__(self, handler, http_client_impl, modify_http_request_hook, upstreams, statsd_client, kafka_cluster):
+    def __init__(self, handler, http_client_impl, modify_http_request_hook, upstreams, statsd_client, kafka_producer):
         self.handler = handler
         self.modify_http_request_hook = modify_http_request_hook
         self.http_client_impl = http_client_impl
         self.upstreams = upstreams
         self.statsd_client = statsd_client
-        self.kafka_producer = (
-            handler.get_kafka_producer(kafka_cluster) if hasattr(handler, 'get_kafka_producer') else None
-        )
+        self.kafka_producer = kafka_producer
 
     def get_upstream(self, host):
         return self.upstreams.get(host, Upstream.get_single_host_upstream())
@@ -684,7 +661,7 @@ class HttpClient:
             )
             self.statsd_client.flush()
 
-            if self.kafka_producer is not None and response.code >= 500 and not do_retry:
+            if self.kafka_producer is not None and not do_retry:
                 asyncio.get_event_loop().create_task(self.kafka_producer.send(
                     'metrics_requests',
                     utf8(json.dumps({
