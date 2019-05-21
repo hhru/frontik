@@ -662,17 +662,13 @@ class HttpClient:
             self.statsd_client.flush()
 
             if self.kafka_producer is not None and not do_retry:
+                dc = balanced_request.current_datacenter or options.datacenter or 'unknown'
+
                 asyncio.get_event_loop().create_task(self.kafka_producer.send(
                     'metrics_requests',
-                    utf8(json.dumps({
-                        'app': options.app,
-                        'dc': balanced_request.current_datacenter or options.datacenter,
-                        'hostname': balanced_request.current_host,
-                        'requestId': self.handler.request_id,
-                        'status': response.code,
-                        'ts': int(time.time()),
-                        'upstream': balanced_request.get_host()
-                    }, ensure_ascii=False))
+                    utf8(f'{{"app":"{options.app}","dc":"{dc}","hostname":"{balanced_request.current_host}",'
+                         f'"requestId":"{self.handler.request_id}","status":{response.code},"ts":{int(time.time())},'
+                         f'"upstream":"{balanced_request.get_host()}"}}')
                 ))
 
             if do_retry:

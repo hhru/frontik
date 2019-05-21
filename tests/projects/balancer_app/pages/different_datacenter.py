@@ -14,8 +14,7 @@ class Page(PageHandler):
         normal_server.rack = 'rack1'
         normal_server.datacenter = 'dc2'
 
-        self.application.http_client_factory.register_upstream(
-            'different_datacenter', {}, [free_server, normal_server])
+        self.application.http_client_factory.register_upstream('different_datacenter', {}, [free_server, normal_server])
 
         def callback(text, response):
             if free_server.requests != 1:

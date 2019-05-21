@@ -22,9 +22,9 @@ class KafkaIntegration(Integration):
         if options.kafka_clusters:
             init_futures = []
 
-            for cluster_name, cluster_settings in options.kafka_clusters.items():
-                if cluster_settings:
-                    producer = AIOKafkaProducer(loop=asyncio.get_event_loop(), **cluster_settings)
+            for cluster_name, producer_settings in options.kafka_clusters.items():
+                if producer_settings:
+                    producer = AIOKafkaProducer(loop=asyncio.get_event_loop(), **producer_settings)
                     self.kafka_producers[cluster_name] = producer
                     init_futures.append(asyncio.ensure_future(producer.start()))
 
