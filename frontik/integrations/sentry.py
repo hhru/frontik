@@ -24,6 +24,12 @@ class SentryIntegration(Integration):
             # breadcrumbs have serious performance penalties
             enable_breadcrumbs=False, install_logging_hook=False, install_sys_hook=False
         )
+
+        def get_sentry_logger(request):
+            return SentryLogger(self.sentry_client, request)
+
+        app.get_sentry_logger = get_sentry_logger
+
         return None
 
     def initialize_handler(self, handler):
@@ -32,7 +38,7 @@ class SentryIntegration(Integration):
 
         def get_sentry_logger():
             if not hasattr(handler, 'sentry_logger'):
-                handler.sentry_logger = SentryLogger(self.sentry_client, handler.request)
+                handler.sentry_logger = handler.application.get_sentry_logger(handler.request)
                 if hasattr(handler, 'initialize_sentry_logger'):
                     handler.initialize_sentry_logger(handler.sentry_logger)
 

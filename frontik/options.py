@@ -18,6 +18,7 @@ define('port', 8080, int)
 define('autoreload', False, bool)
 define('stop_timeout', 3, int)
 define('asyncio_task_threshold_sec', None, float)
+define('asyncio_task_critical_threshold_sec', None, float)
 
 define('log_dir', default=None, type=str, help='Log file name')
 define('log_level', default='info', type=str, help='Log level')

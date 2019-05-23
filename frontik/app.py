@@ -2,6 +2,7 @@ import importlib
 import sys
 import time
 from functools import partial
+from typing import TYPE_CHECKING
 
 import pycurl
 import tornado
@@ -19,6 +20,13 @@ from frontik.http_client import HttpClientFactory
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.routing import FileMappingRouter, FrontikRouter
 from frontik.version import version as frontik_version
+
+if TYPE_CHECKING:
+    from typing import Optional
+
+    from tornado.httputil import HTTPServerRequest
+
+    from frontik.integrations.sentry import SentryLogger
 
 
 def get_frontik_and_apps_versions(application):
@@ -88,11 +96,11 @@ class FrontikApplication(Application):
         if request_id is None:
             request_id = FrontikApplication.next_request_id()
 
-        context = partial(request_context.RequestContext, {'request_id': request_id})
+        context = partial(request_context.RequestContext, {'request': request, 'request_id': request_id})
 
         def wrapped_in_context(func):
             def wrapper(*args, **kwargs):
-                token = request_context.initialize(request_id)
+                token = request_context.initialize(request, request_id)
 
                 try:
                     with StackContext(context):
@@ -178,3 +186,6 @@ class FrontikApplication(Application):
             extra['controller'] = handler_name
 
         JSON_REQUESTS_LOGGER.info('', extra={CUSTOM_JSON_EXTRA: extra})
+
+    def get_sentry_logger(self, request: 'HTTPServerRequest') -> 'Optional[SentryLogger]':  # pragma: no cover
+        pass
