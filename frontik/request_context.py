@@ -3,23 +3,28 @@ import threading
 
 
 class _Context:
-    __slots__ = ('request_id', 'handler_name', 'log_handler')
+    __slots__ = ('request', 'request_id', 'handler_name', 'log_handler')
 
-    def __init__(self, request_id):
+    def __init__(self, request, request_id):
+        self.request = request
         self.request_id = request_id
         self.handler_name = None
         self.log_handler = None
 
 
-_context = contextvars.ContextVar('context', default=_Context(None))
+_context = contextvars.ContextVar('context', default=_Context(None, None))
 
 
-def initialize(request_id):
-    return _context.set(_Context(request_id))
+def initialize(request, request_id):
+    return _context.set(_Context(request, request_id))
 
 
 def reset(token):
     _context.reset(token)
+
+
+def get_request():
+    return RequestContext.get('request') or _context.get().request
 
 
 def get_request_id():

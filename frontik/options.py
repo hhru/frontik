@@ -18,6 +18,7 @@ define('port', 8080, int)
 define('autoreload', False, bool)
 define('stop_timeout', 3, int)
 define('asyncio_task_threshold_sec', None, float)
+define('asyncio_task_critical_threshold_sec', None, float)
 
 define('log_dir', default=None, type=str, help='Log file name')
 define('log_level', default='info', type=str, help='Log level')
@@ -54,7 +55,6 @@ define('http_proxy_host', default=None, type=str)
 define('http_proxy_port', default=3128, type=int)
 define('http_client_allow_cross_datacenter_requests', default=False, type=bool)
 define('http_client_metrics_kafka_cluster', default=None, type=str)
-define('http_client_metrics_heartbeat_interval_sec', default=15, type=int)
 
 define('kafka_clusters', default={}, type=dict)
 

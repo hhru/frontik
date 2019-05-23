@@ -9,25 +9,25 @@ matrix:
     - os: linux
       dist: xenial
       python: "3.7"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=0
+      env: TORNADO_VERSION=HH ; WITH_EXTRAS=0
     - os: linux
       dist: xenial
       python: "3.7"
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=1
+      env: TORNADO_VERSION=HH ; WITH_EXTRAS=1
     - os: linux
       dist: xenial
       python: "3.7"
-      env: TORNADO_VERSION=5.0.2 ; WITH_RAVEN=1
+      env: TORNADO_VERSION=5.0.2 ; WITH_EXTRAS=1
     - os: linux
       dist: xenial
       python: "3.7"
-      env: TORNADO_VERSION=5.0.2 ; WITH_RAVEN=1 ; WITH_COVERAGE=1
+      env: TORNADO_VERSION=5.0.2 ; WITH_EXTRAS=1 ; WITH_COVERAGE=1
       before_install:
       - pip3 install coverage coveralls
     - os: osx
-      osx_image: xcode9.4
+      osx_image: xcode10
       language: generic
-      env: TORNADO_VERSION=HH ; WITH_RAVEN=1 ; OSX=1
+      env: TORNADO_VERSION=HH ; WITH_EXTRAS=1 ; OSX=1
       before_install:
       - brew reinstall openssl
       - pip3 uninstall pycurl
@@ -35,7 +35,7 @@ matrix:
 install:
   - if [[ $OSX != 1 ]]; then sudo apt-get install libgnutls28-dev libcurl4-gnutls-dev; fi
   - if [[ $TORNADO_VERSION == 'HH' ]]; then pip3 install https://github.com/hhru/tornado/archive/master.zip; else pip3 install tornado==$TORNADO_VERSION; fi
-  - if [[ $WITH_RAVEN == 1 ]]; then pip3 install raven; fi
+  - if [[ $WITH_EXTRAS == 1 ]]; then pip3 install raven aiokafka; fi
   - python3 setup.py install
 script:
   - if [[ -n $WITH_COVERAGE ]]; then ./coverage-run.sh && coveralls; else python3 setup.py test; fi
