@@ -11,7 +11,7 @@ import pycurl
 import logging
 from lxml import etree
 from tornado.escape import to_unicode, utf8
-from tornado.ioloop import IOLoop, PeriodicCallback
+from tornado.ioloop import IOLoop
 from tornado.curl_httpclient import CurlAsyncHTTPClient
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPResponse, HTTPError
 from tornado.httputil import HTTPHeaders
@@ -22,6 +22,18 @@ from frontik.futures import AsyncGroup
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.debug import DEBUG_HEADER_NAME, response_from_debug
 from frontik.util import make_url, make_body, make_mfd
+
+
+def HTTPResponse__repr__(self):
+    repr_attrs = ['effective_url', 'code', 'reason', 'error']
+    repr_values = [(attr, self.__dict__[attr]) for attr in repr_attrs]
+
+    args = ', '.join(f'{name}={value}' for name, value in repr_values if value is not None)
+
+    return f'{self.__class__.__name__}({args})'
+
+
+HTTPResponse.__repr__ = HTTPResponse__repr__
 
 
 def _string_to_dict(s):
