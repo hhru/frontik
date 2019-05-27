@@ -59,7 +59,7 @@ def run_server(app: FrontikApplication):
             import asyncio
             import reprlib
 
-            reprlib.aRepr.maxother = 128
+            reprlib.aRepr.maxother = 256
             old_run = asyncio.Handle._run
 
             def run(self):
