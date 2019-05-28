@@ -4,6 +4,7 @@ import os.path
 import signal
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import tornado.autoreload
 import tornado.httpserver
@@ -143,6 +144,9 @@ def main(config_file=None):
         app = application(app_root=os.path.dirname(module.__file__), **options.as_dict())
         ioloop = tornado.ioloop.IOLoop.current()
 
+        executor = ThreadPoolExecutor(options.common_executor_pool_size)
+        ioloop.asyncio_loop.set_default_executor(executor)
+
         def _async_init_cb():
             try:
                 init_futures = app.default_init_futures + list(app.init_async())
@@ -165,6 +169,7 @@ def main(config_file=None):
 
         ioloop.add_callback(_async_init_cb)
         ioloop.start()
+
     except BaseException:
         log.exception('frontik application exited with exception')
         sys.exit(1)
