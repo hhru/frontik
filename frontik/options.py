@@ -14,6 +14,7 @@ define('xheaders', default=False, type=bool)
 define('config', None, str)
 define('host', '0.0.0.0', str)
 define('port', 8080, int)
+define('common_executor_pool_size', 10, int)
 
 define('autoreload', False, bool)
 define('stop_timeout', 3, int)
