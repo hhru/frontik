@@ -535,114 +535,82 @@ class PageHandler(RequestHandler):
                 connect_timeout=None, request_timeout=None, max_timeout_tries=None,
                 callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
-        if waited and self.is_finished():
-            future = self._cancel_http_request_in_finished_handler(host, uri)
-        else:
-            if waited and callable(callback):
-                callback = self.check_finished(callback)
+        client_method = lambda callback: self._http_client.get_url(
+            host, uri, name=name, data=data, headers=headers, follow_redirects=follow_redirects,
+            connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
+            callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+        )
 
-            future = self._http_client.get_url(
-                host, uri, name=name, data=data, headers=headers, follow_redirects=follow_redirects,
-                connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-                callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
-            )
-
-            if waited:
-                self.finish_group.add_future(future)
-
-        return future
+        return self._execute_http_client_method(host, uri, client_method, waited, callback)
 
     def head_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None,
                  callback=None, waited=True, fail_fast=False):
 
-        if waited and self.is_finished():
-            future = self._cancel_http_request_in_finished_handler(host, uri)
-        else:
-            if waited and callable(callback):
-                callback = self.check_finished(callback)
+        client_method = lambda callback: self._http_client.head_url(
+            host, uri, data=data, name=name, headers=headers, follow_redirects=follow_redirects,
+            connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
+            callback=callback, fail_fast=fail_fast
+        )
 
-            future = self._http_client.head_url(
-                host, uri, data=data, name=name, headers=headers, follow_redirects=follow_redirects,
-                connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-                callback=callback, fail_fast=fail_fast
-            )
-
-            if waited:
-                self.finish_group.add_future(future)
-
-        return future
+        return self._execute_http_client_method(host, uri, client_method, waited, callback)
 
     def post_url(self, host, uri, *,
                  name=None, data='', headers=None, files=None, content_type=None, follow_redirects=True,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=False,
                  callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
-        if waited and self.is_finished():
-            future = self._cancel_http_request_in_finished_handler(host, uri)
-        else:
-            if waited and callable(callback):
-                callback = self.check_finished(callback)
+        client_method = lambda callback: self._http_client.post_url(
+            host, uri, data=data, name=name, headers=headers, files=files, content_type=content_type,
+            follow_redirects=follow_redirects, connect_timeout=connect_timeout, request_timeout=request_timeout,
+            max_timeout_tries=max_timeout_tries, idempotent=idempotent,
+            callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+        )
 
-            future = self._http_client.post_url(
-                host, uri, data=data, name=name, headers=headers, files=files, content_type=content_type,
-                follow_redirects=follow_redirects, connect_timeout=connect_timeout, request_timeout=request_timeout,
-                max_timeout_tries=max_timeout_tries, idempotent=idempotent,
-                callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
-            )
-
-            if waited:
-                self.finish_group.add_future(future)
-
-        return future
+        return self._execute_http_client_method(host, uri, client_method, waited, callback)
 
     def put_url(self, host, uri, *, name=None, data='', headers=None, content_type=None,
                 connect_timeout=None, request_timeout=None, max_timeout_tries=None,
                 callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
-        if waited and self.is_finished():
-            future = self._cancel_http_request_in_finished_handler(host, uri)
-        else:
-            if waited and callable(callback):
-                callback = self.check_finished(callback)
+        client_method = lambda callback: self._http_client.put_url(
+            host, uri, name=name, data=data, headers=headers, content_type=content_type,
+            connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
+            callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+        )
 
-            future = self._http_client.put_url(
-                host, uri, name=name, data=data, headers=headers, content_type=content_type,
-                connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-                callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
-            )
-
-            if waited:
-                self.finish_group.add_future(future)
-
-        return future
+        return self._execute_http_client_method(host, uri, client_method, waited, callback)
 
     def delete_url(self, host, uri, *, name=None, data=None, headers=None, content_type=None,
                    connect_timeout=None, request_timeout=None, max_timeout_tries=None,
                    callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
-        if waited and self.is_finished():
-            future = self._cancel_http_request_in_finished_handler(host, uri)
-        else:
-            if waited and callable(callback):
-                callback = self.check_finished(callback)
+        client_method = lambda callback: self._http_client.delete_url(
+            host, uri, name=name, data=data, headers=headers, content_type=content_type,
+            connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
+            callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+        )
 
-            future = self._http_client.delete_url(
-                host, uri, name=name, data=data, headers=headers, content_type=content_type,
-                connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-                callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+        return self._execute_http_client_method(host, uri, client_method, waited, callback)
+
+    def _execute_http_client_method(self, host, uri, client_method, waited, callback):
+        if waited and self.is_finished():
+            handler_logger.info(
+                'attempted to make waited http request to %s %s in finished handler, ignoring', host, uri
             )
 
-            if waited:
-                self.finish_group.add_future(future)
+            future = Future()
+            future.cancel()
+            return future
 
-        return future
+        if waited and callable(callback):
+            callback = self.check_finished(callback)
 
-    def _cancel_http_request_in_finished_handler(self, host, uri):
-        handler_logger.info('attempted to make waited http request to %s %s in finished handler, ignoring', host, uri)
+        future = client_method(callback)
 
-        future = Future()
-        future.cancel()
+        if waited:
+            self.finish_group.add_future(future)
+
         return future
 
 
