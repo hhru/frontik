@@ -1,30 +1,16 @@
-import json
-
 from tornado import gen
 
 from frontik.handler import PageHandler
 
 
 class Page(PageHandler):
-    def __init__(self, application, request, **kwargs):
-        super().__init__(application, request, **kwargs)
-
-        self._kafka_producer = TestKafkaProducer(self)
-        self.get_kafka_producer = lambda _: self._kafka_producer
-
     def get_page(self):
+        self.get_kafka_producer('infrastructure').enable_for_request_id(self.request_id)
+
         yield self.post_url(self.request.host, self.request.uri)
         yield gen.sleep(0.1)
 
+        self.json.put(*self.get_kafka_producer('infrastructure').disable_and_get_data())
+
     def post_page(self):
         self.set_status(500)
-
-
-class TestKafkaProducer:
-    def __init__(self, handler):
-        self.handler = handler
-
-    async def send(self, topic, value=None):
-        self.handler.json.put({
-            topic: json.loads(value)
-        })

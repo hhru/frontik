@@ -18,9 +18,8 @@ from tornado.httputil import HTTPHeaders
 from tornado.options import options
 
 from frontik import media_types
-from frontik.futures import AsyncGroup
-from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.debug import DEBUG_HEADER_NAME, response_from_debug
+from frontik.request_context import get_request_id
 from frontik.util import make_url, make_body, make_mfd
 
 
@@ -447,7 +446,7 @@ class BalancedHttpRequest:
 
 
 class HttpClientFactory:
-    def __init__(self, app, upstreams):
+    def __init__(self, application, upstreams):
         AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
 
         self.tornado_http_client = AsyncHTTPClient()
@@ -456,7 +455,7 @@ class HttpClientFactory:
         if options.max_http_clients_connects is not None:
             self.tornado_http_client._multi.setopt(pycurl.M_MAXCONNECTS, options.max_http_clients_connects)
 
-        self.app = app
+        self.application = application
         self.upstreams = {}
 
         for name, upstream in upstreams.items():
@@ -479,11 +478,13 @@ class HttpClientFactory:
         self._kafka_cluster = kafka_cluster
 
     def get_http_client(self, handler, modify_http_request_hook):
-        kafka_producer = handler.get_kafka_producer(self._kafka_cluster) if self._send_metrics_to_kafka else None
+        kafka_producer = (
+            self.application.get_kafka_producer(self._kafka_cluster) if self._send_metrics_to_kafka else None
+        )
 
         return HttpClient(
-            handler, self.tornado_http_client, modify_http_request_hook, self.upstreams, handler.statsd_client,
-            kafka_producer
+            self.tornado_http_client, handler.debug_mode, modify_http_request_hook, self.upstreams,
+            self.application.statsd_client, kafka_producer
         )
 
     def update_upstream(self, name, config):
@@ -515,10 +516,11 @@ class HttpClientFactory:
 
 
 class HttpClient:
-    def __init__(self, handler, http_client_impl, modify_http_request_hook, upstreams, statsd_client, kafka_producer):
-        self.handler = handler
-        self.modify_http_request_hook = modify_http_request_hook
+    def __init__(self, http_client_impl, debug_mode, modify_http_request_hook, upstreams,
+                 statsd_client, kafka_producer):
         self.http_client_impl = http_client_impl
+        self.debug_mode = debug_mode
+        self.modify_http_request_hook = modify_http_request_hook
         self.upstreams = upstreams
         self.statsd_client = statsd_client
         self.kafka_producer = kafka_producer
@@ -526,95 +528,67 @@ class HttpClient:
     def get_upstream(self, host):
         return self.upstreams.get(host, Upstream.get_single_host_upstream())
 
-    def group(self, futures, callback=None, name=None):
-        group_future = Future()
-        results_holder = {}
-
-        def group_callback():
-            if callable(callback):
-                callback(results_holder)
-            group_future.set_result(results_holder)
-
-        def future_callback(name, future):
-            results_holder[name] = future.result()
-
-        async_group = AsyncGroup(self.handler.finish_group.add(self.handler.check_finished(group_callback)), name=name)
-
-        for name, future in futures.items():
-            if future.done():
-                future_callback(name, future)
-            else:
-                self.handler.add_future(future, async_group.add(partial(future_callback, name)))
-
-        async_group.try_finish_async()
-
-        return group_future
-
     def get_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True,
                 connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=False, fail_fast=False):
+                callback=None, parse_response=True, parse_on_error=False, fail_fast=False):
 
-        request = BalancedHttpRequest(host, self.get_upstream(host), uri, name, 'GET', data, headers,
-                                      None, None, connect_timeout, request_timeout, max_timeout_tries,
-                                      follow_redirects)
-
-        return self._fetch_with_retry(
-            request, callback, add_to_finish_group, parse_response, parse_on_error, fail_fast
+        request = BalancedHttpRequest(
+            host, self.get_upstream(host), uri, name, 'GET', data, headers, None, None,
+            connect_timeout, request_timeout, max_timeout_tries, follow_redirects
         )
+
+        return self._fetch_with_retry(request, callback, parse_response, parse_on_error, fail_fast)
 
     def head_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                 callback=None, add_to_finish_group=True, fail_fast=False):
+                 callback=None, fail_fast=False):
 
-        request = BalancedHttpRequest(host, self.get_upstream(host), uri, name, 'HEAD', data, headers,
-                                      None, None, connect_timeout, request_timeout, max_timeout_tries,
-                                      follow_redirects)
+        request = BalancedHttpRequest(
+            host, self.get_upstream(host), uri, name, 'HEAD', data, headers, None, None,
+            connect_timeout, request_timeout, max_timeout_tries, follow_redirects
+        )
 
-        return self._fetch_with_retry(request, callback, add_to_finish_group, False, False, fail_fast)
+        return self._fetch_with_retry(request, callback, False, False, fail_fast)
 
     def post_url(self, host, uri, *,
                  name=None, data='', headers=None, files=None, content_type=None, follow_redirects=True,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=False,
-                 callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=False, fail_fast=False):
+                 callback=None, parse_response=True, parse_on_error=False, fail_fast=False):
 
-        request = BalancedHttpRequest(host, self.get_upstream(host), uri, name, 'POST', data, headers,
-                                      files, content_type, connect_timeout, request_timeout, max_timeout_tries,
-                                      follow_redirects, idempotent)
-
-        return self._fetch_with_retry(
-            request, callback, add_to_finish_group, parse_response, parse_on_error, fail_fast
+        request = BalancedHttpRequest(
+            host, self.get_upstream(host), uri, name, 'POST', data, headers, files, content_type,
+            connect_timeout, request_timeout, max_timeout_tries, follow_redirects, idempotent
         )
+
+        return self._fetch_with_retry(request, callback, parse_response, parse_on_error, fail_fast)
 
     def put_url(self, host, uri, *, name=None, data='', headers=None, content_type=None,
                 connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=False, fail_fast=False):
+                callback=None, parse_response=True, parse_on_error=False, fail_fast=False):
 
-        request = BalancedHttpRequest(host, self.get_upstream(host), uri, name, 'PUT', data, headers,
-                                      None, content_type, connect_timeout, request_timeout, max_timeout_tries)
-
-        return self._fetch_with_retry(
-            request, callback, add_to_finish_group, parse_response, parse_on_error, fail_fast
+        request = BalancedHttpRequest(
+            host, self.get_upstream(host), uri, name, 'PUT', data, headers, None, content_type,
+            connect_timeout, request_timeout, max_timeout_tries
         )
+
+        return self._fetch_with_retry(request, callback, parse_response, parse_on_error, fail_fast)
 
     def delete_url(self, host, uri, *, name=None, data=None, headers=None, content_type=None,
                    connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                   callback=None, add_to_finish_group=True, parse_response=True, parse_on_error=False, fail_fast=False):
+                   callback=None, parse_response=True, parse_on_error=False, fail_fast=False):
 
-        request = BalancedHttpRequest(host, self.get_upstream(host), uri, name, 'DELETE', data, headers,
-                                      None, content_type, connect_timeout, request_timeout, max_timeout_tries)
-
-        return self._fetch_with_retry(
-            request, callback, add_to_finish_group, parse_response, parse_on_error, fail_fast
+        request = BalancedHttpRequest(
+            host, self.get_upstream(host), uri, name, 'DELETE', data, headers, None, content_type,
+            connect_timeout, request_timeout, max_timeout_tries
         )
 
-    def _fetch_with_retry(self, balanced_request, callback, add_to_finish_group, parse_response, parse_on_error,
+        return self._fetch_with_retry(request, callback, parse_response, parse_on_error, fail_fast)
+
+    def _fetch_with_retry(self, balanced_request, callback, parse_response, parse_on_error,
                           fail_fast) -> 'Future[RequestResult]':
         future = Future()
 
         def request_finished_callback(response):
-            if response is None:
-                return
-
             if balanced_request.tried_hosts is not None:
                 self.statsd_client.count(
                     'http.client.retries', 1,
@@ -624,10 +598,6 @@ class HttpClient:
                     tries=len(balanced_request.tried_hosts),
                     status=response.code
                 )
-
-            if callback is not None and self.handler.is_finished():
-                http_client_logger.warning(f'page was already finished, {callback} ignored')
-                return
 
             result = RequestResult(balanced_request, response, parse_response, parse_on_error)
 
@@ -639,14 +609,7 @@ class HttpClient:
 
             future.set_result(result)
 
-        if add_to_finish_group and not self.handler.is_finished():
-            request_finished_callback = self.handler.finish_group.add(request_finished_callback)
-
-        def retry_callback(response=None):
-            if response is None:
-                request_finished_callback(None)
-                return
-
+        def retry_callback(response):
             if isinstance(response.error, Exception) and not isinstance(response.error, HTTPError):
                 raise response.error
 
@@ -657,33 +620,6 @@ class HttpClient:
             do_retry = balanced_request.check_retry(response)
 
             self._log_response(balanced_request, response, retries_count, do_retry, debug_extra)
-            self.statsd_client.stack()
-            self.statsd_client.count(
-                'http.client.requests', 1,
-                upstream=balanced_request.get_host(),
-                dc=balanced_request.current_datacenter,
-                final='false' if do_retry else 'true',
-                status=response.code
-            )
-            self.statsd_client.time(
-                'http.client.request.time',
-                int(response.request_time * 1000),
-                dc=balanced_request.current_datacenter,
-                upstream=balanced_request.get_host()
-            )
-            self.statsd_client.flush()
-
-            if self.kafka_producer is not None and not do_retry:
-                dc = balanced_request.current_datacenter or options.datacenter or 'unknown'
-                current_host = balanced_request.current_host or 'unknown'
-                request_id = self.handler.request_id or 'unknown'
-                upstream = balanced_request.get_host() or 'unknown'
-
-                asyncio.get_event_loop().create_task(self.kafka_producer.send(
-                    'metrics_requests',
-                    utf8(f'{{"app":"{options.app}","dc":"{dc}","hostname":"{current_host}","requestId":"{request_id}",'
-                         f'"status":{response.code},"ts":{int(time.time())},"upstream":"{upstream}"}}')
-                ))
 
             if do_retry:
                 self._fetch(balanced_request, retry_callback)
@@ -697,37 +633,17 @@ class HttpClient:
         return future
 
     def _fetch(self, balanced_request, callback):
-        if self.handler.is_finished():
-            http_client_logger.warning(
-                'attempted to make http request to %s %s when page is finished, ignoring',
-                balanced_request.get_host(),
-                balanced_request.uri
-            )
-
-            callback(None)
-            return
-
         request = balanced_request.make_request()
 
         if not balanced_request.backend_available():
-            response = HTTPResponse(request, 502,
-                                    error=HTTPError(502, 'No backend available for ' + balanced_request.get_host()),
-                                    request_time=0)
+            response = HTTPResponse(
+                request, 502, error=HTTPError(502, 'No backend available for ' + balanced_request.get_host()),
+                request_time=0
+            )
             IOLoop.current().add_callback(callback, response)
             return
 
-        if self.handler.debug_mode.pass_debug:
-            request.headers[DEBUG_HEADER_NAME] = 'true'
-
-            # debug_timestamp is added to avoid caching of debug responses
-            request.url = make_url(request.url, debug_timestamp=int(time.time()))
-
-            for header_name in ('Authorization', DEBUG_AUTH_HEADER_NAME):
-                authorization = self.handler.request.headers.get(header_name)
-                if authorization is not None:
-                    request.headers[header_name] = authorization
-
-        request.headers['X-Request-Id'] = self.handler.request_id
+        request.headers['x-request-id'] = get_request_id()
 
         if isinstance(self.http_client_impl, CurlAsyncHTTPClient):
             request.prepare_curl_callback = partial(
@@ -752,12 +668,15 @@ class HttpClient:
                     debug_xml, response = debug_response
                     debug_extra['_debug_response'] = debug_xml
 
-            if self.handler.debug_mode.enabled:
-                debug_extra.update({'_response': response, '_request': request,
-                                    '_request_retry': retries_count,
-                                    '_rack': balanced_request.current_rack,
-                                    '_datacenter': balanced_request.current_datacenter,
-                                    '_balanced_request': balanced_request})
+            if self.debug_mode.enabled:
+                debug_extra.update({
+                    '_response': response,
+                    '_request': request,
+                    '_request_retry': retries_count,
+                    '_rack': balanced_request.current_rack,
+                    '_datacenter': balanced_request.current_datacenter,
+                    '_balanced_request': balanced_request
+                })
         except Exception:
             http_client_logger.exception('Cannot get response from debug')
 
@@ -780,6 +699,34 @@ class HttpClient:
         if response.code == 599:
             timings_info = ('{}={}ms'.format(stage, int(timing * 1000)) for stage, timing in response.time_info.items())
             http_client_logger.info('Curl timings: %s', ' '.join(timings_info))
+
+        self.statsd_client.stack()
+        self.statsd_client.count(
+            'http.client.requests', 1,
+            upstream=balanced_request.get_host(),
+            dc=balanced_request.current_datacenter,
+            final='false' if do_retry else 'true',
+            status=response.code
+        )
+        self.statsd_client.time(
+            'http.client.request.time',
+            int(response.request_time * 1000),
+            dc=balanced_request.current_datacenter,
+            upstream=balanced_request.get_host()
+        )
+        self.statsd_client.flush()
+
+        if self.kafka_producer is not None and not do_retry:
+            dc = balanced_request.current_datacenter or options.datacenter or 'unknown'
+            current_host = balanced_request.current_host or 'unknown'
+            request_id = get_request_id() or 'unknown'
+            upstream = balanced_request.get_host() or 'unknown'
+
+            asyncio.get_event_loop().create_task(self.kafka_producer.send(
+                'metrics_requests',
+                utf8(f'{{"app":"{options.app}","dc":"{dc}","hostname":"{current_host}","requestId":"{request_id}",'
+                     f'"status":{response.code},"ts":{int(time.time())},"upstream":"{upstream}"}}')
+            ))
 
 
 class DataParseError:
