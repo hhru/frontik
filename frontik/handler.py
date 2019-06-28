@@ -293,6 +293,8 @@ class PageHandler(RequestHandler):
         return postprocessed_result
 
     def on_connection_close(self):
+        super().on_connection_close()
+
         self.finish_group.abort()
         self.stages_logger.commit_stage('page')
         self.stages_logger.flush_stages(408)
@@ -594,7 +596,7 @@ class PageHandler(RequestHandler):
         return self._execute_http_client_method(host, uri, client_method, waited, callback)
 
     def _execute_http_client_method(self, host, uri, client_method, waited, callback):
-        if waited and self.is_finished():
+        if waited and (self.is_finished() or self.finish_group.is_finished()):
             handler_logger.info(
                 'attempted to make waited http request to %s %s in finished handler, ignoring', host, uri
             )

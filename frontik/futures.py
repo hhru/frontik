@@ -31,6 +31,9 @@ class AsyncGroup:
         self._future = Future()
         self._start_time = time.time()
 
+    def is_finished(self):
+        return self._finished
+
     def abort(self):
         async_logger.info('aborting %s', self)
         self._finished = True
