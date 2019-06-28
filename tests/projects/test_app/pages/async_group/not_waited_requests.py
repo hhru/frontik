@@ -1,11 +1,9 @@
-from asyncio import CancelledError
-
 from tornado import gen
 
-import frontik.handler
+from frontik.handler import AbortAsyncGroup, PageHandler
 
 
-class Page(frontik.handler.PageHandler):
+class Page(PageHandler):
     data = {}
 
     def get_page(self):
@@ -33,7 +31,7 @@ class Page(frontik.handler.PageHandler):
         # HTTP requests with waited=True are aborted after handler is finished
         try:
             yield self.delete_url(self.request.host, self.request.path, waited=True)
-        except CancelledError:
+        except AbortAsyncGroup:
             self.record_request({'delete_cancelled': True})
 
     def post_page(self):

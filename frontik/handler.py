@@ -602,7 +602,7 @@ class PageHandler(RequestHandler):
             )
 
             future = Future()
-            future.cancel()
+            future.set_exception(AbortAsyncGroup())
             return future
 
         if waited and callable(callback):
