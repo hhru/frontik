@@ -16,6 +16,7 @@ frontik.egg-info/
 .pytest_cache/
 
 *.log
+*.slog
 .coverage*
 !.coveragerc
 .tox/
