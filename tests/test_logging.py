@@ -29,7 +29,7 @@ class TestSyslog(unittest.TestCase):
     def tearDownClass(cls):
         cls.test_app.stop()
 
-    def test_send_to_udp(self):
+    def test_send_to_syslog(self):
         self.test_app.get_page('log')
 
         logs = []
@@ -103,7 +103,7 @@ class TestSyslog(unittest.TestCase):
             },
         ]
 
-        self.assert_json_logs_match(expected_service_logs, parsed_logs['service'])
+        self.assert_json_logs_match(expected_service_logs, parsed_logs['service.slog'])
 
         expected_requests_logs = [
             {
@@ -114,7 +114,7 @@ class TestSyslog(unittest.TestCase):
             },
         ]
 
-        self.assert_json_logs_match(expected_requests_logs, parsed_logs['requests'])
+        self.assert_json_logs_match(expected_requests_logs, parsed_logs['requests.slog'])
 
         expected_custom_logs = [
             {
@@ -124,9 +124,7 @@ class TestSyslog(unittest.TestCase):
             },
         ]
 
-        print(parsed_logs['custom_logger'])
-
-        self.assert_text_logs_match(expected_custom_logs, parsed_logs['custom_logger'])
+        self.assert_text_logs_match(expected_custom_logs, parsed_logs['custom_logger.log'])
 
     def assert_json_logs_match(self, expected_logs, parsed_logs):
         for expected_log in expected_logs:

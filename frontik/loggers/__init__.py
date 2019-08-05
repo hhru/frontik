@@ -3,12 +3,17 @@ import logging
 import os
 import socket
 import time
+from logging import Filter, Formatter, Handler
 from logging.handlers import SysLogHandler
+from typing import TYPE_CHECKING
 
 from tornado.log import LogFormatter
 from tornado.options import options
 
 from frontik import request_context
+
+if TYPE_CHECKING:
+    from typing import List, Optional
 
 ROOT_LOGGER = logging.root
 JSON_REQUESTS_LOGGER = logging.getLogger('requests')
@@ -16,7 +21,7 @@ JSON_REQUESTS_LOGGER = logging.getLogger('requests')
 CUSTOM_JSON_EXTRA = 'custom_json'
 
 
-class ContextFilter(logging.Filter):
+class ContextFilter(Filter):
     def filter(self, record):
         handler_name = request_context.get_handler_name()
         request_id = request_context.get_request_id()
@@ -27,7 +32,7 @@ class ContextFilter(logging.Filter):
 _CONTEXT_FILTER = ContextFilter()
 
 
-class BufferedHandler(logging.Handler):
+class BufferedHandler(Handler):
     def __init__(self, level=logging.NOTSET):
         super().__init__(level)
         self.records = []
@@ -39,13 +44,13 @@ class BufferedHandler(logging.Handler):
         raise NotImplementedError()  # pragma: no cover
 
 
-class GlobalLogHandler(logging.Handler):
+class GlobalLogHandler(Handler):
     def handle(self, record):
         if request_context.get_log_handler():
             request_context.get_log_handler().handle(record)
 
 
-class JSONFormatter(logging.Formatter):
+class JSONFormatter(Formatter):
     DATE_FORMAT = '%Y-%m-%d %H:%M:%S.%%03d%z'
     PID = os.getpid()
 
@@ -139,7 +144,7 @@ def get_text_formatter():
     global _TEXT_FORMATTER
 
     if _TEXT_FORMATTER is None:
-        _TEXT_FORMATTER = logging.Formatter(options.log_text_format)
+        _TEXT_FORMATTER = Formatter(options.log_text_format)
 
     return _TEXT_FORMATTER
 
@@ -153,47 +158,13 @@ def bootstrap_logger(logger_info, logger_level, use_json_formatter=True, formatt
     handlers = []
 
     if options.log_dir:
-        file_handler = logging.handlers.WatchedFileHandler(os.path.join(options.log_dir, f'{logger_name}.log'))
-        if use_json_formatter:
-            file_handler.setFormatter(_JSON_FORMATTER)
-        elif formatter is not None:
-            file_handler.setFormatter(formatter)
-        else:
-            file_handler.setFormatter(get_text_formatter())
-            file_handler.addFilter(_CONTEXT_FILTER)
-
-        handlers.append(file_handler)
+        handlers.extend(_configure_file(logger_name, use_json_formatter, formatter))
 
     if options.stderr_log:
-        stderr_handler = logging.StreamHandler()
-        if formatter is not None:
-            stderr_handler.setFormatter(formatter)
-        else:
-            stderr_handler.setFormatter(get_stderr_formatter())
-            stderr_handler.addFilter(_CONTEXT_FILTER)
-
-        handlers.append(stderr_handler)
+        handlers.extend(_configure_stderr(formatter))
 
     if options.syslog:
-        try:
-            syslog_handler = SysLogHandler(
-                address=(options.syslog_host, options.syslog_port),
-                facility=SysLogHandler.facility_names[options.syslog_facility],
-                socktype=socket.SOCK_DGRAM
-            )
-            syslog_handler.ident = f'{logger_name}: '
-            if use_json_formatter:
-                syslog_handler.setFormatter(_JSON_FORMATTER)
-            elif formatter is not None:
-                syslog_handler.setFormatter(formatter)
-            else:
-                syslog_handler.setFormatter(get_text_formatter())
-                syslog_handler.addFilter(_CONTEXT_FILTER)
-
-            handlers.append(syslog_handler)
-
-        except socket.error:
-            logging.getLogger('frontik.logging').exception('cannot initialize syslog')
+        handlers.extend(_configure_syslog(logger_name, use_json_formatter, formatter))
 
     for handler in handlers:
         handler.setLevel(logger_level)
@@ -203,6 +174,58 @@ def bootstrap_logger(logger_info, logger_level, use_json_formatter=True, formatt
     logger.propagate = False
 
     return logger
+
+
+def _configure_file(logger_name: str,
+                    use_json_formatter: bool = True, formatter: 'Optional[Formatter]' = None) -> 'List[Handler]':
+    log_extension = '.slog' if use_json_formatter else '.log'
+    file_handler = logging.handlers.WatchedFileHandler(os.path.join(options.log_dir, f'{logger_name}{log_extension}'))
+
+    if use_json_formatter:
+        file_handler.setFormatter(_JSON_FORMATTER)
+    elif formatter is not None:
+        file_handler.setFormatter(formatter)
+    else:
+        file_handler.setFormatter(get_text_formatter())
+        file_handler.addFilter(_CONTEXT_FILTER)
+
+    return [file_handler]
+
+
+def _configure_stderr(formatter: 'Optional[Formatter]' = None):
+    stderr_handler = logging.StreamHandler()
+    if formatter is not None:
+        stderr_handler.setFormatter(formatter)
+    else:
+        stderr_handler.setFormatter(get_stderr_formatter())
+        stderr_handler.addFilter(_CONTEXT_FILTER)
+
+    return [stderr_handler]
+
+
+def _configure_syslog(logger_name: str,
+                      use_json_formatter: bool = True, formatter: 'Optional[Formatter]' = None) -> 'List[Handler]':
+    try:
+        syslog_handler = SysLogHandler(
+            address=(options.syslog_host, options.syslog_port),
+            facility=SysLogHandler.facility_names[options.syslog_facility],
+            socktype=socket.SOCK_DGRAM
+        )
+        log_extension = '.slog' if use_json_formatter else '.log'
+        syslog_handler.ident = f'{logger_name}{log_extension}: '
+        if use_json_formatter:
+            syslog_handler.setFormatter(_JSON_FORMATTER)
+        elif formatter is not None:
+            syslog_handler.setFormatter(formatter)
+        else:
+            syslog_handler.setFormatter(get_text_formatter())
+            syslog_handler.addFilter(_CONTEXT_FILTER)
+
+        return [syslog_handler]
+
+    except socket.error:
+        logging.getLogger('frontik.logging').exception('cannot initialize syslog')
+        return []
 
 
 def bootstrap_core_logging():
