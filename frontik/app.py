@@ -1,6 +1,7 @@
 import importlib
 import sys
 import time
+import traceback
 from functools import partial
 from typing import TYPE_CHECKING
 
@@ -59,6 +60,38 @@ class StatusHandler(RequestHandler):
         self.finish(self.application.get_current_status())
 
 
+class PydevdHandler(RequestHandler):
+    def get(self):
+        if hasattr(sys, 'gettrace') and sys.gettrace() is not None:
+            self.already_tracing_page()
+            return
+
+        try:
+            debugger_ip = self.get_argument('debugger_ip', self.request.remote_ip)
+            debugger_port = self.get_argument('debugger_port', '32223')
+            self.settrace(debugger_ip, int(debugger_port))
+            self.trace_page(debugger_ip, debugger_port)
+
+        except BaseException:
+            self.error_page()
+
+    def settrace(self, debugger_ip, debugger_port):
+        import pydevd
+        pydevd.settrace(debugger_ip, port=debugger_port, stdoutToServer=True, stderrToServer=True, suspend=False)
+
+    def trace_page(self, ip, port):
+        self.set_header('Content-Type', media_types.TEXT_PLAIN)
+        self.finish(f'Connected to debug server at {ip}:{port}')
+
+    def already_tracing_page(self):
+        self.set_header('Content-Type', media_types.TEXT_PLAIN)
+        self.finish('App is already in tracing mode, try to restart service')
+
+    def error_page(self):
+        self.set_header('Content-Type', media_types.TEXT_PLAIN)
+        self.finish(traceback.format_exc())
+
+
 class FrontikApplication(Application):
     request_id = 0
 
@@ -84,11 +117,16 @@ class FrontikApplication(Application):
         self.router = FrontikRouter(self)
         self.available_integrations, self.default_init_futures = integrations.load_integrations(self)
 
-        super().__init__([
+        core_handlers = [
             (r'/version/?', VersionHandler),
             (r'/status/?', StatusHandler),
             (r'.*', self.router),
-        ], **tornado_settings)
+        ]
+
+        if options.debug:
+            core_handlers.insert(0, (r'/pydevd/?', PydevdHandler))
+
+        super().__init__(core_handlers, **tornado_settings)
 
         self.transforms.insert(0, partial(DebugTransform, self))
 
