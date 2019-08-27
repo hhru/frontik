@@ -48,3 +48,10 @@ class TestAsyncGroup(unittest.TestCase):
 
         json = frontik_test_app.get_page_json('async_group/not_waited_requests')
         self.assertEqual(json, {'post_made': True, 'put_made': True, 'delete_cancelled': True})
+
+    def test_not_waited_failed_requests(self):
+        json = frontik_test_app.get_page_json('async_group/not_waited_failed_requests')
+        self.assertEqual({'get': True}, json)
+
+        json = frontik_test_app.get_page_json('async_group/not_waited_failed_requests')
+        self.assertEqual({'head_failed': True, 'post_failed': True, 'put_failed': True, 'delete_failed': True}, json)

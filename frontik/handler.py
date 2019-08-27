@@ -48,6 +48,17 @@ class HTTPErrorWithPostprocessors(tornado.web.HTTPError):
 handler_logger = logging.getLogger('handler')
 
 
+def _fail_fast_policy(fail_fast, waited, host, uri):
+    if fail_fast and not waited:
+        handler_logger.warning(
+            'attempted to make NOT waited http request to %s %s with fail fast policy, turn off fail_fast',
+            host, uri
+        )
+        return False
+
+    return fail_fast
+
+
 class PageHandler(RequestHandler):
 
     preprocessors = ()
@@ -537,6 +548,8 @@ class PageHandler(RequestHandler):
                 connect_timeout=None, request_timeout=None, max_timeout_tries=None,
                 callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
+        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
+
         client_method = lambda callback: self._http_client.get_url(
             host, uri, name=name, data=data, headers=headers, follow_redirects=follow_redirects,
             connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
@@ -548,6 +561,8 @@ class PageHandler(RequestHandler):
     def head_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None,
                  callback=None, waited=True, fail_fast=False):
+
+        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
 
         client_method = lambda callback: self._http_client.head_url(
             host, uri, data=data, name=name, headers=headers, follow_redirects=follow_redirects,
@@ -562,6 +577,8 @@ class PageHandler(RequestHandler):
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=False,
                  callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
+        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
+
         client_method = lambda callback: self._http_client.post_url(
             host, uri, data=data, name=name, headers=headers, files=files, content_type=content_type,
             follow_redirects=follow_redirects, connect_timeout=connect_timeout, request_timeout=request_timeout,
@@ -575,6 +592,8 @@ class PageHandler(RequestHandler):
                 connect_timeout=None, request_timeout=None, max_timeout_tries=None,
                 callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
+        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
+
         client_method = lambda callback: self._http_client.put_url(
             host, uri, name=name, data=data, headers=headers, content_type=content_type,
             connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
@@ -586,6 +605,8 @@ class PageHandler(RequestHandler):
     def delete_url(self, host, uri, *, name=None, data=None, headers=None, content_type=None,
                    connect_timeout=None, request_timeout=None, max_timeout_tries=None,
                    callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+
+        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
 
         client_method = lambda callback: self._http_client.delete_url(
             host, uri, name=name, data=data, headers=headers, content_type=content_type,
