@@ -22,6 +22,8 @@ from frontik.debug import DEBUG_HEADER_NAME, response_from_debug
 from frontik.request_context import get_request_id
 from frontik.util import make_url, make_body, make_mfd
 
+OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
+USER_AGENT_HEADER = 'User-Agent'
 
 def HTTPResponse__repr__(self):
     repr_attrs = ['effective_url', 'code', 'reason', 'error']
@@ -333,7 +335,6 @@ class BalancedHttpRequest:
         self.upstream = upstream
         self.name = name
         self.method = method
-        self.headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
         self.connect_timeout = connect_timeout
         self.request_timeout = request_timeout
         self.follow_redirects = follow_redirects
@@ -375,6 +376,10 @@ class BalancedHttpRequest:
 
         self.tries_left = self.upstream.max_tries
         self.request_time_left = self.request_timeout * max_timeout_tries
+        if headers is None:
+            headers = {}
+        headers[OUTER_TIMEOUT_MS_HEADER] = self.request_timeout * 1000
+        self.headers = HTTPHeaders(headers)
         self.tried_hosts = None
         self.current_host = host.rstrip('/')
         self.current_server_index = None
@@ -445,6 +450,30 @@ class BalancedHttpRequest:
         return len(self.tried_hosts) if self.tried_hosts else 0
 
 
+class TimeoutChecker:
+    def __init__(self, outer_caller, outer_timeout_ms, time_since_outer_request_start_ms_supplier, logger):
+        self.outer_caller = outer_caller
+        self.outer_timeout_ms = outer_timeout_ms
+        self.time_since_outer_request_start_ms_supplier = time_since_outer_request_start_ms_supplier
+        self.logger = logger
+
+    def check(self, balanced_request: BalancedHttpRequest):
+        if self.outer_timeout_ms:
+            already_spent_time_ms = self.time_since_outer_request_start_ms_supplier() * 1000.0
+            expected_timeout_ms = self.outer_timeout_ms - already_spent_time_ms
+            if balanced_request.request_time_left > expected_timeout_ms:
+                self.logger.error('Incoming request from %s expects timeout=%s'
+                                  ', we have been working already for %s ms and now trying to call %s with timeout %s'
+                                  ', diff=%s ms.'
+                                  ' Consider to fix settings for this call chain',
+                                  self.outer_caller,
+                                  self.outer_timeout_ms,
+                                  already_spent_time_ms,
+                                  balanced_request.uri,
+                                  balanced_request.request_time_left,
+                                  balanced_request.request_time_left - expected_timeout_ms)
+
+
 class HttpClientFactory:
     def __init__(self, application, upstreams):
         AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
@@ -481,10 +510,15 @@ class HttpClientFactory:
         kafka_producer = (
             self.application.get_kafka_producer(self._kafka_cluster) if self._send_metrics_to_kafka else None
         )
+        timeout_checker = TimeoutChecker(handler.request.headers.get(USER_AGENT_HEADER),
+                                         handler.request.headers.get(OUTER_TIMEOUT_MS_HEADER),
+                                         handler.request.request_time,
+                                         http_client_logger)
 
         return HttpClient(
-            self.tornado_http_client, handler.debug_mode, modify_http_request_hook, self.upstreams,
-            self.application.statsd_client, kafka_producer
+            self.tornado_http_client, self.upstreams, modify_http_request_hook, self.application.statsd_client,
+            kafka_producer, debug_mode=handler.debug_mode, timeout_checker=timeout_checker
+
         )
 
     def update_upstream(self, name, config):
@@ -516,14 +550,15 @@ class HttpClientFactory:
 
 
 class HttpClient:
-    def __init__(self, http_client_impl, debug_mode, modify_http_request_hook, upstreams,
-                 statsd_client, kafka_producer):
+    def __init__(self, http_client_impl, upstreams, modify_http_request_hook, statsd_client, kafka_producer, *,
+                 debug_mode=False, timeout_checker=None):
         self.http_client_impl = http_client_impl
         self.debug_mode = debug_mode
         self.modify_http_request_hook = modify_http_request_hook
         self.upstreams = upstreams
         self.statsd_client = statsd_client
         self.kafka_producer = kafka_producer
+        self.timeout_checker = timeout_checker
 
     def get_upstream(self, host):
         return self.upstreams.get(host, Upstream.get_single_host_upstream())
@@ -586,6 +621,9 @@ class HttpClient:
 
     def _fetch_with_retry(self, balanced_request, callback, parse_response, parse_on_error,
                           fail_fast) -> 'Future[RequestResult]':
+        if self.timeout_checker:
+            self.timeout_checker.check(balanced_request)
+
         future = Future()
 
         def request_finished_callback(response):
