@@ -511,7 +511,8 @@ class HttpClientFactory:
             self.application.get_kafka_producer(self._kafka_cluster) if self._send_metrics_to_kafka else None
         )
         timeout_checker = TimeoutChecker(handler.request.headers.get(USER_AGENT_HEADER),
-                                         handler.request.headers.get(OUTER_TIMEOUT_MS_HEADER),
+                                         float(handler.request.headers.get(OUTER_TIMEOUT_MS_HEADER))
+                                         if handler.request.headers.get(OUTER_TIMEOUT_MS_HEADER) else None,
                                          handler.request.request_time,
                                          http_client_logger)
 
