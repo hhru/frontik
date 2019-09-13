@@ -356,6 +356,12 @@ class BalancedHttpRequest:
         self.connect_timeout *= options.timeout_multiplier
         self.request_timeout *= options.timeout_multiplier
 
+        self.tries_left = self.upstream.max_tries
+        self.request_time_left = self.request_timeout * max_timeout_tries
+        if headers is None:
+            headers = {}
+        headers[OUTER_TIMEOUT_MS_HEADER] = str(self.request_timeout * 1000)
+        self.headers = HTTPHeaders(headers)
         if self.method == 'POST':
             if files:
                 self.body, content_type = make_mfd(data, files)
@@ -374,12 +380,6 @@ class BalancedHttpRequest:
         if content_type is not None:
             self.headers['Content-Type'] = content_type
 
-        self.tries_left = self.upstream.max_tries
-        self.request_time_left = self.request_timeout * max_timeout_tries
-        if headers is None:
-            headers = {}
-        headers[OUTER_TIMEOUT_MS_HEADER] = self.request_timeout * 1000
-        self.headers = HTTPHeaders(headers)
         self.tried_hosts = None
         self.current_host = host.rstrip('/')
         self.current_server_index = None
