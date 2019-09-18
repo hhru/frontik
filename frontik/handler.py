@@ -1,4 +1,5 @@
 import http.client
+import json
 import logging
 import time
 from asyncio.futures import Future
@@ -94,6 +95,7 @@ class PageHandler(RequestHandler):
 
         self.json_producer = self.application.json.get_producer(self)
         self.json = self.json_producer.json
+        self.json_request = self.get_json_request()
 
         self.xml_producer = self.application.xml.get_producer(self)
         self.doc = self.xml_producer.doc
@@ -146,6 +148,20 @@ class PageHandler(RequestHandler):
 
     def reverse_url(self, name, *args, **kwargs):
         return self.application.reverse_url(name, *args, **kwargs)
+
+    def is_json_request(self):
+        return (self.request.method in ('POST', 'PUT') and
+                self.request.headers.get('Content-Type') == media_types.APPLICATION_JSON)
+
+    def get_json_request(self):
+        if not self.is_json_request():
+            return None
+
+        try:
+            return json.loads(self.request.body)
+        except (TypeError, json.JSONDecodeError) as _:
+            self.log.exception('failed parsing json in request body')
+            return None
 
     @classmethod
     def add_callback(cls, callback, *args, **kwargs):
