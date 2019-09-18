@@ -1,4 +1,5 @@
 import http.client
+import json
 import logging
 import time
 from asyncio.futures import Future
@@ -44,6 +45,13 @@ class FinishWithPostprocessors(Exception):
 class HTTPErrorWithPostprocessors(tornado.web.HTTPError):
     pass
 
+
+class JSONBodyParseError(tornado.web.HTTPError):
+    def __init__(self):
+        super(JSONBodyParseError, self).__init__(400, 'Failed to parse json in request body')
+
+
+_ARG_DEFAULT = object()
 
 handler_logger = logging.getLogger('handler')
 
@@ -136,6 +144,25 @@ class PageHandler(RequestHandler):
             self.log.exception('cannot decode argument, ignoring invalid chars')
             return value.decode('utf-8', 'ignore')
 
+    def get_body_argument(self, name, default=_ARG_DEFAULT, strip=True):
+        if self._is_json_request(self.request):
+            if name not in self.json_body and default == _ARG_DEFAULT:
+                raise tornado.web.MissingArgumentError(name)
+
+            result = self.json_body.get(name, default)
+
+            if strip and isinstance(result, str):
+                return result.strip()
+
+            return result
+
+        if default == _ARG_DEFAULT:
+            return super().get_body_argument(name, strip=strip)
+        return super().get_body_argument(name, default, strip)
+
+    def _is_json_request(self, request):
+        return request.headers.get('Content-Type') == media_types.APPLICATION_JSON
+
     def set_status(self, status_code, reason=None):
         status_code = _fallback_status_code(status_code)
         super().set_status(status_code, reason=reason)
@@ -146,6 +173,18 @@ class PageHandler(RequestHandler):
 
     def reverse_url(self, name, *args, **kwargs):
         return self.application.reverse_url(name, *args, **kwargs)
+
+    @property
+    def json_body(self):
+        if not hasattr(self, '_json_body'):
+            self._json_body = self._get_json_body()
+        return self._json_body
+
+    def _get_json_body(self):
+        try:
+            return json.loads(self.request.body)
+        except json.JSONDecodeError as _:
+            raise JSONBodyParseError()
 
     @classmethod
     def add_callback(cls, callback, *args, **kwargs):
