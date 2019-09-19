@@ -1,6 +1,7 @@
 import requests
 import unittest
 
+from frontik import media_types
 from .instances import frontik_no_debug_app, frontik_test_app
 
 
@@ -39,3 +40,53 @@ class TestHandler(unittest.TestCase):
     def test_204(self):
         response = frontik_test_app.get_page('finish_204')
         self.assertEqual(response.status_code, 204)
+
+    def test_get_json_body(self):
+        for method in (requests.post, requests.put):
+            # check if it works just fine
+            response = frontik_test_app.get_page(
+                'handler/json',
+                method=method,
+                headers={'Content-Type': media_types.APPLICATION_JSON},
+                json={'foo': 'bar'},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content, b'bar')
+
+    # check if it raises HTTPError(400) on JSONDecodeException
+    def test_json_decode_exception(self):
+        for method in (requests.post, requests.put):
+            response = frontik_test_app.get_page(
+                'handler/json',
+                method=method,
+                headers={'Content-Type': media_types.APPLICATION_JSON},
+                data=b''
+            )
+            self.assertEqual(response.status_code, 400)
+
+            response = frontik_test_app.get_page(
+                'handler/json_optional_args',
+                method=method,
+                headers={'Content-Type': media_types.APPLICATION_JSON},
+                data=b'',
+            )
+            self.assertEqual(response.status_code, 400)
+
+    # check if it raises HTTPError(400) only when there's no default param
+    def test_get_json_body_optional_args(self):
+        for method in (requests.post, requests.put):
+            response = frontik_test_app.get_page(
+                'handler/json',
+                method=method,
+                headers={'Content-Type': media_types.APPLICATION_JSON},
+                json={},
+            )
+            self.assertEqual(response.status_code, 400)
+
+            response = frontik_test_app.get_page(
+                'handler/json_optional_args',
+                method=method,
+                headers={'Content-Type': media_types.APPLICATION_JSON},
+                json={},
+            )
+            self.assertEqual(response.content, b'baz')
