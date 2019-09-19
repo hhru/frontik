@@ -39,3 +39,11 @@ class TestHandler(unittest.TestCase):
     def test_204(self):
         response = frontik_test_app.get_page('finish_204')
         self.assertEqual(response.status_code, 204)
+
+    def test_json(self):
+        for method in (requests.post, requests.put):
+            response = frontik_test_app.get_page('handler/json', method=method, json={'foo': 'bar'})
+            self.assertEqual(response.content, b'bar')
+
+            response = frontik_test_app.get_page('handler/json', method=method, data=b'')
+            self.assertEqual(response.status_code, 400)
