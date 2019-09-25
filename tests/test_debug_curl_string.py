@@ -16,7 +16,8 @@ class CurlStringTestCase(unittest.TestCase):
 
         self.assertEqual(
             request_to_curl_string(request),
-            "curl -X GET 'http://test.com/path?param=value' -H 'Accept: application/json'"
+            "curl -X GET 'http://test.com/path?param=value' "
+            "-H 'Accept: application/json' -H 'User-Agent: test' -H 'X-Outer-Timeout-Ms: 2000'"
         )
 
     def test_curl_string_post(self):
@@ -27,7 +28,8 @@ class CurlStringTestCase(unittest.TestCase):
         self.assertEqual(
             request_to_curl_string(request),
             "curl -X POST 'http://test.com/path' -H 'Content-Length: 11' "
-            "-H 'Content-Type: application/x-www-form-urlencoded' --data 'param=value'"
+            "-H 'Content-Type: application/x-www-form-urlencoded' "
+            "-H 'User-Agent: test' -H 'X-Outer-Timeout-Ms: 2000' --data 'param=value'"
         )
 
     def test_curl_string_put(self):
@@ -38,7 +40,8 @@ class CurlStringTestCase(unittest.TestCase):
 
         self.assertEqual(
             request_to_curl_string(request),
-            "curl -X PUT 'http://test.com/path' -H 'Content-Length: 4' -H 'Content-Type: text/plain' --data 'DATA'"
+            "curl -X PUT 'http://test.com/path' -H 'Content-Length: 4' -H 'Content-Type: text/plain' "
+            "-H 'User-Agent: test' -H 'X-Outer-Timeout-Ms: 2000' --data 'DATA'"
         )
 
     def test_curl_string_binary(self):
@@ -50,5 +53,6 @@ class CurlStringTestCase(unittest.TestCase):
         self.assertEqual(
             request_to_curl_string(request),
             "echo -e '\\xd1\\x82\\xd0\\xb5\\xd1\\x81\\xd1\\x82' | "
-            "curl -X POST 'http://test.com/path' -H 'Content-Length: 8' -H 'Content-Type: text/plain' --data-binary @-"
+            "curl -X POST 'http://test.com/path' -H 'Content-Length: 8' -H 'Content-Type: text/plain' "
+            "-H 'User-Agent: test' -H 'X-Outer-Timeout-Ms: 2000' --data-binary @-"
         )
