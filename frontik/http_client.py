@@ -474,7 +474,7 @@ class TimeoutChecker:
                                   self.outer_caller,
                                   self.outer_timeout_ms,
                                   already_spent_time_ms,
-                                  balanced_request.uri,
+                                  balanced_request.uri.partition('?')[0],
                                   request_timeout_ms,
                                   request_timeout_ms - expected_timeout_ms)
 
