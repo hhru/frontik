@@ -25,6 +25,7 @@ from frontik.util import make_url, make_body, make_mfd
 OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
 USER_AGENT_HEADER = 'User-Agent'
 
+
 def HTTPResponse__repr__(self):
     repr_attrs = ['effective_url', 'code', 'reason', 'error']
     repr_values = [(attr, self.__dict__[attr]) for attr in repr_attrs]
@@ -553,8 +554,8 @@ class HttpClientFactory:
 
 
 class HttpClient:
-    def __init__(self, http_client_impl, user_agent, upstreams, modify_http_request_hook, statsd_client, kafka_producer, *,
-                 debug_mode=False, timeout_checker=None):
+    def __init__(self, http_client_impl, user_agent, upstreams, modify_http_request_hook,
+                 statsd_client, kafka_producer, *, debug_mode=False, timeout_checker=None):
         self.http_client_impl = http_client_impl
         self.user_agent = user_agent
         self.debug_mode = debug_mode
