@@ -19,7 +19,7 @@ from tornado.options import options
 
 from frontik import media_types
 from frontik.debug import DEBUG_HEADER_NAME, response_from_debug
-from frontik.request_context import get_request_id
+from frontik.request_context import get_request_id, get_request
 from frontik.util import make_url, make_body, make_mfd
 
 OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
@@ -357,14 +357,10 @@ class BalancedHttpRequest:
         self.connect_timeout *= options.timeout_multiplier
         self.request_timeout *= options.timeout_multiplier
 
-        self.tries_left = self.upstream.max_tries
-        self.request_time_left = self.request_timeout * max_timeout_tries
-        if headers is None:
-            headers = {}
-        headers[OUTER_TIMEOUT_MS_HEADER] = f'{self.request_timeout * 1000:.0f}'
-        if self.user_agent:
-            headers[USER_AGENT_HEADER] = self.user_agent
-        self.headers = HTTPHeaders(headers)
+        self.headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
+        self.headers[OUTER_TIMEOUT_MS_HEADER] = f'{self.request_timeout * 1000:.0f}'
+        if self.user_agent and not self.headers.get(USER_AGENT_HEADER):
+            self.headers[USER_AGENT_HEADER] = self.user_agent
         if self.method == 'POST':
             if files:
                 self.body, content_type = make_mfd(data, files)
@@ -382,7 +378,8 @@ class BalancedHttpRequest:
 
         if content_type is not None:
             self.headers['Content-Type'] = content_type
-
+        self.tries_left = self.upstream.max_tries
+        self.request_time_left = self.request_timeout * max_timeout_tries
         self.tried_hosts = None
         self.current_host = host.rstrip('/')
         self.current_server_index = None
@@ -454,11 +451,10 @@ class BalancedHttpRequest:
 
 
 class TimeoutChecker:
-    def __init__(self, outer_caller, outer_timeout_ms, time_since_outer_request_start_ms_supplier, logger):
+    def __init__(self, outer_caller, outer_timeout_ms, time_since_outer_request_start_ms_supplier):
         self.outer_caller = outer_caller
         self.outer_timeout_ms = outer_timeout_ms
         self.time_since_outer_request_start_ms_supplier = time_since_outer_request_start_ms_supplier
-        self.logger = logger
 
     def check(self, balanced_request: BalancedHttpRequest):
         if self.outer_timeout_ms:
@@ -466,17 +462,14 @@ class TimeoutChecker:
             expected_timeout_ms = self.outer_timeout_ms - already_spent_time_ms
             request_timeout_ms = balanced_request.request_time_left * 1000
             if request_timeout_ms > expected_timeout_ms:
-                self.logger.error('Incoming request from <%s> expects timeout=%d ms'
-                                  ', we have been working already for %d ms '
-                                  'and now trying to call <%s> with timeout %d ms'
-                                  ', diff=%d ms.'
-                                  ' Consider to fix settings for this call chain',
-                                  self.outer_caller,
-                                  self.outer_timeout_ms,
-                                  already_spent_time_ms,
-                                  balanced_request.uri.partition('?')[0],
-                                  request_timeout_ms,
-                                  request_timeout_ms - expected_timeout_ms)
+                http_client_logger.error('Incoming request from <%s> expects timeout=%d ms'
+                                         ', we have been working already for %d ms '
+                                         'and now trying to call <%s> with timeout %d ms',
+                                         self.outer_caller,
+                                         self.outer_timeout_ms,
+                                         already_spent_time_ms,
+                                         balanced_request.uri.partition('?')[0],
+                                         request_timeout_ms)
 
 
 class HttpClientFactory:
@@ -520,8 +513,7 @@ class HttpClientFactory:
 
         timeout_checker = TimeoutChecker(handler.request.headers.get(USER_AGENT_HEADER),
                                          outer_timeout_ms,
-                                         handler.request.request_time,
-                                         http_client_logger)
+                                         get_request().request_time) if get_request() else None
 
         return HttpClient(
             self.tornado_http_client, self.application.app,
