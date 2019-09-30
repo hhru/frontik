@@ -328,11 +328,11 @@ class DelayedSlowStartJoinStrategy:
 
 
 class BalancedHttpRequest:
-    def __init__(self, host: str, upstream: Upstream, user_agent: str, uri: str, name: str,
+    def __init__(self, host: str, upstream: Upstream, source_app: str, uri: str, name: str,
                  method='GET', data=None, headers=None, files=None, content_type=None,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None,
                  follow_redirects=True, idempotent=True):
-        self.user_agent = user_agent
+        self.source_app = source_app
         self.uri = uri if uri.startswith('/') else '/' + uri
         self.upstream = upstream
         self.name = name
@@ -360,8 +360,8 @@ class BalancedHttpRequest:
 
         self.headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
         self.headers[OUTER_TIMEOUT_MS_HEADER] = f'{self.request_timeout * 1000:.0f}'
-        if self.user_agent and not self.headers.get(USER_AGENT_HEADER):
-            self.headers[USER_AGENT_HEADER] = self.user_agent
+        if self.source_app and not self.headers.get(USER_AGENT_HEADER):
+            self.headers[USER_AGENT_HEADER] = self.source_app
         if self.method == 'POST':
             if files:
                 self.body, content_type = make_mfd(data, files)
@@ -509,12 +509,14 @@ class HttpClientFactory:
         kafka_producer = (
             self.application.get_kafka_producer(self._kafka_cluster) if self._send_metrics_to_kafka else None
         )
-        outer_timeout_ms = float(handler.request.headers.get(OUTER_TIMEOUT_MS_HEADER)) \
-            if handler.request.headers.get(OUTER_TIMEOUT_MS_HEADER) else None
-
-        timeout_checker = TimeoutChecker(handler.request.headers.get(USER_AGENT_HEADER),
-                                         outer_timeout_ms,
-                                         get_request().request_time) if get_request() else None
+        timeout_checker = None
+        request = get_request()
+        if request:
+            outer_timeout = handler.request.headers.get(OUTER_TIMEOUT_MS_HEADER)
+            if outer_timeout:
+                timeout_checker = TimeoutChecker(handler.request.headers.get(USER_AGENT_HEADER),
+                                                 float(outer_timeout),
+                                                 request.request_time)
 
         return HttpClient(
             self.tornado_http_client, self.application.app,
@@ -522,7 +524,6 @@ class HttpClientFactory:
             self.application.statsd_client,
             kafka_producer,
             debug_mode=handler.debug_mode, timeout_checker=timeout_checker
-
         )
 
     def update_upstream(self, name, config):
@@ -554,10 +555,10 @@ class HttpClientFactory:
 
 
 class HttpClient:
-    def __init__(self, http_client_impl, user_agent, upstreams, modify_http_request_hook,
+    def __init__(self, http_client_impl, source_app, upstreams, modify_http_request_hook,
                  statsd_client, kafka_producer, *, debug_mode=False, timeout_checker=None):
         self.http_client_impl = http_client_impl
-        self.user_agent = user_agent
+        self.source_app = source_app
         self.debug_mode = debug_mode
         self.modify_http_request_hook = modify_http_request_hook
         self.upstreams = upstreams
@@ -573,7 +574,7 @@ class HttpClient:
                 callback=None, parse_response=True, parse_on_error=False, fail_fast=False):
 
         request = BalancedHttpRequest(
-            host, self.get_upstream(host), self.user_agent, uri, name, 'GET', data, headers, None, None,
+            host, self.get_upstream(host), self.source_app, uri, name, 'GET', data, headers, None, None,
             connect_timeout, request_timeout, max_timeout_tries, follow_redirects
         )
 
@@ -584,7 +585,7 @@ class HttpClient:
                  callback=None, fail_fast=False):
 
         request = BalancedHttpRequest(
-            host, self.get_upstream(host), self.user_agent, uri, name, 'HEAD', data, headers, None, None,
+            host, self.get_upstream(host), self.source_app, uri, name, 'HEAD', data, headers, None, None,
             connect_timeout, request_timeout, max_timeout_tries, follow_redirects
         )
 
@@ -596,7 +597,7 @@ class HttpClient:
                  callback=None, parse_response=True, parse_on_error=False, fail_fast=False):
 
         request = BalancedHttpRequest(
-            host, self.get_upstream(host), self.user_agent, uri, name, 'POST', data, headers, files, content_type,
+            host, self.get_upstream(host), self.source_app, uri, name, 'POST', data, headers, files, content_type,
             connect_timeout, request_timeout, max_timeout_tries, follow_redirects, idempotent
         )
 
@@ -607,7 +608,7 @@ class HttpClient:
                 callback=None, parse_response=True, parse_on_error=False, fail_fast=False):
 
         request = BalancedHttpRequest(
-            host, self.get_upstream(host), self.user_agent, uri, name, 'PUT', data, headers, None, content_type,
+            host, self.get_upstream(host), self.source_app, uri, name, 'PUT', data, headers, None, content_type,
             connect_timeout, request_timeout, max_timeout_tries
         )
 
@@ -618,7 +619,7 @@ class HttpClient:
                    callback=None, parse_response=True, parse_on_error=False, fail_fast=False):
 
         request = BalancedHttpRequest(
-            host, self.get_upstream(host), self.user_agent, uri, name, 'DELETE', data, headers, None, content_type,
+            host, self.get_upstream(host), self.source_app, uri, name, 'DELETE', data, headers, None, content_type,
             connect_timeout, request_timeout, max_timeout_tries
         )
 
