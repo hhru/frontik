@@ -19,8 +19,11 @@ from tornado.options import options
 
 from frontik import media_types
 from frontik.debug import DEBUG_HEADER_NAME, response_from_debug
-from frontik.request_context import get_request_id
+from frontik.request_context import get_request_id, get_request
 from frontik.util import make_url, make_body, make_mfd
+
+OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
+USER_AGENT_HEADER = 'User-Agent'
 
 
 def HTTPResponse__repr__(self):
@@ -325,15 +328,15 @@ class DelayedSlowStartJoinStrategy:
 
 
 class BalancedHttpRequest:
-    def __init__(self, host: str, upstream: Upstream, uri: str, name: str,
+    def __init__(self, host: str, upstream: Upstream, source_app: str, uri: str, name: str,
                  method='GET', data=None, headers=None, files=None, content_type=None,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None,
                  follow_redirects=True, idempotent=True):
+        self.source_app = source_app
         self.uri = uri if uri.startswith('/') else '/' + uri
         self.upstream = upstream
         self.name = name
         self.method = method
-        self.headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
         self.connect_timeout = connect_timeout
         self.request_timeout = request_timeout
         self.follow_redirects = follow_redirects
@@ -355,6 +358,10 @@ class BalancedHttpRequest:
         self.connect_timeout *= options.timeout_multiplier
         self.request_timeout *= options.timeout_multiplier
 
+        self.headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
+        self.headers[OUTER_TIMEOUT_MS_HEADER] = f'{self.request_timeout * 1000:.0f}'
+        if self.source_app and not self.headers.get(USER_AGENT_HEADER):
+            self.headers[USER_AGENT_HEADER] = self.source_app
         if self.method == 'POST':
             if files:
                 self.body, content_type = make_mfd(data, files)
@@ -372,7 +379,6 @@ class BalancedHttpRequest:
 
         if content_type is not None:
             self.headers['Content-Type'] = content_type
-
         self.tries_left = self.upstream.max_tries
         self.request_time_left = self.request_timeout * max_timeout_tries
         self.tried_hosts = None
@@ -445,6 +451,28 @@ class BalancedHttpRequest:
         return len(self.tried_hosts) if self.tried_hosts else 0
 
 
+class TimeoutChecker:
+    def __init__(self, outer_caller, outer_timeout_ms, time_since_outer_request_start_ms_supplier):
+        self.outer_caller = outer_caller
+        self.outer_timeout_ms = outer_timeout_ms
+        self.time_since_outer_request_start_ms_supplier = time_since_outer_request_start_ms_supplier
+
+    def check(self, balanced_request: BalancedHttpRequest):
+        if self.outer_timeout_ms:
+            already_spent_time_ms = self.time_since_outer_request_start_ms_supplier() * 1000
+            expected_timeout_ms = self.outer_timeout_ms - already_spent_time_ms
+            request_timeout_ms = balanced_request.request_time_left * 1000
+            if request_timeout_ms > expected_timeout_ms:
+                http_client_logger.error('Incoming request from <%s> expects timeout=%d ms'
+                                         ', we have been working already for %d ms '
+                                         'and now trying to call <%s> with timeout %d ms',
+                                         self.outer_caller,
+                                         self.outer_timeout_ms,
+                                         already_spent_time_ms,
+                                         balanced_request.uri.partition('?')[0],
+                                         request_timeout_ms)
+
+
 class HttpClientFactory:
     def __init__(self, application, upstreams):
         AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
@@ -481,10 +509,21 @@ class HttpClientFactory:
         kafka_producer = (
             self.application.get_kafka_producer(self._kafka_cluster) if self._send_metrics_to_kafka else None
         )
+        timeout_checker = None
+        request = get_request()
+        if request:
+            outer_timeout = handler.request.headers.get(OUTER_TIMEOUT_MS_HEADER)
+            if outer_timeout:
+                timeout_checker = TimeoutChecker(handler.request.headers.get(USER_AGENT_HEADER),
+                                                 float(outer_timeout),
+                                                 request.request_time)
 
         return HttpClient(
-            self.tornado_http_client, handler.debug_mode, modify_http_request_hook, self.upstreams,
-            self.application.statsd_client, kafka_producer
+            self.tornado_http_client, self.application.app,
+            self.upstreams, modify_http_request_hook,
+            self.application.statsd_client,
+            kafka_producer,
+            debug_mode=handler.debug_mode, timeout_checker=timeout_checker
         )
 
     def update_upstream(self, name, config):
@@ -516,14 +555,16 @@ class HttpClientFactory:
 
 
 class HttpClient:
-    def __init__(self, http_client_impl, debug_mode, modify_http_request_hook, upstreams,
-                 statsd_client, kafka_producer):
+    def __init__(self, http_client_impl, source_app, upstreams, modify_http_request_hook,
+                 statsd_client, kafka_producer, *, debug_mode=False, timeout_checker=None):
         self.http_client_impl = http_client_impl
+        self.source_app = source_app
         self.debug_mode = debug_mode
         self.modify_http_request_hook = modify_http_request_hook
         self.upstreams = upstreams
         self.statsd_client = statsd_client
         self.kafka_producer = kafka_producer
+        self.timeout_checker = timeout_checker
 
     def get_upstream(self, host):
         return self.upstreams.get(host, Upstream.get_single_host_upstream())
@@ -533,7 +574,7 @@ class HttpClient:
                 callback=None, parse_response=True, parse_on_error=False, fail_fast=False):
 
         request = BalancedHttpRequest(
-            host, self.get_upstream(host), uri, name, 'GET', data, headers, None, None,
+            host, self.get_upstream(host), self.source_app, uri, name, 'GET', data, headers, None, None,
             connect_timeout, request_timeout, max_timeout_tries, follow_redirects
         )
 
@@ -544,7 +585,7 @@ class HttpClient:
                  callback=None, fail_fast=False):
 
         request = BalancedHttpRequest(
-            host, self.get_upstream(host), uri, name, 'HEAD', data, headers, None, None,
+            host, self.get_upstream(host), self.source_app, uri, name, 'HEAD', data, headers, None, None,
             connect_timeout, request_timeout, max_timeout_tries, follow_redirects
         )
 
@@ -556,7 +597,7 @@ class HttpClient:
                  callback=None, parse_response=True, parse_on_error=False, fail_fast=False):
 
         request = BalancedHttpRequest(
-            host, self.get_upstream(host), uri, name, 'POST', data, headers, files, content_type,
+            host, self.get_upstream(host), self.source_app, uri, name, 'POST', data, headers, files, content_type,
             connect_timeout, request_timeout, max_timeout_tries, follow_redirects, idempotent
         )
 
@@ -567,7 +608,7 @@ class HttpClient:
                 callback=None, parse_response=True, parse_on_error=False, fail_fast=False):
 
         request = BalancedHttpRequest(
-            host, self.get_upstream(host), uri, name, 'PUT', data, headers, None, content_type,
+            host, self.get_upstream(host), self.source_app, uri, name, 'PUT', data, headers, None, content_type,
             connect_timeout, request_timeout, max_timeout_tries
         )
 
@@ -578,7 +619,7 @@ class HttpClient:
                    callback=None, parse_response=True, parse_on_error=False, fail_fast=False):
 
         request = BalancedHttpRequest(
-            host, self.get_upstream(host), uri, name, 'DELETE', data, headers, None, content_type,
+            host, self.get_upstream(host), self.source_app, uri, name, 'DELETE', data, headers, None, content_type,
             connect_timeout, request_timeout, max_timeout_tries
         )
 
@@ -586,6 +627,9 @@ class HttpClient:
 
     def _fetch_with_retry(self, balanced_request, callback, parse_response, parse_on_error,
                           fail_fast) -> 'Future[RequestResult]':
+        if self.timeout_checker:
+            self.timeout_checker.check(balanced_request)
+
         future = Future()
 
         def request_finished_callback(response):
@@ -652,7 +696,8 @@ class HttpClient:
 
         self.http_client_impl.fetch(request, callback, raise_error=False)
 
-    def _prepare_curl_callback(self, curl, next_callback):
+    @staticmethod
+    def _prepare_curl_callback(curl, next_callback):
         curl.setopt(pycurl.NOSIGNAL, 1)
 
         if callable(next_callback):
