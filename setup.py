@@ -40,6 +40,7 @@ setup(
         'lxml >= 3.5.0',
         'pycurl >= 7.43.0',
         'tornado >= 5.0, < 5.1',
+        'python-consul >= 1.1.0'
     ],
     test_suite='tests',
     tests_require=[

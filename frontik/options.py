@@ -80,3 +80,8 @@ define('sentry_dsn', default=None, type=str, metavar='http://public:secret@examp
 
 define('max_http_clients', default=100, type=int)
 define('max_http_clients_connects', default=None, type=int)
+
+define('consul_port', default=None, type=int)
+define('consul_http_check_interval_sec', default=10, type=int)
+define('consul_http_check_timeout_sec', default=0.5, type=float)
+define('consul_tags', default=[], type=list)
