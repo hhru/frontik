@@ -1,14 +1,11 @@
-from typing import TYPE_CHECKING
 import asyncio
 from consul import Check
 from consul.aio import Consul
 from frontik.integrations import Integration, integrations_logger
 from frontik.options import options
 import socket
-
-if TYPE_CHECKING:
-    from asyncio import Future
-    from typing import Optional
+from asyncio import Future
+from typing import Optional
 
 
 class ConsulIntegration(Integration):
