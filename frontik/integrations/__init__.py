@@ -33,7 +33,7 @@ class Integration:
         raise NotImplementedError()  # pragma: no cover
 
     def deinitialize_app(self, app) -> Optional[Future]:
-        pass
+        pass  # pragma: no cover
 
     def initialize_handler(self, handler):
         raise NotImplementedError()  # pragma: no cover

@@ -15,7 +15,6 @@ class ConsulIntegration(Integration):
         self.service_name = None
 
     def initialize_app(self, app) -> Optional[Future]:
-        integrations_logger.info('Initializing consul')
         if not options.consul_port:
             integrations_logger.info('No consul port defined, skipping')
             return None
@@ -41,7 +40,8 @@ class ConsulIntegration(Integration):
         ))
 
     def deinitialize_app(self, app) -> Optional[Future]:
-        return asyncio.ensure_future(self.consul.agent.service.deregister(self.service_id))
+        if options.consul_port:
+            return asyncio.ensure_future(self.consul.agent.service.deregister(self.service_id))
 
     def initialize_handler(self, handler):
         handler.service_discovery = self.consul
