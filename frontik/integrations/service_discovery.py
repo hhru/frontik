@@ -4,6 +4,7 @@ from consul import Check
 from consul.aio import Consul
 from frontik.integrations import Integration
 from frontik.options import options
+import socket
 
 if TYPE_CHECKING:
     from asyncio import Future
@@ -18,9 +19,10 @@ class ConsulIntegration(Integration):
 
     def initialize_app(self, app) -> Optional[Future]:
         if options.consul_port:
+            host = socket.gethostname()
             self.consul = Consul(port=options.consul_port)
             self.service_name = options.app
-            self.service_id = f'{self.service_name}-{options.datacenter}-{options.host}'
+            self.service_id = f'{self.service_name}-{options.datacenter}-{host}'
 
             http_check = Check.http(
                 f'http://localhost:{options.port}/status',
@@ -31,7 +33,7 @@ class ConsulIntegration(Integration):
             return asyncio.ensure_future(self.consul.agent.service.register(
                 self.service_name,
                 service_id=self.service_id,
-                address=options.host,
+                address=host,
                 port=options.port,
                 check=http_check,
                 tags=options.consul_tags,
