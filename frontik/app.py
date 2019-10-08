@@ -115,7 +115,6 @@ class FrontikApplication(Application):
         self.http_client_factory = HttpClientFactory(self, getattr(self.config, 'http_upstreams', {}))
 
         self.router = FrontikRouter(self)
-        self.available_integrations, self.default_init_futures = integrations.load_integrations(self)
 
         core_handlers = [
             (r'/version/?', VersionHandler),
@@ -127,7 +126,7 @@ class FrontikApplication(Application):
             core_handlers.insert(0, (r'/pydevd/?', PydevdHandler))
 
         super().__init__(core_handlers, **tornado_settings)
-
+        self.available_integrations, self.default_init_futures = integrations.load_integrations(self)
         self.transforms.insert(0, partial(DebugTransform, self))
 
     def find_handler(self, request, **kwargs):

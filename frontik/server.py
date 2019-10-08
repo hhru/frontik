@@ -100,6 +100,13 @@ def run_server(app: FrontikApplication):
             return io_loop.asyncio_loop.is_running()
 
         def server_stop():
+            deinit_futures = [integration.deinitialize_app(app) for integration in app.available_integrations]
+            if deinit_futures:
+                def await_deinit(future):
+                    if future.exception() is not None:
+                        log.error('failed to deinit, deinit returned: %s', future.exception())
+
+                io_loop.add_future(gen.multi(deinit_futures), await_deinit)
             http_server.stop()
 
             if ioloop_is_running():
