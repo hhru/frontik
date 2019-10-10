@@ -1,6 +1,7 @@
 import http.client
 import json
 import logging
+import re
 import time
 from asyncio.futures import Future
 from functools import partial, wraps
@@ -52,6 +53,7 @@ class JSONBodyParseError(tornado.web.HTTPError):
 
 
 _ARG_DEFAULT = object()
+MEDIA_TYPE_PARAMETERS_SEPARATOR_RE = r' *; *'
 
 handler_logger = logging.getLogger('handler')
 
@@ -145,7 +147,7 @@ class PageHandler(RequestHandler):
             return value.decode('utf-8', 'ignore')
 
     def get_body_argument(self, name, default=_ARG_DEFAULT, strip=True):
-        if self._is_json_request(self.request):
+        if self._get_request_mime_type(self.request) == media_types.APPLICATION_JSON:
             if name not in self.json_body and default == _ARG_DEFAULT:
                 raise tornado.web.MissingArgumentError(name)
 
@@ -160,8 +162,9 @@ class PageHandler(RequestHandler):
             return super().get_body_argument(name, strip=strip)
         return super().get_body_argument(name, default, strip)
 
-    def _is_json_request(self, request):
-        return request.headers.get('Content-Type') == media_types.APPLICATION_JSON
+    def _get_request_mime_type(self, request):
+        content_type = request.headers.get('Content-Type', '')
+        return re.split(MEDIA_TYPE_PARAMETERS_SEPARATOR_RE, content_type)[0]
 
     def set_status(self, status_code, reason=None):
         status_code = _fallback_status_code(status_code)
