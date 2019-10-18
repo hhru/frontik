@@ -15,17 +15,17 @@ class ConsulIntegration(Integration):
         self.service_name = None
 
     def initialize_app(self, app) -> Optional[Future]:
-        if not options.consul_port:
-            integrations_logger.info('No consul port defined, skipping')
+        if not options.consul_enabled:
+            integrations_logger.info('Consul disabled, skipping')
             return None
 
         host = socket.gethostname()
-        self.consul = Consul(port=options.consul_port)
+        self.consul = Consul(host=options.consul_host, port=options.consul_port)
         self.service_name = options.app
         self.service_id = f'{self.service_name}-{options.datacenter}-{host}'
 
         http_check = Check.http(
-            f'http://localhost:{options.port}/status',
+            f'http://{host}:{options.port}/status',
             options.consul_http_check_interval_sec,
             timeout=options.consul_http_check_timeout_sec
         )
@@ -40,7 +40,7 @@ class ConsulIntegration(Integration):
         ))
 
     def deinitialize_app(self, app) -> Optional[Future]:
-        if options.consul_port:
+        if options.consul_enabled:
             return asyncio.ensure_future(self.consul.agent.service.deregister(self.service_id))
 
     def initialize_handler(self, handler):
