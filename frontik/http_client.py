@@ -4,6 +4,7 @@ import re
 import socket
 import time
 from asyncio import Future
+from collections import Counter
 from functools import partial
 from random import shuffle, random
 
@@ -11,7 +12,7 @@ import pycurl
 import logging
 from lxml import etree
 from tornado.escape import to_unicode, utf8
-from tornado.ioloop import IOLoop
+from tornado.ioloop import IOLoop, PeriodicCallback
 from tornado.curl_httpclient import CurlAsyncHTTPClient
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPResponse, HTTPError
 from tornado.httputil import HTTPHeaders
@@ -452,25 +453,66 @@ class BalancedHttpRequest:
 
 
 class TimeoutChecker:
-    def __init__(self, outer_caller, outer_timeout_ms, time_since_outer_request_start_ms_supplier):
+    def __init__(self, outer_caller, outer_timeout_ms, time_since_outer_request_start_ms_supplier, *,
+                 threshold_ms=100, send_timeout_stats_interval_ms=60000):
         self.outer_caller = outer_caller
         self.outer_timeout_ms = outer_timeout_ms
         self.time_since_outer_request_start_ms_supplier = time_since_outer_request_start_ms_supplier
+        self.timeout_counters = Counter()
+        self.threshold_ms = threshold_ms
+        periodic_callback = PeriodicCallback(partial(self.send_stats, send_timeout_stats_interval_ms),
+                                             send_timeout_stats_interval_ms)
+        periodic_callback.start()
+
+    class LoggingData:
+        def __init__(self, outer_caller, outer_timeout_ms, already_spent_time_ms, uri, request_timeout_ms):
+            self.outer_caller = outer_caller
+            self.outer_timeout_ms = outer_timeout_ms,
+            self.already_spent_time_ms = already_spent_time_ms,
+            self.uri = uri,
+            self.request_timeout_ms = request_timeout_ms
+
+        def __hash__(self):
+            return hash((self.outer_caller, self.outer_timeout_ms, self.uri, self.request_timeout_ms))
+
+        def __eq__(self, other):
+            return self.outer_caller == other.outer_caller \
+                   and self.outer_timeout_ms == other.outer_timeout_ms \
+                   and self.uri == other.uri \
+                   and self.request_timeout_ms == other.request_timeout_ms
+
+    def send_stats(self, interval_ms):
+        for data, count in self.timeout_counters.items():
+            if count <= 1:
+                http_client_logger.error('Incoming request from <%s> expects timeout=%d ms'
+                                         ', we have been working already for %d ms '
+                                         'and now trying to call <%s> with timeout %d ms',
+                                         data.outer_caller,
+                                         data.outer_timeout_ms,
+                                         data.already_spent_time_ms,
+                                         data.balanced_request.uri.partition('?')[0],
+                                         data.request_timeout_ms)
+            else:
+                http_client_logger.error('For last %d ms, got %d requests from <%s> expecting timeout=%d ms, '
+                                         'but calling <%s> with timeout %d ms',
+                                         interval_ms,
+                                         count,
+                                         data.outer_caller,
+                                         data.outer_timeout_ms,
+                                         data.balanced_request.uri.partition('?')[0],
+                                         data.request_timeout_ms)
+            self.timeout_counters.clear()
 
     def check(self, balanced_request: BalancedHttpRequest):
         if self.outer_timeout_ms:
             already_spent_time_ms = self.time_since_outer_request_start_ms_supplier() * 1000
             expected_timeout_ms = self.outer_timeout_ms - already_spent_time_ms
             request_timeout_ms = balanced_request.request_time_left * 1000
-            if request_timeout_ms > expected_timeout_ms:
-                http_client_logger.error('Incoming request from <%s> expects timeout=%d ms'
-                                         ', we have been working already for %d ms '
-                                         'and now trying to call <%s> with timeout %d ms',
-                                         self.outer_caller,
-                                         self.outer_timeout_ms,
-                                         already_spent_time_ms,
-                                         balanced_request.uri.partition('?')[0],
-                                         request_timeout_ms)
+            diff = request_timeout_ms - expected_timeout_ms
+            if diff > self.threshold_ms:
+                data = TimeoutChecker.LoggingData(self.outer_caller, self.outer_timeout_ms, already_spent_time_ms,
+                                                  balanced_request.uri.partition('?')[0], request_timeout_ms)
+                self.timeout_counters[data] += 1
 
 
 class HttpClientFactory:
