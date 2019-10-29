@@ -491,26 +491,17 @@ class TimeoutChecker:
 
     def send_stats(self, interval_ms):
         for data, count in self.timeout_counters.items():
-            if count <= 1:
-                http_client_logger.error('Incoming request from <%s> expects timeout=%d ms'
-                                         ', we have been working already for %d ms '
-                                         'and now trying to call upstream <%s> from handler <%s> with timeout %d ms',
-                                         data.outer_caller,
-                                         data.outer_timeout_ms,
-                                         data.already_spent_time_ms,
-                                         data.upstream,
-                                         data.handler,
-                                         data.request_timeout_ms)
-            else:
-                http_client_logger.error('For last %d ms, got %d requests from <%s> expecting timeout=%d ms, '
-                                         'but calling upstream <%s> from handler <%s> with timeout %d ms',
-                                         interval_ms,
-                                         count,
-                                         data.outer_caller,
-                                         data.outer_timeout_ms,
-                                         data.upstream,
-                                         data.handler,
-                                         data.request_timeout_ms)
+            http_client_logger.error('For last %d ms, got %d requests from <%s> expecting timeout=%d ms, '
+                                     'but calling upstream <%s> from handler <%s> with timeout %d ms, '
+                                     'arbitrary we spend %d ms before the call',
+                                     interval_ms,
+                                     count,
+                                     data.outer_caller,
+                                     data.outer_timeout_ms,
+                                     data.upstream,
+                                     data.handler,
+                                     data.request_timeout_ms,
+                                     data.already_spent_time_ms)
             self.timeout_counters.clear()
 
     def check(self, balanced_request: BalancedHttpRequest):
