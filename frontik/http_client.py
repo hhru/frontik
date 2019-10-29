@@ -25,6 +25,7 @@ from frontik.util import make_url, make_body, make_mfd
 
 OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
 USER_AGENT_HEADER = 'User-Agent'
+NON_HEX = {chr(item) for item in range(ord('g'), ord('z') + 1)}
 
 
 def HTTPResponse__repr__(self):
@@ -503,6 +504,26 @@ class TimeoutChecker:
                                          data.request_timeout_ms)
             self.timeout_counters.clear()
 
+    @staticmethod
+    def _filter_part(original_part, min_compaction_len, min_hash_len, replacement):
+        part_len = len(original_part)
+        if part_len < min_compaction_len:
+            return original_part
+        number_count = sum(c.isdigit() for c in original_part)
+        if number_count == part_len:
+            return replacement
+        if any(s in original_part for s in NON_HEX):
+            return original_part
+        if part_len > min_hash_len and number_count >= min_compaction_len:
+            return replacement
+        return original_part
+
+    @staticmethod
+    def _compact_url(uri, min_compaction_len=4, min_hash_len=16, replacement='[id-or-hash]'):
+        path = uri.partition('?')[0]
+        return '/'.join([TimeoutChecker._filter_part(part, min_compaction_len, min_hash_len, replacement)
+                         for part in path.split('/')])
+
     def check(self, balanced_request: BalancedHttpRequest):
         if self.outer_timeout_ms:
             already_spent_time_ms = self.time_since_outer_request_start_ms_supplier() * 1000
@@ -510,8 +531,9 @@ class TimeoutChecker:
             request_timeout_ms = balanced_request.request_time_left * 1000
             diff = request_timeout_ms - expected_timeout_ms
             if diff > self.threshold_ms:
+                compacted_url = TimeoutChecker._compact_url(balanced_request.uri)
                 data = TimeoutChecker.LoggingData(self.outer_caller, self.outer_timeout_ms, already_spent_time_ms,
-                                                  balanced_request.uri.partition('?')[0], request_timeout_ms)
+                                                  compacted_url, request_timeout_ms)
                 self.timeout_counters[data] += 1
 
 
