@@ -20,12 +20,11 @@ from tornado.options import options
 
 from frontik import media_types
 from frontik.debug import DEBUG_HEADER_NAME, response_from_debug
-from frontik.request_context import get_request_id, get_request
+from frontik.request_context import get_request_id, get_request, get_handler_name
 from frontik.util import make_url, make_body, make_mfd
 
 OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
 USER_AGENT_HEADER = 'User-Agent'
-NON_HEX = {chr(item) for item in range(ord('g'), ord('z') + 1)}
 
 
 def HTTPResponse__repr__(self):
@@ -466,20 +465,28 @@ class TimeoutChecker:
         periodic_callback.start()
 
     class LoggingData:
-        def __init__(self, outer_caller, outer_timeout_ms, already_spent_time_ms, uri, request_timeout_ms):
+        __slots__ = ('outer_caller', 'outer_timeout_ms',
+                     'handler', 'upstream', 'request_timeout_ms',
+                     'already_spent_time_ms')
+
+        def __init__(self, outer_caller, outer_timeout_ms,
+                     handler, upstream, request_timeout_ms,
+                     already_spent_time_ms):
             self.outer_caller = outer_caller
-            self.outer_timeout_ms = outer_timeout_ms,
-            self.already_spent_time_ms = already_spent_time_ms,
-            self.uri = uri,
+            self.outer_timeout_ms = outer_timeout_ms
+            self.handler = handler
+            self.upstream = upstream
             self.request_timeout_ms = request_timeout_ms
+            self.already_spent_time_ms = already_spent_time_ms
 
         def __hash__(self):
-            return hash((self.outer_caller, self.outer_timeout_ms, self.uri, self.request_timeout_ms))
+            return hash((self.outer_caller, self.outer_timeout_ms,
+                         self.handler, self.upstream, self.request_timeout_ms))
 
         def __eq__(self, other):
             return self.outer_caller == other.outer_caller \
                    and self.outer_timeout_ms == other.outer_timeout_ms \
-                   and self.uri == other.uri \
+                   and self.handler == other.handler \
                    and self.request_timeout_ms == other.request_timeout_ms
 
     def send_stats(self, interval_ms):
@@ -487,42 +494,24 @@ class TimeoutChecker:
             if count <= 1:
                 http_client_logger.error('Incoming request from <%s> expects timeout=%d ms'
                                          ', we have been working already for %d ms '
-                                         'and now trying to call <%s> with timeout %d ms',
+                                         'and now trying to call upstream <%s> from handler <%s> with timeout %d ms',
                                          data.outer_caller,
                                          data.outer_timeout_ms,
                                          data.already_spent_time_ms,
-                                         data.balanced_request.uri.partition('?')[0],
+                                         data.upstream,
+                                         data.handler,
                                          data.request_timeout_ms)
             else:
                 http_client_logger.error('For last %d ms, got %d requests from <%s> expecting timeout=%d ms, '
-                                         'but calling <%s> with timeout %d ms',
+                                         'but calling upstream <%s> from handler <%s> with timeout %d ms',
                                          interval_ms,
                                          count,
                                          data.outer_caller,
                                          data.outer_timeout_ms,
-                                         data.balanced_request.uri.partition('?')[0],
+                                         data.upstream,
+                                         data.handler,
                                          data.request_timeout_ms)
             self.timeout_counters.clear()
-
-    @staticmethod
-    def _filter_part(original_part, min_compaction_len, min_hash_len, replacement):
-        part_len = len(original_part)
-        if part_len < min_compaction_len:
-            return original_part
-        number_count = sum(c.isdigit() for c in original_part)
-        if number_count == part_len:
-            return replacement
-        if any(s in original_part for s in NON_HEX):
-            return original_part
-        if part_len > min_hash_len and number_count >= min_compaction_len:
-            return replacement
-        return original_part
-
-    @staticmethod
-    def _compact_url(uri, min_compaction_len=4, min_hash_len=16, replacement='[id-or-hash]'):
-        path = uri.partition('?')[0]
-        return '/'.join([TimeoutChecker._filter_part(part, min_compaction_len, min_hash_len, replacement)
-                         for part in path.split('/')])
 
     def check(self, balanced_request: BalancedHttpRequest):
         if self.outer_timeout_ms:
@@ -531,9 +520,9 @@ class TimeoutChecker:
             request_timeout_ms = balanced_request.request_time_left * 1000
             diff = request_timeout_ms - expected_timeout_ms
             if diff > self.threshold_ms:
-                compacted_url = TimeoutChecker._compact_url(balanced_request.uri)
-                data = TimeoutChecker.LoggingData(self.outer_caller, self.outer_timeout_ms, already_spent_time_ms,
-                                                  compacted_url, request_timeout_ms)
+                data = TimeoutChecker.LoggingData(self.outer_caller, self.outer_timeout_ms,
+                                                  get_handler_name(), balanced_request.upstream, request_timeout_ms,
+                                                  already_spent_time_ms)
                 self.timeout_counters[data] += 1
 
 
