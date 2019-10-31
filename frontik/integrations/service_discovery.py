@@ -3,6 +3,7 @@ from consul import Check
 from consul.aio import Consul
 from frontik.integrations import Integration, integrations_logger
 from frontik.options import options
+from frontik.version import version
 import socket
 from asyncio import Future
 from typing import Optional
@@ -22,7 +23,7 @@ class ConsulIntegration(Integration):
         host = socket.gethostname()
         self.consul = Consul(host=options.consul_host, port=options.consul_port)
         self.service_name = options.app
-        self.service_id = f'{self.service_name}-{options.datacenter}-{host}'
+        self.service_id = f'{self.service_name}-{options.datacenter}-{host}-{options.port}'
 
         http_check = Check.http(
             f'http://{host}:{options.port}/status',
@@ -37,6 +38,7 @@ class ConsulIntegration(Integration):
             port=options.port,
             check=http_check,
             tags=options.consul_tags,
+            meta={'serviceVersion': version}
         ))
 
     def deinitialize_app(self, app) -> Optional[Future]:
