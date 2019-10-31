@@ -504,15 +504,17 @@ class TimeoutChecker:
                                      data.already_spent_time_ms)
             self.timeout_counters.clear()
 
-    def check(self, balanced_request: BalancedHttpRequest):
+    def check(self, request: BalancedHttpRequest):
         if self.outer_timeout_ms:
             already_spent_time_ms = self.time_since_outer_request_start_ms_supplier() * 1000
             expected_timeout_ms = self.outer_timeout_ms - already_spent_time_ms
-            request_timeout_ms = balanced_request.request_time_left * 1000
+            request_timeout_ms = request.request_time_left * 1000
             diff = request_timeout_ms - expected_timeout_ms
             if diff > self.threshold_ms:
                 data = TimeoutChecker.LoggingData(self.outer_caller, self.outer_timeout_ms,
-                                                  get_handler_name(), balanced_request.upstream, request_timeout_ms,
+                                                  get_handler_name(),
+                                                  request.upstream.name if request.upstream else None,
+                                                  request_timeout_ms,
                                                   already_spent_time_ms)
                 self.timeout_counters[data] += 1
 
