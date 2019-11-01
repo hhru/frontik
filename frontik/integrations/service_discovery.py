@@ -30,15 +30,15 @@ class ConsulIntegration(Integration):
             options.consul_http_check_interval_sec,
             timeout=options.consul_http_check_timeout_sec
         )
-
+        # not supported by version 1.1.0
+        meta = {'serviceVersion': version}
         return asyncio.ensure_future(self.consul.agent.service.register(
             self.service_name,
             service_id=self.service_id,
             address=host,
             port=options.port,
             check=http_check,
-            tags=options.consul_tags,
-            meta={'serviceVersion': version}
+            tags=options.consul_tags
         ))
 
     def deinitialize_app(self, app) -> Optional[Future]:
