@@ -539,6 +539,7 @@ class HttpClientFactory:
             self.send_stats_callback = PeriodicCallback(partial(self.__send_stats, self.send_timeout_stats_interval_ms),
                                                         self.send_timeout_stats_interval_ms)
             self.send_stats_callback.start()
+            http_client_logger.error('Timeout tracking set')
 
     def __send_stats(self, interval_ms):
         http_client_logger.error('timeout stats size: %d', len(self.timeout_counters))
