@@ -20,7 +20,6 @@ class HTTPClientKeepAliveTestCase(unittest.TestCase):
     def tearDown(self):
         self.client.close()
         self.backend.close()
-        frontik_test_app.stop()
 
     def test_http_client_reuses_connection_to_backend(self):
         self.client.send_request(self.backend.port)

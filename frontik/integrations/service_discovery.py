@@ -38,7 +38,7 @@ class ConsulIntegration(Integration):
             address=host,
             port=options.port,
             check=http_check,
-            tags=options.consul_tags
+            tags=options.consul_tags,
         ))
 
     def deinitialize_app(self, app) -> Optional[Future]:
