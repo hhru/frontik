@@ -684,4 +684,5 @@ class ErrorHandler(PageHandler, tornado.web.ErrorHandler):
 
 
 class RedirectHandler(PageHandler, tornado.web.RedirectHandler):
-    pass
+    def get_page(self):
+        tornado.web.RedirectHandler.get(self)

@@ -1,9 +1,13 @@
 import json
 import logging
+import re
+import tornado.routing
 
 from frontik.app import FrontikApplication
 from frontik.loggers import bootstrap_logger
+from frontik.handler import RedirectHandler
 from frontik.options import options
+from frontik.routing import _get_application_404_handler_delegate
 
 from tests.projects.test_app import config
 
@@ -22,6 +26,11 @@ class TestApplication(FrontikApplication):
             kafka_integration.kafka_producers = {'infrastructure': TestKafkaProducer()}
         except Exception:
             pass
+
+    def application_urls(self):
+        return [
+            (r'^/redirect', RedirectRouter()),
+        ] + super().application_urls()
 
     def application_config(self):
         return config
@@ -49,3 +58,19 @@ class TestKafkaProducer:
     def disable_and_get_data(self):
         self.request_id = None
         return self.data
+
+
+class RedirectRouter(tornado.routing.Router):
+    PERMANENT_REDIRECT_PATTERN = re.compile(r'^/redirect/permanent')
+    TEMPORARY_REDIRECT_PATTERN = re.compile(r'^/redirect/temporary')
+
+    def find_handler(self, request, **kwargs):
+        application = kwargs['application']
+        if self.PERMANENT_REDIRECT_PATTERN.match(request.uri):
+            permanent = True
+        elif self.TEMPORARY_REDIRECT_PATTERN.match(request.uri):
+            permanent = False
+        else:
+            return _get_application_404_handler_delegate(application, request)
+        redirect_arguments = dict(url='/finish?foo=bar', permanent=permanent)
+        return application.get_handler_delegate(request, RedirectHandler, redirect_arguments)

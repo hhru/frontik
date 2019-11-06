@@ -90,3 +90,35 @@ class TestHandler(unittest.TestCase):
                 json={},
             )
             self.assertEqual(response.content, b'baz')
+
+
+class TestRedirectHandler(unittest.TestCase):
+    def test_permanent_redirect(self):
+        response = frontik_test_app.get_page('redirect/permanent', allow_redirects=False)
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response.headers['Location'], '/finish?foo=bar')
+
+    def test_temporary_redirect(self):
+        response = frontik_test_app.get_page('redirect/temporary', allow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], '/finish?foo=bar')
+
+    def test_permanent_redirect_with_argument(self):
+        response = frontik_test_app.get_page('redirect/permanent?foo2=bar2', allow_redirects=False)
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response.headers['Location'], '/finish?foo=bar&foo2=bar2')
+
+    def test_temporary_redirect_with_argument(self):
+        response = frontik_test_app.get_page('redirect/temporary?foo2=bar2', allow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], '/finish?foo=bar&foo2=bar2')
+
+    def test_permanent_followed_redirect(self):
+        response = frontik_test_app.get_page('redirect/permanent', allow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'success')
+
+    def test_permanent_followed_redirect_with_argument(self):
+        response = frontik_test_app.get_page('redirect/permanent?code=403', allow_redirects=True)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.content, b'success')
