@@ -22,7 +22,7 @@ class TestSyslog(unittest.TestCase):
 
         cls.test_app = FrontikTestInstance(
             './frontik-test --app=tests.projects.test_app --config=tests/projects/frontik_debug.cfg '
-            f'--syslog=true --syslog_host=127.0.0.1 --syslog_port={port}'
+            f'--syslog=true --consul_enabled=False --syslog_host=127.0.0.1 --syslog_port={port}'
         )
 
     @classmethod
