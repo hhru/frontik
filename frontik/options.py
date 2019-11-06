@@ -80,6 +80,7 @@ define('sentry_dsn', default=None, type=str, metavar='http://public:secret@examp
 
 define('max_http_clients', default=100, type=int)
 define('max_http_clients_connects', default=None, type=int)
+define('send_timeout_stats_interval_ms', default=60000, type=int)
 
 define('consul_enabled', default=True, type=bool)
 define('consul_host', default='127.0.0.1', type=str)
