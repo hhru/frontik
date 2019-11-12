@@ -21,25 +21,31 @@ class TimeoutCounter(dict):
         return 0, 0
 
 
-_timeout_counters = TimeoutCounter()
-
-
 class Sender:
+    def __init__(self) -> None:
+        self._timeout_counters = TimeoutCounter()
+
+    def send_data(self, data, already_spent_ms):
+        self._timeout_counters.increment(data, already_spent_ms)
+
     @property
     def send_stats_callback(self):
         if not hasattr(self, '_send_stats_callback'):
             if options.send_timeout_stats_interval_ms:
                 self._send_stats_callback = PeriodicCallback(
-                    partial(self.__send_stats, options.send_timeout_stats_interval_ms),
+                    partial(self.__send_aggregated_stats, options.send_timeout_stats_interval_ms),
                     options.send_timeout_stats_interval_ms)
             else:
                 self._send_stats_callback = None
         return self._send_stats_callback
 
-    @staticmethod
-    def __send_stats(interval_ms):
-        timeout_tracking_logger.debug('timeout stats size: %d', len(_timeout_counters))
-        for data, counters in _timeout_counters.items():
+    def start_sending_if_needed(self):
+        if self.send_stats_callback and not self.send_stats_callback.is_running():
+            self.send_stats_callback.start()
+
+    def __send_aggregated_stats(self, interval_ms):
+        timeout_tracking_logger.debug('timeout stats size: %d', len(self._timeout_counters))
+        for data, counters in self._timeout_counters.items():
             count, max_already_spent_ms = counters
             timeout_tracking_logger.error('For last %d ms, got %d requests from <%s> expecting timeout=%d ms, '
                                           'but calling upstream <%s> from handler <%s> with timeout %d ms, '
@@ -52,16 +58,15 @@ class Sender:
                                           data.handler_name,
                                           data.request_timeout_ms,
                                           max_already_spent_ms)
-        _timeout_counters.clear()
+        self._timeout_counters.clear()
 
 
-__sender = Sender()
+_sender = Sender()
 
 
 def get_timeout_checker(outer_caller, outer_timeout_ms, time_since_outer_request_start_ms_supplier, *,
                         threshold_ms=100):
-    if __sender.send_stats_callback and not __sender.send_stats_callback.is_running():
-        __sender.send_stats_callback.start()
+    _sender.start_sending_if_needed()
     return TimeoutChecker(outer_caller, outer_timeout_ms, time_since_outer_request_start_ms_supplier,
                           threshold_ms=threshold_ms)
 
@@ -85,4 +90,4 @@ class TimeoutChecker:
                                    request.upstream.name if request.upstream else None,
                                    get_handler_name(),
                                    request_timeout_ms)
-                _timeout_counters.increment(data, already_spent_time_ms)
+                _sender.send_data(data, already_spent_time_ms)
