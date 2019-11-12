@@ -56,6 +56,8 @@ class FrontikTestInstance:
         self.port = None
 
     def start(self):
+        if self.port:
+            return
         self.port = find_free_port()
         self.popen = _run_command(self.command, self.port)
 
@@ -117,30 +119,42 @@ class FrontikTestInstance:
         return to_unicode(self.get_page(page, notpl=notpl, method=method).content)
 
 
-frontik_test_app = FrontikTestInstance(
-    './frontik-test --app=tests.projects.test_app --config=tests/projects/frontik_debug.cfg --log_dir=.'
+frontik_consul_mock_app = FrontikTestInstance(
+    './frontik-test --app=tests.projects.consul_mock_app '
+    '--config=tests/projects/frontik_consul_mock.cfg --log_dir=.'
 )
+frontik_consul_mock_app.start()
 
+frontik_test_app = FrontikTestInstance(
+    './frontik-test --app=tests.projects.test_app '
+    '--config=tests/projects/frontik_debug.cfg --consul_port={} --log_dir=.'.format(frontik_consul_mock_app.port)
+)
 frontik_re_app = FrontikTestInstance(
-    './frontik-test --app=tests.projects.re_app --config=tests/projects/frontik_debug.cfg --log_dir=.'
+    './frontik-test --app=tests.projects.re_app '
+    '--config=tests/projects/frontik_debug.cfg --consul_port={} --log_dir=.'.format(frontik_consul_mock_app.port)
 )
 
 frontik_no_debug_app = FrontikTestInstance(
-    './frontik-test --app=tests.projects.no_debug_app --config=tests/projects/frontik_no_debug.cfg --log_dir=.'
+    './frontik-test --app=tests.projects.no_debug_app '
+    '--config=tests/projects/frontik_no_debug.cfg --consul_port={} --log_dir=.'.format(frontik_consul_mock_app.port)
 )
 
 frontik_broken_config_app = FrontikTestInstance(
-    './frontik-test --app=tests.projects.broken_config_app --config=tests/projects/frontik_debug.cfg --log_dir=.'
+    './frontik-test --app=tests.projects.broken_config_app '
+    '--config=tests/projects/frontik_debug.cfg --consul_port={} --log_dir=.'.format(frontik_consul_mock_app.port)
 )
 
 frontik_broken_init_async_app = FrontikTestInstance(
-    './frontik-test --app=tests.projects.broken_async_init_app --config=tests/projects/frontik_debug.cfg --log_dir=.'
+    './frontik-test --app=tests.projects.broken_async_init_app '
+    '--config=tests/projects/frontik_debug.cfg --consul_port={} --log_dir=.'.format(frontik_consul_mock_app.port)
 )
 
 frontik_balancer_app = FrontikTestInstance(
-    './frontik-test --app=tests.projects.balancer_app --config=tests/projects/frontik_no_debug.cfg --log_dir=.'
+    './frontik-test --app=tests.projects.balancer_app '
+    '--config=tests/projects/frontik_no_debug.cfg  --consul_port={} --log_dir=.'.format(frontik_consul_mock_app.port)
 )
 
 frontik_broken_balancer_app = FrontikTestInstance(
-    './frontik-test --app=tests.projects.broken_balancer_app --config=tests/projects/frontik_debug.cfg --log_dir=.'
+    './frontik-test --app=tests.projects.broken_balancer_app '
+    '--config=tests/projects/frontik_debug.cfg --consul_port={} --log_dir=.'.format(frontik_consul_mock_app.port)
 )

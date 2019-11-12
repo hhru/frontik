@@ -41,7 +41,7 @@ setup(
         'pycurl >= 7.43.0',
         'tornado >= 5.0, < 5.1',
         'python-consul >= 1.1.0',
-        'aiohttp'
+        'aiohttp == 3.6.2'
     ],
     test_suite='tests',
     tests_require=[

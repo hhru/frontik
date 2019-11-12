@@ -40,3 +40,5 @@ install:
 script:
   - if [[ -n $WITH_COVERAGE ]]; then ./coverage-run.sh && coveralls; else python3 setup.py test; fi
 sudo: required
+after_failure:
+  - cat service.log

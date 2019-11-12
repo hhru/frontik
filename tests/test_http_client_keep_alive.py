@@ -14,6 +14,7 @@ class HTTPClientKeepAliveTestCase(unittest.TestCase):
 
     def setUp(self):
         self.backend = Backend()
+        frontik_test_app.start()
         self.client = Client(frontik_test_app.port)
 
     def tearDown(self):
@@ -66,6 +67,7 @@ class Client:
         self.port = port
         self.socket = socket.socket()
         self.socket.connect(('127.0.0.1', port))
+        self.socket.settimeout(5)
 
     def send_request(self, backend_port, request_id=None):
         self.socket.send(b'GET /http_client/proxy_code?port=' + str(backend_port).encode() + b' HTTP/1.1\r\n')
