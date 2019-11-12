@@ -1,5 +1,5 @@
 import logging
-from collections import Counter
+from collections import namedtuple
 from frontik.request_context import get_handler_name
 from functools import partial
 from tornado.ioloop import PeriodicCallback
@@ -7,7 +7,21 @@ from tornado.options import options
 
 
 timeout_tracking_logger = logging.getLogger('timeout_tracking')
-_timeout_counters = Counter()
+LoggingData = namedtuple('LoggingData',
+                         ('outer_caller', 'outer_timeout_ms', 'upstream', 'handler_name', 'request_timeout_ms'))
+
+
+class TimeoutCounter(dict):
+
+    def increment(self, k, already_spent_ms):
+        count, max_already_spent_ms = super().__getitem__(k)
+        super().__setitem__(k, (count + 1, max(already_spent_ms, max_already_spent_ms)))
+
+    def __missing__(self, key):
+        return 0, 0
+
+
+_timeout_counters = TimeoutCounter()
 
 
 class Sender:
@@ -25,18 +39,19 @@ class Sender:
     @staticmethod
     def __send_stats(interval_ms):
         timeout_tracking_logger.debug('timeout stats size: %d', len(_timeout_counters))
-        for data, count in _timeout_counters.items():
+        for data, counters in _timeout_counters.items():
+            count, max_already_spent_ms = counters
             timeout_tracking_logger.error('For last %d ms, got %d requests from <%s> expecting timeout=%d ms, '
                                           'but calling upstream <%s> from handler <%s> with timeout %d ms, '
-                                          'arbitrary we spend %d ms before the call',
+                                          'arbitrary we spend up to %d ms before the call',
                                           interval_ms,
                                           count,
                                           data.outer_caller,
                                           data.outer_timeout_ms,
                                           data.upstream,
-                                          data.handler,
+                                          data.handler_name,
                                           data.request_timeout_ms,
-                                          data.already_spent_time_ms)
+                                          max_already_spent_ms)
         _timeout_counters.clear()
 
 
@@ -59,32 +74,6 @@ class TimeoutChecker:
         self.time_since_outer_request_start_sec_supplier = time_since_outer_request_start_sec_supplier
         self.threshold_ms = threshold_ms
 
-    class LoggingData:
-        __slots__ = ('outer_caller', 'outer_timeout_ms',
-                     'handler', 'upstream', 'request_timeout_ms',
-                     'already_spent_time_ms')
-
-        def __init__(self, outer_caller, outer_timeout_ms,
-                     handler, upstream, request_timeout_ms,
-                     already_spent_time_ms):
-            self.outer_caller = outer_caller
-            self.outer_timeout_ms = outer_timeout_ms
-            self.handler = handler
-            self.upstream = upstream
-            self.request_timeout_ms = request_timeout_ms
-            self.already_spent_time_ms = already_spent_time_ms
-
-        def __hash__(self):
-            return hash((self.outer_caller, self.outer_timeout_ms,
-                         self.handler, self.upstream, self.request_timeout_ms))
-
-        def __eq__(self, other):
-            return self.outer_caller == other.outer_caller \
-                   and self.outer_timeout_ms == other.outer_timeout_ms \
-                   and self.handler == other.handler \
-                   and self.upstream == other.upstream \
-                   and self.request_timeout_ms == other.request_timeout_ms
-
     def check(self, request):
         if self.outer_timeout_ms:
             already_spent_time_ms = self.time_since_outer_request_start_sec_supplier() * 1000
@@ -92,9 +81,8 @@ class TimeoutChecker:
             request_timeout_ms = request.request_time_left * 1000
             diff = request_timeout_ms - expected_timeout_ms
             if diff > self.threshold_ms:
-                data = TimeoutChecker.LoggingData(self.outer_caller, self.outer_timeout_ms,
-                                                  get_handler_name(),
-                                                  request.upstream.name if request.upstream else None,
-                                                  request_timeout_ms,
-                                                  already_spent_time_ms)
-                _timeout_counters[data] += 1
+                data = LoggingData(self.outer_caller, self.outer_timeout_ms,
+                                   request.upstream.name if request.upstream else None,
+                                   get_handler_name(),
+                                   request_timeout_ms)
+                _timeout_counters.increment(data, already_spent_time_ms)
