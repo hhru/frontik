@@ -4,6 +4,7 @@ import re
 import socket
 import time
 from asyncio import Future
+
 from functools import partial
 from random import shuffle, random
 
@@ -20,6 +21,7 @@ from tornado.options import options
 from frontik import media_types
 from frontik.debug import DEBUG_HEADER_NAME, response_from_debug
 from frontik.request_context import get_request_id, get_request
+from frontik.timeout_tracking import get_timeout_checker
 from frontik.util import make_url, make_body, make_mfd
 
 OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
@@ -451,28 +453,6 @@ class BalancedHttpRequest:
         return len(self.tried_hosts) if self.tried_hosts else 0
 
 
-class TimeoutChecker:
-    def __init__(self, outer_caller, outer_timeout_ms, time_since_outer_request_start_ms_supplier):
-        self.outer_caller = outer_caller
-        self.outer_timeout_ms = outer_timeout_ms
-        self.time_since_outer_request_start_ms_supplier = time_since_outer_request_start_ms_supplier
-
-    def check(self, balanced_request: BalancedHttpRequest):
-        if self.outer_timeout_ms:
-            already_spent_time_ms = self.time_since_outer_request_start_ms_supplier() * 1000
-            expected_timeout_ms = self.outer_timeout_ms - already_spent_time_ms
-            request_timeout_ms = balanced_request.request_time_left * 1000
-            if request_timeout_ms > expected_timeout_ms:
-                http_client_logger.error('Incoming request from <%s> expects timeout=%d ms'
-                                         ', we have been working already for %d ms '
-                                         'and now trying to call <%s> with timeout %d ms',
-                                         self.outer_caller,
-                                         self.outer_timeout_ms,
-                                         already_spent_time_ms,
-                                         balanced_request.uri.partition('?')[0],
-                                         request_timeout_ms)
-
-
 class HttpClientFactory:
     def __init__(self, application, upstreams):
         AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
@@ -512,11 +492,10 @@ class HttpClientFactory:
         timeout_checker = None
         request = get_request()
         if request:
-            outer_timeout = handler.request.headers.get(OUTER_TIMEOUT_MS_HEADER)
+            outer_timeout = request.headers.get(OUTER_TIMEOUT_MS_HEADER)
             if outer_timeout:
-                timeout_checker = TimeoutChecker(handler.request.headers.get(USER_AGENT_HEADER),
-                                                 float(outer_timeout),
-                                                 request.request_time)
+                timeout_checker = get_timeout_checker(request.headers.get(USER_AGENT_HEADER), float(outer_timeout),
+                                                      request.request_time)
 
         return HttpClient(
             self.tornado_http_client, self.application.app,
