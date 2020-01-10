@@ -1,6 +1,6 @@
 import time
 import logging
-from functools import wraps
+from functools import wraps, partial
 
 from tornado.ioloop import IOLoop
 from tornado.concurrent import Future
@@ -102,8 +102,13 @@ class AsyncGroup:
 
         return new_cb
 
+    @staticmethod
+    def _handle_future(callback, future):
+        future.result()
+        callback()
+
     def add_future(self, future):
-        IOLoop.current().add_future(future, self.add_notification())
+        IOLoop.current().add_future(future, partial(self._handle_future, self.add_notification()))
         return future
 
     def get_finish_future(self):
