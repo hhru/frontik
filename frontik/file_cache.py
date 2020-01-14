@@ -44,15 +44,29 @@ class FileCache:
         self.cache_name = cache_name
         self.root_dir = root_dir
         self.load_fn = load_fn
+        self.frozen = False
+        self.max_len = max_len
         self.cache = LimitedDict(max_len, step, deepcopy)
+
+    def populate(self, filenames, log, freeze=False):
+        for filename in filenames:
+            self._load(filename, log)
+
+        self.frozen = freeze and (self.max_len is None or self.max_len > 0)
 
     def load(self, filename, log):
         if filename in self.cache:
             log.debug('got %s file from cache (%s cache size: %s)', filename, self.cache_name, len(self.cache))
             return self.cache[filename]
 
+        if self.frozen:
+            raise Exception(f'encounter file {filename} not in cache while cache is frozen')
+
+        return self._load(filename, log)
+
+    def _load(self, filename, log):
         real_filename = os.path.normpath(os.path.join(self.root_dir, filename))
-        log.debug('reading file "%s"', real_filename)
+        log.info('reading file "%s"', real_filename)
         result = self.load_fn(real_filename, log)
         self.cache[filename] = result
 

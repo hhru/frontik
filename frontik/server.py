@@ -2,8 +2,10 @@ import importlib
 import logging
 import os.path
 import signal
+import errno
 import sys
 import time
+import gc
 from concurrent.futures import ThreadPoolExecutor
 
 import tornado.autoreload
@@ -12,6 +14,7 @@ import tornado.ioloop
 from tornado import gen
 from tornado.httputil import HTTPServerRequest
 from tornado.options import parse_command_line, parse_config_file
+from tornado.util import errno_from_exception
 
 from frontik.app import FrontikApplication
 from frontik.loggers import bootstrap_logger, bootstrap_core_logging
@@ -126,6 +129,61 @@ def run_server(app: FrontikApplication):
         sys.exit(1)
 
 
+def fork_processes(num_processes):
+    log.info("starting %d processes", num_processes)
+    children = {}
+
+    def start_child(i):
+        pid = os.fork()
+        if pid == 0:
+            return i
+        else:
+            children[pid] = i
+            return None
+
+    for i in range(num_processes):
+        id = start_child(i)
+        if id is not None:
+            return id
+
+    def sigterm_handler(signum, frame):
+        log.info('received SIGTERM')
+
+        for pid, id in children.items():
+            log.info('sending SIGTERM to child %d (pid %d)', id, pid)
+            os.kill(pid, signal.SIGTERM)
+
+    gc.enable()
+    signal.signal(signal.SIGTERM, sigterm_handler)
+
+    while children:
+        try:
+            pid, status = os.wait()
+        except OSError as e:
+            if errno_from_exception(e) == errno.EINTR:
+                continue
+            raise
+
+        if pid not in children:
+            continue
+
+        id = children.pop(pid)
+        if os.WIFSIGNALED(status):
+            log.warning("child %d (pid %d) killed by signal %d, restarting", id, pid, os.WTERMSIG(status))
+        elif os.WEXITSTATUS(status) != 0:
+            log.warning("child %d (pid %d) exited with status %d, restarting", id, pid, os.WEXITSTATUS(status))
+        else:
+            log.info("child %d (pid %d) exited normally", id, pid)
+            continue
+
+        new_id = start_child(id)
+        if new_id is not None:
+            return new_id
+
+    log.info('all children terminated, exiting')
+    sys.exit(0)
+
+
 def main(config_file=None):
     parse_configs(config_files=config_file)
 
@@ -149,6 +207,16 @@ def main(config_file=None):
 
     try:
         app = application(app_root=os.path.dirname(module.__file__), **options.as_dict())
+
+        gc.disable()
+        gc.collect()
+        gc.freeze()
+
+        if options.workers != 1:
+            fork_processes(options.workers)
+
+        gc.enable()
+
         ioloop = tornado.ioloop.IOLoop.current()
 
         executor = ThreadPoolExecutor(options.common_executor_pool_size)
@@ -156,7 +224,7 @@ def main(config_file=None):
 
         def _async_init_cb():
             try:
-                init_futures = app.default_init_futures + list(app.init_async())
+                init_futures = app.init_async()
 
                 if init_futures:
                     def await_init(future):
@@ -177,6 +245,6 @@ def main(config_file=None):
         ioloop.add_callback(_async_init_cb)
         ioloop.start()
 
-    except BaseException:
+    except Exception:
         log.exception('frontik application exited with exception')
         sys.exit(1)

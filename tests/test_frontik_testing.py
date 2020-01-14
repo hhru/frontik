@@ -45,6 +45,7 @@ class TestFrontikTesting(FrontikTestCase):
                 ]
 
         app = TestApplication(app='test_app')
+        app.init_async()
         self.patch_app_http_client(app)
 
         return app
