@@ -6,6 +6,7 @@ options = tornado_options
 
 define('app', default=None, type=str)
 define('app_class', default=None, type=str)
+define('workers', default=1, type=int)
 define('tornado_settings', default=None, type=dict)
 define('max_active_handlers', default=100, type=int)
 define('reuse_port', default=True, type=bool)

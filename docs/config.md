@@ -15,6 +15,7 @@ These options can be set for each Frontik instance (see [options.py](/frontik/op
 | `slow_callback_threshold_ms` | `int`   | `None`        | Enables logging of long-running callbacks                              |
 | `app`                        | `str`   | `None`        | Application package name (see [Frontik application structure](/docs/frontik-app.md)) |
 | `app_class`                  | `str`   | `None`        | Application class name defined in application root module (by default `FrontikApplication` class is used) |
+| `workers`                    | `int`   | `1`           | Number of worker processes creates using fork. When default value is used, master itself become worker, without fork |
 | `xheaders  `                 | `bool`  | `False`       | Controls Tornado HTTPServer `xheaders` option                          |
 | `tornado_settings`           | `dict`  | `None`        | tornado.web.Application settings                                       |
 | `autoreload`                 | `bool`  | `False`       | Restart Frontik after changes in application sources or config files   |

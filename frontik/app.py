@@ -112,7 +112,7 @@ class FrontikApplication(Application):
         self.xml = frontik.producers.xml_producer.XMLProducerFactory(self)
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
-        self.http_client_factory = HttpClientFactory(self, getattr(self.config, 'http_upstreams', {}))
+        self.http_client_factory = None
 
         self.router = FrontikRouter(self)
 
@@ -125,9 +125,18 @@ class FrontikApplication(Application):
         if options.debug:
             core_handlers.insert(0, (r'/pydevd/?', PydevdHandler))
 
+        self.available_integrations = None
+
         super().__init__(core_handlers, **tornado_settings)
-        self.available_integrations, self.default_init_futures = integrations.load_integrations(self)
+
+    def init_async(self):
         self.transforms.insert(0, partial(DebugTransform, self))
+
+        self.http_client_factory = HttpClientFactory(self, getattr(self.config, 'http_upstreams', {}))
+
+        self.available_integrations, default_init_futures = integrations.load_integrations(self)
+
+        return default_init_futures
 
     def find_handler(self, request, **kwargs):
         request_id = request.headers.get('X-Request-Id')
@@ -177,9 +186,6 @@ class FrontikApplication(Application):
 
     def application_version(self):
         return None
-
-    def init_async(self):
-        return []
 
     @staticmethod
     def next_request_id():
