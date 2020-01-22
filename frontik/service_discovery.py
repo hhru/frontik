@@ -8,42 +8,42 @@ from frontik.options import options
 from frontik.version import version
 
 log = logging.getLogger('service_discovery')
-client = Consul(host=options.consul_host, port=options.consul_port)
-service_name = options.app
-__hostname = socket.gethostname()
+_hostname = socket.gethostname()
 
 
-def _make_service_id() -> str:
-    return f'{service_name}-{options.datacenter}-{__hostname}-{options.port}'
+class ServiceDiscovery:
 
+    def __init__(self, opts):
+        self.consul = Consul(host=opts.consul_host, port=opts.consul_port)
+        self.service_name = opts.app
+        self.service_id = self._make_service_id(opts)
 
-service_id = _make_service_id()
+    def _make_service_id(self, opts) -> str:
+        return f'{self.service_name}-{opts.datacenter}-{_hostname}-{opts.port}'
 
+    async def register_service(self):
+        if not options.consul_enabled:
+            log.info('Consul disabled, skipping')
+            return None
 
-async def register_service():
-    if not options.consul_enabled:
-        log.info('Consul disabled, skipping')
-        return None
+        http_check = Check.http(
+            f'http://{options.consul_check_host}:{options.port}/status',
+            f'{options.consul_http_check_interval_sec}s',
+            timeout=f'{options.consul_http_check_timeout_sec}s'
+        )
+        # not supported by version 1.1.0
+        meta = {'serviceVersion': version}
+        await self.consul.agent.service.register(
+            self.service_name,
+            service_id=self.service_id,
+            address=_hostname,
+            port=options.port,
+            check=http_check,
+            tags=options.consul_tags,
+        )
 
-    http_check = Check.http(
-        f'http://{options.consul_check_host}:{options.port}/status',
-        f'{options.consul_http_check_interval_sec}s',
-        timeout=f'{options.consul_http_check_timeout_sec}s'
-    )
-    # not supported by version 1.1.0
-    meta = {'serviceVersion': version}
-    await client.agent.service.register(
-        service_name,
-        service_id=service_id,
-        address=__hostname,
-        port=options.port,
-        check=http_check,
-        tags=options.consul_tags,
-    )
-
-
-async def deregister_service():
-    if not options.consul_enabled:
-        log.info('Consul disabled, skipping')
-        return None
-    return client.agent.service.deregister(service_id)
+    async def deregister_service(self):
+        if not options.consul_enabled:
+            log.info('Consul disabled, skipping')
+            return None
+        return self.consul.agent.service.deregister(self.service_id)

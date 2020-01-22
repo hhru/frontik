@@ -112,6 +112,7 @@ class FrontikApplication(Application):
         self.xml = frontik.producers.xml_producer.XMLProducerFactory(self)
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
+        self.service_discovery_client = None
         self.http_client_factory = None
 
         self.router = FrontikRouter(self)

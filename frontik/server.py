@@ -50,14 +50,14 @@ def main(config_file=None):
 
     try:
         app = application(app_root=os.path.dirname(module.__file__), **options.as_dict())
-        app.service_discovery = service_discovery.client
+        app.service_discovery_client = service_discovery.ServiceDiscovery(options)
 
         gc.disable()
         gc.collect()
         gc.freeze()
 
         if options.workers != 1:
-            fork_processes(options.workers)
+            fork_processes(app, options.workers)
 
         gc.enable()
 
@@ -74,18 +74,19 @@ def main(config_file=None):
         ioloop.start()
         # to raise init exception if any
         initialize_application_task.result()
-    except Exception:
-        log.exception('frontik application exited with exception')
+    except Exception as e:
+        log.exception('frontik application exited with exception: %s', e)
         sys.exit(1)
 
 
-def fork_processes(num_processes):
+def fork_processes(app, num_processes):
     log.info("starting %d processes", num_processes)
     children = {}
 
     def start_child(i):
         pid = os.fork()
         if pid == 0:
+            # we are child process - just return
             return i
         else:
             children[pid] = i
@@ -94,18 +95,30 @@ def fork_processes(num_processes):
     for i in range(num_processes):
         id = start_child(i)
         if id is not None:
+            # we are child process - just return
             return id
+
+    # parent process code
+    gc.enable()
+    ioloop = tornado.ioloop.IOLoop.current()
 
     def sigterm_handler(signum, frame):
         log.info('received SIGTERM')
+        deregistration = app.service_discovery_client.deregister_service()
+        deregistration_with_timeout = asyncio.wait_for(deregistration, timeout=options.stop_timeout)
+        deregistration_future = ioloop.asyncio_loop.create_task(deregistration_with_timeout)
 
+        def handle_deregistration_results(future):
+            if future.exception() is not None:
+                log.error('failed to initialize application, init_async returned: %s', future.exception())
+        deregistration_future.add_done_callback(handle_deregistration_results)
         for pid, id in children.items():
             log.info('sending SIGTERM to child %d (pid %d)', id, pid)
             os.kill(pid, signal.SIGTERM)
-
-    gc.enable()
     signal.signal(signal.SIGTERM, sigterm_handler)
 
+    service_registration = app.service_discovery_client.register_service()
+    ioloop.asyncio_loop.run_until_complete(service_registration)
     while children:
         try:
             pid, status = os.wait()
@@ -214,14 +227,17 @@ async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop):
     initialization_futures = app.init_async()
     initialization_futures.append(run_server(app, ioloop))
     if options.workers == 1:
-        initialization_futures.append(service_discovery.register_service())
-    await ioloop.asyncio_loop.create_task(asyncio.gather(*[future for future in initialization_futures if future]))
+        initialization_futures.append(app.service_discovery_client.register_service())
+    await asyncio.gather(*[future for future in initialization_futures if future])
 
 
 async def deinit_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop):
-    deinit_futures = [integration.deinitialize_app(app) for integration in app.available_integrations]
     if options.workers == 1:
-        deinit_futures.append(service_discovery.deregister_service())
+        deregistration = app.service_discovery_client.deregister_service()
+        deinit_futures = [asyncio.wait_for(deregistration, timeout=options.stop_timeout)]
+    else:
+        deinit_futures = []
+    deinit_futures.extend([integration.deinitialize_app(app) for integration in app.available_integrations])
     if deinit_futures:
         try:
             await asyncio.gather(*[future for future in deinit_futures if future], loop=ioloop.asyncio_loop)
