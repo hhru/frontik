@@ -18,6 +18,7 @@ from tornado.options import parse_command_line, parse_config_file
 from tornado.platform.asyncio import BaseAsyncIOLoop
 from tornado.util import errno_from_exception
 
+from frontik import service_discovery
 from frontik.app import FrontikApplication
 from frontik.loggers import bootstrap_logger, bootstrap_core_logging
 from frontik.options import options
@@ -49,6 +50,7 @@ def main(config_file=None):
 
     try:
         app = application(app_root=os.path.dirname(module.__file__), **options.as_dict())
+        app.service_discovery = service_discovery.client
 
         gc.disable()
         gc.collect()
@@ -209,15 +211,17 @@ def parse_configs(config_files):
 
 
 async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop):
-    initialization_futures = [future for future in app.init_async() if future]
-    if not initialization_futures:
-        await run_server(app, ioloop)
-    else:
-        await ioloop.asyncio_loop.create_task(asyncio.gather(*initialization_futures, run_server(app, ioloop)))
+    initialization_futures = app.init_async()
+    initialization_futures.append(run_server(app, ioloop))
+    if options.workers == 1:
+        initialization_futures.append(service_discovery.register_service())
+    await ioloop.asyncio_loop.create_task(asyncio.gather(*[future for future in initialization_futures if future]))
 
 
 async def deinit_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop):
     deinit_futures = [integration.deinitialize_app(app) for integration in app.available_integrations]
+    if options.workers == 1:
+        deinit_futures.append(service_discovery.deregister_service())
     if deinit_futures:
         try:
             await asyncio.gather(*[future for future in deinit_futures if future], loop=ioloop.asyncio_loop)
