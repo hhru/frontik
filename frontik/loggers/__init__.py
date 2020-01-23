@@ -21,6 +21,20 @@ JSON_REQUESTS_LOGGER = logging.getLogger('requests')
 CUSTOM_JSON_EXTRA = 'custom_json'
 
 
+class Mdc:
+
+    def __init__(self) -> None:
+        self.pid = None
+        self.role = None
+
+    def init(self, role):
+        self.pid = os.getpid()
+        self.role = role
+
+
+MDC = Mdc()
+
+
 class ContextFilter(Filter):
     def filter(self, record):
         handler_name = request_context.get_handler_name()
@@ -52,13 +66,12 @@ class GlobalLogHandler(Handler):
 
 class JSONFormatter(Formatter):
     DATE_FORMAT = '%Y-%m-%d %H:%M:%S.%%03d%z'
-    PID = os.getpid()
 
     def format(self, record):
         message = record.getMessage() if record.msg is not None else None
-        timestamp = time.strftime(self.DATE_FORMAT, time.localtime(record.created)) % record.msecs
+        timestamp = time.strftime(JSONFormatter.DATE_FORMAT, time.localtime(record.created)) % record.msecs
         stack_trace = self.format_stack_trace(record)
-        mdc = self.get_mdc()
+        mdc = JSONFormatter.get_mdc()
 
         json_message = {
             'ts': timestamp
@@ -80,9 +93,11 @@ class JSONFormatter(Formatter):
 
         return json.dumps(json_message)
 
-    def get_mdc(self):
+    @staticmethod
+    def get_mdc():
         mdc = {
-            'thread': self.PID
+            'thread': MDC.pid,
+            'role': MDC.role
         }
 
         handler_name = request_context.get_handler_name()

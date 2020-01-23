@@ -20,7 +20,7 @@ from tornado.util import errno_from_exception
 
 from frontik import service_discovery
 from frontik.app import FrontikApplication
-from frontik.loggers import bootstrap_logger, bootstrap_core_logging
+from frontik.loggers import bootstrap_logger, bootstrap_core_logging, MDC
 from frontik.options import options
 from frontik.request_context import get_request
 
@@ -58,9 +58,9 @@ def main(config_file=None):
 
         if options.workers != 1:
             fork_processes(app, options.workers)
+            MDC.init('worker')
 
         gc.enable()
-
         ioloop = tornado.ioloop.IOLoop.current()
 
         executor = ThreadPoolExecutor(options.common_executor_pool_size)
@@ -100,6 +100,7 @@ def fork_processes(app, num_processes):
 
     # parent process code
     gc.enable()
+    MDC.init('master')
     ioloop = asyncio.new_event_loop()
 
     def sigterm_handler(signum, frame):
@@ -215,9 +216,8 @@ def parse_configs(config_files):
 
     # override options from config with command line options
     parse_command_line(final=False)
-
+    MDC.init('master')
     bootstrap_core_logging()
-
     for config in configs_to_read:
         log.debug('using config: %s', config)
         if options.autoreload:
