@@ -100,25 +100,26 @@ def fork_processes(app, num_processes):
 
     # parent process code
     gc.enable()
-    ioloop = tornado.ioloop.IOLoop.current()
+    ioloop = asyncio.new_event_loop()
 
     def sigterm_handler(signum, frame):
         log.info('received SIGTERM')
         deregistration = app.service_discovery_client.deregister_service()
         deregistration_with_timeout = asyncio.wait_for(deregistration, timeout=options.stop_timeout)
-        deregistration_future = ioloop.asyncio_loop.create_task(deregistration_with_timeout)
+        deregistration_future = ioloop.create_task(deregistration_with_timeout)
 
         def handle_deregistration_results(future):
             if future.exception() is not None:
                 log.error('failed to initialize application, init_async returned: %s', future.exception())
+            ioloop.stop()
         deregistration_future.add_done_callback(handle_deregistration_results)
         for pid, id in children.items():
             log.info('sending SIGTERM to child %d (pid %d)', id, pid)
             os.kill(pid, signal.SIGTERM)
     signal.signal(signal.SIGTERM, sigterm_handler)
 
-    service_registration = app.service_discovery_client.register_service()
-    ioloop.asyncio_loop.run_until_complete(service_registration)
+    task = ioloop.create_task(app.service_discovery_client.register_service())
+    ioloop.run_until_complete(task)
     while children:
         try:
             pid, status = os.wait()
