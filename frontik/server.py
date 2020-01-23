@@ -50,7 +50,6 @@ def main(config_file=None):
 
     try:
         app = application(app_root=os.path.dirname(module.__file__), **options.as_dict())
-        app.service_discovery_client = service_discovery.ServiceDiscovery(options)
 
         gc.disable()
         gc.collect()
@@ -102,18 +101,20 @@ def fork_processes(app, num_processes):
     gc.enable()
     MDC.init('master')
     ioloop = asyncio.new_event_loop()
+    app.service_discovery_client = service_discovery.ServiceDiscovery(options, event_loop=ioloop)
+
+    async def deregister():
+        deregistration = app.service_discovery_client.deregister_service()
+        deregistration_with_timeout = asyncio.wait_for(deregistration, timeout=options.stop_timeout)
+        await asyncio.gather(deregistration_with_timeout, app.service_discovery_client.close())
 
     def sigterm_handler(signum, frame):
         log.info('received SIGTERM')
-        deregistration = app.service_discovery_client.deregister_service()
-        deregistration_with_timeout = asyncio.wait_for(deregistration, timeout=options.stop_timeout)
-        deregistration_future = ioloop.create_task(deregistration_with_timeout)
-
-        def handle_deregistration_results(future):
-            if future.exception() is not None:
-                log.error('failed to initialize application, init_async returned: %s', future.exception())
-            ioloop.stop()
-        deregistration_future.add_done_callback(handle_deregistration_results)
+        deregistration_future = ioloop.create_task(deregister())
+        try:
+            ioloop.run_until_complete(deregistration_future)
+        except Exception as e:
+            log.error('failed to deregister application: %s', e)
         for pid, id in children.items():
             log.info('sending SIGTERM to child %d (pid %d)', id, pid)
             os.kill(pid, signal.SIGTERM)
@@ -191,7 +192,7 @@ async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop):
                     ioloop.stop()
                     log.info('stopped')
 
-            ioloop.add_timeout(time.time() + options.stop_timeout, ioloop_stop)
+            ioloop.asyncio_loop.call_later(options.stop_timeout, ioloop_stop)
 
     signal.signal(signal.SIGTERM, sigterm_handler)
 
@@ -233,18 +234,21 @@ async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop):
     if options.workers == 1:
         initialization_futures.append(app.service_discovery_client.register_service())
     await asyncio.gather(*[future for future in initialization_futures if future])
+    log.info('Successfully inited application')
 
 
 async def deinit_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop):
     if options.workers == 1:
         deregistration = app.service_discovery_client.deregister_service()
-        deinit_futures = [asyncio.wait_for(deregistration, timeout=options.stop_timeout)]
+        deinit_futures = [asyncio.wait_for(deregistration, timeout=options.stop_timeout),
+                          app.service_discovery_client.close()]
     else:
         deinit_futures = []
     deinit_futures.extend([integration.deinitialize_app(app) for integration in app.available_integrations])
     if deinit_futures:
         try:
             await asyncio.gather(*[future for future in deinit_futures if future], loop=ioloop.asyncio_loop)
+            log.info('Successfully deinited application')
         except Exception as e:
             log.error('failed to deinit, deinit returned: %s', e)
 

@@ -14,7 +14,7 @@ from tornado.web import Application, RequestHandler
 
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
-from frontik import integrations, media_types, request_context
+from frontik import integrations, media_types, request_context, service_discovery
 from frontik.debug import DebugTransform
 from frontik.handler import ErrorHandler
 from frontik.http_client import HttpClientFactory
@@ -131,6 +131,7 @@ class FrontikApplication(Application):
         super().__init__(core_handlers, **tornado_settings)
 
     def init_async(self):
+        self.service_discovery_client = service_discovery.ServiceDiscovery(options)
         self.transforms.insert(0, partial(DebugTransform, self))
 
         self.http_client_factory = HttpClientFactory(self, getattr(self.config, 'http_upstreams', {}))

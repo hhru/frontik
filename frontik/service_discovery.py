@@ -13,8 +13,8 @@ _hostname = socket.gethostname()
 
 class ServiceDiscovery:
 
-    def __init__(self, opts):
-        self.consul = Consul(host=opts.consul_host, port=opts.consul_port)
+    def __init__(self, opts, event_loop=None):
+        self.consul = Consul(host=opts.consul_host, port=opts.consul_port, loop=event_loop)
         self.service_name = opts.app
         self.service_id = self._make_service_id(opts)
 
@@ -41,9 +41,21 @@ class ServiceDiscovery:
             check=http_check,
             tags=options.consul_tags,
         )
+        log.info('Successfully registered service %s', self.service_id)
 
     async def deregister_service(self):
         if not options.consul_enabled:
             log.info('Consul disabled, skipping')
             return None
-        return self.consul.agent.service.deregister(self.service_id)
+        if await self.consul.agent.service.deregister(self.service_id):
+            log.info('Successfully deregistered service %s', self.service_id)
+        else:
+            log.info('Failed to deregister service %s normally', self.service_id)
+
+    async def close(self):
+        if not options.consul_enabled:
+            log.info('Consul disabled, skipping')
+            return None
+        self.consul.close()
+        # await self.consul.http._session.close()
+        log.info('Successfully closed client %s', self.consul)
