@@ -225,6 +225,9 @@ def parse_configs(config_files):
 
 async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop):
     initialization_futures = app.init_async()
+    if initialization_futures is None:
+        log.info('No init futures from app')
+        initialization_futures = []
     initialization_futures.append(run_server(app, ioloop))
     if options.workers == 1:
         initialization_futures.append(app.service_discovery_client.register_service())
