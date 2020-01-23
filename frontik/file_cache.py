@@ -49,10 +49,13 @@ class FileCache:
         self.cache = LimitedDict(max_len, step, deepcopy)
 
     def populate(self, filenames, log, freeze=False):
+        if self.max_len == 0:
+            return
+
         for filename in filenames:
             self._load(filename, log)
 
-        self.frozen = freeze and (self.max_len is None or self.max_len > 0)
+        self.frozen = freeze
 
     def load(self, filename, log):
         if filename in self.cache:
