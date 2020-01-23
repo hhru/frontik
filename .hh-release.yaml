@@ -1,4 +1,4 @@
-version: 5.19.12
+version: 5.19.13
 docker_context: .
 build_docker_file: docker/Dockerfile.building
 build_method: nope_build
