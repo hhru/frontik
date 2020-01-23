@@ -6,7 +6,6 @@ import logging
 import os.path
 import signal
 import sys
-import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Type
 
@@ -110,18 +109,18 @@ def fork_processes(app, num_processes):
 
     def sigterm_handler(signum, frame):
         log.info('received SIGTERM')
-        deregistration_future = ioloop.create_task(deregister())
         try:
-            ioloop.run_until_complete(deregistration_future)
+            ioloop.run_until_complete(deregister())
         except Exception as e:
             log.error('failed to deregister application: %s', e)
+        finally:
+            ioloop.stop()
         for pid, id in children.items():
             log.info('sending SIGTERM to child %d (pid %d)', id, pid)
             os.kill(pid, signal.SIGTERM)
     signal.signal(signal.SIGTERM, sigterm_handler)
 
-    task = ioloop.create_task(app.service_discovery_client.register_service())
-    ioloop.run_until_complete(task)
+    ioloop.run_until_complete(app.service_discovery_client.register_service())
     while children:
         try:
             pid, status = os.wait()

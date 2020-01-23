@@ -57,5 +57,4 @@ class ServiceDiscovery:
             log.info('Consul disabled, skipping')
             return None
         self.consul.close()
-        # await self.consul.http._session.close()
         log.info('Successfully closed client %s', self.consul)
