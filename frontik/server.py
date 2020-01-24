@@ -55,7 +55,7 @@ def main(config_file=None):
         gc.freeze()
 
         if options.workers != 1:
-            fork_processes(app, options.workers)
+            fork_processes(options.workers)
             MDC.init('worker')
 
         gc.enable()
@@ -77,7 +77,7 @@ def main(config_file=None):
         sys.exit(1)
 
 
-def fork_processes(app, num_processes):
+def fork_processes(num_processes):
     log.info("starting %d processes", num_processes)
     children = {}
 
@@ -100,27 +100,16 @@ def fork_processes(app, num_processes):
     # parent process code
     gc.enable()
     MDC.init('master')
-    ioloop = asyncio.new_event_loop()
-    app.service_discovery_client = service_discovery.ServiceDiscovery(options, event_loop=ioloop)
-
-    async def deregister():
-        deregistration = app.service_discovery_client.deregister_service_and_close()
-        await asyncio.wait_for(deregistration, timeout=options.stop_timeout)
+    service_discovery_client = service_discovery.SyncServiceDiscovery(options)
 
     def sigterm_handler(signum, frame):
-        log.info('received SIGTERM')
-        try:
-            ioloop.run_until_complete(deregister())
-        except Exception as e:
-            log.error('failed to deregister application: %s', e)
-        finally:
-            ioloop.stop()
+        service_discovery_client.deregister_service_and_close()
         for pid, id in children.items():
             log.info('sending SIGTERM to child %d (pid %d)', id, pid)
             os.kill(pid, signal.SIGTERM)
     signal.signal(signal.SIGTERM, sigterm_handler)
 
-    ioloop.run_until_complete(app.service_discovery_client.register_service())
+    service_discovery_client.register_service()
     while children:
         try:
             pid, status = os.wait()
