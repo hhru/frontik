@@ -88,6 +88,7 @@ def fork_processes(app, num_processes):
             return i
         else:
             children[pid] = i
+            log.info('started child %d, pid=%d', i, pid)
             return None
 
     for i in range(num_processes):
