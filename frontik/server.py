@@ -103,9 +103,8 @@ def fork_processes(app, num_processes):
     app.service_discovery_client = service_discovery.ServiceDiscovery(options, event_loop=ioloop)
 
     async def deregister():
-        deregistration = app.service_discovery_client.deregister_service()
-        deregistration_with_timeout = asyncio.wait_for(deregistration, timeout=options.stop_timeout)
-        await asyncio.gather(deregistration_with_timeout, app.service_discovery_client.close())
+        deregistration = app.service_discovery_client.deregister_service_and_close()
+        await asyncio.wait_for(deregistration, timeout=options.stop_timeout)
 
     def sigterm_handler(signum, frame):
         log.info('received SIGTERM')
@@ -238,9 +237,8 @@ async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop):
 
 async def deinit_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop):
     if options.workers == 1:
-        deregistration = app.service_discovery_client.deregister_service()
-        deinit_futures = [asyncio.wait_for(deregistration, timeout=options.stop_timeout),
-                          app.service_discovery_client.close()]
+        deregistration = app.service_discovery_client.deregister_service_and_close()
+        deinit_futures = [asyncio.wait_for(deregistration, timeout=options.stop_timeout)]
     else:
         deinit_futures = []
     deinit_futures.extend([integration.deinitialize_app(app) for integration in app.available_integrations])

@@ -43,7 +43,7 @@ class ServiceDiscovery:
         )
         log.info('Successfully registered service %s', self.service_id)
 
-    async def deregister_service(self):
+    async def deregister_service_and_close(self):
         if not options.consul_enabled:
             log.info('Consul disabled, skipping')
             return None
@@ -51,10 +51,4 @@ class ServiceDiscovery:
             log.info('Successfully deregistered service %s', self.service_id)
         else:
             log.info('Failed to deregister service %s normally', self.service_id)
-
-    async def close(self):
-        if not options.consul_enabled:
-            log.info('Consul disabled, skipping')
-            return None
         self.consul.close()
-        log.info('Successfully closed client %s', self.consul)
