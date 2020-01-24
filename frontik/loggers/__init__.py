@@ -23,7 +23,7 @@ CUSTOM_JSON_EXTRA = 'custom_json'
 
 class Mdc:
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.pid = None
         self.role = None
 
