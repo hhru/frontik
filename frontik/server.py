@@ -4,6 +4,7 @@ import importlib
 import logging
 import os.path
 import signal
+import socket
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
@@ -16,12 +17,12 @@ from tornado.httputil import HTTPServerRequest
 from tornado.options import parse_command_line, parse_config_file
 from tornado.platform.asyncio import BaseAsyncIOLoop
 
-from frontik import service_discovery
 from frontik.app import FrontikApplication
 from frontik.loggers import bootstrap_logger, bootstrap_core_logging, MDC
 from frontik.options import options
 from frontik.process import fork_workers
 from frontik.request_context import get_request
+from frontik.service_discovery import get_sync_service_discovery
 
 log = logging.getLogger('server')
 
@@ -54,7 +55,7 @@ def main(config_file=None):
         gc.collect()
         gc.freeze()
         if options.workers != 1:
-            service_discovery_client = service_discovery.SyncServiceDiscovery(options)
+            service_discovery_client = get_sync_service_discovery(options, hostname=socket.gethostname())
             fork_workers(partial(_run_worker, app),
                          num_workers=options.workers,
                          after_workers_up_action=service_discovery_client.register_service,

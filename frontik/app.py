@@ -1,4 +1,5 @@
 import importlib
+import socket
 import sys
 import time
 import traceback
@@ -14,12 +15,13 @@ from tornado.web import Application, RequestHandler
 
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
-from frontik import integrations, media_types, request_context, service_discovery
+from frontik import integrations, media_types, request_context
 from frontik.debug import DebugTransform
 from frontik.handler import ErrorHandler
 from frontik.http_client import HttpClientFactory
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.routing import FileMappingRouter, FrontikRouter
+from frontik.service_discovery import get_async_service_discovery
 from frontik.version import version as frontik_version
 
 if TYPE_CHECKING:
@@ -131,7 +133,7 @@ class FrontikApplication(Application):
         super().__init__(core_handlers, **tornado_settings)
 
     def init_async(self):
-        self.service_discovery_client = service_discovery.ServiceDiscovery(options)
+        self.service_discovery_client = get_async_service_discovery(options, hostname=socket.gethostname())
         self.transforms.insert(0, partial(DebugTransform, self))
 
         self.http_client_factory = HttpClientFactory(self, getattr(self.config, 'http_upstreams', {}))

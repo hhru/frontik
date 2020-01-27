@@ -7,7 +7,7 @@ import sys
 
 from tornado.util import errno_from_exception
 
-log = logging.getLogger('server')
+log = logging.getLogger('fork')
 
 
 def fork_workers(worker_function, *, num_workers, after_workers_up_action, before_workers_shutdown_action):
