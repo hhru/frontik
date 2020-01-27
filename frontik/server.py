@@ -181,7 +181,7 @@ async def _deinit_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_
             await asyncio.gather(*[future for future in deinit_futures if future], loop=ioloop.asyncio_loop)
             log.info('Successfully deinited application')
         except Exception as e:
-            log.error('failed to deinit, deinit returned: %s', e)
+            log.exception('failed to deinit, deinit returned: %s', e)
 
 
 def wrap_handle_with_time_logging(handle: Type[asyncio.Handle], app: FrontikApplication, slow_tasks_logger):
