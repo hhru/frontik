@@ -1,5 +1,4 @@
 import asyncio
-import errno
 import gc
 import importlib
 import logging
@@ -7,6 +6,7 @@ import os.path
 import signal
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from typing import Type
 
 import tornado.autoreload
@@ -15,12 +15,12 @@ import tornado.ioloop
 from tornado.httputil import HTTPServerRequest
 from tornado.options import parse_command_line, parse_config_file
 from tornado.platform.asyncio import BaseAsyncIOLoop
-from tornado.util import errno_from_exception
 
 from frontik import service_discovery
 from frontik.app import FrontikApplication
 from frontik.loggers import bootstrap_logger, bootstrap_core_logging, MDC
 from frontik.options import options
+from frontik.process import fork_workers
 from frontik.request_context import get_request
 
 log = logging.getLogger('server')
@@ -53,92 +53,39 @@ def main(config_file=None):
         gc.disable()
         gc.collect()
         gc.freeze()
-
         if options.workers != 1:
-            fork_processes(options.workers)
-            MDC.init('worker')
-
-        gc.enable()
-        ioloop = tornado.ioloop.IOLoop.current()
-
-        executor = ThreadPoolExecutor(options.common_executor_pool_size)
-        ioloop.asyncio_loop.set_default_executor(executor)
-        initialize_application_task = ioloop.asyncio_loop.create_task(_init_app(app, ioloop))
-
-        def initialize_application_task_result_handler(future):
-            if future.exception():
-                ioloop.stop()
-        initialize_application_task.add_done_callback(initialize_application_task_result_handler)
-        ioloop.start()
-        # to raise init exception if any
-        initialize_application_task.result()
+            service_discovery_client = service_discovery.SyncServiceDiscovery(options)
+            fork_workers(partial(_run_worker, app),
+                         num_workers=options.workers,
+                         after_workers_up_action=service_discovery_client.register_service,
+                         before_workers_shutdown_action=service_discovery_client.deregister_service_and_close)
+        else:
+            # run in single process mode
+            _run_worker(app, True)
     except Exception as e:
         log.exception('frontik application exited with exception: %s', e)
         sys.exit(1)
 
 
-def fork_processes(num_processes):
-    log.info("starting %d processes", num_processes)
-    children = {}
-
-    def start_child(i):
-        pid = os.fork()
-        if pid == 0:
-            # we are child process - just return
-            return i
-        else:
-            children[pid] = i
-            log.info('started child %d, pid=%d', i, pid)
-            return None
-
-    for i in range(num_processes):
-        id = start_child(i)
-        if id is not None:
-            # we are child process - just return
-            return id
-
-    # parent process code
+def _run_worker(app, need_to_init=False):
     gc.enable()
-    MDC.init('master')
-    service_discovery_client = service_discovery.SyncServiceDiscovery(options)
+    MDC.init('worker')
+    ioloop = tornado.ioloop.IOLoop.current()
+    executor = ThreadPoolExecutor(options.common_executor_pool_size)
+    ioloop.asyncio_loop.set_default_executor(executor)
+    initialize_application_task = ioloop.asyncio_loop.create_task(_init_app(app, ioloop, need_to_init))
 
-    def sigterm_handler(signum, frame):
-        service_discovery_client.deregister_service_and_close()
-        for pid, id in children.items():
-            log.info('sending SIGTERM to child %d (pid %d)', id, pid)
-            os.kill(pid, signal.SIGTERM)
-    signal.signal(signal.SIGTERM, sigterm_handler)
+    def initialize_application_task_result_handler(future):
+        if future.exception():
+            ioloop.stop()
 
-    service_discovery_client.register_service()
-    while children:
-        try:
-            pid, status = os.wait()
-        except OSError as e:
-            if errno_from_exception(e) == errno.EINTR:
-                continue
-            raise
-
-        if pid not in children:
-            continue
-
-        id = children.pop(pid)
-        if os.WIFSIGNALED(status):
-            log.warning("child %d (pid %d) killed by signal %d, restarting", id, pid, os.WTERMSIG(status))
-        elif os.WEXITSTATUS(status) != 0:
-            log.warning("child %d (pid %d) exited with status %d, restarting", id, pid, os.WEXITSTATUS(status))
-        else:
-            log.info("child %d (pid %d) exited normally", id, pid)
-            continue
-
-        new_id = start_child(id)
-        if new_id is not None:
-            return new_id
-
-    log.info('all children terminated, exiting')
-    sys.exit(0)
+    initialize_application_task.add_done_callback(initialize_application_task_result_handler)
+    ioloop.start()
+    # to raise init exception if any
+    initialize_application_task.result()
 
 
-async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop):
+async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_register_in_service_discovery):
     """Starts Frontik server for an application"""
 
     if options.asyncio_task_threshold_sec is not None:
@@ -168,7 +115,7 @@ async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop):
         return ioloop.asyncio_loop.is_running()
 
     def server_stop():
-        ioloop.asyncio_loop.create_task(deinit_app(app, ioloop))
+        ioloop.asyncio_loop.create_task(_deinit_app(app, ioloop, need_to_register_in_service_discovery))
         http_server.stop()
 
         if ioloop_is_running():
@@ -213,17 +160,17 @@ def parse_configs(config_files):
             tornado.autoreload.watch(config)
 
 
-async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop):
+async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_register_in_service_discovery):
     initialization_futures = app.init_async()
-    initialization_futures.append(run_server(app, ioloop))
-    if options.workers == 1:
+    initialization_futures.append(run_server(app, ioloop, need_to_register_in_service_discovery))
+    if need_to_register_in_service_discovery:
         initialization_futures.append(app.service_discovery_client.register_service())
     await asyncio.gather(*[future for future in initialization_futures if future])
     log.info('Successfully inited application')
 
 
-async def deinit_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop):
-    if options.workers == 1:
+async def _deinit_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_register_in_service_discovery):
+    if need_to_register_in_service_discovery:
         deregistration = app.service_discovery_client.deregister_service_and_close()
         deinit_futures = [asyncio.wait_for(deregistration, timeout=options.stop_timeout)]
     else:
