@@ -55,7 +55,7 @@ class FileCache:
         for filename in filenames:
             self._load(filename, log)
 
-        self.frozen = freeze
+        self.frozen = freeze and self.max_len is None
 
     def load(self, filename, log):
         if filename in self.cache:
