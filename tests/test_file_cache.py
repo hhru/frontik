@@ -96,6 +96,10 @@ class TestFileCache(unittest.TestCase):
         c.load('apply_error.xsl', log)
         self.assertIn('reading file', log.message)
 
+    def test_populate_and_freeze(self):
+        c = FileCache('test', self.CACHE_DIR, lambda filename, log: filename, max_len=None)
+        log = TestFileCache.MockLog()
+
         c.populate(['simple.xsl', 'parse_error.xsl', 'simple.xsl'], log, freeze=True)
 
         self.assertRaises(Exception, partial(c.load, 'apply_error.xsl', log))
