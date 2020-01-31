@@ -1,23 +1,21 @@
 import unittest
-from time import sleep
 
-from .instances import FrontikTestInstance
+from .instances import FrontikTestInstance, common_frontik_start_options
 
 
 class ServiceDiscoveryTestCase(unittest.TestCase):
 
     def setUp(self):
         self.consul_mock = FrontikTestInstance(
-            './frontik-test --app=tests.projects.consul_mock_app --log_dir=.'
-            ' --config=tests/projects/frontik_consul_mock.cfg'
-        )
+            f'./frontik-test --app=tests.projects.consul_mock_app {common_frontik_start_options} '
+            ' --config=tests/projects/frontik_consul_mock.cfg')
         self.consul_mock.start()
         self.frontik_single_worker_app = FrontikTestInstance(
-            './frontik-test --app=tests.projects.no_debug_app --log_dir=.'
-            ' --config=tests/projects/frontik_no_debug.cfg --consul_port={}'.format(self.consul_mock.port))
+            f'./frontik-test --app=tests.projects.no_debug_app {common_frontik_start_options} '
+            f' --config=tests/projects/frontik_no_debug.cfg --consul_port={self.consul_mock.port}')
         self.frontik_multiple_worker_app = FrontikTestInstance(
-            './frontik-test --app=tests.projects.no_debug_app --log_dir=.'
-            ' --config=tests/projects/frontik_no_debug.cfg --consul_port={} --workers=3'.format(self.consul_mock.port))
+            f'./frontik-test --app=tests.projects.no_debug_app {common_frontik_start_options} '
+            f' --config=tests/projects/frontik_no_debug.cfg --consul_port={self.consul_mock.port} --workers=3')
 
     def tearDown(self):
         self.frontik_single_worker_app.stop()

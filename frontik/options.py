@@ -2,6 +2,9 @@ import logging.handlers
 
 from tornado.options import define, options as tornado_options
 
+LOG_DIR_OPTION_NAME = 'log_dir'
+STDERR_LOG_OPTION_NAME = 'stderr_log'
+
 options = tornado_options
 
 define('app', default=None, type=str)
@@ -22,13 +25,13 @@ define('stop_timeout', 3, int)
 define('asyncio_task_threshold_sec', None, float)
 define('asyncio_task_critical_threshold_sec', None, float)
 
-define('log_dir', default=None, type=str, help='Log file name')
+define(LOG_DIR_OPTION_NAME, default=None, type=str, help='Log file name')
 define('log_level', default='info', type=str, help='Log level')
 define('log_json', default=True, type=bool, help='Enable JSON logging for files and syslog')
 define('log_text_format', default='[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s',
        type=str, help='Log format for files and syslog when JSON logging is disabled')
 
-define('stderr_log', default=False, type=bool, help='Send log output to stderr (colorized if possible).')
+define(STDERR_LOG_OPTION_NAME, default=False, type=bool, help='Send log output to stderr (colorized if possible).')
 define('stderr_format', default='%(color)s[%(levelname)1.1s %(asctime)s %(name)s '
                                 '%(module)s:%(lineno)d]%(end_color)s %(message)s', type=str)
 define('stderr_dateformat', default='%H:%M:%S', type=str)
