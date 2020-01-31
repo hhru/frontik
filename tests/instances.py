@@ -54,7 +54,7 @@ def create_basic_auth_header(credentials):
 class FrontikTestInstance:
     def __init__(self, command: str, *, allow_to_create_log_files: bool = False):
         if not allow_to_create_log_files and options.LOG_DIR_OPTION_NAME in command:
-            raise Exception('Log to file is prohibited it tests by defaults. use allow_to_create_log_files if needed')
+            raise Exception('Log to file is prohibited it tests by default. use allow_to_create_log_files if needed')
         self.command = command
         self.popen = None
         self.port = None

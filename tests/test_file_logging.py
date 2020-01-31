@@ -6,7 +6,7 @@ import unittest
 from .instances import FrontikTestInstance, common_frontik_start_options
 
 
-class ServiceDiscoveryTestCase(unittest.TestCase):
+class LogToFileTestCase(unittest.TestCase):
 
     def setUp(self):
         self.tmp_log_dir = tempfile.mkdtemp()
@@ -28,4 +28,3 @@ class ServiceDiscoveryTestCase(unittest.TestCase):
         empty_files = [f for f in dir_contents if os.stat(os.path.join(self.tmp_log_dir, f)).st_size == 0]
         if empty_files:
             self.fail('Empty log files: {}'.format(empty_files))
-
