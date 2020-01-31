@@ -10,6 +10,8 @@ import requests
 from lxml import etree
 from tornado.escape import to_unicode, utf8
 
+from frontik import options
+
 try:
     import coverage
     USE_COVERAGE = '--with-coverage' in sys.argv
@@ -50,7 +52,9 @@ def create_basic_auth_header(credentials):
 
 
 class FrontikTestInstance:
-    def __init__(self, command: str):
+    def __init__(self, command: str, *, allow_to_create_log_files: bool = False):
+        if not allow_to_create_log_files and options.LOG_DIR_OPTION_NAME in command:
+            raise Exception('Log to file is prohibited it tests by defaults. use allow_to_create_log_files if needed')
         self.command = command
         self.popen = None
         self.port = None
@@ -119,42 +123,51 @@ class FrontikTestInstance:
         return to_unicode(self.get_page(page, notpl=notpl, method=method).content)
 
 
+common_frontik_start_options = f'--{options.STDERR_LOG_OPTION_NAME}=True'
+
 frontik_consul_mock_app = FrontikTestInstance(
     './frontik-test --app=tests.projects.consul_mock_app '
-    '--config=tests/projects/frontik_consul_mock.cfg --log_dir=.'
+    f' --config=tests/projects/frontik_consul_mock.cfg {common_frontik_start_options}'
 )
 frontik_consul_mock_app.start()
 
 frontik_test_app = FrontikTestInstance(
     './frontik-test --app=tests.projects.test_app '
-    '--config=tests/projects/frontik_debug.cfg --consul_port={} --log_dir=.'.format(frontik_consul_mock_app.port)
+    f' --config=tests/projects/frontik_debug.cfg {common_frontik_start_options} '
+    f' --consul_port={frontik_consul_mock_app.port}'
 )
 frontik_re_app = FrontikTestInstance(
     './frontik-test --app=tests.projects.re_app '
-    '--config=tests/projects/frontik_debug.cfg --consul_port={} --log_dir=.'.format(frontik_consul_mock_app.port)
+    f' --config=tests/projects/frontik_debug.cfg {common_frontik_start_options} '
+    f' --consul_port={frontik_consul_mock_app.port}'
 )
 
 frontik_no_debug_app = FrontikTestInstance(
     './frontik-test --app=tests.projects.no_debug_app '
-    '--config=tests/projects/frontik_no_debug.cfg --consul_port={} --log_dir=.'.format(frontik_consul_mock_app.port)
+    f' --config=tests/projects/frontik_no_debug.cfg {common_frontik_start_options} '
+    f' --consul_port={frontik_consul_mock_app.port} '
 )
 
 frontik_broken_config_app = FrontikTestInstance(
     './frontik-test --app=tests.projects.broken_config_app '
-    '--config=tests/projects/frontik_debug.cfg --consul_port={} --log_dir=.'.format(frontik_consul_mock_app.port)
+    f' --config=tests/projects/frontik_debug.cfg {common_frontik_start_options} '
+    f' --consul_port={frontik_consul_mock_app.port}'
 )
 
 frontik_broken_init_async_app = FrontikTestInstance(
     './frontik-test --app=tests.projects.broken_async_init_app '
-    '--config=tests/projects/frontik_debug.cfg --consul_port={} --log_dir=.'.format(frontik_consul_mock_app.port)
+    f' --config=tests/projects/frontik_debug.cfg {common_frontik_start_options} '
+    f' --consul_port={frontik_consul_mock_app.port}'
 )
 
 frontik_balancer_app = FrontikTestInstance(
     './frontik-test --app=tests.projects.balancer_app '
-    '--config=tests/projects/frontik_no_debug.cfg  --consul_port={} --log_dir=.'.format(frontik_consul_mock_app.port)
+    f' --config=tests/projects/frontik_no_debug.cfg {common_frontik_start_options} '
+    f' --consul_port={frontik_consul_mock_app.port}'
 )
 
 frontik_broken_balancer_app = FrontikTestInstance(
     './frontik-test --app=tests.projects.broken_balancer_app '
-    '--config=tests/projects/frontik_debug.cfg --consul_port={} --log_dir=.'.format(frontik_consul_mock_app.port)
+    f' --config=tests/projects/frontik_debug.cfg {common_frontik_start_options} '
+    f' --consul_port={frontik_consul_mock_app.port}'
 )
