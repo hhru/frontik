@@ -14,14 +14,14 @@ def fork_workers(worker_function, *, num_workers, after_workers_up_action, befor
     log.info("starting %d processes", num_workers)
     children = {}
     for i in range(num_workers):
-        id = _start_child(i, children)
-        if id is not None:
+        is_worker = _start_child(i, children)
+        if is_worker:
             worker_function()
-            raise Exception('no way to normally return from worker function')
-    _supervise_workers(children, after_workers_up_action, before_workers_shutdown_action)
+            return
+    _supervise_workers(children, worker_function, after_workers_up_action, before_workers_shutdown_action)
 
 
-def _supervise_workers(children, after_workers_up_action, before_workers_shutdown_action):
+def _supervise_workers(children, worker_function, after_workers_up_action, before_workers_shutdown_action):
     gc.enable()
 
     def sigterm_handler(signum, frame):
@@ -52,20 +52,20 @@ def _supervise_workers(children, after_workers_up_action, before_workers_shutdow
             log.info("child %d (pid %d) exited normally", id, pid)
             continue
 
-        new_id = _start_child(id, children)
-        if new_id is not None:
-            return new_id
-
+        is_worker = _start_child(id, children)
+        if is_worker:
+            worker_function()
+            return
     log.info('all children terminated, exiting')
     sys.exit(0)
 
 
 def _start_child(i, children):
+    # returns True inside child process, therwise False
     pid = os.fork()
     if pid == 0:
-        # we are child process - just return
-        return i
+        return True
     else:
         children[pid] = i
         log.info('started child %d, pid=%d', i, pid)
-        return None
+        return False
