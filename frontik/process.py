@@ -13,13 +13,12 @@ log = logging.getLogger('fork')
 def fork_workers(worker_function, *, num_workers, after_workers_up_action, before_workers_shutdown_action):
     log.info("starting %d processes", num_workers)
     children = {}
-    is_worker = False
     for i in range(num_workers):
-        is_worker = _start_child(i, children) is not None
+        is_worker = _start_child(i, children)
         if is_worker:
             worker_function()
-    if not is_worker:
-        _supervise_workers(children, worker_function, after_workers_up_action, before_workers_shutdown_action)
+            return
+    _supervise_workers(children, worker_function, after_workers_up_action, before_workers_shutdown_action)
 
 
 def _supervise_workers(children, worker_function, after_workers_up_action, before_workers_shutdown_action):
@@ -53,20 +52,20 @@ def _supervise_workers(children, worker_function, after_workers_up_action, befor
             log.info("child %d (pid %d) exited normally", id, pid)
             continue
 
-        is_worker = _start_child(id, children) is not None
+        is_worker = _start_child(id, children)
         if is_worker:
             worker_function()
-
+            return
     log.info('all children terminated, exiting')
     sys.exit(0)
 
 
 def _start_child(i, children):
+    # returns True inside child process, therwise False
     pid = os.fork()
     if pid == 0:
-        # we are child process - just return
-        return i
+        return True
     else:
         children[pid] = i
         log.info('started child %d, pid=%d', i, pid)
-        return None
+        return False
