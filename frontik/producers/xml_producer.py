@@ -2,6 +2,7 @@ import contextvars
 import copy
 import time
 import weakref
+import re
 from concurrent.futures import ThreadPoolExecutor
 
 from lxml import etree
@@ -125,7 +126,16 @@ class XmlProducer:
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.APPLICATION_XML)
 
-        return self.doc.to_string()
+        # https://support.google.com/chrome/thread/10921150?hl=en
+        # когда хром при отображении xml натыкается на xmlns атрибут,
+        # он пытается обрабатывать контент в соответствии с описанием атрибута.
+        # Что в свою очередь ломает отображение xml документа (без доп. плагинов)
+        doc_string_without_xmlns = re.sub(
+            'xmlns=".+?"',
+            'xmlns-hidden="xmlns is hidden due to chrome xml viewer issues"',
+            self.doc.to_string().decode('utf-8')
+        )
+        return doc_string_without_xmlns.encode('utf-8')
 
     def xml_from_file(self, filename):
         return self.xml_cache.load(filename, self.log)
