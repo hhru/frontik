@@ -340,9 +340,10 @@ class PageHandler(RequestHandler):
             renderer = self.xml_producer
 
         self.log.debug('using %s renderer', renderer)
-        rendered_result = yield renderer()
+        rendered_result, meta_info = yield renderer()
 
-        postprocessed_result = yield self._run_template_postprocessors(self._render_postprocessors, rendered_result)
+        postprocessed_result = yield self._run_template_postprocessors(self._render_postprocessors,
+                                                                       rendered_result, meta_info)
         return postprocessed_result
 
     def on_connection_close(self):
@@ -513,9 +514,9 @@ class PageHandler(RequestHandler):
         return True
 
     @gen.coroutine
-    def _run_template_postprocessors(self, postprocessors, rendered_template):
+    def _run_template_postprocessors(self, postprocessors, rendered_template, meta_info):
         for p in postprocessors:
-            rendered_template = yield gen.coroutine(p)(self, rendered_template)
+            rendered_template = yield gen.coroutine(p)(self, rendered_template, meta_info)
 
             if self._finished:
                 self.log.warning('page was already finished, breaking postprocessors chain')
@@ -537,7 +538,7 @@ class PageHandler(RequestHandler):
         if self._headers.get('Content-Type') is None:
             self.set_header('Content-Type', media_types.TEXT_HTML)
 
-        return self.text
+        return self.text, None
 
     def xml_from_file(self, filename):
         return self.xml_producer.xml_from_file(filename)
