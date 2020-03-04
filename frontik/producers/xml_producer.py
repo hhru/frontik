@@ -43,6 +43,8 @@ class XMLProducerFactory(ProducerFactory):
 
 
 class XmlProducer:
+    METAINFO_PREFIX = 'hhmeta_'
+
     def __init__(self, handler, xml_cache=None, xsl_cache=None, executor=None):
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
@@ -91,30 +93,37 @@ class XmlProducer:
             start_time = time.time()
             result = self.transform(copy.deepcopy(self.doc.to_etree_element()),
                                     profile_run=self.handler.debug_mode.profile_xslt)
-            return start_time, str(result), result.xslt_profile
+            meta_info = [entry.message.replace(self.METAINFO_PREFIX, '')
+                         for entry in self.transform.error_log
+                         if entry.message.startswith(self.METAINFO_PREFIX)]
+            return start_time, (str(result), meta_info), result.xslt_profile
 
         def get_xsl_log():
-            xsl_line = 'XSLT {0.level_name} in file "{0.filename}", line {0.line}, column {0.column}\n\t{0.message}'
-            return '\n'.join(map(xsl_line.format, self.transform.error_log))
+            return '\n'.join(
+                f'XSLT {e.level_name} in file "{e.filename}", line {e.line}, column {e.column}\n\t{e.message}'
+                for e in self.transform.error_log
+                if not e.message.startswith(self.METAINFO_PREFIX)
+            )
 
         try:
             ctx = contextvars.copy_context()
             xslt_result = await IOLoop.current().run_in_executor(self.executor, lambda: ctx.run(job))
             if self.handler.is_finished():
-                return None
+                return None, None
 
-            start_time, xml_result, xslt_profile = xslt_result
+            start_time, render_result, xslt_profile = xslt_result
 
             self.log.info('applied XSL %s in %.2fms', self.transform_filename, (time.time() - start_time) * 1000)
 
             if xslt_profile is not None:
                 self.log.debug('XSLT profiling results', extra={'_xslt_profile': xslt_profile.getroot()})
 
-            if len(self.transform.error_log):
-                self.log.warning(get_xsl_log())
+            xsl_log = get_xsl_log()
+            if xsl_log:
+                self.log.warning(xsl_log)
 
             self.handler.stages_logger.commit_stage('xsl')
-            return xml_result
+            return render_result
 
         except Exception as e:
             self.log.error('failed XSLT %s', self.transform_filename)
@@ -135,7 +144,7 @@ class XmlProducer:
             'xmlns-hidden="xmlns is hidden due to chrome xml viewer issues"',
             self.doc.to_string().decode('utf-8')
         )
-        return doc_string_without_xmlns.encode('utf-8')
+        return doc_string_without_xmlns.encode('utf-8'), None
 
     def xml_from_file(self, filename):
         return self.xml_cache.load(filename, self.log)

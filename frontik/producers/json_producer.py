@@ -117,14 +117,14 @@ class JsonProducer:
         try:
             render_result = await self._render_template_stream_on_ioloop(options.jinja_streaming_render_timeout_ms)
             if self.handler.is_finished():
-                return None
+                return None, None
 
             start_time, result = render_result
 
             self.handler.stages_logger.commit_stage('tpl')
             self.log.info('applied template %s in %.2fms', self.template_filename, (time.time() - start_time) * 1000)
 
-            return result
+            return result, None
 
         except Exception as e:
             self.log.error('failed applying template %s', self.template_filename)
@@ -144,7 +144,7 @@ class JsonProducer:
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.APPLICATION_JSON)
 
-        return self.json.to_string()
+        return self.json.to_string(), None
 
     def __repr__(self):
         return '{}.{}'.format(__package__, self.__class__.__name__)
