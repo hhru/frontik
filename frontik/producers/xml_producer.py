@@ -61,7 +61,7 @@ class XmlProducer:
         if any(frontik.util.get_cookie_or_url_param_value(self.handler, p) is not None for p in ('noxsl', 'notpl')):
             self.handler.require_debug_access()
             self.log.debug('ignoring XSLT because noxsl/notpl parameter is passed')
-            return self._finish_with_xml()
+            return self._finish_with_xml(escape_xmlns=True)
 
         if not self.transform_filename:
             return self._finish_with_xml()
@@ -130,21 +130,24 @@ class XmlProducer:
             self.log.error(get_xsl_log())
             raise e
 
-    async def _finish_with_xml(self):
+    async def _finish_with_xml(self, escape_xmlns=False):
         self.log.debug('finishing without XSLT')
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.APPLICATION_XML)
 
-        # https://support.google.com/chrome/thread/10921150?hl=en
-        # когда хром при отображении xml натыкается на xmlns атрибут,
-        # он пытается обрабатывать контент в соответствии с описанием атрибута.
-        # Что в свою очередь ломает отображение xml документа (без доп. плагинов)
-        doc_string_without_xmlns = re.sub(
-            'xmlns=".+?"',
-            'xmlns-hidden="xmlns is hidden due to chrome xml viewer issues"',
-            self.doc.to_string().decode('utf-8')
-        )
-        return doc_string_without_xmlns.encode('utf-8'), None
+        if escape_xmlns:
+            # https://support.google.com/chrome/thread/10921150?hl=en
+            # когда хром при отображении xml натыкается на xmlns атрибут,
+            # он пытается обрабатывать контент в соответствии с описанием атрибута.
+            # Что в свою очередь ломает отображение xml документа (без плагинов)
+            doc_string_without_xmlns = re.sub(
+                'xmlns=".+?"',
+                'xmlns-hidden="xmlns is hidden due to chrome xml viewer issues"',
+                self.doc.to_string().decode('utf-8')
+            )
+            return doc_string_without_xmlns.encode('utf-8'), None
+
+        return self.doc.to_string(), None
 
     def xml_from_file(self, filename):
         return self.xml_cache.load(filename, self.log)
