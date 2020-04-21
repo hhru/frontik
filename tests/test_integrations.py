@@ -13,21 +13,20 @@ class IntegrationTestCase(unittest.TestCase):
 
     def setUp(self):
         self.frontik_multiple_worker_app = FrontikTestInstance(
-            f'./frontik-test --app=tests.projects.no_debug_app {common_frontik_start_options} '
-            f' --config=tests/projects/frontik_no_debug.cfg --workers=3 --consul_enabled=False --fail_test_integration=True')
+            f'./frontik-test --app=tests.projects.broken_integration.target_app {common_frontik_start_options} '
+            f' --config=tests/projects/frontik_consul_mock.cfg --workers=3')
 
     def tearDown(self):
         self.frontik_multiple_worker_app.stop()
 
     def test_server_not_bound_before_integrations_ok(self):
         def assert_app_start(instance):
-            for i in range(10):
+            # keep in relevance to tests.projects.broken_integration.target_app
+            for i in range(11):
                 try:
-                    time.sleep(0.2)
+                    time.sleep(0.1)
                     response = instance.get_page('status')
                     self.assertNotEqual(response.status_code, 200)
-                except requests.RequestException as re:
+                except requests.RequestException:
                     pass
         self.frontik_multiple_worker_app.start_with_check(assert_app_start)
-
-
