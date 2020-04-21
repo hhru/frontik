@@ -76,6 +76,11 @@ class FrontikTestInstance:
 
         assert False, 'Failed to start Frontik instance'
 
+    def start_with_check(self, check_function):
+        self.port = find_free_port()
+        self.popen = _run_command(self.command, self.port)
+        check_function(self)
+
     def stop(self):
         if not self.port:
             return
