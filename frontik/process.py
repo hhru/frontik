@@ -13,16 +13,6 @@ log = logging.getLogger('fork')
 def fork_workers(worker_function, *, num_workers, after_workers_up_action, before_workers_shutdown_action):
     log.info("starting %d processes", num_workers)
     children = {}
-    for i in range(num_workers):
-        is_worker = _start_child(i, children)
-        if is_worker:
-            worker_function()
-            return
-    _supervise_workers(children, worker_function, after_workers_up_action, before_workers_shutdown_action)
-
-
-def _supervise_workers(children, worker_function, after_workers_up_action, before_workers_shutdown_action):
-    gc.enable()
 
     def sigterm_handler(signum, frame):
         before_workers_shutdown_action()
@@ -31,7 +21,19 @@ def _supervise_workers(children, worker_function, after_workers_up_action, befor
             os.kill(pid, signal.SIGTERM)
     signal.signal(signal.SIGTERM, sigterm_handler)
 
+    for i in range(num_workers):
+        is_worker = _start_child(i, children)
+        if is_worker:
+            worker_function()
+            return
+
+    gc.enable()
     after_workers_up_action()
+    _supervise_workers(children, worker_function)
+
+
+def _supervise_workers(children, worker_function):
+
     while children:
         try:
             pid, status = os.wait()
