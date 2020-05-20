@@ -721,7 +721,7 @@ class HttpClient:
         log_method(log_message, extra=debug_extra)
 
         if response.code == 599:
-            timings_info = ('{}={}ms'.format(stage, int(timing * 1000)) for stage, timing in response.time_info.items())
+            timings_info = (f'{stage}={timing * 1000:.3f}ms' for stage, timing in response.time_info.items())
             http_client_logger.info('Curl timings: %s', ' '.join(timings_info))
 
         self.statsd_client.stack()
