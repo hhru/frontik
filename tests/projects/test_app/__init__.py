@@ -16,7 +16,7 @@ class TestApplication(FrontikApplication):
     def __init__(self, **settings):
         options.sentry_dsn = 'http://key:secret@127.0.0.1:{}/sentry'.format(settings['port'])
 
-        bootstrap_logger('custom_logger', logging.DEBUG, use_json_formatter=False)
+        bootstrap_logger('custom_logger', logging.DEBUG, False)
 
         super().__init__(**settings)
 
