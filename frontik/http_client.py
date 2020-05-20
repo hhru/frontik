@@ -707,15 +707,11 @@ class HttpClient:
         return response, debug_extra
 
     def _log_response(self, balanced_request, response, retries_count, do_retry, debug_extra):
-        log_message = 'got {code}{size}{retry}, {do_retry} {method} {url} in {time:.2f}ms'.format(
-            code=response.code,
-            method=balanced_request.method,
-            url=response.effective_url,
-            size=' {0} bytes'.format(len(response.body)) if response.body is not None else '',
-            retry=' retry {}'.format(retries_count) if retries_count > 0 else '',
-            do_retry='retrying' if do_retry else 'final',
-            time=response.request_time * 1000
-        )
+        size = f' {len(response.body)} bytes' if response.body is not None else ''
+        retry = f' on retry {retries_count}' if retries_count > 0 else ''
+        retry_mark = 'will retry' if do_retry else 'no more retries'
+        log_message = f'ASYNC_HTTP_RESPONSE: {response.code} got {size}{retry}, {retry_mark} ' \
+                      f'{balanced_request.method} {response.effective_url} in {response.request_time * 1000:.2f}ms'
 
         log_method = http_client_logger.warning if response.code >= 500 else http_client_logger.info
         log_method(log_message, extra=debug_extra)
