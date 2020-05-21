@@ -709,7 +709,7 @@ class HttpClient:
     def _log_response(self, balanced_request, response, retries_count, do_retry, debug_extra):
         size = f' {len(response.body)} bytes' if response.body is not None else ''
         retry = f' on retry {retries_count}' if retries_count > 0 else ''
-        retry_mark = 'will retry' if do_retry else 'no more retries'
+        retry_mark = 'will retry' if do_retry else 'retries finished'
         log_message = f'ASYNC_HTTP_RESPONSE: {response.code} got {size}{retry}, {retry_mark} ' \
                       f'{balanced_request.method} {response.effective_url} in {response.request_time * 1000:.2f}ms'
 
