@@ -164,7 +164,7 @@ def get_text_formatter():
     return _TEXT_FORMATTER
 
 
-def bootstrap_logger(logger_info, logger_level, use_json_formatter=True, formatter=None):
+def bootstrap_logger(logger_info, logger_level, use_json_formatter=True, *, formatter=None):
     if isinstance(logger_info, tuple):
         logger, logger_name = logger_info
     else:
@@ -196,10 +196,10 @@ def _configure_file(logger_name: str,
     log_extension = '.slog' if use_json_formatter else '.log'
     file_handler = logging.handlers.WatchedFileHandler(os.path.join(options.log_dir, f'{logger_name}{log_extension}'))
 
-    if use_json_formatter:
-        file_handler.setFormatter(_JSON_FORMATTER)
-    elif formatter is not None:
+    if formatter is not None:
         file_handler.setFormatter(formatter)
+    elif use_json_formatter:
+        file_handler.setFormatter(_JSON_FORMATTER)
     else:
         file_handler.setFormatter(get_text_formatter())
         file_handler.addFilter(_CONTEXT_FILTER)
@@ -228,10 +228,10 @@ def _configure_syslog(logger_name: str,
         )
         log_extension = '.slog' if use_json_formatter else '.log'
         syslog_handler.ident = f'{logger_name}{log_extension}: '
-        if use_json_formatter:
-            syslog_handler.setFormatter(_JSON_FORMATTER)
-        elif formatter is not None:
+        if formatter is not None:
             syslog_handler.setFormatter(formatter)
+        elif use_json_formatter:
+            syslog_handler.setFormatter(_JSON_FORMATTER)
         else:
             syslog_handler.setFormatter(get_text_formatter())
             syslog_handler.addFilter(_CONTEXT_FILTER)
