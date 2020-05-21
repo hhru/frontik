@@ -710,7 +710,7 @@ class HttpClient:
         size = f' {len(response.body)} bytes' if response.body is not None else ''
         retry = f' on retry {retries_count}' if retries_count > 0 else ''
         retry_mark = 'will retry' if do_retry else 'retries finished'
-        log_message = f'ASYNC_HTTP_RESPONSE: {response.code} got {size}{retry}, {retry_mark} ' \
+        log_message = f'HTTP_CLIENT_RESPONSE: {response.code} got {size}{retry}, {retry_mark} ' \
                       f'{balanced_request.method} {response.effective_url} in {response.request_time * 1000:.2f}ms'
 
         log_method = http_client_logger.warning if response.code >= 500 else http_client_logger.info
