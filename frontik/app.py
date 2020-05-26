@@ -109,6 +109,7 @@ class FrontikApplication(Application):
 
         self.config = self.application_config()
         self.app = settings.get('app')
+        self.app_module = settings.get('app_module')
         self.app_root = settings.get('app_root')
 
         self.xml = frontik.producers.xml_producer.XMLProducerFactory(self)
@@ -174,7 +175,7 @@ class FrontikApplication(Application):
 
     def application_urls(self):
         return [
-            ('', FileMappingRouter(importlib.import_module(f'{self.app}.pages')))
+            ('', FileMappingRouter(importlib.import_module(f'{self.app_module}.pages')))
         ]
 
     def application_404_handler(self, request):
