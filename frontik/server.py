@@ -3,6 +3,7 @@ import gc
 import importlib
 import logging
 import os.path
+import re
 import signal
 import socket
 import sys
@@ -37,19 +38,26 @@ def main(config_file=None):
     log.info('starting application %s', options.app)
 
     try:
-        module = importlib.import_module(options.app)
+        if options.app_class is not None and re.match(r'^\w+\.', options.app_class):
+            app_module_name, app_class_name = options.app_class.rsplit('.', 1)
+        else:
+            app_module_name = options.app
+            app_class_name = options.app_class
+
+        module = importlib.import_module(app_module_name)
     except Exception as e:
         log.exception('failed to import application module "%s": %s', options.app, e)
+
         sys.exit(1)
 
-    if options.app_class is not None and not hasattr(module, options.app_class):
+    if app_class_name is not None and not hasattr(module, app_class_name):
         log.exception('application class "%s" not found', options.app_class)
         sys.exit(1)
 
-    application = getattr(module, options.app_class) if options.app_class is not None else FrontikApplication
+    application = getattr(module, app_class_name) if app_class_name is not None else FrontikApplication
 
     try:
-        app = application(app_root=os.path.dirname(module.__file__), **options.as_dict())
+        app = application(app_root=os.path.dirname(module.__file__), app_module=app_module_name, **options.as_dict())
 
         gc.disable()
         gc.collect()
