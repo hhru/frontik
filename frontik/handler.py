@@ -471,8 +471,8 @@ class PageHandler(RequestHandler):
         for name, value in self._mandatory_headers.items():
             self.set_header(name, value)
 
-        for cookie_setter in self._mandatory_cookies.values():
-            cookie_setter()
+        for args, kwargs in self._mandatory_cookies.values():
+            self.set_cookie(*args, **kwargs)
 
         if self._status_code in (204, 304) or (100 <= self._status_code < 200):
             self._write_buffer = []
@@ -496,8 +496,7 @@ class PageHandler(RequestHandler):
         self._mandatory_headers[name] = value
 
     def set_mandatory_cookie(self, name, value, domain=None, expires=None, path="/", expires_days=None, **kwargs):
-        self._mandatory_cookies[name] = lambda: self.set_cookie(name, value, domain, expires, path, expires_days,
-                                                                **kwargs)
+        self._mandatory_cookies[name] = ((name, value, domain, expires, path, expires_days), kwargs)
 
     def clear_header(self, name):
         if name in self._mandatory_headers:
