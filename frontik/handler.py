@@ -94,6 +94,9 @@ class PageHandler(RequestHandler):
         self._render_postprocessors = []
         self._postprocessors = []
 
+        self._mandatory_cookies = {}
+        self._mandatory_headers = tornado.httputil.HTTPHeaders()
+
     def __repr__(self):
         return '.'.join([self.__module__, self.__class__.__name__])
 
@@ -465,6 +468,11 @@ class PageHandler(RequestHandler):
 
     def finish(self, chunk=None):
         self.stages_logger.commit_stage('postprocess')
+        for name, value in self._mandatory_headers.items():
+            self.set_header(name, value)
+
+        for args, kwargs in self._mandatory_cookies.values():
+            self.set_cookie(*args, **kwargs)
 
         if self._status_code in (204, 304) or (100 <= self._status_code < 200):
             self._write_buffer = []
@@ -483,6 +491,22 @@ class PageHandler(RequestHandler):
 
         self._preprocessor_futures.append(future)
         return future
+
+    def set_mandatory_header(self, name, value):
+        self._mandatory_headers[name] = value
+
+    def set_mandatory_cookie(self, name, value, domain=None, expires=None, path="/", expires_days=None, **kwargs):
+        self._mandatory_cookies[name] = ((name, value, domain, expires, path, expires_days), kwargs)
+
+    def clear_header(self, name):
+        if name in self._mandatory_headers:
+            del self._mandatory_headers[name]
+        super().clear_header(name)
+
+    def clear_cookie(self, name, path="/", domain=None):
+        if name in self._mandatory_cookies:
+            del self._mandatory_cookies[name]
+        super().clear_cookie(name, path, domain)
 
     @gen.coroutine
     def _run_preprocessors(self, preprocessors):
