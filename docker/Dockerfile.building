@@ -1,4 +1,4 @@
-FROM registry.pyn.ru:5000/python3.7-ubuntu18-production:2019.04.10
+FROM registry.pyn.ru/python3.7-ubuntu18-production:2019.04.10
 
 COPY frontik-test setup.py README.md MANIFEST.in /home/building/
 COPY frontik /home/building/frontik/
