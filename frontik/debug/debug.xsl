@@ -360,7 +360,7 @@
     </xsl:template>
 
     <xsl:template match="meta-info/upstream">
-        <span class="label" style="background-color: {@color}">
+        <span class="label" style="background-color: {@bgcolor}; color: {@fgcolor};">
             <xsl:value-of select="@name"/>
         </span>
     </xsl:template>

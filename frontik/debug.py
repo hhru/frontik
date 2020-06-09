@@ -293,7 +293,12 @@ def _pretty_print_json(node):
 
 def _string_to_color(value):
     value_hash = crc32(utf8(value)) % 0xffffffff
-    return '#%02x%02x%02x' % ((value_hash & 0xFF0000) >> 16, (value_hash & 0x00FF00) >> 8, value_hash & 0x0000FF)
+    r = (value_hash & 0xFF0000) >> 16
+    g = (value_hash & 0x00FF00) >> 8
+    b = value_hash & 0x0000FF
+    bgcolor = '#%02x%02x%02x' % (r, g, b)
+    fgcolor = 'black' if 0.2126 * r + 0.7152 * g + 0.0722 * b > 0xff / 2 else 'white'
+    return bgcolor, fgcolor
 
 
 class DebugBufferedHandler(BufferedHandler):
@@ -459,7 +464,9 @@ class DebugTransform(OutputTransform):
         debug_log_data.set('generate-time', _format_number((time.time() - start_time) * 1000))
 
         for upstream in debug_log_data.xpath('//meta-info/upstream'):
-            upstream.set('color', _string_to_color(upstream.get('name')))
+            bgcolor, fgcolor = _string_to_color(upstream.get('name'))
+            upstream.set('bgcolor', bgcolor)
+            upstream.set('fgcolor', fgcolor)
 
         if not getattr(self.request, '_debug_inherited', False):
             try:
