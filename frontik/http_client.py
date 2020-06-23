@@ -1,7 +1,6 @@
 import asyncio
 import json
 import re
-import socket
 import time
 from asyncio import Future
 
@@ -14,18 +13,29 @@ from lxml import etree
 from tornado.escape import to_unicode, utf8
 from tornado.ioloop import IOLoop
 from tornado.curl_httpclient import CurlAsyncHTTPClient
-from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPResponse, HTTPError
+from tornado.httpclient import HTTPRequest, HTTPResponse, HTTPError
 from tornado.httputil import HTTPHeaders
-from tornado.options import options
+from tornado.options import options, define
 
-from frontik import media_types
 from frontik.debug import DEBUG_HEADER_NAME, response_from_debug
-from frontik.request_context import get_request_id, get_request
-from frontik.timeout_tracking import get_timeout_checker
 from frontik.util import make_url, make_body, make_mfd
 
-OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
 USER_AGENT_HEADER = 'User-Agent'
+
+
+define('datacenter', default=None, type=str)
+
+define('http_client_default_connect_timeout_sec', default=0.2, type=float)
+define('http_client_default_request_timeout_sec', default=2.0, type=float)
+define('http_client_default_max_tries', default=2, type=int)
+define('http_client_default_max_timeout_tries', default=1, type=int)
+define('http_client_default_max_fails', default=0, type=int)
+define('http_client_default_fail_timeout_sec', default=10, type=float)
+define('http_client_default_retry_policy', default='timeout,http_503', type=str)
+define('http_proxy_host', default=None, type=str)
+define('http_proxy_port', default=3128, type=int)
+define('http_client_allow_cross_datacenter_requests', default=False, type=bool)
+define('http_client_metrics_kafka_cluster', default=None, type=str)
 
 
 def HTTPResponse__repr__(self):
@@ -361,7 +371,6 @@ class BalancedHttpRequest:
         self.request_timeout *= options.timeout_multiplier
 
         self.headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
-        self.headers[OUTER_TIMEOUT_MS_HEADER] = f'{self.request_timeout * 1000:.0f}'
         if self.source_app and not self.headers.get(USER_AGENT_HEADER):
             self.headers[USER_AGENT_HEADER] = self.source_app
         if self.method == 'POST':
@@ -371,7 +380,7 @@ class BalancedHttpRequest:
                 self.body = make_body(data)
 
             if content_type is None:
-                content_type = self.headers.get('Content-Type', media_types.APPLICATION_FORM_URLENCODED)
+                content_type = self.headers.get('Content-Type', 'application/x-www-form-urlencoded')
 
             self.headers['Content-Length'] = str(len(self.body))
         elif self.method == 'PUT':
@@ -454,16 +463,11 @@ class BalancedHttpRequest:
 
 
 class HttpClientFactory:
-    def __init__(self, application, upstreams):
-        AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
-
-        self.tornado_http_client = AsyncHTTPClient()
-        self.hostname = socket.gethostname()
-
-        if options.max_http_clients_connects is not None:
-            self.tornado_http_client._multi.setopt(pycurl.M_MAXCONNECTS, options.max_http_clients_connects)
-
-        self.application = application
+    def __init__(self, source_app, tornado_http_client, upstreams, *, statsd_client=None, kafka_producer=None):
+        self.tornado_http_client = tornado_http_client
+        self.source_app = source_app
+        self.statsd_client = statsd_client
+        self.kafka_producer = kafka_producer
         self.upstreams = {}
 
         for name, upstream in upstreams.items():
@@ -471,38 +475,15 @@ class HttpClientFactory:
             shuffle(servers)
             self.register_upstream(name, upstream['config'], servers)
 
-        kafka_cluster = options.http_client_metrics_kafka_cluster
-        send_metrics_to_kafka = kafka_cluster and kafka_cluster in options.kafka_clusters
-
-        if kafka_cluster and kafka_cluster not in options.kafka_clusters:
-            http_client_logger.warning(
-                'kafka cluster for http client metrics "%s" is not present in "kafka_clusters" option, '
-                'metrics will be disabled', kafka_cluster
-            )
-        else:
-            http_client_logger.info('kafka metrics are %s', 'enabled' if send_metrics_to_kafka else 'disabled')
-
-        self._send_metrics_to_kafka = send_metrics_to_kafka
-        self._kafka_cluster = kafka_cluster
-
-    def get_http_client(self, handler, modify_http_request_hook):
-        kafka_producer = (
-            self.application.get_kafka_producer(self._kafka_cluster) if self._send_metrics_to_kafka else None
-        )
-        timeout_checker = None
-        request = get_request()
-        if request:
-            outer_timeout = request.headers.get(OUTER_TIMEOUT_MS_HEADER)
-            if outer_timeout:
-                timeout_checker = get_timeout_checker(request.headers.get(USER_AGENT_HEADER), float(outer_timeout),
-                                                      request.request_time)
-
+    def get_http_client(self, modify_http_request_hook=None, debug_mode=False):
         return HttpClient(
-            self.tornado_http_client, self.application.app,
-            self.upstreams, modify_http_request_hook,
-            self.application.statsd_client,
-            kafka_producer,
-            debug_mode=handler.debug_mode, timeout_checker=timeout_checker
+            self.tornado_http_client,
+            self.source_app,
+            self.upstreams,
+            statsd_client=self.statsd_client,
+            kafka_producer=self.kafka_producer,
+            modify_http_request_hook=modify_http_request_hook,
+            debug_mode=debug_mode
         )
 
     def update_upstream(self, name, config):
@@ -534,8 +515,8 @@ class HttpClientFactory:
 
 
 class HttpClient:
-    def __init__(self, http_client_impl, source_app, upstreams, modify_http_request_hook,
-                 statsd_client, kafka_producer, *, debug_mode=False, timeout_checker=None):
+    def __init__(self, http_client_impl, source_app, upstreams, *,
+                 statsd_client=None, kafka_producer=None, modify_http_request_hook=None, debug_mode=False):
         self.http_client_impl = http_client_impl
         self.source_app = source_app
         self.debug_mode = debug_mode
@@ -543,7 +524,6 @@ class HttpClient:
         self.upstreams = upstreams
         self.statsd_client = statsd_client
         self.kafka_producer = kafka_producer
-        self.timeout_checker = timeout_checker
 
     def get_upstream(self, host):
         return self.upstreams.get(host, Upstream.get_single_host_upstream())
@@ -606,13 +586,10 @@ class HttpClient:
 
     def _fetch_with_retry(self, balanced_request, callback, parse_response, parse_on_error,
                           fail_fast) -> 'Future[RequestResult]':
-        if self.timeout_checker:
-            self.timeout_checker.check(balanced_request)
-
         future = Future()
 
         def request_finished_callback(response):
-            if balanced_request.tried_hosts is not None:
+            if balanced_request.tried_hosts is not None and self.statsd_client is not None:
                 self.statsd_client.count(
                     'http.client.retries', 1,
                     upstream=balanced_request.get_host(),
@@ -666,8 +643,6 @@ class HttpClient:
             IOLoop.current().add_callback(callback, response)
             return
 
-        request.headers['x-request-id'] = get_request_id()
-
         if isinstance(self.http_client_impl, CurlAsyncHTTPClient):
             request.prepare_curl_callback = partial(
                 self._prepare_curl_callback, next_callback=request.prepare_curl_callback
@@ -692,7 +667,7 @@ class HttpClient:
                     debug_xml, response = debug_response
                     debug_extra['_debug_response'] = debug_xml
 
-            if self.debug_mode.enabled:
+            if self.debug_mode:
                 debug_extra.update({
                     '_response': response,
                     '_request': request,
@@ -720,26 +695,27 @@ class HttpClient:
             timings_info = (f'{stage}={timing * 1000:.3f}ms' for stage, timing in response.time_info.items())
             http_client_logger.info('Curl timings: %s', ' '.join(timings_info))
 
-        self.statsd_client.stack()
-        self.statsd_client.count(
-            'http.client.requests', 1,
-            upstream=balanced_request.get_host(),
-            dc=balanced_request.current_datacenter,
-            final='false' if do_retry else 'true',
-            status=response.code
-        )
-        self.statsd_client.time(
-            'http.client.request.time',
-            int(response.request_time * 1000),
-            dc=balanced_request.current_datacenter,
-            upstream=balanced_request.get_host()
-        )
-        self.statsd_client.flush()
+        if self.statsd_client is not None:
+            self.statsd_client.stack()
+            self.statsd_client.count(
+                'http.client.requests', 1,
+                upstream=balanced_request.get_host(),
+                dc=balanced_request.current_datacenter,
+                final='false' if do_retry else 'true',
+                status=response.code
+            )
+            self.statsd_client.time(
+                'http.client.request.time',
+                int(response.request_time * 1000),
+                dc=balanced_request.current_datacenter,
+                upstream=balanced_request.get_host()
+            )
+            self.statsd_client.flush()
 
         if self.kafka_producer is not None and not do_retry:
             dc = balanced_request.current_datacenter or options.datacenter or 'unknown'
             current_host = balanced_request.current_host or 'unknown'
-            request_id = get_request_id() or 'unknown'
+            request_id = balanced_request.headers.get('X-Request-Id', 'unknown')
             upstream = balanced_request.get_host() or 'unknown'
 
             asyncio.get_event_loop().create_task(self.kafka_producer.send(

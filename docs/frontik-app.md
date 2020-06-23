@@ -42,12 +42,10 @@ class MyApplication(FrontikApplication):
 
         self.cache = self.populate_shared_cache()
 
-    def init_async(self):
-        futures = super().init_async()
+    async def init(self):
+        await super().init()
 
-        futures.append(self.connect_to_database())
-
-        return futures
+        await self.connect_to_database()
 ```
 
 At first, application instance is created by calling __init__ function. In case of multi-worker setup
@@ -55,8 +53,7 @@ At first, application instance is created by calling __init__ function. In case 
 for read only data in child processes. It comes with a limitation - IOLoop instance must not be used inside this function.
 See tornado.tcpserver.TCPServer for details.
 
-After that init_async is called in each worker process. This function returns a list of futures to be awaited
-before worker starts accepting requests. Application must call parent's init_async and preserve returned futures.
+After that init is being called in each worker process.
 
 For this class to be used, you should set app_class option on frontik configuration file to 'MyApplication'
 

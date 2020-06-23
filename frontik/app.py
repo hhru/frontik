@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import socket
 import sys
@@ -5,11 +6,13 @@ import time
 import traceback
 from functools import partial
 from typing import TYPE_CHECKING
+import logging
 
 import pycurl
 import tornado
 from lxml import etree
 from tornado.options import options
+from tornado.httpclient import AsyncHTTPClient
 from tornado.stack_context import StackContext
 from tornado.web import Application, RequestHandler
 
@@ -23,6 +26,9 @@ from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.routing import FileMappingRouter, FrontikRouter
 from frontik.service_discovery import get_async_service_discovery
 from frontik.version import version as frontik_version
+
+
+app_logger = logging.getLogger('http_client')
 
 if TYPE_CHECKING:
     from typing import Optional
@@ -115,6 +121,12 @@ class FrontikApplication(Application):
         self.xml = frontik.producers.xml_producer.XMLProducerFactory(self)
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
+        AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
+        self.tornado_http_client = AsyncHTTPClient()
+
+        if options.max_http_clients_connects is not None:
+            self.tornado_http_client._multi.setopt(pycurl.M_MAXCONNECTS, options.max_http_clients_connects)
+
         self.service_discovery_client = None
         self.http_client_factory = None
 
@@ -129,19 +141,34 @@ class FrontikApplication(Application):
         if options.debug:
             core_handlers.insert(0, (r'/pydevd/?', PydevdHandler))
 
+        self.service_discovery_client = get_async_service_discovery(options, hostname=socket.gethostname())
+
         self.available_integrations = None
 
         super().__init__(core_handlers, **tornado_settings)
 
-    def init_async(self):
-        self.service_discovery_client = get_async_service_discovery(options, hostname=socket.gethostname())
+    async def init(self):
         self.transforms.insert(0, partial(DebugTransform, self))
 
-        self.http_client_factory = HttpClientFactory(self, getattr(self.config, 'http_upstreams', {}))
+        self.available_integrations, integration_futures = integrations.load_integrations(self)
+        await asyncio.gather(*[future for future in integration_futures if future])
 
-        self.available_integrations, default_init_futures = integrations.load_integrations(self)
+        kafka_cluster = options.http_client_metrics_kafka_cluster
+        send_metrics_to_kafka = kafka_cluster and kafka_cluster in options.kafka_clusters
 
-        return default_init_futures
+        if kafka_cluster and kafka_cluster not in options.kafka_clusters:
+            app_logger.warning(
+                'kafka cluster for http client metrics "%s" is not present in "kafka_clusters" option, '
+                'metrics will be disabled', kafka_cluster
+            )
+        else:
+            app_logger.info('kafka metrics are %s', 'enabled' if send_metrics_to_kafka else 'disabled')
+
+        kafka_producer = self.get_kafka_producer(kafka_cluster) if send_metrics_to_kafka else None
+
+        self.http_client_factory = HttpClientFactory(self.app, self.tornado_http_client,
+                                                     getattr(self.config, 'http_upstreams', {}),
+                                                     statsd_client=self.statsd_client, kafka_producer=kafka_producer)
 
     def find_handler(self, request, **kwargs):
         request_id = request.headers.get('X-Request-Id')
@@ -210,7 +237,7 @@ class FrontikApplication(Application):
             'uptime': uptime_value,
             'datacenter': options.datacenter,
             'workers': {
-                'total': options.max_http_clients,
+                'total': len(self.http_client_factory.tornado_http_client._curls),
                 'free': len(self.http_client_factory.tornado_http_client._free_list)
             }
         }

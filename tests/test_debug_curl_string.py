@@ -5,7 +5,7 @@ import frontik.options
 
 from frontik import media_types
 from frontik.debug import request_to_curl_string
-from frontik.http_client import BalancedHttpRequest, Upstream, USER_AGENT_HEADER, OUTER_TIMEOUT_MS_HEADER
+from frontik.http_client import BalancedHttpRequest, Upstream, USER_AGENT_HEADER
 
 
 class CurlStringTestCase(unittest.TestCase):
@@ -17,8 +17,7 @@ class CurlStringTestCase(unittest.TestCase):
         self.assertEqual(
             request_to_curl_string(request),
             "curl -X GET 'http://test.com/path?param=value' "
-            "-H 'Accept: application/json' -H '{}: test' -H '{}: 2000'".format(USER_AGENT_HEADER,
-                                                                               OUTER_TIMEOUT_MS_HEADER)
+            "-H 'Accept: application/json' -H '{}: test'".format(USER_AGENT_HEADER)
         )
 
     def test_curl_string_post(self):
@@ -30,7 +29,7 @@ class CurlStringTestCase(unittest.TestCase):
             request_to_curl_string(request),
             "curl -X POST 'http://test.com/path' -H 'Content-Length: 11' "
             "-H 'Content-Type: application/x-www-form-urlencoded' "
-            "-H '{}: test' -H '{}: 2000' --data 'param=value'".format(USER_AGENT_HEADER, OUTER_TIMEOUT_MS_HEADER)
+            "-H '{}: test' --data 'param=value'".format(USER_AGENT_HEADER)
         )
 
     def test_curl_string_put(self):
@@ -42,7 +41,7 @@ class CurlStringTestCase(unittest.TestCase):
         self.assertEqual(
             request_to_curl_string(request),
             "curl -X PUT 'http://test.com/path' -H 'Content-Length: 4' -H 'Content-Type: text/plain' "
-            "-H '{}: test' -H '{}: 2000' --data 'DATA'".format(USER_AGENT_HEADER, OUTER_TIMEOUT_MS_HEADER)
+            "-H '{}: test' --data 'DATA'".format(USER_AGENT_HEADER)
         )
 
     def test_curl_string_binary(self):
@@ -55,5 +54,5 @@ class CurlStringTestCase(unittest.TestCase):
             request_to_curl_string(request),
             "echo -e '\\xd1\\x82\\xd0\\xb5\\xd1\\x81\\xd1\\x82' | "
             "curl -X POST 'http://test.com/path' -H 'Content-Length: 8' -H 'Content-Type: text/plain' "
-            "-H '{}: test' -H '{}: 2000' --data-binary @-".format(USER_AGENT_HEADER, OUTER_TIMEOUT_MS_HEADER)
+            "-H '{}: test' --data-binary @-".format(USER_AGENT_HEADER)
         )

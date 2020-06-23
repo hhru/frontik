@@ -19,7 +19,7 @@ class SentryIntegration(Integration):
             return
 
         self.sentry_client = FrontikAsyncSentryClient(
-            dsn=options.sentry_dsn, http_client=app.http_client_factory.tornado_http_client,
+            dsn=options.sentry_dsn, http_client=app.tornado_http_client,
             release=app.application_version(),
             # breadcrumbs have serious performance penalties
             enable_breadcrumbs=False, install_logging_hook=False, install_sys_hook=False
@@ -68,8 +68,8 @@ class FrontikAsyncSentryClient(AsyncSentryClient):
         """
         return self.http_client.fetch(
             url, callback, method='POST', body=data, headers=headers if headers else {},
-            validate_cert=self.validate_cert, connect_timeout=options.http_client_default_connect_timeout_sec,
-            request_timeout=options.http_client_default_request_timeout_sec
+            validate_cert=self.validate_cert, connect_timeout=options.sentry_connect_timeout_sec,
+            request_timeout=options.sentry_request_timeout_sec
         )
 
 
