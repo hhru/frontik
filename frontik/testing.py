@@ -42,7 +42,7 @@ class FrontikTestCase(AsyncHTTPTestCase):
 
     def patch_app_http_client(self, app):
         """Patches application HTTPClient to enable requests stubbing."""
-        patch_http_client(app.http_client_factory.tornado_http_client)
+        patch_http_client(app.tornado_http_client)
 
     def set_stub(self, url, request_method='GET',
                  response_function=None, response_file=None, response_body='',
@@ -50,7 +50,7 @@ class FrontikTestCase(AsyncHTTPTestCase):
                  response_body_processor=safe_template, **kwargs):
 
         set_stub(
-            self._app.http_client_factory.tornado_http_client, url, request_method,
+            self._app.tornado_http_client, url, request_method,
             response_function, response_file, response_body, response_code, response_headers,
             response_body_processor, **kwargs
         )

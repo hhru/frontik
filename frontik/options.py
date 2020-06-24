@@ -47,20 +47,6 @@ define('debug', default=False, type=bool)
 define('debug_login', default=None, type=str)
 define('debug_password', default=None, type=str)
 
-define('datacenter', default=None, type=str)
-
-define('http_client_default_connect_timeout_sec', default=0.2, type=float)
-define('http_client_default_request_timeout_sec', default=2.0, type=float)
-define('http_client_default_max_tries', default=2, type=int)
-define('http_client_default_max_timeout_tries', default=1, type=int)
-define('http_client_default_max_fails', default=0, type=int)
-define('http_client_default_fail_timeout_sec', default=10, type=float)
-define('http_client_default_retry_policy', default='timeout,http_503', type=str)
-define('http_proxy_host', default=None, type=str)
-define('http_proxy_port', default=3128, type=int)
-define('http_client_allow_cross_datacenter_requests', default=False, type=bool)
-define('http_client_metrics_kafka_cluster', default=None, type=str)
-
 define('kafka_clusters', default={}, type=dict)
 
 define('statsd_host', default=None, type=str)
@@ -81,6 +67,8 @@ define('jinja_template_cache_limit', default=50, type=int)
 define('jinja_streaming_render_timeout_ms', default=50, type=int)
 
 define('sentry_dsn', default=None, type=str, metavar='http://public:secret@example.com/1')
+define('sentry_connect_timeout_sec', default=0.2, type=float)
+define('sentry_request_timeout_sec', default=2.0, type=float)
 
 define('max_http_clients', default=100, type=int)
 define('max_http_clients_connects', default=None, type=int)

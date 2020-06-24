@@ -41,6 +41,8 @@ Logging options:
 | `syslog_facility`            | `str`   | `'user'`      | Syslog facility                                                        |
 | `suppressed_loggers`         | `list`  | `[]`          | List of logger names to be excluded from debug output                  |
 | `sentry_dsn`                 | `str`   | `None`        | Enable Sentry and set Sentry DSN for sending errors                    |
+| `sentry_connect_timeout_sec` | `float` | `0.2`         | Sentry connect timeout                                                 |
+| `sentry_request_timeout_sec` | `float` | `2.0`         | sentry request timeout                                                 |
 | `statsd_host`                | `str`   | `None`        | Stats server host for metrics                                          |
 | `statsd_port`                | `int`   | `None`        | Stats server port for metrics                                          |
 | `asyncio_task_threshold_sec` | `int`   | `None`        | Threshold for logging long-running asyncio tasks                       |
