@@ -31,7 +31,7 @@ Logging options:
 |------------------------------|---------|---------------|------------------------------------------------------------------------|
 | `loglevel`                   | `str`   | `info`        | Python log level                                                       |
 | `logformat`                  | `str`   | see code      | Log entry format for files and syslog                                  |
-| `logfile`                    | `str`   | `None`        | Log file location (set to `None` to disable logging to file)           |
+| `log_dir`                    | `str`   | `None`        | Log directory location (set to `None` to disable logging to file)      |
 | `stderr_log`                 | `bool`  | `False`       | Send log output to stderr (colorized if possible)                      |
 | `stderr_format`              | `str`   | see code      | Log entry format for stderr output                                     |
 | `stderr_dateformat`          | `str`   | see code      | Log entry date format for stderr output                                |

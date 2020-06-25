@@ -17,7 +17,7 @@ from tornado.httpclient import HTTPRequest, HTTPResponse, HTTPError
 from tornado.httputil import HTTPHeaders
 from tornado.options import options, define
 
-from frontik.debug import DEBUG_HEADER_NAME, response_from_debug
+from frontik.debug import response_from_debug
 from frontik.util import make_url, make_body, make_mfd
 
 USER_AGENT_HEADER = 'User-Agent'
@@ -25,6 +25,7 @@ USER_AGENT_HEADER = 'User-Agent'
 
 define('datacenter', default=None, type=str)
 
+define('timeout_multiplier', default=1.0, type=float)
 define('http_client_default_connect_timeout_sec', default=0.2, type=float)
 define('http_client_default_request_timeout_sec', default=2.0, type=float)
 define('http_client_default_max_tries', default=2, type=int)
@@ -35,7 +36,6 @@ define('http_client_default_retry_policy', default='timeout,http_503', type=str)
 define('http_proxy_host', default=None, type=str)
 define('http_proxy_port', default=3128, type=int)
 define('http_client_allow_cross_datacenter_requests', default=False, type=bool)
-define('http_client_metrics_kafka_cluster', default=None, type=str)
 
 
 def HTTPResponse__repr__(self):
@@ -605,13 +605,15 @@ class HttpClient:
                 callback(result.data, result.response)
 
             if fail_fast and result.failed:
-                raise FailFastError(result)
+                future.set_exception(FailFastError(result))
+                return
 
             future.set_result(result)
 
         def retry_callback(response):
             if isinstance(response.error, Exception) and not isinstance(response.error, HTTPError):
-                raise response.error
+                future.set_exception(response.error)
+                return
 
             request = balanced_request.pop_last_request()
             retries_count = balanced_request.get_retries_count()
@@ -627,7 +629,9 @@ class HttpClient:
 
             request_finished_callback(response)
 
-        self.modify_http_request_hook(balanced_request)
+        if callable(self.modify_http_request_hook):
+            self.modify_http_request_hook(balanced_request)
+
         self._fetch(balanced_request, retry_callback)
 
         return future
@@ -661,7 +665,7 @@ class HttpClient:
         debug_extra = {}
 
         try:
-            if response.headers.get(DEBUG_HEADER_NAME):
+            if response.headers.get('X-Hh-Debug'):
                 debug_response = response_from_debug(request, response)
                 if debug_response is not None:
                     debug_xml, response = debug_response

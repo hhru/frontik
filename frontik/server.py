@@ -118,7 +118,6 @@ async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_r
         log.info('requested shutdown')
         log.info('shutting down server on %s:%d', options.host, options.port)
         ioloop.add_callback_from_signal(server_stop)
-        signal.signal(signal.SIGTERM, signal.SIG_IGN)
 
     def ioloop_is_running():
         return ioloop.asyncio_loop.is_running()
