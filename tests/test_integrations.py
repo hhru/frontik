@@ -8,9 +8,6 @@ from .instances import FrontikTestInstance, common_frontik_start_options
 
 class IntegrationTestCase(unittest.TestCase):
 
-    async def async_start(self):
-        self.frontik_multiple_worker_app.start()
-
     def setUp(self):
         self.frontik_multiple_worker_app = FrontikTestInstance(
             f'./frontik-test --app=tests.projects.broken_integration.target_app {common_frontik_start_options} '

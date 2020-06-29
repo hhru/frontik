@@ -86,6 +86,7 @@ class FrontikTestInstance:
             return
 
         self.popen.terminate()
+        self.popen.wait(300)
         self.port = None
 
     def get_page(self, page, notpl=False, method=requests.get, **kwargs):

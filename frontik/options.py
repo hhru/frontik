@@ -47,13 +47,13 @@ define('debug', default=False, type=bool)
 define('debug_login', default=None, type=str)
 define('debug_password', default=None, type=str)
 
+define('http_client_metrics_kafka_cluster', default=None, type=str)
+
 define('kafka_clusters', default={}, type=dict)
 
 define('statsd_host', default=None, type=str)
 define('statsd_port', default=None, type=int)
 define('gc_metrics_send_interval_ms', default=None, type=int)
-
-define('timeout_multiplier', default=1.0, type=float)
 
 define('xml_root', default=None, type=str)
 define('xml_cache_limit', default=None, type=int)
