@@ -2,9 +2,9 @@ import json
 import unittest
 
 from tornado.concurrent import Future
+from http_client import DataParseError
 
 from frontik.json_builder import JsonBuilder
-from frontik.http_client import DataParseError
 from .test_doc import TestDoc
 
 

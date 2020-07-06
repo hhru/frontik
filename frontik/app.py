@@ -15,13 +15,13 @@ from tornado.options import options
 from tornado.httpclient import AsyncHTTPClient
 from tornado.stack_context import StackContext
 from tornado.web import Application, RequestHandler
+from http_client import HttpClientFactory
 
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
 from frontik import integrations, media_types, request_context
 from frontik.debug import DebugTransform
 from frontik.handler import ErrorHandler
-from frontik.http_client import HttpClientFactory
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.routing import FileMappingRouter, FrontikRouter
 from frontik.service_discovery import get_async_service_discovery

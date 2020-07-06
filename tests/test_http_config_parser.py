@@ -1,6 +1,6 @@
 import unittest
 
-from frontik.http_client import Upstream
+from http_client import Upstream
 
 
 class TestHttpConfigParser(unittest.TestCase):

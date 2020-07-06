@@ -11,13 +11,11 @@ import traceback
 from binascii import crc32
 from datetime import datetime
 from http.cookies import SimpleCookie
-from io import BytesIO
 from urllib.parse import parse_qs, urlparse
 
 from lxml import etree
 from lxml.builder import E
 from tornado.escape import to_unicode, utf8
-from tornado.httpclient import HTTPResponse
 from tornado.httputil import HTTPHeaders
 from tornado.web import OutputTransform
 
@@ -140,36 +138,6 @@ def balanced_request_to_xml(balanced_request, retry, rack, datacenter):
         etree.SubElement(info, 'retry', count=str(retry))
 
     return info
-
-
-def response_from_debug(request, response):
-    debug_response = etree.XML(response.body)
-    original_response = debug_response.find('original-response')
-
-    if original_response is not None:
-        response_info = frontik.xml_util.xml_to_dict(original_response)
-        original_response.getparent().remove(original_response)
-
-        original_buffer = base64.b64decode(response_info.get('buffer', ''))
-
-        headers = dict(response.headers)
-        response_info_headers = response_info.get('headers', {})
-        if response_info_headers:
-            headers.update(response_info_headers)
-
-        fake_response = HTTPResponse(
-            request,
-            int(response_info.get('code', 599)),
-            headers=HTTPHeaders(headers),
-            buffer=BytesIO(original_buffer),
-            effective_url=response.effective_url,
-            request_time=response.request_time,
-            time_info=response.time_info
-        )
-
-        return debug_response, fake_response
-
-    return None
 
 
 def request_to_curl_string(request):
