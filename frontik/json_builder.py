@@ -17,7 +17,7 @@ def _encode_value(v):
         return _encode_iterable(v)
 
     elif isinstance(v, Future):
-        if v.done():
+        if v.done() and v.exception() is None:
             return _encode_value(v.result())
 
         return None
