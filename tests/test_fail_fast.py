@@ -48,3 +48,7 @@ class TestFailFast(unittest.TestCase):
     def test_exception_in_fail_fast(self):
         response = frontik_test_app.get_page('fail_fast?fail_fast=true&exception_in_fail_fast=true')
         self.assertEqual(response.status_code, 500)
+
+    def test_fail_fast_with_producer(self):
+        json = frontik_test_app.get_page_json('fail_fast/with_postprocessors')
+        self.assertEqual(json['error'], 'some_error')
