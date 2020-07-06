@@ -1,5 +1,6 @@
+from http_client import Server
+
 from frontik.app import FrontikApplication
-from frontik.http_client import Server
 
 
 def get_server(handler, type):

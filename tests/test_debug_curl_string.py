@@ -1,11 +1,9 @@
 import unittest
 
-# noinspection PyUnresolvedReferences
-import frontik.options
+from http_client import BalancedHttpRequest, Upstream, USER_AGENT_HEADER
 
 from frontik import media_types
 from frontik.debug import request_to_curl_string
-from frontik.http_client import BalancedHttpRequest, Upstream, USER_AGENT_HEADER
 
 
 class CurlStringTestCase(unittest.TestCase):

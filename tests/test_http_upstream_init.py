@@ -1,9 +1,6 @@
 import unittest
 
-# noinspection PyUnresolvedReferences
-import frontik.options
-
-from frontik.http_client import HttpClientFactory
+from http_client import HttpClientFactory
 
 
 class TestHttpUpstreamInit(unittest.TestCase):

@@ -41,7 +41,8 @@ setup(
         'pycurl >= 7.43.0',
         'tornado >= 5.0, < 5.1',
         'python-consul >= 1.1.0',
-        'aiohttp == 3.6.2'
+        'aiohttp == 3.6.2',
+        'balancing-http-client == 1.0.1',
     ],
     test_suite='tests',
     tests_require=[
@@ -53,6 +54,7 @@ setup(
     ],
     dependency_links=[
         'https://github.com/hhru/tornado/archive/master.zip',
+        'https://github.com/hhru/balancing-http-client/archive/1.0.1.zip#egg=balancing-http-client-1.0.1',
     ],
     extras_require={
         'sentry': ['raven'],

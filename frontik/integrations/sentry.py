@@ -3,9 +3,9 @@ from typing import Optional
 
 from raven.contrib.tornado import AsyncSentryClient
 from tornado.web import HTTPError
+from http_client import FailFastError
 
 from frontik.options import options
-from frontik.http_client import FailFastError
 from frontik.integrations import Integration, integrations_logger
 
 

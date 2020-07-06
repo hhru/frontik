@@ -14,6 +14,7 @@ from tornado import gen, stack_context
 from tornado.ioloop import IOLoop
 from tornado.options import options
 from tornado.web import RequestHandler
+from http_client import FailFastError, HttpClient, RequestResult, USER_AGENT_HEADER
 
 import frontik.auth
 import frontik.handler_active_limit
@@ -24,7 +25,6 @@ from frontik import media_types, request_context
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.futures import AbortAsyncGroup, AsyncGroup
 from frontik.debug import DEBUG_HEADER_NAME, DebugMode
-from frontik.http_client import FailFastError, HttpClient, RequestResult, USER_AGENT_HEADER
 from frontik.timeout_tracking import get_timeout_checker
 from frontik.loggers.stages import StagesLogger
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors
@@ -32,7 +32,7 @@ from frontik.util import make_url
 from frontik.version import version as frontik_version
 
 if TYPE_CHECKING:
-    from frontik.http_client import BalancedHttpRequest
+    from http_client import BalancedHttpRequest
 
 
 def _fallback_status_code(status_code):
