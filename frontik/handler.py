@@ -7,7 +7,7 @@ import math
 
 from asyncio.futures import Future
 from functools import partial, wraps
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import tornado.curl_httpclient
 import tornado.httputil
@@ -99,6 +99,8 @@ class PageHandler(RequestHandler):
         self._debug_access = None
         self._render_postprocessors = []
         self._postprocessors = []
+
+        self._page_handler_params = {}
 
         self._mandatory_cookies = {}
         self._mandatory_headers = tornado.httputil.HTTPHeaders()
@@ -272,7 +274,7 @@ class PageHandler(RequestHandler):
             self.log.info('page was already finished, skipping page method')
             return
 
-        yield gen.coroutine(page_handler_method)()
+        yield gen.coroutine(page_handler_method)(**self._page_handler_params)
 
         self._handler_finished_notification()
         yield self.finish_group.get_finish_future()
@@ -505,6 +507,9 @@ class PageHandler(RequestHandler):
         self.cleanup()
 
     # Preprocessors and postprocessors
+
+    def add_page_handler_param(self, name: str, value: Any):
+        self._page_handler_params[name] = value
 
     def add_preprocessor_future(self, future):
         if self._preprocessor_futures is None:
