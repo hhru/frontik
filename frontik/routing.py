@@ -35,15 +35,20 @@ class FileMappingRouter(Router):
             routing_logger.info('page module name exceeds PATH_MAX (%s), using 404 page', MAX_MODULE_NAME_LENGTH)
             return _get_application_404_handler_delegate(application, request)
 
+        def _handle_exception_if_module_is_found_but_import_fail():
+            routing_logger.exception('error while importing %s module', page_module_name)
+            return _get_application_500_handler_delegate(application, request)
+
         try:
             page_module = importlib.import_module(page_module_name)
             routing_logger.debug('using %s from %s', page_module_name, page_module.__file__)
-        except ImportError:
+        except ModuleNotFoundError as module_not_found_error:
+            if module_not_found_error.name != page_module_name:
+                return _handle_exception_if_module_is_found_but_import_fail()
             routing_logger.warning('%s module not found', (self.name, page_module_name))
             return _get_application_404_handler_delegate(application, request)
         except Exception:
-            routing_logger.exception('error while importing %s module', page_module_name)
-            return _get_application_500_handler_delegate(application, request)
+            return _handle_exception_if_module_is_found_but_import_fail()
 
         if not hasattr(page_module, 'Page'):
             routing_logger.error('%s.Page class not found', page_module_name)
