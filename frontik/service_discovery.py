@@ -25,7 +25,7 @@ def get_sync_service_discovery(opts, *, hostname):
 
 
 def _make_service_id(options, *, service_name, hostname):
-    return f'{service_name}-{options.datacenter}-{hostname}-{options.port}'
+    return f'{service_name}-{hostname}-{options.port}'
 
 
 def _create_http_check(options):
