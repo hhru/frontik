@@ -38,7 +38,7 @@ setup(
     },
     scripts=['scripts/frontik'],
     python_requires='>=3.7',
-    install_requires=requirements_txt,
+    install_requires=install_requirements,
     test_suite='tests',
     tests_require=[
         'pytest <= 3.8.2',
