@@ -8,5 +8,5 @@ COPY scripts /home/building/scripts/
 WORKDIR /home/building
 
 RUN pip3 install raven
-RUN python3.7 setup.py install
+RUN pip3 install --prefer-binary -r requirements.txt
 RUN python3.7 setup.py test
