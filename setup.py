@@ -20,7 +20,6 @@ class TestHook(test):
 
 with open('requirements.txt', 'r') as requirements_txt:
     install_requirements = [requirement.strip() for requirement in requirements_txt]
-    print("foooo")
 
 setup(
     name='frontik',
