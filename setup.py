@@ -20,6 +20,7 @@ class TestHook(test):
 
 with open('requirements.txt', 'r') as requirements_txt:
     install_requirements = [requirement.strip() for requirement in requirements_txt]
+    print("foooo")
 
 setup(
     name='frontik',
@@ -46,10 +47,6 @@ setup(
         'requests <= 2.20.0',
         'lxml-asserts',
         'tornado-httpclient-mock',
-    ],
-    dependency_links=[
-        'https://github.com/hhru/tornado/archive/master.zip',
-        'https://github.com/hhru/balancing-http-client/archive/1.0.1.zip#egg=balancing-http-client-1.0.1',
     ],
     extras_require={
         'sentry': ['raven'],
