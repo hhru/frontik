@@ -1,7 +1,6 @@
 import asyncio
 import json
 import re
-import socket
 import time
 from asyncio import Future
 
@@ -14,17 +13,14 @@ from lxml import etree
 from tornado.escape import to_unicode, utf8
 from tornado.ioloop import IOLoop
 from tornado.curl_httpclient import CurlAsyncHTTPClient
-from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPResponse, HTTPError
+from tornado.httpclient import HTTPRequest, HTTPResponse, HTTPError
 from tornado.httputil import HTTPHeaders
 from tornado.options import options
 
 from frontik import media_types
 from frontik.debug import DEBUG_HEADER_NAME, response_from_debug
-from frontik.request_context import get_request_id, get_request
-from frontik.timeout_tracking import get_timeout_checker
 from frontik.util import make_url, make_body, make_mfd
 
-OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
 USER_AGENT_HEADER = 'User-Agent'
 
 
@@ -361,7 +357,6 @@ class BalancedHttpRequest:
         self.request_timeout *= options.timeout_multiplier
 
         self.headers = HTTPHeaders() if headers is None else HTTPHeaders(headers)
-        self.headers[OUTER_TIMEOUT_MS_HEADER] = f'{self.request_timeout * 1000:.0f}'
         if self.source_app and not self.headers.get(USER_AGENT_HEADER):
             self.headers[USER_AGENT_HEADER] = self.source_app
         if self.method == 'POST':
@@ -454,15 +449,8 @@ class BalancedHttpRequest:
 
 
 class HttpClientFactory:
-    def __init__(self, application, upstreams):
-        AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
-
-        self.tornado_http_client = AsyncHTTPClient()
-        self.hostname = socket.gethostname()
-
-        if options.max_http_clients_connects is not None:
-            self.tornado_http_client._multi.setopt(pycurl.M_MAXCONNECTS, options.max_http_clients_connects)
-
+    def __init__(self, application, tornado_http_client, upstreams):
+        self.tornado_http_client = tornado_http_client
         self.application = application
         self.upstreams = {}
 
@@ -489,20 +477,13 @@ class HttpClientFactory:
         kafka_producer = (
             self.application.get_kafka_producer(self._kafka_cluster) if self._send_metrics_to_kafka else None
         )
-        timeout_checker = None
-        request = get_request()
-        if request:
-            outer_timeout = request.headers.get(OUTER_TIMEOUT_MS_HEADER)
-            if outer_timeout:
-                timeout_checker = get_timeout_checker(request.headers.get(USER_AGENT_HEADER), float(outer_timeout),
-                                                      request.request_time)
 
         return HttpClient(
             self.tornado_http_client, self.application.app,
             self.upstreams, modify_http_request_hook,
             self.application.statsd_client,
             kafka_producer,
-            debug_mode=handler.debug_mode, timeout_checker=timeout_checker
+            debug_mode=handler.debug_mode
         )
 
     def update_upstream(self, name, config):
@@ -535,7 +516,7 @@ class HttpClientFactory:
 
 class HttpClient:
     def __init__(self, http_client_impl, source_app, upstreams, modify_http_request_hook,
-                 statsd_client, kafka_producer, *, debug_mode=False, timeout_checker=None):
+                 statsd_client, kafka_producer, *, debug_mode=False):
         self.http_client_impl = http_client_impl
         self.source_app = source_app
         self.debug_mode = debug_mode
@@ -543,7 +524,6 @@ class HttpClient:
         self.upstreams = upstreams
         self.statsd_client = statsd_client
         self.kafka_producer = kafka_producer
-        self.timeout_checker = timeout_checker
 
     def get_upstream(self, host):
         return self.upstreams.get(host, Upstream.get_single_host_upstream())
@@ -606,9 +586,6 @@ class HttpClient:
 
     def _fetch_with_retry(self, balanced_request, callback, parse_response, parse_on_error,
                           fail_fast) -> 'Future[RequestResult]':
-        if self.timeout_checker:
-            self.timeout_checker.check(balanced_request)
-
         future = Future()
 
         def request_finished_callback(response):
@@ -665,8 +642,6 @@ class HttpClient:
             )
             IOLoop.current().add_callback(callback, response)
             return
-
-        request.headers['x-request-id'] = get_request_id()
 
         if isinstance(self.http_client_impl, CurlAsyncHTTPClient):
             request.prepare_curl_callback = partial(
@@ -739,7 +714,7 @@ class HttpClient:
         if self.kafka_producer is not None and not do_retry:
             dc = balanced_request.current_datacenter or options.datacenter or 'unknown'
             current_host = balanced_request.current_host or 'unknown'
-            request_id = get_request_id() or 'unknown'
+            request_id = balanced_request.headers.get('X-Request-Id', 'unknown')
             upstream = balanced_request.get_host() or 'unknown'
 
             asyncio.get_event_loop().create_task(self.kafka_producer.send(

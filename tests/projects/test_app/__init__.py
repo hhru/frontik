@@ -20,8 +20,8 @@ class TestApplication(FrontikApplication):
 
         super().__init__(**settings)
 
-    def init_async(self):
-        futures = super().init_async()
+    async def init(self):
+        await super().init()
 
         try:
             from frontik.integrations.kafka import KafkaIntegration
@@ -29,8 +29,6 @@ class TestApplication(FrontikApplication):
             kafka_integration.kafka_producers = {'infrastructure': TestKafkaProducer()}
         except Exception:
             pass
-
-        return futures
 
     def application_urls(self):
         return [

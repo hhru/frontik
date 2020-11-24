@@ -170,8 +170,7 @@ def parse_configs(config_files):
 
 
 async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_register_in_service_discovery):
-    initialization_futures = app.init_async()
-    await asyncio.gather(*[future for future in initialization_futures if future])
+    await app.init()
     await run_server(app, ioloop, need_to_register_in_service_discovery)
     if need_to_register_in_service_discovery:
         await app.service_discovery_client.register_service()

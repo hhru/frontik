@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import socket
 import sys
@@ -10,6 +11,7 @@ import pycurl
 import tornado
 from lxml import etree
 from tornado.options import options
+from tornado.httpclient import AsyncHTTPClient
 from tornado.stack_context import StackContext
 from tornado.web import Application, RequestHandler
 
@@ -115,6 +117,12 @@ class FrontikApplication(Application):
         self.xml = frontik.producers.xml_producer.XMLProducerFactory(self)
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
+        AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
+        self.tornado_http_client = AsyncHTTPClient()
+
+        if options.max_http_clients_connects is not None:
+            self.tornado_http_client._multi.setopt(pycurl.M_MAXCONNECTS, options.max_http_clients_connects)
+
         self.service_discovery_client = None
         self.http_client_factory = None
 
@@ -129,19 +137,21 @@ class FrontikApplication(Application):
         if options.debug:
             core_handlers.insert(0, (r'/pydevd/?', PydevdHandler))
 
+        self.service_discovery_client = get_async_service_discovery(options, hostname=socket.gethostname())
+
         self.available_integrations = None
 
         super().__init__(core_handlers, **tornado_settings)
 
-    def init_async(self):
-        self.service_discovery_client = get_async_service_discovery(options, hostname=socket.gethostname())
+    async def init(self):
         self.transforms.insert(0, partial(DebugTransform, self))
 
-        self.http_client_factory = HttpClientFactory(self, getattr(self.config, 'http_upstreams', {}))
+        self.http_client_factory = HttpClientFactory(self, self.tornado_http_client,
+                                                     getattr(self.config, 'http_upstreams', {}))
 
-        self.available_integrations, default_init_futures = integrations.load_integrations(self)
+        self.available_integrations, integration_futures = integrations.load_integrations(self)
 
-        return default_init_futures
+        await asyncio.gather(*[future for future in integration_futures if future])
 
     def find_handler(self, request, **kwargs):
         request_id = request.headers.get('X-Request-Id')

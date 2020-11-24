@@ -1,4 +1,5 @@
 from lxml import etree
+from tornado.ioloop import IOLoop
 
 from frontik.app import FrontikApplication
 from frontik.handler import PageHandler
@@ -45,7 +46,7 @@ class TestFrontikTesting(FrontikTestCase):
                 ]
 
         app = TestApplication(app='test_app')
-        app.init_async()
+        IOLoop.current().run_sync(app.init)
         self.patch_app_http_client(app)
 
         return app

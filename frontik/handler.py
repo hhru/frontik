@@ -24,7 +24,8 @@ from frontik import media_types, request_context
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.futures import AbortAsyncGroup, AsyncGroup
 from frontik.debug import DEBUG_HEADER_NAME, DebugMode
-from frontik.http_client import FailFastError, HttpClient, RequestResult
+from frontik.http_client import FailFastError, HttpClient, RequestResult, USER_AGENT_HEADER
+from frontik.timeout_tracking import get_timeout_checker
 from frontik.loggers.stages import StagesLogger
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors
 from frontik.util import make_url
@@ -54,6 +55,7 @@ class JSONBodyParseError(tornado.web.HTTPError):
 
 _ARG_DEFAULT = object()
 MEDIA_TYPE_PARAMETERS_SEPARATOR_RE = r' *; *'
+OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
 
 handler_logger = logging.getLogger('handler')
 
@@ -96,6 +98,14 @@ class PageHandler(RequestHandler):
 
         self._mandatory_cookies = {}
         self._mandatory_headers = tornado.httputil.HTTPHeaders()
+
+        self.timeout_checker = None
+
+        outer_timeout = request.headers.get(OUTER_TIMEOUT_MS_HEADER)
+        if outer_timeout:
+            self.timeout_checker = get_timeout_checker(request.headers.get(USER_AGENT_HEADER),
+                                                       float(outer_timeout),
+                                                       request.request_time)
 
     def __repr__(self):
         return '.'.join([self.__module__, self.__class__.__name__])
@@ -576,6 +586,13 @@ class PageHandler(RequestHandler):
     # HTTP client methods
 
     def modify_http_client_request(self, balanced_request: 'BalancedHttpRequest'):
+        balanced_request.headers['x-request-id'] = request_context.get_request_id()
+
+        balanced_request.headers[OUTER_TIMEOUT_MS_HEADER] = f'{balanced_request.request_timeout * 1000:.0f}'
+
+        if self.timeout_checker is not None:
+            self.timeout_checker.check(balanced_request)
+
         if self.debug_mode.pass_debug:
             balanced_request.headers[DEBUG_HEADER_NAME] = 'true'
 
