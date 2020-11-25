@@ -121,13 +121,9 @@ class FrontikApplication(Application):
         self.xml = frontik.producers.xml_producer.XMLProducerFactory(self)
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
-        AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
-        self.tornado_http_client = AsyncHTTPClient()
-
-        if options.max_http_clients_connects is not None:
-            self.tornado_http_client._multi.setopt(pycurl.M_MAXCONNECTS, options.max_http_clients_connects)
-
+        self.available_integrations = None
         self.service_discovery_client = None
+        self.tornado_http_client = None
         self.http_client_factory = None
 
         self.router = FrontikRouter(self)
@@ -141,14 +137,17 @@ class FrontikApplication(Application):
         if options.debug:
             core_handlers.insert(0, (r'/pydevd/?', PydevdHandler))
 
-        self.service_discovery_client = get_async_service_discovery(options, hostname=socket.gethostname())
-
-        self.available_integrations = None
-
         super().__init__(core_handlers, **tornado_settings)
 
     async def init(self):
+        self.service_discovery_client = get_async_service_discovery(options, hostname=socket.gethostname())
         self.transforms.insert(0, partial(DebugTransform, self))
+
+        AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
+        self.tornado_http_client = AsyncHTTPClient()
+
+        if options.max_http_clients_connects is not None:
+            self.tornado_http_client._multi.setopt(pycurl.M_MAXCONNECTS, options.max_http_clients_connects)
 
         self.available_integrations, integration_futures = integrations.load_integrations(self)
         await asyncio.gather(*[future for future in integration_futures if future])
