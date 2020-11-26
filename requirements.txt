@@ -4,4 +4,4 @@ pycurl >= 7.43.0
 tornado @ https://github.com/hhru/tornado/archive/master.zip
 python-consul >= 1.1.0
 aiohttp == 3.6.2
-balancing-http-client @ https://github.com/hhru/balancing-http-client/archive/1.0.1.zip
+balancing-http-client @ https://github.com/hhru/balancing-http-client/archive/1.0.3.zip
