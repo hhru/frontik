@@ -43,7 +43,8 @@ class FileMappingRouter(Router):
             page_module = importlib.import_module(page_module_name)
             routing_logger.debug('using %s from %s', page_module_name, page_module.__file__)
         except ModuleNotFoundError as module_not_found_error:
-            if module_not_found_error.name != page_module_name:
+            if not (page_module_name == module_not_found_error.name or
+                    page_module_name.startswith(module_not_found_error.name + '.')):
                 return _handle_general_module_import_exception()
             routing_logger.warning('%s module not found', (self.name, page_module_name))
             return _get_application_404_handler_delegate(application, request)

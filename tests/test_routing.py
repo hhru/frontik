@@ -43,6 +43,13 @@ class TestRouting(unittest.TestCase):
         response = frontik_test_app.get_page('error_on_import')
         self.assertEqual(response.status_code, 500)
 
+    def test_error_on_import_of_module_having_module_not_found_error(self):
+        response = frontik_test_app.get_page('module_not_found_error_on_import')
+        self.assertEqual(response.status_code, 500)
+
+        response = frontik_test_app.get_page('module_starting_same_as_page_not_found_error_on_import')
+        self.assertEqual(response.status_code, 500)
+
     def test_frontik_router_custom_404(self):
         response = frontik_re_app.get_page('not_matching_regex')
         self.assertEqual(response.status_code, 404)
@@ -58,6 +65,11 @@ class TestRouting(unittest.TestCase):
 
     def test_filemapping_custom_404(self):
         response = frontik_re_app.get_page('inexistent_page')
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.content, b'404')
+
+    def test_filemapping_custom_404_for_complex_path(self):
+        response = frontik_re_app.get_page('inexistent_page1/inexistent_page2')
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.content, b'404')
 
