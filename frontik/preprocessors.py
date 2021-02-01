@@ -2,7 +2,7 @@ def _get_preprocessor_name(preprocessor_function):
     return f'{preprocessor_function.__module__}.{preprocessor_function.__name__}'
 
 
-def preprocessor(function_or_list, order=None):
+def preprocessor(function_or_list):
     """Creates a preprocessor decorator for `PageHandler.get_page`, `PageHandler.post_page` etc.
 
     Preprocessor is a function that accepts handler instance as its only parameter.
@@ -37,7 +37,7 @@ def preprocessor(function_or_list, order=None):
 
     def preprocessor_decorator(func):
         if callable(function_or_list):
-            _register_preprocessors(func, [function_or_list], order=order)
+            _register_preprocessors(func, [function_or_list])
         else:
             for dep in reversed(function_or_list):
                 dep(func)
