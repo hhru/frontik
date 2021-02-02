@@ -65,3 +65,7 @@ def _unwrap_preprocessors(preprocessors):
 
 def _register_preprocessors(func, preprocessors):
     setattr(func, '_preprocessors', preprocessors + _get_preprocessors(func))
+
+
+def make_preprocessors_names_list(preprocessors_list):
+    return list(map(lambda p: p.preprocessor_name, preprocessors_list))

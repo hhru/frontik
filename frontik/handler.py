@@ -3,6 +3,8 @@ import json
 import logging
 import re
 import time
+import math
+
 from asyncio.futures import Future
 from functools import partial, wraps
 from typing import TYPE_CHECKING
@@ -74,7 +76,7 @@ def _fail_fast_policy(fail_fast, waited, host, uri):
 class PageHandler(RequestHandler):
 
     preprocessors = ()
-    priority_preprocessors_order = []
+    _priority_preprocessor_names = []
 
     def __init__(self, application, request, **kwargs):
         self.name = self.__class__.__name__
@@ -254,23 +256,16 @@ class PageHandler(RequestHandler):
     def _execute_page(self, page_handler_method):
         self.stages_logger.commit_stage('prepare')
         preprocessors = _get_preprocessors(page_handler_method.__func__)
-        priority_names = list(map(
-            lambda p: p.preprocessor_name,
-            self.priority_preprocessors_order)
-        )
-        priority_preprocessors = []
-        rest_preprocessors = []
-        for preprocessor in preprocessors:
-            if _get_preprocessor_name(preprocessor) in priority_names:
-                priority_preprocessors.append(preprocessor)
+
+        def _prioritise_preprocessor_by_list(preprocessor):
+            name = _get_preprocessor_name(preprocessor)
+            if name in self._priority_preprocessor_names:
+                return self._priority_preprocessor_names.index(name)
             else:
-                rest_preprocessors.append(preprocessor)
+                return math.inf
 
-        def _sort_priority(preprocessor):
-            return priority_names.index(_get_preprocessor_name(preprocessor))
-
-        priority_preprocessors.sort(key=_sort_priority)
-        preprocessors_to_run = _unwrap_preprocessors(self.preprocessors) + priority_preprocessors + rest_preprocessors
+        preprocessors.sort(key=_prioritise_preprocessor_by_list)
+        preprocessors_to_run = _unwrap_preprocessors(self.preprocessors) + preprocessors
         preprocessors_completed = yield self._run_preprocessors(preprocessors_to_run)
 
         if not preprocessors_completed:
@@ -536,7 +531,7 @@ class PageHandler(RequestHandler):
             del self._mandatory_cookies[name]
         super().clear_cookie(name, path, domain)
 
-    def is_preprocessor_launched(self, preprocessor):
+    def was_preprocessor_called(self, preprocessor):
         return preprocessor.preprocessor_name in self._launched_preprocessors
 
     @gen.coroutine
