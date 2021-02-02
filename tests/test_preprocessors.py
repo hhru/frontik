@@ -34,6 +34,27 @@ class TestPreprocessors(unittest.TestCase):
             }
         )
 
+    def test_was_preprocessor_called(self):
+        response_json = frontik_test_app.get_page_json('preprocessors/was_preprocessor_called')
+        self.assertEqual(
+            response_json,
+            {
+                'pp0': True,
+                'pp1': True,
+                'pp2': True,
+                'pp3': False,
+            }
+        )
+
+    def test_priority_preprocessors(self):
+        response_json = frontik_test_app.get_page_json('preprocessors/priority_preprocessors')
+        self.assertEqual(
+            response_json,
+            {
+                'order': ['pp0', 'pp2', 'pp1', 'pp3']
+            }
+        )
+
     def test_add_preprocessor_future_after_preprocessors(self):
         response = frontik_test_app.get_page('preprocessors/preprocessor_futures', method=requests.post)
         self.assertEqual(response.status_code, 500)
