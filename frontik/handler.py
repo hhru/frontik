@@ -3,6 +3,8 @@ import json
 import logging
 import re
 import time
+import math
+
 from asyncio.futures import Future
 from functools import partial, wraps
 from typing import TYPE_CHECKING
@@ -27,7 +29,7 @@ from frontik.futures import AbortAsyncGroup, AsyncGroup
 from frontik.debug import DEBUG_HEADER_NAME, DebugMode
 from frontik.timeout_tracking import get_timeout_checker
 from frontik.loggers.stages import StagesLogger
-from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors
+from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors, _get_preprocessor_name
 from frontik.util import make_url
 from frontik.version import version as frontik_version
 
@@ -74,6 +76,7 @@ def _fail_fast_policy(fail_fast, waited, host, uri):
 class PageHandler(RequestHandler):
 
     preprocessors = ()
+    _priority_preprocessor_names = []
 
     def __init__(self, application, request, **kwargs):
         self.name = self.__class__.__name__
@@ -84,6 +87,7 @@ class PageHandler(RequestHandler):
 
         super().__init__(application, request, **kwargs)
 
+        self._launched_preprocessors = []
         self._preprocessor_futures = []
         self._exception_hooks = []
 
@@ -251,9 +255,18 @@ class PageHandler(RequestHandler):
     @gen.coroutine
     def _execute_page(self, page_handler_method):
         self.stages_logger.commit_stage('prepare')
+        preprocessors = _get_preprocessors(page_handler_method.__func__)
 
-        preprocessors = _unwrap_preprocessors(self.preprocessors) + _get_preprocessors(page_handler_method.__func__)
-        preprocessors_completed = yield self._run_preprocessors(preprocessors)
+        def _prioritise_preprocessor_by_list(preprocessor):
+            name = _get_preprocessor_name(preprocessor)
+            if name in self._priority_preprocessor_names:
+                return self._priority_preprocessor_names.index(name)
+            else:
+                return math.inf
+
+        preprocessors.sort(key=_prioritise_preprocessor_by_list)
+        preprocessors_to_run = _unwrap_preprocessors(self.preprocessors) + preprocessors
+        preprocessors_completed = yield self._run_preprocessors(preprocessors_to_run)
 
         if not preprocessors_completed:
             self.log.info('page was already finished, skipping page method')
@@ -518,14 +531,30 @@ class PageHandler(RequestHandler):
             del self._mandatory_cookies[name]
         super().clear_cookie(name, path, domain)
 
+    def was_preprocessor_called(self, preprocessor):
+        return preprocessor.preprocessor_name in self._launched_preprocessors
+
     @gen.coroutine
-    def _run_preprocessors(self, preprocessors):
-        for p in preprocessors:
-            yield gen.coroutine(p)(self)
+    def _run_preprocessor_function(self, preprocessor_function):
+        yield gen.coroutine(preprocessor_function)(self)
+        self._launched_preprocessors.append(
+            _get_preprocessor_name(preprocessor_function)
+        )
+
+    @gen.coroutine
+    def run_preprocessor(self, preprocessor):
+        if self._finished:
+            self.log.info('page was already finished, cannot init preprocessor')
+            return False
+        yield self._run_preprocessor_function(preprocessor.function)
+
+    @gen.coroutine
+    def _run_preprocessors(self, preprocessor_functions):
+        for p in preprocessor_functions:
+            yield self._run_preprocessor_function(p)
             if self._finished:
                 self.log.info('page was already finished, breaking preprocessors chain')
                 return False
-
         yield gen.multi(self._preprocessor_futures)
 
         self._preprocessor_futures = None

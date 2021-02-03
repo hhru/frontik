@@ -1,3 +1,7 @@
+def _get_preprocessor_name(preprocessor_function):
+    return f'{preprocessor_function.__module__}.{preprocessor_function.__name__}'
+
+
 def preprocessor(function_or_list):
     """Creates a preprocessor decorator for `PageHandler.get_page`, `PageHandler.post_page` etc.
 
@@ -42,9 +46,10 @@ def preprocessor(function_or_list):
 
     if callable(function_or_list):
         dep_name = function_or_list.__name__
+        preprocessor_decorator.preprocessor_name = _get_preprocessor_name(function_or_list)
+        preprocessor_decorator.function = function_or_list
     else:
         dep_name = [f.__name__ for f in function_or_list]
-
     preprocessor_decorator.func_name = f'preprocessor_decorator({dep_name})'
 
     return preprocessor_decorator
@@ -60,3 +65,7 @@ def _unwrap_preprocessors(preprocessors):
 
 def _register_preprocessors(func, preprocessors):
     setattr(func, '_preprocessors', preprocessors + _get_preprocessors(func))
+
+
+def make_preprocessors_names_list(preprocessors_list):
+    return list(map(lambda p: p.preprocessor_name, preprocessors_list))
