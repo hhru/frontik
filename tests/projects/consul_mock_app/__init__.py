@@ -2,6 +2,7 @@ from collections import Counter
 
 from frontik.app import FrontikApplication
 from tests.projects.consul_mock_app.pages import deregister
+from tests.projects.consul_mock_app.pages.v1.kv.host.hostname.weight import weight
 
 
 class TestApplication(FrontikApplication):
@@ -13,4 +14,5 @@ class TestApplication(FrontikApplication):
 
     def application_urls(self):
         return [(r'^/v1/agent/service/deregister/(?P<serviceId>[a-zA-Z\-_0-9\.:]+)$', deregister.Page),
+                (r'^/v1/kv/host/([a-zA-Z\-_0-9\.:\-]+)/weight', weight.Page),
                 *super().application_urls(), ]
