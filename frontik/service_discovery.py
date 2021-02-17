@@ -1,9 +1,8 @@
 import logging
-import threading
 
 from consul import Check, Consul
 from consul.aio import Consul as AsyncConsul
-from consul.base import Weight
+from consul.base import Weight, KVCache
 
 from frontik.version import version
 
@@ -105,29 +104,28 @@ class _SyncServiceDiscovery:
         self.service_name = options.app
         self.hostname = hostname
         self.service_id = _make_service_id(options, service_name=self.service_name, hostname=self.hostname)
+        self.http_check = _create_http_check(options)
         self.consul_weight_watch_seconds = f'{options.consul_weight_watch_seconds}s'
         self.consul_weight_total_timeout_sec = options.consul_weight_total_timeout_sec
         self.consul_check_warning_divider = options.consul_check_warning_divider
         self.consul_weight_consistency_mode = options.consul_weight_consistency_mode.lower()
+        self.kvCache = KVCache(
+            self.consul.kv,
+            path=f'host/{self.hostname}/weight',
+            watch_seconds=self.consul_weight_watch_seconds,
+            total_timeout=self.consul_weight_total_timeout_sec,
+            consistency_mode=self.consul_weight_consistency_mode,
+        )
+        self.kvCache.add_listener(self._update_register, False)
+
+    def _update_register(self, new_value):
+        weight = _get_weight_or_default(new_value)
+        self._sync_register(self.http_check, weight)
 
     def register_service(self):
-        http_check = _create_http_check(self.options)
-        index, weight = self._get_index_and_weight_from_kv(index=None)
-        self._sync_register(http_check, weight)
-        register_thread = threading.Thread(target=self._watch_service_weight, args=(http_check, index, weight))
-        register_thread.daemon = True
-        register_thread.start()
-
-    def _get_index_and_weight_from_kv(self, index):
-        index, value = self.consul.kv.get(
-            f'host/{self.hostname}/weight',
-            index=index,
-            wait=self.consul_weight_watch_seconds,
-            total_timeout=self.consul_weight_total_timeout_sec,
-            consistency=self.consul_weight_consistency_mode,
-        )
-        weight = _get_weight_or_default(value)
-        return index, weight
+        weight = _get_weight_or_default(self.kvCache.get_value())
+        self._sync_register(self.http_check, weight)
+        self.kvCache.start()
 
     def _sync_register(self, http_check, weight):
         register_params = {
@@ -143,14 +141,8 @@ class _SyncServiceDiscovery:
         else:
             raise Exception(f'Failed to register {register_params}')
 
-    def _watch_service_weight(self, http_check, index, old_weight):
-        while True:
-            index, weight = self._get_index_and_weight_from_kv(index)
-            if old_weight != weight:
-                old_weight = weight
-                self._sync_register(http_check=http_check, weight=weight)
-
     def deregister_service_and_close(self):
+        self.kvCache.stop()
         if self.consul.agent.service.deregister(self.service_id):
             log.info('Successfully deregistered service %s', self.service_id)
         else:
