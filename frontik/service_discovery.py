@@ -2,7 +2,7 @@ import logging
 
 from consul import Check, Consul
 from consul.aio import Consul as AsyncConsul
-from consul.base import Weight, KVCache
+from consul.base import Weight, KVCache, ConsistencyMode
 
 from frontik.version import version
 
@@ -108,7 +108,7 @@ class _SyncServiceDiscovery:
         self.consul_weight_watch_seconds = f'{options.consul_weight_watch_seconds}s'
         self.consul_weight_total_timeout_sec = options.consul_weight_total_timeout_sec
         self.consul_check_warning_divider = options.consul_check_warning_divider
-        self.consul_weight_consistency_mode = options.consul_weight_consistency_mode.lower()
+        self.consul_weight_consistency_mode = ConsistencyMode(options.consul_weight_consistency_mode.lower())
         self.kvCache = KVCache(
             self.consul.kv,
             path=f'host/{self.hostname}/weight',
@@ -118,7 +118,7 @@ class _SyncServiceDiscovery:
         )
         self.kvCache.add_listener(self._update_register, False)
 
-    def _update_register(self, new_value):
+    def _update_register(self, key, new_value):
         weight = _get_weight_or_default(new_value)
         self._sync_register(self.http_check, weight)
 
