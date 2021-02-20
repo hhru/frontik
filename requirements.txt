@@ -1,6 +1,7 @@
 jinja2 >= 2.8
 lxml >= 3.5.0
 pycurl >= 7.43.0
+pydantic == v1.7.3
 tornado @ https://github.com/hhru/tornado/archive/5.1.1.zip
 aiohttp == 3.6.2
 balancing-http-client @ https://github.com/hhru/balancing-http-client/archive/1.0.5.zip
