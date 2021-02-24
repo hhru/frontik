@@ -107,11 +107,13 @@ class _SyncServiceDiscovery:
         self.consul_weight_watch_seconds = f'{options.consul_weight_watch_seconds}s'
         self.consul_weight_total_timeout_sec = options.consul_weight_total_timeout_sec
         self.consul_weight_consistency_mode = ConsistencyMode(options.consul_weight_consistency_mode.lower())
+        self.consul_cache_initial_warmup_timeout_sec = options.consul_cache_initial_warmup_timeout_sec
         self.kvCache = KVCache(
             self.consul.kv,
             path=f'host/{self.hostname}/weight',
             watch_seconds=self.consul_weight_watch_seconds,
             total_timeout=self.consul_weight_total_timeout_sec,
+            cache_initial_warmup_timeout=self.consul_cache_initial_warmup_timeout_sec,
             consistency_mode=self.consul_weight_consistency_mode,
         )
         self.kvCache.add_listener(self._update_register, False)
