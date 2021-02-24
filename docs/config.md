@@ -29,7 +29,7 @@ Logging options:
 
 | Option name                  | Type    | Default value | Description                                                            |
 |------------------------------|---------|---------------|------------------------------------------------------------------------|
-| `loglevel`                   | `str`   | `info`        | Python log level                                                       |
+| `log_level`                   | `str`   | `info`        | Python log level                                                       |
 | `logformat`                  | `str`   | see code      | Log entry format for files and syslog                                  |
 | `log_dir`                    | `str`   | `None`        | Log directory location (set to `None` to disable logging to file)      |
 | `stderr_log`                 | `bool`  | `False`       | Send log output to stderr (colorized if possible)                      |
