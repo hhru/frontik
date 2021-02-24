@@ -58,7 +58,6 @@ class _AsyncServiceDiscovery:
         self.service_id = _make_service_id(options, service_name=self.service_name, hostname=self.hostname)
         self.consul_weight_watch_seconds = f'{options.consul_weight_watch_seconds}s'
         self.consul_weight_total_timeout_sec = options.consul_weight_total_timeout_sec
-        self.consul_check_warning_divider = options.consul_check_warning_divider
         self.consul_weight_consistency_mode = options.consul_weight_consistency_mode.lower()
 
     async def register_service(self):
@@ -82,7 +81,7 @@ class _AsyncServiceDiscovery:
                     'port': self.options.port,
                     'check': http_check,
                     'tags': self.options.consul_tags,
-                    'weights': Weight.weights(weight, int(weight / self.consul_check_warning_divider))
+                    'weights': Weight.weights(weight, 0)
                 }
                 if await self.consul.agent.service.register(self.service_name, **register_params):
                     log.info('Successfully registered service %s', register_params)
@@ -107,7 +106,6 @@ class _SyncServiceDiscovery:
         self.http_check = _create_http_check(options)
         self.consul_weight_watch_seconds = f'{options.consul_weight_watch_seconds}s'
         self.consul_weight_total_timeout_sec = options.consul_weight_total_timeout_sec
-        self.consul_check_warning_divider = options.consul_check_warning_divider
         self.consul_weight_consistency_mode = ConsistencyMode(options.consul_weight_consistency_mode.lower())
         self.kvCache = KVCache(
             self.consul.kv,
@@ -134,7 +132,7 @@ class _SyncServiceDiscovery:
             'port': self.options.port,
             'check': http_check,
             'tags': self.options.consul_tags,
-            'weights': Weight.weights(weight, int(weight / self.consul_check_warning_divider))
+            'weights': Weight.weights(weight, 0)
         }
         if self.consul.agent.service.register(self.service_name, **register_params):
             log.info('Successfully registered service %s', register_params)
