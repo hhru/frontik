@@ -1,4 +1,5 @@
 from lxml import etree
+from tornado import options
 from tornado.ioloop import IOLoop
 
 from frontik.app import FrontikApplication
@@ -33,6 +34,7 @@ class CheckConfigHandler(PageHandler):
 
 class TestFrontikTesting(FrontikTestCase):
     def setUp(self):
+        options.options.__setattr__('node_name', 'test_node')
         super().setUp()
         self.configure_app(serviceHost='http://service.host')
 

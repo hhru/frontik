@@ -1,6 +1,5 @@
 import asyncio
 import importlib
-import socket
 import sys
 import time
 import traceback
@@ -140,7 +139,7 @@ class FrontikApplication(Application):
         super().__init__(core_handlers, **tornado_settings)
 
     async def init(self):
-        self.service_discovery_client = get_async_service_discovery(options, hostname=socket.gethostname())
+        self.service_discovery_client = get_async_service_discovery(options)
         self.transforms.insert(0, partial(DebugTransform, self))
 
         AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
