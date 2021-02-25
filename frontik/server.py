@@ -63,7 +63,7 @@ def main(config_file=None):
         gc.collect()
         gc.freeze()
         if options.workers != 1:
-            service_discovery_client = get_sync_service_discovery(options, hostname=socket.gethostname())
+            service_discovery_client = get_sync_service_discovery(options)
             fork_workers(partial(_run_worker, app),
                          num_workers=options.workers,
                          after_workers_up_action=service_discovery_client.register_service,

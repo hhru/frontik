@@ -11,20 +11,20 @@ DEFAULT_WEIGHT = 100
 log = logging.getLogger('service_discovery')
 
 
-def get_async_service_discovery(opts, *, hostname, event_loop=None):
+def get_async_service_discovery(opts, *, event_loop=None):
     if not opts.consul_enabled:
         log.info('Consul disabled, skipping')
         return _AsyncStub()
     else:
-        return _AsyncServiceDiscovery(opts, hostname, event_loop)
+        return _AsyncServiceDiscovery(opts, event_loop)
 
 
-def get_sync_service_discovery(opts, *, hostname):
+def get_sync_service_discovery(opts):
     if not opts.consul_enabled:
         log.info('Consul disabled, skipping')
         return _SyncStub()
     else:
-        return _SyncServiceDiscovery(opts, hostname)
+        return _SyncServiceDiscovery(opts)
 
 
 def _make_service_id(options, *, service_name, hostname):
@@ -49,12 +49,18 @@ def _get_weight_or_default(value):
     return int(value['Value']) if value is not None else DEFAULT_WEIGHT
 
 
+def _get_hostname_or_raise(node_name: str):
+    if not node_name:
+        raise RuntimeError('options node_name must be defined')
+    return node_name
+
+
 class _AsyncServiceDiscovery:
-    def __init__(self, options, hostname, event_loop=None):
+    def __init__(self, options, event_loop=None):
         self.options = options
         self.consul = AsyncConsul(host=options.consul_host, port=options.consul_port, loop=event_loop)
         self.service_name = options.app
-        self.hostname = hostname
+        self.hostname = _get_hostname_or_raise(options.node_name)
         self.service_id = _make_service_id(options, service_name=self.service_name, hostname=self.hostname)
         self.consul_weight_watch_seconds = f'{options.consul_weight_watch_seconds}s'
         self.consul_weight_total_timeout_sec = options.consul_weight_total_timeout_sec
@@ -77,7 +83,6 @@ class _AsyncServiceDiscovery:
                 old_weight = weight
                 register_params = {
                     'service_id': self.service_id,
-                    'address': self.hostname,
                     'port': self.options.port,
                     'check': http_check,
                     'tags': self.options.consul_tags,
@@ -97,11 +102,11 @@ class _AsyncServiceDiscovery:
 
 
 class _SyncServiceDiscovery:
-    def __init__(self, options, hostname):
+    def __init__(self, options):
         self.options = options
         self.consul = Consul(host=options.consul_host, port=options.consul_port)
         self.service_name = options.app
-        self.hostname = hostname
+        self.hostname = _get_hostname_or_raise(options.node_name)
         self.service_id = _make_service_id(options, service_name=self.service_name, hostname=self.hostname)
         self.http_check = _create_http_check(options)
         self.consul_weight_watch_seconds = f'{options.consul_weight_watch_seconds}s'
@@ -130,7 +135,6 @@ class _SyncServiceDiscovery:
     def _sync_register(self, http_check, weight):
         register_params = {
             'service_id': self.service_id,
-            'address': self.hostname,
             'port': self.options.port,
             'check': http_check,
             'tags': self.options.consul_tags,
