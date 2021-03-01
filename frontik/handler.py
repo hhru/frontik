@@ -7,7 +7,7 @@ import math
 
 from asyncio.futures import Future
 from functools import partial, wraps
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Type, Union
 
 import tornado.curl_httpclient
 import tornado.httputil
@@ -16,6 +16,7 @@ from tornado import gen, stack_context
 from tornado.ioloop import IOLoop
 from tornado.options import options
 from tornado.web import RequestHandler
+from pydantic import ValidationError, BaseModel
 from http_client import FailFastError, HttpClient, RequestResult, USER_AGENT_HEADER
 
 import frontik.auth
@@ -32,6 +33,7 @@ from frontik.loggers.stages import StagesLogger
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors, _get_preprocessor_name
 from frontik.util import make_url
 from frontik.version import version as frontik_version
+from frontik.validator import BaseValidationModel, Validators
 
 if TYPE_CHECKING:
     from http_client import BalancedHttpRequest
@@ -102,6 +104,8 @@ class PageHandler(RequestHandler):
 
         self._mandatory_cookies = {}
         self._mandatory_headers = tornado.httputil.HTTPHeaders()
+
+        self._validation_model = BaseValidationModel
 
         self.timeout_checker = None
 
@@ -178,6 +182,46 @@ class PageHandler(RequestHandler):
         if default == _ARG_DEFAULT:
             return super().get_body_argument(name, strip=strip)
         return super().get_body_argument(name, default, strip)
+
+    def set_validation_model(self, model: Type[Union[BaseValidationModel, BaseModel]]):
+        if issubclass(model, BaseModel):
+            self._validation_model = model
+        else:
+            raise TypeError('model is not subclass of BaseClass')
+
+    def get_validated_argument(self, name: str, validation: Validators, default: any = _ARG_DEFAULT,
+                               from_body: bool = False, array: bool = False, strip: bool = True):
+        if array and from_body:
+            value = self.get_body_arguments(name, strip)
+        elif from_body:
+            value = super().get_body_argument(name, default, strip)
+        elif array:
+            value = super().get_arguments(name, strip)
+        else:
+            value = super().get_argument(name, default, strip)
+
+        try:
+            validator = validation.value
+            params = {validator: value}
+            validated_value = self._validation_model(**params).dict().get(validator)
+        except ValidationError:
+            raise HTTPErrorWithPostprocessors(http.client.BAD_REQUEST, f'"{name}" argument is invalid')
+
+        return validated_value
+
+    def get_string_argument(self, name, *args, path_safe=True, **kwargs):
+        if path_safe:
+            return self.get_validated_argument(name, Validators.PATH_SAFE_STRING, *args, **kwargs)
+        return self.get_validated_argument(name, Validators.STRING, *args, **kwargs)
+
+    def get_integer_argument(self, name, *args, **kwargs):
+        return self.get_validated_argument(name, Validators.INTEGER, *args, **kwargs)
+
+    def get_boolean_argument(self, name, *args, **kwargs):
+        return self.get_validated_argument(name, Validators.BOOLEAN, *args, **kwargs)
+
+    def get_float_argument(self, name, *args, **kwargs):
+        return self.get_validated_argument(name, Validators.FLOAT, *args, **kwargs)
 
     def _get_request_mime_type(self, request):
         content_type = request.headers.get('Content-Type', '')
