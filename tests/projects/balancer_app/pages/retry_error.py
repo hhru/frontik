@@ -1,3 +1,4 @@
+from http_client import Upstream
 from tornado.web import HTTPError
 
 from frontik import media_types
@@ -10,8 +11,9 @@ from tests.projects.balancer_app.pages import check_all_requests_done, check_all
 
 class Page(PageHandler):
     def get_page(self):
-        self.application.http_client_factory.register_upstream('retry_error', {},
-                                                               [get_server(self, 'broken'), get_server(self, 'normal')])
+        self.application.upstream_caches.upstreams['retry_error'] = Upstream('retry_error', {},
+                                                                             [get_server(self, 'broken'),
+                                                                              get_server(self, 'normal')])
         self.text = ''
 
         def check_requests_cb():

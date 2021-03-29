@@ -23,9 +23,8 @@ from frontik.debug import DebugTransform
 from frontik.handler import ErrorHandler
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.routing import FileMappingRouter, FrontikRouter
-from frontik.service_discovery import get_async_service_discovery
+from frontik.service_discovery import get_async_service_discovery, UpstreamStoreSharedMemory, UpstreamCaches
 from frontik.version import version as frontik_version
-
 
 app_logger = logging.getLogger('http_client')
 
@@ -124,7 +123,8 @@ class FrontikApplication(Application):
         self.service_discovery_client = None
         self.tornado_http_client = None
         self.http_client_factory = None
-
+        self.upstream_store = None
+        self.upstream_caches = UpstreamCaches()
         self.router = FrontikRouter(self)
 
         core_handlers = [
@@ -135,12 +135,15 @@ class FrontikApplication(Application):
 
         if options.debug:
             core_handlers.insert(0, (r'/pydevd/?', PydevdHandler))
+        if options.consul_enabled:
+            self.upstream_caches.initial_upstreams_caches()
 
         super().__init__(core_handlers, **tornado_settings)
 
     async def init(self):
         self.service_discovery_client = get_async_service_discovery(options)
         self.transforms.insert(0, partial(DebugTransform, self))
+        self.upstream_store = UpstreamStoreSharedMemory(self.upstream_caches.lock, self.upstream_caches.upstreams)
 
         AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
         self.tornado_http_client = AsyncHTTPClient()
@@ -165,7 +168,7 @@ class FrontikApplication(Application):
         kafka_producer = self.get_kafka_producer(kafka_cluster) if send_metrics_to_kafka else None
 
         self.http_client_factory = HttpClientFactory(self.app, self.tornado_http_client,
-                                                     getattr(self.config, 'http_upstreams', {}),
+                                                     upstream_store=self.upstream_store,
                                                      statsd_client=self.statsd_client, kafka_producer=kafka_producer)
 
     def find_handler(self, request, **kwargs):
