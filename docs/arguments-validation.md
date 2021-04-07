@@ -1,17 +1,23 @@
 ## Argument validation
 To get arguments validated by type hints or specific validators you should use page handler method named `get_validated_argument`
-which is a wrapper for such methods as [`get_argument`, `get_arguments`, `get_body_argument`, `get_body_arguments`]. In case
-if argument fails validation then `HTTPErrorWithPostprocessors(404)` will raised 
+which is a wrapper for such methods as [`get_argument`, `get_arguments`, `get_body_argument`, `get_body_arguments`].
+
+Following logic applies for validation:
+- if default value is of incorrect type as specified by `validation` arg, then `DefaultValueError` will be raised, **even if valid value is present in request args**
+- `get_validated_argument` returns default value if argument value is invalid
+- if no default value is present then `HTTPErrorWithPostprocessors(http.client.BAD_REQUEST)` will be raised
+
+
 
 ```
-get_validated_argument(name, validation, default, from_body, array, strip) -> any
+get_validated_argument(name, validation, default, from_body, array, strip) -> Any
 ```
 * name `[str][required]` - name of argument
 * validation [ [Validators](https://github.com/hhru/frontik/blob/master/frontik/validator.py#L7) ] `[required]` - name of used validator (field of Enum)
-* default `[any]` - passes further as tornado `get_argument/get_arguments/get_body_argument/get_body_arguments` param
+* default `[any]` - must conform validator specified, passed further as tornado `get_argument/get_arguments/get_body_argument/get_body_arguments` param
 * from_body `[bool][default=False]` - flag for getting arguments from response body
 * array `[bool][default=False]` - flag for getting many arguments (i.g. like `get_arguments`)
-* strip `[bool][default=True]` - passes further as tornado `get_argument/get_body_argument` param
+* strip `[bool][default=True]` - passed further as tornado `get_argument/get_body_argument` param
 
 `get_validated argument` uses [BaseValidationModel](https://github.com/hhru/frontik/blob/master/frontik/validator.py#L17)
 as default model for validation.
@@ -37,7 +43,7 @@ class CustomValidationModel(BaseModel):
         return value
 
 def get_page(self):
-    self.set_validation_model(CustomValidationModel) 
+    self.set_validation_model(CustomValidationModel)
 ```
 
 
@@ -46,21 +52,21 @@ For shortening usage of `get_validated_argument` for specific types you can use 
 
 Get string argument:
 ```
-get_string_argument(name, path_safe) -> Optional[str]
+get_str_argument(name, path_safe) -> Union[str, List[str]]
 ```
 * path_safe`[bool][default=True]` - flag to use validator which detects dangerous symbols to pass to path
 
-Get int argument: 
+Get int argument:
 ```
-get_integer_argument(name) -> Optional[int]
+get_int_argument(name) -> Union[int, List[int]]
 ```
 
 Get bool argument:
 ```
-get_boolean_argument(name) -> Optional[bool]
+get_bool_argument(name) -> Union[bool, List[bool]]
 ```
- 
+
 Get float argument:
 ```
-get_float_argument(name) -> Optional[float]
-``` 
+get_float_argument(name) -> Union[float, List[float]]
+```
