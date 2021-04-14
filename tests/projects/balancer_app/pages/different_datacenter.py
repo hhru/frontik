@@ -1,3 +1,4 @@
+from http_client import Upstream
 from tornado.web import HTTPError
 
 from frontik import media_types
@@ -14,10 +15,14 @@ class Page(PageHandler):
         normal_server.rack = 'rack1'
         normal_server.datacenter = 'dc2'
 
-        self.application.http_client_factory.register_upstream('different_datacenter', {}, [free_server, normal_server])
+        self.application.upstream_caches.upstreams['different_datacenter'] = Upstream('different_datacenter', {},
+                                                                                      [free_server, normal_server])
 
         def callback(text, response):
-            if free_server.requests != 1:
+            server = next(
+                s for s in self._http_client.upstreams.get('different_datacenter').servers if
+                self.get_argument('free') in s.address)
+            if server.requests != 1:
                 raise HTTPError(500)
 
             if response.error and response.code == 502:

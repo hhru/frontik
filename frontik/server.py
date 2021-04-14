@@ -5,7 +5,6 @@ import logging
 import os.path
 import re
 import signal
-import socket
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
@@ -116,6 +115,8 @@ async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_r
 
     def sigterm_handler(signum, frame):
         log.info('requested shutdown')
+        log.info('close shared objects manager')
+        app.upstream_caches._stop_shared_objects_manager()
         log.info('shutting down server on %s:%d', options.host, options.port)
         ioloop.add_callback_from_signal(server_stop)
 

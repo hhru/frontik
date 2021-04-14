@@ -1,3 +1,5 @@
+from http_client import Upstream
+
 from frontik import handler, media_types
 from frontik.futures import AsyncGroup
 
@@ -7,8 +9,9 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 class Page(handler.PageHandler):
     def get_page(self):
-        self.application.http_client_factory.register_upstream('no_retry_error', {},
-                                                               [get_server(self, 'broken'), get_server(self, 'normal')])
+        self.application.upstream_caches.upstreams['no_retry_error'] = Upstream('no_retry_error', {},
+                                                                                [get_server(self, 'broken'),
+                                                                                 get_server(self, 'normal')])
 
         def check_requests_cb():
             check_all_requests_done(self, 'no_retry_error')

@@ -45,11 +45,6 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'no backend available')
 
-    def test_deactivate(self):
-        response = frontik_balancer_app.get_page(self.make_url('deactivate'))
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'deactivated activated')
-
     def test_retry_on_timeout(self):
         response = frontik_balancer_app.get_page(self.make_url('retry_on_timeout'))
         self.assertEqual(response.status_code, 200)
@@ -57,11 +52,6 @@ class TestHttpError(unittest.TestCase):
 
     def test_retry_non_idempotent(self):
         response = frontik_balancer_app.get_page(self.make_url('retry_non_idempotent_503'))
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'result')
-
-    def test_retry_to_different_rack(self):
-        response = frontik_balancer_app.get_page(self.make_url('retry_to_different_rack'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'result')
 

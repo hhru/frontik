@@ -18,7 +18,8 @@ define('xheaders', default=False, type=bool)
 define('config', None, str)
 define('host', '0.0.0.0', str)
 define('port', 8080, int)
-define('node_name', default='', type=str)
+if 'node_name' not in options:
+    define('node_name', default='', type=str)
 define('common_executor_pool_size', 10, int)
 
 define('autoreload', False, bool)
@@ -87,3 +88,7 @@ define('consul_weight_total_timeout_sec', default=650, type=int)
 define('consul_cache_initial_warmup_timeout_sec', default=2, type=int)
 define('consul_consistency_mode', default='default', type=str)
 define('consul_weight_consistency_mode', default=options.consul_consistency_mode, type=str)
+
+define('upstreams', default=[], type=list)
+define('datacenters', default=[], type=list)
+define('fail_start_on_empty_upstream', default=True, type=bool)
