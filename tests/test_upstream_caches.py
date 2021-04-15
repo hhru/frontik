@@ -16,7 +16,7 @@ class UpstreamCachesTestCase(unittest.TestCase):
 
     def test_update_upstreams_servers_different_dc(self):
         tornado.options.options.upstreams = ['app']
-        tornado.options.options.datacenters = ['test', 'another']
+        tornado.options.options.datacenters = ['Test', 'AnoTher']
         value_one_dc = [
             {
                 'Node': {
