@@ -37,7 +37,7 @@ install:
   - if [[ $OSX != 1 ]]; then sudo apt-get install libgnutls28-dev libcurl4-gnutls-dev; fi
   - if [[ $TORNADO_VERSION == 'HH' ]]; then pip3 install https://github.com/hhru/tornado/archive/master.zip; else pip3 install tornado==$TORNADO_VERSION; fi
   - if [[ $WITH_EXTRAS == 1 ]]; then pip3 install raven aiokafka; fi
-  - pip3 install --prefer-binary https://github.com/hhru/balancing-http-client/archive/1.1.0.zip
+  - pip3 install --prefer-binary https://github.com/hhru/balancing-http-client/archive/1.1.1.zip
   - pip3 install --prefer-binary https://github.com/hhru/python-consul2/archive/v0.2.2-hh.zip
   - python3 setup.py install
 script:
