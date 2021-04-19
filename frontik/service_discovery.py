@@ -276,7 +276,7 @@ class UpstreamCaches:
     def _combine_servers(self, key):
         servers_from_all_dc = []
         for dc in self._datacenter_list:
-            servers = self._upstreams_servers.get(f'{key}-{dc.lower()}')
+            servers = self._upstreams_servers.get(f'{key}-{dc}')
             if servers:
                 servers_from_all_dc += servers
         return servers_from_all_dc

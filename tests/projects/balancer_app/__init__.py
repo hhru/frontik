@@ -4,7 +4,7 @@ from frontik.app import FrontikApplication
 
 
 def get_server(handler, type):
-    return Server('127.0.0.1:' + handler.get_argument(type))
+    return Server('127.0.0.1:' + handler.get_argument(type), dc='Test')
 
 
 def get_non_listening_server():

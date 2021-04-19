@@ -11,6 +11,7 @@ class Page(PageHandler):
     def get_page(self):
         free_server = get_server(self, 'free')
         free_server.rack = 'rack1'
+        free_server.datacenter = 'Test'
         normal_server = get_server(self, 'normal')
         normal_server.rack = 'rack1'
         normal_server.datacenter = 'dc2'

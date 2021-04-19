@@ -90,5 +90,4 @@ define('consul_consistency_mode', default='default', type=str)
 define('consul_weight_consistency_mode', default=options.consul_consistency_mode, type=str)
 
 define('upstreams', default=[], type=list)
-define('datacenters', default=[], type=list)
 define('fail_start_on_empty_upstream', default=True, type=bool)
