@@ -64,3 +64,8 @@ class TestHttpError(unittest.TestCase):
         response = frontik_balancer_app.get_page(self.make_url('requests_count'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'4')
+
+    def test_slow_start(self):
+        response = frontik_balancer_app.get_page(self.make_url('slow_start'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'1')
