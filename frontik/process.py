@@ -4,8 +4,10 @@ import logging
 import os
 import signal
 import sys
+import time
 from dataclasses import dataclass
 
+from tornado.options import options
 from tornado.util import errno_from_exception
 
 log = logging.getLogger('fork')
@@ -18,7 +20,8 @@ class State:
     terminating: bool
 
 
-def fork_workers(worker_function, *, num_workers, after_workers_up_action, before_workers_shutdown_action):
+def fork_workers(worker_function, *, init_workers_count_down, num_workers, after_workers_up_action,
+                 before_workers_shutdown_action):
     log.info("starting %d processes", num_workers)
     state = State(server=True, children={}, terminating=False)
 
@@ -41,6 +44,11 @@ def fork_workers(worker_function, *, num_workers, after_workers_up_action, befor
             return
 
     gc.enable()
+    timeout = time.time() + options.init_workers_timeout_sec
+    while init_workers_count_down.value > 0:
+        if time.time() > timeout:
+            raise Exception(f'workers did not started after {options.init_workers_timeout_sec} seconds')
+        time.sleep(0.1)
     after_workers_up_action()
     _supervise_workers(state, worker_function)
 

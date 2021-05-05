@@ -88,6 +88,8 @@ define('consul_weight_total_timeout_sec', default=650, type=int)
 define('consul_cache_initial_warmup_timeout_sec', default=2, type=int)
 define('consul_consistency_mode', default='default', type=str)
 define('consul_weight_consistency_mode', default=options.consul_consistency_mode, type=str)
+define('consul_deregister_critical_timeout', default='120h', type=str)
 
 define('upstreams', default=[], type=list)
 define('fail_start_on_empty_upstream', default=True, type=bool)
+define('init_workers_timeout_sec', default=60, type=int)
