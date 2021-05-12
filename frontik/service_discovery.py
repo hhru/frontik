@@ -225,7 +225,7 @@ class UpstreamCaches:
                         health_client=service_discovery.consul.health,
                         passing=True,
                         watch_seconds=service_discovery.consul_weight_watch_seconds,
-                        dc=dc.lower()
+                        dc=dc
                     )
                     health_cache.add_listener(self._update_upstreams_service, True)
                     health_cache.start()
