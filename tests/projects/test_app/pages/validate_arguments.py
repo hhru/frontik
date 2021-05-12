@@ -24,5 +24,6 @@ class Page(PageHandler):
 
         list_int = self.get_validated_argument('list', Validators.LIST_INT, array=True)
         string = self.get_string_argument('string', path_safe=not is_custom_model)
+        some_hash = self.get_hash_argument('hash', None)
 
-        self.json.put({'list': list_int, 'string': string})
+        self.json.put({'list': list_int, 'string': string, 'hash': some_hash})

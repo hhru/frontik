@@ -222,6 +222,9 @@ class PageHandler(RequestHandler):
 
     def get_float_argument(self, name, *args, **kwargs):
         return self.get_validated_argument(name, Validators.FLOAT, *args, **kwargs)
+    
+    def get_hash_argument(self, name, *args, **kwargs):
+        return self.get_validated_argument(name, Validators.HASH_STRING, *args, **kwargs)
 
     def _get_request_mime_type(self, request):
         content_type = request.headers.get('Content-Type', '')
