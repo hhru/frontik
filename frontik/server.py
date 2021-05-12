@@ -2,6 +2,7 @@ import asyncio
 import gc
 import importlib
 import logging
+import multiprocessing
 import os.path
 import re
 import signal
@@ -57,31 +58,35 @@ def main(config_file=None):
 
     try:
         app = application(app_root=os.path.dirname(module.__file__), app_module=app_module_name, **options.as_dict())
+        init_workers_count_down = multiprocessing.Value('i', options.workers)
 
         gc.disable()
         gc.collect()
         gc.freeze()
         if options.workers != 1:
             service_discovery_client = get_sync_service_discovery(options)
-            fork_workers(partial(_run_worker, app),
+            fork_workers(partial(_run_worker, app, init_workers_count_down),
+                         init_workers_count_down=init_workers_count_down,
                          num_workers=options.workers,
                          after_workers_up_action=service_discovery_client.register_service,
                          before_workers_shutdown_action=service_discovery_client.deregister_service_and_close)
         else:
             # run in single process mode
-            _run_worker(app, True)
+            _run_worker(app, init_workers_count_down, True)
     except Exception as e:
         log.exception('frontik application exited with exception: %s', e)
         sys.exit(1)
 
 
-def _run_worker(app, need_to_init=False):
+def _run_worker(app, init_workers_count_down, need_to_init=False):
     gc.enable()
     MDC.init('worker')
     ioloop = tornado.ioloop.IOLoop.current()
     executor = ThreadPoolExecutor(options.common_executor_pool_size)
     ioloop.asyncio_loop.set_default_executor(executor)
-    initialize_application_task = ioloop.asyncio_loop.create_task(_init_app(app, ioloop, need_to_init))
+    initialize_application_task = ioloop.asyncio_loop.create_task(
+        _init_app(app, ioloop, init_workers_count_down, need_to_init)
+    )
 
     def initialize_application_task_result_handler(future):
         if future.exception():
@@ -169,12 +174,14 @@ def parse_configs(config_files):
             tornado.autoreload.watch(config)
 
 
-async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_register_in_service_discovery):
+async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, init_workers_count_down,
+                    need_to_register_in_service_discovery):
     await app.init()
     await run_server(app, ioloop, need_to_register_in_service_discovery)
     if need_to_register_in_service_discovery:
         await app.service_discovery_client.register_service()
     log.info('Successfully inited application')
+    init_workers_count_down.value -= 1
 
 
 async def _deinit_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_register_in_service_discovery):

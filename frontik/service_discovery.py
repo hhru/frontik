@@ -38,6 +38,7 @@ def _create_http_check(options):
     http_check = Check.http(
         f'http://{options.consul_check_host}:{options.port}/status',
         f'{options.consul_http_check_interval_sec}s',
+        deregister=f'{options.consul_deregister_critical_timeout}',
         timeout=f'{options.consul_http_check_timeout_sec}s'
     )
     return http_check
