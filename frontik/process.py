@@ -47,14 +47,16 @@ def fork_workers(worker_function, *, init_workers_count_down, num_workers, after
     timeout = time.time() + options.init_workers_timeout_sec
     while init_workers_count_down.value > 0:
         if time.time() > timeout:
-            raise Exception(f'workers did not started after {options.init_workers_timeout_sec} seconds')
+            raise Exception(
+                f'workers did not started after {options.init_workers_timeout_sec} seconds,'
+                f' do not started {init_workers_count_down.value} workers'
+            )
         time.sleep(0.1)
     after_workers_up_action()
     _supervise_workers(state, worker_function)
 
 
 def _supervise_workers(state, worker_function):
-
     while state.children:
         try:
             pid, status = os.wait()
