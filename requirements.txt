@@ -5,4 +5,4 @@ pydantic == v1.7.3
 tornado @ https://github.com/hhru/tornado/archive/5.1.1.zip
 aiohttp == 3.6.2
 balancing-http-client @ https://github.com/hhru/balancing-http-client/archive/1.1.3.zip
-python-consul2 @ https://github.com/hhru/python-consul2/archive/v0.2.3-hh.zip
+python-consul2-hh @ https://github.com/hhru/python-consul2/archive/v0.2.3.zip
