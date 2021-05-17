@@ -199,7 +199,9 @@ def wrap_handle_with_time_logging(handle: Type[asyncio.Handle], app: FrontikAppl
         old_run(self)
         delta = self._loop.time() - start_time
         if delta >= options.asyncio_task_threshold_sec:
-            slow_tasks_logger.warning('%s took %.2fms', self, delta * 1000)
+            delta_ms = delta * 1000
+            app.statsd_client.time('long_task.time', int(delta_ms))
+            slow_tasks_logger.warning('%s took %.2fms', self, delta_ms)
         if options.asyncio_task_critical_threshold_sec and delta >= options.asyncio_task_critical_threshold_sec:
             request = get_request() or HTTPServerRequest('GET', '/asyncio_long_task_stub')
             sentry_logger = app.get_sentry_logger(request)
