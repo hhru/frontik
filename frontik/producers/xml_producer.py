@@ -112,8 +112,10 @@ class XmlProducer:
                 return None, None
 
             start_time, render_result, xslt_profile = xslt_result
+            execution_time_ms = (time.time() - start_time) * 1000
+            self.handler.statsd_client.time('xsl.time', int(execution_time_ms), xsl_file=self.transform_filename)
 
-            self.log.info('applied XSL %s in %.2fms', self.transform_filename, (time.time() - start_time) * 1000)
+            self.log.info('applied XSL %s in %.2fms', self.transform_filename, execution_time_ms)
 
             if xslt_profile is not None:
                 self.log.debug('XSLT profiling results', extra={'_xslt_profile': xslt_profile.getroot()})

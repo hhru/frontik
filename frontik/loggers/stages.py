@@ -29,21 +29,22 @@ class StagesLogger:
 
     def flush_stages(self, status_code):
         """Writes available stages, total value and status code"""
+        handler_name = request_context.get_handler_name()
 
         self._statsd_client.stack()
 
         for s in self._stages:
-            self._statsd_client.time(f'handler.stages.{s.name}.time', int(s.delta))
+            self._statsd_client.time(f'handler.stage.time', int(s.delta), handler=handler_name, stage=s.name)
 
         self._statsd_client.flush()
 
-        stages_str = ' '.join('{s.name}={s.delta:.2f}'.format(s=s) for s in self._stages)
+        stages_str = ' '.join(f'{s.name}={s.delta:.2f}' for s in self._stages)
         total = sum(s.delta for s in self._stages)
 
         stages_logger.info(
             'timings for %(page)s : %(stages)s',
             {
-                'page': request_context.get_handler_name(),
+                'page': handler_name,
                 'stages': '{0} total={1:.2f} code={2}'.format(stages_str, total, status_code)
             },
         )
