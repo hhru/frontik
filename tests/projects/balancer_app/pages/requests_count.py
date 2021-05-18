@@ -1,5 +1,4 @@
 from http_client import Upstream
-from tornado.web import HTTPError
 
 from frontik import media_types
 from frontik.handler import PageHandler
@@ -21,16 +20,12 @@ class Page(PageHandler):
         async_group = AsyncGroup(check_requests_cb)
 
         def callback_post(text, response):
-            if response.error or text is None:
-                raise HTTPError(500)
-
             self.text = text
 
-        self.post_url('requests_count', self.request.path)
-        self.post_url('requests_count', self.request.path)
+        self.post_url('requests_count', self.request.path, callback=async_group.add(callback_post))
+        self.post_url('requests_count', self.request.path, callback=async_group.add(callback_post))
         self.application.upstream_caches.upstreams['requests_count'] = Upstream('requests_count', {},
                                                                                 [get_server(self, 'normal')])
-        self.post_url('requests_count', self.request.path)
         self.post_url('requests_count', self.request.path, callback=async_group.add(callback_post))
         check_all_servers_occupied(self, 'requests_count')
 

@@ -14,7 +14,7 @@ from lxml import etree
 from tornado.options import options
 from tornado.httpclient import AsyncHTTPClient
 from tornado.stack_context import StackContext
-from tornado.web import Application, RequestHandler
+from tornado.web import Application, RequestHandler, HTTPError
 from http_client import HttpClientFactory
 
 import frontik.producers.json_producer
@@ -127,6 +127,7 @@ class FrontikApplication(Application):
         self.upstream_store = None
         self.upstream_caches = UpstreamCaches()
         self.router = FrontikRouter(self)
+        self.init_workers_count_down = multiprocessing.Value('i', options.workers)
 
         core_handlers = [
             (r'/version/?', VersionHandler),
@@ -227,6 +228,9 @@ class FrontikApplication(Application):
         return str(FrontikApplication.request_id)
 
     def get_current_status(self):
+        if self.init_workers_count_down.value > 0:
+            raise HTTPError(500)
+
         cur_uptime = time.time() - self.start_time
         if cur_uptime < 60:
             uptime_value = '{:.2f} seconds'.format(cur_uptime)
