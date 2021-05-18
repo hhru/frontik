@@ -59,6 +59,7 @@ class ConsulRegistrationTestCase(unittest.TestCase):
             def check_registered_status():
                 instance.get_page('check_workers_count_down')
 
+
             self.assertRaises(ConnectionError, check_registered_status)
 
         self.frontik_multiple_worker_app_timeout_barrier.start_with_check(check_function)
