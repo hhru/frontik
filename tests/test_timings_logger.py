@@ -19,7 +19,7 @@ class TestStatsdIntegration(unittest.TestCase):
         test_app.stop()
 
         metrics = [l for l in self._read_all_metrics_from_socket(statsd_socket) if l.startswith('metric_name.')]
-        self.assertEquals(len(metrics), 1)
+        self.assertEqual(len(metrics), 1)
         line = metrics[0]
         self.assertTrue('param1_is_1' in line)
         self.assertTrue('param2_is_param2' in line)
