@@ -22,8 +22,8 @@ class Page(PageHandler):
         def callback_post(text, response):
             self.text = text
 
-        self.post_url('requests_count', self.request.path, callback=async_group.add(callback_post))
-        self.post_url('requests_count', self.request.path, callback=async_group.add(callback_post))
+        self.post_url('requests_count', self.request.path)
+        self.post_url('requests_count', self.request.path)
         self.application.upstream_caches.upstreams['requests_count'] = Upstream('requests_count', {},
                                                                                 [get_server(self, 'normal')])
         self.post_url('requests_count', self.request.path, callback=async_group.add(callback_post))
