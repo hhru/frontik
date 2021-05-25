@@ -7,10 +7,9 @@ import time
 from distutils.spawn import find_executable
 
 import requests
+from frontik import options
 from lxml import etree
 from tornado.escape import to_unicode, utf8
-
-from frontik import options
 
 try:
     import coverage
@@ -109,24 +108,24 @@ class FrontikTestInstance:
 
         return method(url, **kwargs)
 
-    def get_page_xml(self, page, notpl=False, method=requests.get):
-        content = utf8(self.get_page(page, notpl=notpl, method=method).content)
+    def get_page_xml(self, page, notpl=False, method=requests.get, **kwargs):
+        content = utf8(self.get_page(page, notpl=notpl, method=method, **kwargs).content)
 
         try:
             return etree.fromstring(content)
         except Exception as e:
             raise Exception(f'failed to parse xml ({e}): "{content}"')
 
-    def get_page_json(self, page, notpl=False, method=requests.get):
-        content = self.get_page_text(page, notpl=notpl, method=method)
+    def get_page_json(self, page, notpl=False, method=requests.get, **kwargs):
+        content = self.get_page_text(page, notpl=notpl, method=method, **kwargs)
 
         try:
             return json.loads(content)
         except Exception as e:
             raise Exception(f'failed to parse json ({e}): "{content}"')
 
-    def get_page_text(self, page, notpl=False, method=requests.get):
-        return to_unicode(self.get_page(page, notpl=notpl, method=method).content)
+    def get_page_text(self, page, notpl=False, method=requests.get, **kwargs):
+        return to_unicode(self.get_page(page, notpl=notpl, method=method, **kwargs).content)
 
 
 common_frontik_start_options = f'--{options.STDERR_LOG_OPTION_NAME}=True'

@@ -7,7 +7,7 @@ import math
 
 from asyncio.futures import Future
 from functools import partial, wraps
-from typing import TYPE_CHECKING, Type, Union
+from typing import TYPE_CHECKING, Any, List, Type, Union
 
 import tornado.curl_httpclient
 import tornado.httputil
@@ -52,9 +52,18 @@ class HTTPErrorWithPostprocessors(tornado.web.HTTPError):
     pass
 
 
+class TypedArgumentError(tornado.web.HTTPError):
+    pass
+
+
 class JSONBodyParseError(tornado.web.HTTPError):
     def __init__(self):
         super(JSONBodyParseError, self).__init__(400, 'Failed to parse json in request body')
+
+
+class DefaultValueError(Exception):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
 
 
 _ARG_DEFAULT = object()
@@ -189,39 +198,56 @@ class PageHandler(RequestHandler):
         else:
             raise TypeError('model is not subclass of BaseClass')
 
-    def get_validated_argument(self, name: str, validation: Validators, default: any = _ARG_DEFAULT,
-                               from_body: bool = False, array: bool = False, strip: bool = True):
+    def get_validated_argument(
+        self, name: str, validation: Validators, default: any = _ARG_DEFAULT,
+        from_body: bool = False, array: bool = False, strip: bool = True
+    ) -> Any:
+        validator = validation.value
+        if default is not _ARG_DEFAULT:
+            try:
+                params = {validator: default}
+                validated_default = self._validation_model(**params).dict().get(validator)
+            except ValidationError:
+                raise DefaultValueError
+        else:
+            validated_default = default
+
         if array and from_body:
             value = self.get_body_arguments(name, strip)
         elif from_body:
-            value = super().get_body_argument(name, default, strip)
+            value = self.get_body_argument(name, validated_default, strip)
         elif array:
-            value = super().get_arguments(name, strip)
+            value = self.get_arguments(name, strip)
         else:
-            value = super().get_argument(name, default, strip)
+            value = self.get_argument(name, validated_default, strip)
 
         try:
-            validator = validation.value
             params = {validator: value}
             validated_value = self._validation_model(**params).dict().get(validator)
         except ValidationError:
-            raise HTTPErrorWithPostprocessors(http.client.BAD_REQUEST, f'"{name}" argument is invalid')
+            if default is _ARG_DEFAULT:
+                raise TypedArgumentError(http.client.BAD_REQUEST, f'"{name}" argument is invalid')
+            return default
 
         return validated_value
 
-    def get_string_argument(self, name, *args, path_safe=True, **kwargs):
+    def get_str_argument(
+        self, name: str, default: str = _ARG_DEFAULT, path_safe: bool = True, **kwargs
+    ) -> Union[str, List[str]]:
         if path_safe:
-            return self.get_validated_argument(name, Validators.PATH_SAFE_STRING, *args, **kwargs)
-        return self.get_validated_argument(name, Validators.STRING, *args, **kwargs)
+            return self.get_validated_argument(name, Validators.PATH_SAFE_STRING, default=default, **kwargs)
+        return self.get_validated_argument(name, Validators.STRING, default=default, **kwargs)
 
-    def get_integer_argument(self, name, *args, **kwargs):
-        return self.get_validated_argument(name, Validators.INTEGER, *args, **kwargs)
+    def get_int_argument(self, name: str, default: int = _ARG_DEFAULT, **kwargs) -> Union[int, List[int]]:
+        return self.get_validated_argument(name, Validators.INTEGER, default=default, **kwargs)
 
-    def get_boolean_argument(self, name, *args, **kwargs):
-        return self.get_validated_argument(name, Validators.BOOLEAN, *args, **kwargs)
+    def get_bool_argument(self, name: str, default: bool = _ARG_DEFAULT, **kwargs) -> Union[bool, List[bool]]:
+        return self.get_validated_argument(name, Validators.BOOLEAN, default=default, **kwargs)
 
-    def get_float_argument(self, name, *args, **kwargs):
-        return self.get_validated_argument(name, Validators.FLOAT, *args, **kwargs)
+    def get_float_argument(
+        self, name: str, default: float = _ARG_DEFAULT, **kwargs
+    ) -> Union[float, List[float]]:
+        return self.get_validated_argument(name, Validators.FLOAT, default=default, **kwargs)
 
     def _get_request_mime_type(self, request):
         content_type = request.headers.get('Content-Type', '')

@@ -23,8 +23,8 @@ class BaseValidationModel(BaseModel):
     list_str: Optional[List[str]]
     path_safe_string: Optional[str]
 
-    @validator('path_safe_string')
+    @validator('path_safe_string', pre=True)
     @classmethod
     def check_path_safe_string(cls, value):
-        assert '/' not in value
+        assert isinstance(value, str) and '/' not in value
         return value
