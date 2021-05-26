@@ -118,10 +118,12 @@ class _SyncServiceDiscovery:
         self.consul_weight_total_timeout_sec = options.consul_weight_total_timeout_sec
         self.consul_weight_consistency_mode = ConsistencyMode(options.consul_weight_consistency_mode.lower())
         self.consul_cache_initial_warmup_timeout_sec = options.consul_cache_initial_warmup_timeout_sec
+        self.consul_cache_backoff_delay_seconds = options.consul_cache_backoff_delay_seconds
         self.kvCache = KVCache(
             self.consul.kv,
             path=f'host/{self.hostname}/weight',
             watch_seconds=self.consul_weight_watch_seconds,
+            backoff_delay_seconds=self.consul_cache_backoff_delay_seconds,
             total_timeout=self.consul_weight_total_timeout_sec,
             cache_initial_warmup_timeout=self.consul_cache_initial_warmup_timeout_sec,
             consistency_mode=self.consul_weight_consistency_mode,
@@ -210,6 +212,7 @@ class UpstreamCaches:
             service_discovery.consul.kv,
             path='upstream/',
             watch_seconds=service_discovery.consul_weight_watch_seconds,
+            backoff_delay_seconds=service_discovery.consul_cache_backoff_delay_seconds,
             total_timeout=service_discovery.consul_weight_total_timeout_sec,
             cache_initial_warmup_timeout=service_discovery.consul_cache_initial_warmup_timeout_sec,
             consistency_mode=service_discovery.consul_weight_consistency_mode,
@@ -225,6 +228,7 @@ class UpstreamCaches:
                         health_client=service_discovery.consul.health,
                         passing=True,
                         watch_seconds=service_discovery.consul_weight_watch_seconds,
+                        backoff_delay_seconds=service_discovery.consul_cache_backoff_delay_seconds,
                         dc=dc
                     )
                     health_cache.add_listener(self._update_upstreams_service, True)
@@ -235,6 +239,7 @@ class UpstreamCaches:
                     health_client=service_discovery.consul.health,
                     passing=True,
                     watch_seconds=service_discovery.consul_weight_watch_seconds,
+                    backoff_delay_seconds=service_discovery.consul_cache_backoff_delay_seconds,
                     dc=self._current_dc
                 )
                 health_cache.add_listener(self._update_upstreams_service, True)
