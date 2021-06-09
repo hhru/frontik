@@ -34,7 +34,7 @@ class StagesLogger:
         self._statsd_client.stack()
 
         for s in self._stages:
-            self._statsd_client.time(f'handler.stage.time', int(s.delta), handler=handler_name, stage=s.name)
+            self._statsd_client.time(f'handler.stage.time', int(s.delta), stage=s.name)
 
         self._statsd_client.flush()
 
