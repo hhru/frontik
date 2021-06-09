@@ -1,1 +1,1 @@
-version = '5.25.4_backport_5.26.8'
+version = '5.25.4_backport_6.0.2'
