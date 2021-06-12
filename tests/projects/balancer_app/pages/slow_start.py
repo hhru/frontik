@@ -11,7 +11,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done, check_all
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         server = get_server(self, 'normal')
         server.weight = 5
 
@@ -42,6 +42,6 @@ class Page(PageHandler):
 
         check_all_servers_occupied(self, 'slow_start')
 
-    def post_page(self):
+    async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = str(self.application.http_client_factory.upstreams['slow_start'].servers[1].requests)

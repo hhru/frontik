@@ -4,7 +4,7 @@ from frontik.handler import PageHandler
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         port = int(self.get_argument('port'))
 
         @self.check_finished

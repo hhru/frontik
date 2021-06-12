@@ -9,7 +9,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done, check_all
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         self.application.upstream_caches.upstreams['requests_count'] = Upstream('requests_count', {},
                                                                                 [get_server(self, 'normal')])
         self.text = ''
@@ -29,6 +29,6 @@ class Page(PageHandler):
         self.post_url('requests_count', self.request.path, callback=async_group.add(callback_post))
         check_all_servers_occupied(self, 'requests_count')
 
-    def post_page(self):
+    async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = str(self.application.http_client_factory.upstreams['requests_count'].servers[0].current_requests)

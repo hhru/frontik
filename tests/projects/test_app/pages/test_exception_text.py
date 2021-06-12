@@ -2,7 +2,7 @@ from frontik.handler import HTTPErrorWithPostprocessors, PageHandler
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         def callback_post(element, response):
             assert False
 

@@ -88,7 +88,7 @@ class FrontikTestInstance:
         self.popen.wait(300)
         self.port = None
 
-    def get_page(self, page, notpl=False, method=requests.get, **kwargs):
+    async def get_page(self, page, notpl=False, method=requests.get, **kwargs):
         if not self.port:
             self.start()
 

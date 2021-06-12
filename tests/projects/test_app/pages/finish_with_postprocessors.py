@@ -13,7 +13,7 @@ class Page(PageHandler):
 
         self.add_postprocessor(pp)
 
-    def get_page(self):
+    async def get_page(self):
         content_type = self.get_argument('type')
 
         def fail_page(_, __):
@@ -33,5 +33,5 @@ class Page(PageHandler):
 
         raise FinishWithPostprocessors()
 
-    def post_page(self):
+    async def post_page(self):
         pass

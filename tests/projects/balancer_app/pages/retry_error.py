@@ -10,7 +10,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done, check_all
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         self.application.upstream_caches.upstreams['retry_error'] = Upstream('retry_error', {},
                                                                              [get_server(self, 'broken'),
                                                                               get_server(self, 'normal')])
@@ -33,6 +33,6 @@ class Page(PageHandler):
 
         check_all_servers_occupied(self, 'retry_error')
 
-    def put_page(self):
+    async def put_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'

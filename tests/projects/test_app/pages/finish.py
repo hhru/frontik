@@ -4,7 +4,7 @@ from frontik.handler import PageHandler
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         throw = self.get_argument('throw', 'true') == 'true'
         code = int(self.get_argument('code', '200'))
 

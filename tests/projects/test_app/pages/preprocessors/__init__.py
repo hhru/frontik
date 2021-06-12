@@ -65,10 +65,10 @@ class Page(PageHandler):
 
     @pp1
     @preprocessor([pp2, pp3])
-    def get_page(self):
+    async def get_page(self):
         self.run.append('get_page')
 
-    def put_page(self):
+    async def put_page(self):
         self.text = {'put_request_preprocessors': self.run}
 
     @staticmethod

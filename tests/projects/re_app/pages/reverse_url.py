@@ -2,7 +2,7 @@ from frontik.handler import PageHandler
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         if self.get_argument('fail_args', 'false') != 'false':
             self.text = self.reverse_url('two_ids', 1)
 

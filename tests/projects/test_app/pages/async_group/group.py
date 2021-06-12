@@ -2,7 +2,7 @@ import frontik.handler
 
 
 class Page(frontik.handler.PageHandler):
-    def get_page(self):
+    async def get_page(self):
         ensure_callback_is_async = False
         fail_callback = self.get_argument('fail_callback', 'false') == 'true'
         fail_request = self.get_argument('fail_request', 'false') == 'true'
@@ -43,7 +43,7 @@ class Page(frontik.handler.PageHandler):
         })
         self.add_future(future, self.finish_group.add(_future_callback))
 
-    def post_page(self):
+    async def post_page(self):
         self.json.put({
             self.get_argument('data'): 'yay'
         })

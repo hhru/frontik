@@ -10,7 +10,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         idempotent_retry_policy = {
             'retry_policy': {
                 503: {
@@ -47,6 +47,6 @@ class Page(PageHandler):
         self.post_url('do_not_retry_non_idempotent_503', self.request.path,
                       callback=async_group.add(callback_post_without_retry))
 
-    def post_page(self):
+    async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'

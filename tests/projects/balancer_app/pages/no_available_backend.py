@@ -7,7 +7,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 
 class Page(handler.PageHandler):
-    def get_page(self):
+    async def get_page(self):
         self.application.upstream_caches.upstreams['no_available_backend'] = Upstream('no_available_backend', {}, [])
 
         def check_requests_cb():
@@ -25,6 +25,6 @@ class Page(handler.PageHandler):
         self.post_url('no_available_backend', self.request.path, callback=async_group.add(callback_post))
         check_all_requests_done(self, 'no_available_backend')
 
-    def post_page(self):
+    async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'

@@ -10,7 +10,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         self.application.upstream_caches.upstreams['retry_on_timeout'] = Upstream('retry_on_timeout', {},
                                                                                   [get_server(self, 'broken'),
                                                                                    get_server(self, 'normal')])
@@ -29,6 +29,6 @@ class Page(PageHandler):
         self.delete_url('retry_on_timeout', self.request.path, callback=async_group.add(callback_post),
                         connect_timeout=0.1, request_timeout=0.3, max_timeout_tries=2)
 
-    def delete_page(self):
+    async def delete_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'

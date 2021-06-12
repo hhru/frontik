@@ -25,14 +25,14 @@ class Page(PageHandler):
                     'postprocessor_completed': True
                 })
 
-    def get_page(self):
+    async def get_page(self):
         def _cb(_, __):
             # test that postprocessors are scheduled only once
             self.finish_with_postprocessors()
 
         self.post_url(self.request.host, self.request.uri, callback=_cb)
 
-    def post_page(self):
+    async def post_page(self):
         self.json.put({
             'counter': self.counter_static
         })

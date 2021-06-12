@@ -2,7 +2,7 @@ import frontik.handler
 
 
 class Page(frontik.handler.PageHandler):
-    def get_page(self):
+    async def get_page(self):
 
         def callback_error(element, response):
             if element is None:
@@ -12,13 +12,13 @@ class Page(frontik.handler.PageHandler):
 
         self.post_url(self.request.host, self.request.path + '?mode=xml', callback=callback_error)
 
-        result = yield self.post_url(self.request.host, self.request.path + '?mode=json')
+        result = await self.post_url(self.request.host, self.request.path + '?mode=json')
         if result.failed:
             self.text = 'Parse error occured'
         else:
             assert False
 
-    def post_page(self):
+    async def post_page(self):
         if self.get_argument('mode') == "xml":
             self.text = '''<doc frontik="tr"ue">this is broken xml</doc>'''
             self.set_header("Content-Type", "xml")

@@ -2,7 +2,7 @@ import frontik.handler
 
 
 class Page(frontik.handler.PageHandler):
-    def get_page(self):
+    async def get_page(self):
 
         def callback(element, response):
             self.finish(str(response.code))

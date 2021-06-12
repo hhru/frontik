@@ -13,10 +13,10 @@ def preprocessor(function_or_list):
 
     Usage::
         @preprocessor
-        def get_a(handler):
+        async def get_a(handler):
             future = Future()
             # Do something asynchronously
-            yield future
+            await future
 
         @preprocessor
         def get_b(handler):

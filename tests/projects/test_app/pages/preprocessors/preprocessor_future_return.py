@@ -23,8 +23,8 @@ def pp2(handler):
 class Page(PageHandler):
     @pp1
     @pp2
-    def get_page(self):
+    async def get_page(self):
         pass
 
-    def post_page(self):
+    async def post_page(self):
         pass

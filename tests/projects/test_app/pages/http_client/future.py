@@ -2,7 +2,7 @@ import frontik.handler
 
 
 class Page(frontik.handler.PageHandler):
-    def get_page(self):
+    async def get_page(self):
         state = {
             'second_callback_must_be_async': True,
         }
@@ -28,7 +28,7 @@ class Page(frontik.handler.PageHandler):
         request_future = self.post_url(self.request.host, self.request.path, callback=main_callback)
         self.add_future(request_future, self.finish_group.add(additional_callback))
 
-    def post_page(self):
+    async def post_page(self):
         self.json.put({
             'yay': 'yay'
         })

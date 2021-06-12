@@ -25,10 +25,10 @@ def pp2(handler):
 class Page(PageHandler):
     @pp1
     @pp2
-    def get_page(self):
+    async def get_page(self):
         # Page handler method must not be called
         self.set_status(404)
 
     @pp1
-    def post_page(self):
+    async def post_page(self):
         pass

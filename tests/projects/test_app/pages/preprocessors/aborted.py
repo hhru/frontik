@@ -53,8 +53,8 @@ class Page(PageHandler):
     @pp_before
     @pp
     @pp_after
-    def get_page(self):
+    async def get_page(self):
         self.run.append('get_page')
 
-    def put_page(self):
+    async def put_page(self):
         pass

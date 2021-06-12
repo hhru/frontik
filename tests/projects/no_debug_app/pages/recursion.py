@@ -4,7 +4,7 @@ from frontik import handler, media_types
 
 
 class Page(handler.PageHandler):
-    def get_page(self):
+    async def get_page(self):
         def _cb(text, response):
             self.set_header('Content-Type', media_types.TEXT_PLAIN)
             if response.error:

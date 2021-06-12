@@ -4,7 +4,7 @@ from frontik.handler import PageHandler
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         n = int(self.get_argument('n'))
 
         self.add_header('Content-Type', media_types.TEXT_PLAIN)

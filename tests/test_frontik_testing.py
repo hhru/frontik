@@ -9,7 +9,7 @@ from tests.projects.test_app.pages.handler import delete
 
 
 class AsyncHandler(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         self.result = 0
 
         def finished(_):
@@ -28,7 +28,7 @@ class AsyncHandler(PageHandler):
 
 
 class CheckConfigHandler(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         self.text = self.config.config_param
 
 

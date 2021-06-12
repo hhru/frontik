@@ -8,7 +8,7 @@ from tests.projects.balancer_app import get_server
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         free_server = get_server(self, 'free')
         free_server.rack = 'rack1'
         free_server.datacenter = 'Test'
@@ -34,6 +34,6 @@ class Page(PageHandler):
 
         self.post_url('different_datacenter', self.request.path, callback=callback)
 
-    def post_page(self):
+    async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'
