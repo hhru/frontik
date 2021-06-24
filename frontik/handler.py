@@ -14,7 +14,6 @@ import tornado.curl_httpclient
 import tornado.httputil
 import tornado.web
 from tornado import stack_context
-from tornado.ioloop import IOLoop
 from tornado.options import options
 from tornado.web import RequestHandler
 from pydantic import ValidationError, BaseModel
@@ -27,7 +26,7 @@ import frontik.producers.xml_producer
 import frontik.util
 from frontik import media_types, request_context
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
-from frontik.futures import AbortAsyncGroup, AsyncGroup
+from frontik.futures import AbortAsyncGroup, AsyncGroup, FutureGroup
 from frontik.debug import DEBUG_HEADER_NAME, DebugMode
 from frontik.timeout_tracking import get_timeout_checker
 from frontik.loggers.stages import StagesLogger
@@ -131,7 +130,7 @@ class PageHandler(RequestHandler):
     def prepare(self):
         self.active_limit = frontik.handler_active_limit.ActiveHandlersLimit(self.statsd_client)
         self.debug_mode = DebugMode(self)
-        self.finish_group = AsyncGroup(lambda: None, name='finish')
+        self.finish_group = FutureGroup()
 
         self.json_producer = self.application.json.get_producer(self)
         self.json = self.json_producer.json
@@ -142,8 +141,6 @@ class PageHandler(RequestHandler):
         self._http_client = self.application.http_client_factory.get_http_client(
             self.modify_http_client_request, self.debug_mode.enabled
         )  # type: HttpClient
-
-        self._handler_finished_notification = self.finish_group.add_notification()
 
         super().prepare()
 
@@ -277,22 +274,6 @@ class PageHandler(RequestHandler):
         except json.JSONDecodeError as _:
             raise JSONBodyParseError()
 
-    @classmethod
-    def add_callback(cls, callback, *args, **kwargs):
-        IOLoop.current().add_callback(callback, *args, **kwargs)
-
-    @classmethod
-    def add_timeout(cls, deadline, callback, *args, **kwargs):
-        return IOLoop.current().add_timeout(deadline, callback, *args, **kwargs)
-
-    @staticmethod
-    def remove_timeout(timeout):
-        IOLoop.current().remove_timeout(timeout)
-
-    @classmethod
-    def add_future(cls, future, callback):
-        IOLoop.current().add_future(future, callback)
-
     # Requests handling
 
     def _execute(self, transforms, *args, **kwargs):
@@ -401,14 +382,12 @@ class PageHandler(RequestHandler):
         return wrapper
 
     def finish_with_postprocessors(self):
-        if not self.finish_group.get_finish_future().done():
+        if not self.finish_group.done():
             self.finish_group.abort()
 
-        def _cb(future):
-            if future.result() is not None:
-                self.finish(future.result())
-
-        asyncio.create_task(self._postprocess()).add_done_callback(_cb)
+        result = await self._postprocess()
+        if result:
+            self.finish(result)
 
     async def _postprocess(self):
         if self._finished:
@@ -718,77 +697,77 @@ class PageHandler(RequestHandler):
 
     def get_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True,
                 connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
 
-        client_method = lambda callback: self._http_client.get_url(
+        client_method = lambda: self._http_client.get_url(
             host, uri, name=name, data=data, headers=headers, follow_redirects=follow_redirects,
             connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+            callback=None, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
         )
 
-        return self._execute_http_client_method(host, uri, client_method, waited, callback)
+        return self._execute_http_client_method(host, uri, client_method, waited)
 
     def head_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                 callback=None, waited=True, fail_fast=False):
+                 waited=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
 
-        client_method = lambda callback: self._http_client.head_url(
+        client_method = lambda: self._http_client.head_url(
             host, uri, data=data, name=name, headers=headers, follow_redirects=follow_redirects,
             connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            callback=callback, fail_fast=fail_fast
+            callback=None, fail_fast=fail_fast
         )
 
-        return self._execute_http_client_method(host, uri, client_method, waited, callback)
+        return self._execute_http_client_method(host, uri, client_method, waited)
 
     def post_url(self, host, uri, *,
                  name=None, data='', headers=None, files=None, content_type=None, follow_redirects=True,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=False,
-                 callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                 waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
 
-        client_method = lambda callback: self._http_client.post_url(
+        client_method = lambda: self._http_client.post_url(
             host, uri, data=data, name=name, headers=headers, files=files, content_type=content_type,
             follow_redirects=follow_redirects, connect_timeout=connect_timeout, request_timeout=request_timeout,
             max_timeout_tries=max_timeout_tries, idempotent=idempotent,
-            callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+            callback=None, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
         )
 
-        return self._execute_http_client_method(host, uri, client_method, waited, callback)
+        return self._execute_http_client_method(host, uri, client_method, waited)
 
     def put_url(self, host, uri, *, name=None, data='', headers=None, content_type=None,
                 connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
 
-        client_method = lambda callback: self._http_client.put_url(
+        client_method = lambda: self._http_client.put_url(
             host, uri, name=name, data=data, headers=headers, content_type=content_type,
             connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+            parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
         )
 
-        return self._execute_http_client_method(host, uri, client_method, waited, callback)
+        return self._execute_http_client_method(host, uri, client_method, waited)
 
     def delete_url(self, host, uri, *, name=None, data=None, headers=None, content_type=None,
                    connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                   callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                   waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
 
-        client_method = lambda callback: self._http_client.delete_url(
+        client_method = lambda: self._http_client.delete_url(
             host, uri, name=name, data=data, headers=headers, content_type=content_type,
             connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+            parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
         )
 
-        return self._execute_http_client_method(host, uri, client_method, waited, callback)
+        return self._execute_http_client_method(host, uri, client_method, waited)
 
-    def _execute_http_client_method(self, host, uri, client_method, waited, callback):
+    def _execute_http_client_method(self, host, uri, client_method, waited):
         if waited and (self.is_finished() or self.finish_group.is_finished()):
             handler_logger.info(
                 'attempted to make waited http request to %s %s in finished handler, ignoring', host, uri
@@ -798,13 +777,10 @@ class PageHandler(RequestHandler):
             future.set_exception(AbortAsyncGroup())
             return future
 
-        if waited and callable(callback):
-            callback = self.check_finished(callback)
-
-        future = client_method(callback)
+        future = client_method()
 
         if waited:
-            self.finish_group.add_future(future)
+            self.finish_group.add(future)
 
         return future
 
@@ -814,5 +790,5 @@ class ErrorHandler(PageHandler, tornado.web.ErrorHandler):
 
 
 class RedirectHandler(PageHandler, tornado.web.RedirectHandler):
-    async def get_page(self):
+    def get_page(self):
         tornado.web.RedirectHandler.get(self)

@@ -1,3 +1,4 @@
+import asyncio
 import time
 import logging
 from functools import wraps, partial
@@ -158,3 +159,47 @@ def future_map(future, func):
 
 def future_map_exception(future, func):
     return future_fold(future, exception_mapper=func)
+
+
+class FutureAddingException(Exception):
+    pass
+
+
+class FutureGroup:
+
+    def __init__(self, name=None):
+        self._tasks = []
+        self._finish_future = None
+        self._finished = False
+        self._name = name
+        self._start_time = time.time()
+
+    def add(self, task):
+        if self._finish_future:
+            raise FutureAddingException()
+        if isinstance(task, asyncio.Future):
+            self._tasks.put(task)
+        raise ValueError('value is not a asyncio.Future or a asyncio.Task')
+
+    def is_finished(self):
+        if self._finished:
+            return True
+        return self._finish_future and self._finished
+
+    def abort(self):
+        async_logger.info('aborting %s', self)
+        self._finished = True
+        if self._finish_future:
+            if not self._finish_future.done():
+                self._finish_future.cancel()
+                [task.cancel() for task in self.async_tasks]
+        raise AbortAsyncGroup()
+
+    def get_finish_future(self):
+        if not self._finish_future:
+            self._finish_future = asyncio.gather(*self._tasks)
+        return self._finish_future
+
+    def __str__(self):
+        return f'FutureGroup(name={self._name}, finished={self._finished})'
+
