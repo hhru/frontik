@@ -1,3 +1,4 @@
+import asyncio
 import time
 import logging
 from functools import wraps, partial
@@ -30,6 +31,7 @@ class AsyncGroup:
         self._name = name
         self._future = Future()
         self._start_time = time.time()
+        self._futures = []
 
     def is_finished(self):
         return self._finished
@@ -109,10 +111,14 @@ class AsyncGroup:
 
     def add_future(self, future):
         IOLoop.current().add_future(future, partial(self._handle_future, self.add_notification()))
+        self._futures.append(future)
         return future
 
     def get_finish_future(self):
         return self._future
+
+    def get_gathering_future(self):
+        return asyncio.gather(*self._futures)
 
     def __str__(self):
         return f'AsyncGroup(name={self._name}, finished={self._finished})'
