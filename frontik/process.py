@@ -32,10 +32,11 @@ def fork_workers(worker_function, *, init_workers_count_down, num_workers, after
         state.terminating = True
         before_workers_shutdown_action()
         for pid, id in state.children.items():
-            log.info('sending SIGTERM to child %d (pid %d)', id, pid)
+            log.info('sending %s to child %d (pid %d)', signal.Signals(signum).name, id, pid)
             os.kill(pid, signal.SIGTERM)
 
     signal.signal(signal.SIGTERM, sigterm_handler)
+    signal.signal(signal.SIGINT, sigterm_handler)
 
     for i in range(num_workers):
         is_worker = _start_child(i, state)

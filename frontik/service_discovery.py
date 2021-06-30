@@ -103,7 +103,6 @@ class _AsyncServiceDiscovery:
             log.info('Successfully deregistered service %s', self.service_id)
         else:
             log.info('Failed to deregister service %s normally', self.service_id)
-        self.consul.close()
 
 
 class _SyncServiceDiscovery:

@@ -144,6 +144,7 @@ async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_r
             ioloop.asyncio_loop.call_later(options.stop_timeout, ioloop_stop)
 
     signal.signal(signal.SIGTERM, sigterm_handler)
+    signal.signal(signal.SIGINT, sigterm_handler)
 
 
 def parse_configs(config_files):
@@ -183,7 +184,14 @@ async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, count_down
         app.init_workers_count_down.value -= 1
         log.info(f'worker is up, remaining workers = {app.init_workers_count_down.value}')
     if need_to_register_in_service_discovery:
-        await app.service_discovery_client.register_service()
+        register_task = ioloop.asyncio_loop.create_task(app.service_discovery_client.register_service())
+
+        def register_task_result_handler(future):
+            if future.exception():
+                ioloop.stop()
+                future.result()
+
+        register_task.add_done_callback(register_task_result_handler)
 
 
 async def _deinit_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_register_in_service_discovery):
