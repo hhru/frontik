@@ -63,6 +63,9 @@ class StatsDClientStub:
     def gauge(self, aspect, value, **kwargs):
         pass
 
+    def set(self, aspect, value, **kwargs):
+        pass
+
 
 class StatsDClient:
     def __init__(self, host, port, app=None, max_udp_size=508, reconnect_timeout=2):
@@ -148,3 +151,6 @@ class StatsDClient:
 
     def gauge(self, aspect, value, **kwargs):
         self._send('{}{}:{}|g'.format(aspect, _convert_tags(dict(kwargs, app=self.app)), value))
+
+    def set(self, aspect, value, **kwargs):
+        self._send('{}{}:{}|s'.format(aspect, _convert_tags(dict(kwargs, app=self.app)), value))

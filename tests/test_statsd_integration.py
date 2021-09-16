@@ -38,3 +38,4 @@ class TestStatsdIntegration(unittest.TestCase):
         self.assertIn('count_metric.tag1_is_tag1.tag2_is_tag2.app_is_tests-projects-test_app:10|c', metrics)
         self.assertIn('gauge_metric.tag_is_tag3.app_is_tests-projects-test_app:100|g', metrics)
         self.assertIn('time_metric.tag_is_tag4.app_is_tests-projects-test_app:1000|ms', metrics)
+        self.assertIn('unique_metric.tag_is_tag5.app_is_tests-projects-test_app:l33t|s', metrics)
