@@ -148,19 +148,19 @@ class _SyncServiceDiscovery:
 
     def _update_register(self, key, new_value):
         weight = _get_weight_or_default(new_value)
-        self._sync_register(self.http_check, self.address, weight)
+        self._sync_register(weight)
 
     def register_service(self):
         weight = _get_weight_or_default(self.kvCache.get_value())
-        self._sync_register(self.http_check, self.address, weight)
+        self._sync_register(weight)
         self.kvCache.start()
 
-    def _sync_register(self, http_check, address, weight):
+    def _sync_register(self, weight):
         register_params = {
             'service_id': self.service_id,
-            'address': address,
+            'address': self.address,
             'port': self.options.port,
-            'check': http_check,
+            'check': self.http_check,
             'tags': self.options.consul_tags,
             'weights': Weight.weights(weight, 0)
         }
