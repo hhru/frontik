@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+import socket
 
 from consul import Check, Consul
 from consul.aio import Consul as AsyncConsul
@@ -10,8 +11,17 @@ from tornado.options import options
 from frontik.version import version
 
 DEFAULT_WEIGHT = 100
+AUTO_RESOLVE_ADDRESS_VALUE = 'resolve'
 
 log = logging.getLogger('service_discovery')
+
+
+def _get_service_address(options):
+    if options.consul_service_address:
+        if AUTO_RESOLVE_ADDRESS_VALUE == options.consul_service_address.lower():
+            hostname = socket.gethostname()
+            return socket.gethostbyname(hostname)
+        return options.consul_service_address
 
 
 def get_async_service_discovery(opts, *, event_loop=None):
@@ -34,9 +44,12 @@ def _make_service_id(options, *, service_name, hostname):
     return f'{service_name}-{hostname}-{options.port}'
 
 
-def _create_http_check(options):
+def _create_http_check(options, address):
+    check_host = options.consul_check_host
+    if not check_host:
+        check_host = address if address else '127.0.0.1'
     http_check = Check.http(
-        f'http://{options.consul_check_host}:{options.port}/status',
+        f'http://{check_host}:{options.port}/status',
         f'{options.consul_http_check_interval_sec}s',
         deregister=f'{options.consul_deregister_critical_timeout}',
         timeout=f'{options.consul_http_check_timeout_sec}s'
@@ -72,7 +85,8 @@ class _AsyncServiceDiscovery:
         self.consul_cache_initial_warmup_timeout_sec = options.consul_cache_initial_warmup_timeout_sec
 
     async def register_service(self):
-        http_check = _create_http_check(self.options)
+        address = _get_service_address(self.options)
+        http_check = _create_http_check(self.options, address)
         index = None
         old_weight = None
         while True:
@@ -88,6 +102,7 @@ class _AsyncServiceDiscovery:
                 old_weight = weight
                 register_params = {
                     'service_id': self.service_id,
+                    'address': address,
                     'port': self.options.port,
                     'check': http_check,
                     'tags': self.options.consul_tags,
@@ -112,7 +127,8 @@ class _SyncServiceDiscovery:
         self.service_name = options.app
         self.hostname = _get_hostname_or_raise(options.node_name)
         self.service_id = _make_service_id(options, service_name=self.service_name, hostname=self.hostname)
-        self.http_check = _create_http_check(options)
+        self.address = _get_service_address(options)
+        self.http_check = _create_http_check(options, self.address)
         self.consul_weight_watch_seconds = f'{options.consul_weight_watch_seconds}s'
         self.consul_weight_total_timeout_sec = options.consul_weight_total_timeout_sec
         self.consul_weight_consistency_mode = ConsistencyMode(options.consul_weight_consistency_mode.lower())
@@ -132,18 +148,19 @@ class _SyncServiceDiscovery:
 
     def _update_register(self, key, new_value):
         weight = _get_weight_or_default(new_value)
-        self._sync_register(self.http_check, weight)
+        self._sync_register(weight)
 
     def register_service(self):
         weight = _get_weight_or_default(self.kvCache.get_value())
-        self._sync_register(self.http_check, weight)
+        self._sync_register(weight)
         self.kvCache.start()
 
-    def _sync_register(self, http_check, weight):
+    def _sync_register(self, weight):
         register_params = {
             'service_id': self.service_id,
+            'address': self.address,
             'port': self.options.port,
-            'check': http_check,
+            'check': self.http_check,
             'tags': self.options.consul_tags,
             'weights': Weight.weights(weight, 0)
         }
