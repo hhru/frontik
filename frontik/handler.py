@@ -35,13 +35,14 @@ from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors, _ge
 from frontik.util import make_url
 from frontik.version import version as frontik_version
 from frontik.validator import BaseValidationModel, Validators
+from frontik.http_status import ALLOWED_STATUSES
 
 if TYPE_CHECKING:
     from http_client import BalancedHttpRequest
 
 
 def _fallback_status_code(status_code):
-    return status_code if status_code in http.client.responses else http.client.SERVICE_UNAVAILABLE
+    return status_code if status_code in ALLOWED_STATUSES else http.client.SERVICE_UNAVAILABLE
 
 
 class FinishWithPostprocessors(Exception):
