@@ -106,7 +106,8 @@ class _AsyncServiceDiscovery:
                     'port': self.options.port,
                     'check': http_check,
                     'tags': self.options.consul_tags,
-                    'weights': Weight.weights(weight, 0)
+                    'weights': Weight.weights(weight, 0),
+                    'caller': self.service_name
                 }
                 if await self.consul.agent.service.register(self.service_name, **register_params):
                     log.info('Successfully registered service %s', register_params)
@@ -114,7 +115,7 @@ class _AsyncServiceDiscovery:
                     raise Exception(f'Failed to register {self.service_id}')
 
     async def deregister_service_and_close(self):
-        if await self.consul.agent.service.deregister(self.service_id):
+        if await self.consul.agent.service.deregister(self.service_id, self.service_name):
             log.info('Successfully deregistered service %s', self.service_id)
         else:
             log.info('Failed to deregister service %s normally', self.service_id)
@@ -142,7 +143,8 @@ class _SyncServiceDiscovery:
             total_timeout=self.consul_weight_total_timeout_sec,
             cache_initial_warmup_timeout=self.consul_cache_initial_warmup_timeout_sec,
             consistency_mode=self.consul_weight_consistency_mode,
-            recurse=False
+            recurse=False,
+            caller=self.service_name
         )
         self.kvCache.add_listener(self._update_register, False)
 
@@ -162,7 +164,8 @@ class _SyncServiceDiscovery:
             'port': self.options.port,
             'check': self.http_check,
             'tags': self.options.consul_tags,
-            'weights': Weight.weights(weight, 0)
+            'weights': Weight.weights(weight, 0),
+            'caller': self.service_name
         }
         if self.consul.agent.service.register(self.service_name, **register_params):
             log.info('Successfully registered service %s', register_params)
@@ -171,7 +174,7 @@ class _SyncServiceDiscovery:
 
     def deregister_service_and_close(self):
         self.kvCache.stop()
-        if self.consul.agent.service.deregister(self.service_id):
+        if self.consul.agent.service.deregister(self.service_id, self.service_name):
             log.info('Successfully deregistered service %s', self.service_id)
         else:
             log.info('Failed to deregister service %s normally', self.service_id)
@@ -218,6 +221,7 @@ class UpstreamCaches:
         self._current_dc = options.datacenter
         self._allow_cross_dc_requests = options.http_client_allow_cross_datacenter_requests
         self._shared_objects_manager = multiprocessing.Manager()
+        self._service_name = options.app
 
         self.upstreams = self._shared_objects_manager.dict()
         self.lock = multiprocessing.Lock()
@@ -232,7 +236,8 @@ class UpstreamCaches:
             total_timeout=service_discovery.consul_weight_total_timeout_sec,
             cache_initial_warmup_timeout=service_discovery.consul_cache_initial_warmup_timeout_sec,
             consistency_mode=service_discovery.consul_weight_consistency_mode,
-            recurse=True
+            recurse=True,
+            caller=self._service_name
         )
         upstream_cache.add_listener(self._update_upstreams_config, True)
         upstream_cache.start()
@@ -245,7 +250,8 @@ class UpstreamCaches:
                         passing=True,
                         watch_seconds=service_discovery.consul_weight_watch_seconds,
                         backoff_delay_seconds=service_discovery.consul_cache_backoff_delay_seconds,
-                        dc=dc
+                        dc=dc,
+                        caller=self._service_name
                     )
                     health_cache.add_listener(self._update_upstreams_service, True)
                     health_cache.start()
@@ -256,7 +262,8 @@ class UpstreamCaches:
                     passing=True,
                     watch_seconds=service_discovery.consul_weight_watch_seconds,
                     backoff_delay_seconds=service_discovery.consul_cache_backoff_delay_seconds,
-                    dc=self._current_dc
+                    dc=self._current_dc,
+                    caller=self._service_name
                 )
                 health_cache.add_listener(self._update_upstreams_service, True)
                 health_cache.start()
