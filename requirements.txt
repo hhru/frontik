@@ -3,5 +3,5 @@ lxml >= 3.5.0
 pycurl >= 7.43.0
 pydantic == v1.7.3
 tornado @ https://github.com/hhru/tornado/archive/5.1.1.zip
-balancing-http-client @ https://github.com/hhru/balancing-http-client/archive/1.1.3.zip
+balancing-http-client @ https://github.com/hhru/balancing-http-client/archive/1.1.4.zip
 python-consul2-hh @ https://github.com/hhru/python-consul2/archive/v0.2.6.zip
