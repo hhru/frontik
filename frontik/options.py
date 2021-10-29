@@ -76,6 +76,7 @@ define('max_http_clients', default=100, type=int)
 define('max_http_clients_connects', default=None, type=int)
 define('send_timeout_stats_interval_ms', default=60000, type=int)
 
+# consul options
 define('consul_enabled', default=True, type=bool)
 define('consul_host', default='127.0.0.1', type=str)
 define('consul_port', default=None, type=int)
@@ -92,6 +93,13 @@ define('consul_consistency_mode', default='default', type=str)
 define('consul_weight_consistency_mode', default=options.consul_consistency_mode, type=str)
 define('consul_deregister_critical_timeout', default='120h', type=str)
 
+# upstream options
 define('upstreams', default=[], type=list)
 define('fail_start_on_empty_upstream', default=True, type=bool)
 define('init_workers_timeout_sec', default=60, type=int)
+
+# opentelemetry options
+define('opentelemetry_collector_host', default='127.0.0.1', type=str)
+define('opentelemetry_collector_port', default=2360, type=int)
+define('opentelemetry_sampler_ratio', default=0.01, type=float)
+define('opentelemetry_enabled', default=False, type=bool)
