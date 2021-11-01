@@ -5,3 +5,5 @@ build_method: nope_build
 update_method: python_update
 python_version_file: frontik/version.py
 deploy_method: nope_deploy
+
+type: library
