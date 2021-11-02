@@ -8,7 +8,7 @@ import math
 import asyncio
 from asyncio.futures import Future
 from functools import partial, wraps
-from typing import TYPE_CHECKING, Any, List, Type, Union
+from typing import TYPE_CHECKING, Any, List, Type, Union, Awaitable
 
 import tornado.curl_httpclient
 import tornado.httputil
@@ -916,6 +916,25 @@ class AwaitablePageHandler(PageHandler):
 
         asyncio.create_task(self._postprocess()).add_done_callback(_cb)
 
+    def run_task(self: 'AwaitablePageHandler', coro: Awaitable):
+        task = asyncio.create_task(coro)
+        self.finish_group.add_future(task)
+        return task
+
+    async def _put_xml_to_response_coro(self: 'AwaitablePageHandler', request_coro: Awaitable):
+        result = await request_coro
+        if not result.failed:
+            self.doc.put(result.data)
+
+    def put_xml_to_response(self: 'AwaitablePageHandler', request_coro: Awaitable):
+        return self.run_task(self._put_xml_to_response_coro(request_coro))
+
+    @staticmethod
+    def wrap_sync_to_coroutine(func):
+        async def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+        return wrapper
+
     async def _postprocess(self):
         if self._finished:
             self.log.info('page was already finished, skipping postprocessors')
@@ -938,8 +957,11 @@ class AwaitablePageHandler(PageHandler):
         self.log.debug('using %s renderer', renderer)
         rendered_result, meta_info = await renderer()
 
-        postprocessed_result = await self._run_template_postprocessors(self._render_postprocessors,
-                                                                       rendered_result, meta_info)
+        postprocessed_result = await self._run_template_postprocessors(
+            self._render_postprocessors,
+            rendered_result,
+            meta_info
+        )
         return postprocessed_result
 
     # Preprocessors and postprocessors

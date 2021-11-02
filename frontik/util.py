@@ -1,6 +1,8 @@
+import asyncio
 import mimetypes
 import os.path
 import re
+from typing import Dict, Awaitable
 from urllib.parse import urlencode
 from uuid import uuid4
 
@@ -173,3 +175,8 @@ def get_abs_path(root_path, relative_path):
         return relative_path
 
     return os.path.normpath(os.path.join(root_path, relative_path))
+
+
+async def gather_dict(coro_dict: Dict[str, Awaitable]):
+    results = await asyncio.gather(*coro_dict.values())
+    return dict(zip(coro_dict.keys(), results))
