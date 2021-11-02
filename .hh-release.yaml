@@ -1,9 +1,8 @@
-version: 6.1.5
+version: 6.1.6
 docker_context: .
 build_docker_file: docker/Dockerfile.building
 build_method: nope_build
 update_method: python_update
 python_version_file: frontik/version.py
 deploy_method: nope_deploy
-
 type: library
