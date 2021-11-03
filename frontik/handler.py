@@ -567,7 +567,10 @@ class PageHandler(RequestHandler):
             self.set_header(name, value)
 
         for args, kwargs in self._mandatory_cookies.values():
-            self.set_cookie(*args, **kwargs)
+            try:
+                self.set_cookie(*args, **kwargs)
+            except ValueError:
+                self.set_status(http.client.BAD_REQUEST)
 
         if self._status_code in (204, 304) or (100 <= self._status_code < 200):
             self._write_buffer = []

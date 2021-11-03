@@ -27,3 +27,8 @@ class TestPostprocessors(unittest.TestCase):
         self.assertEqual(response.status_code, 500)
         self.assertIsNone(response.headers.get('TEST_HEADER'))
         self.assertIsNone(response.headers.get('TEST_COOKIE'))
+
+    def test_invalid_mandatory_cookie(self):
+        response = frontik_test_app.get_page('mandatory_headers?test_invalid_mandatory_cookie')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.headers.get('TEST_COOKIE'), None)
