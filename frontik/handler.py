@@ -904,6 +904,9 @@ class AwaitablePageHandler(PageHandler):
         """ This method can be implemented in the subclass """
         self.__return_405()
 
+    def __return_405(self):
+        super()._PageHandler__return_405()
+
     # Finish page
 
     def finish_with_postprocessors(self):
