@@ -27,3 +27,7 @@ class Page(PageHandler):
             self.clear_header('TEST_HEADER')
             self.clear_cookie('TEST_COOKIE')
             raise HTTPError(500)
+
+        elif self.get_argument('test_invalid_mandatory_cookie') is not None:
+            self.set_mandatory_cookie('TEST_COOKIE', '<!--#include file="/etc/passwd"-->')
+            raise HTTPError(500)
