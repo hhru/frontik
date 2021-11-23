@@ -39,6 +39,8 @@ class Telemetry:
 
     def start_instrumentation(self):
         TornadoInstrumentor().instrument(
+            # Will be removed, when releasing https://github.com/open-telemetry/opentelemetry-python-contrib/pull/812
+            skip_dep_check=True,
             client_request_hook=_client_request_hook,
         )
 
