@@ -5,7 +5,8 @@ from tornado.escape import to_unicode
 from tornado.httputil import HTTPFile, parse_body_arguments
 
 from frontik import media_types
-from frontik.util import any_to_bytes, any_to_unicode, make_mfd, make_qs, make_url, reverse_regex_named_groups
+from frontik.util import any_to_bytes, any_to_unicode, make_mfd, make_qs, make_url, reverse_regex_named_groups,\
+    generate_uniq_timestamp_request_id
 
 
 class TestUtil(unittest.TestCase):
@@ -132,3 +133,13 @@ class TestUtil(unittest.TestCase):
 
         self.assertRaises(ValueError, reverse_regex_named_groups, two_ids, 1)
         self.assertRaises(ValueError, reverse_regex_named_groups, two_ids, id1=1)
+
+    def test_generate_request_id(self):
+        first = generate_uniq_timestamp_request_id()
+        second = generate_uniq_timestamp_request_id()
+
+        self.assertEqual(32, len(first))
+        self.assertEqual(32, len(second))
+        self.assertNotEqual(first, second)
+        int(first, 16)
+        int(second, 16)
