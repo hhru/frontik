@@ -26,7 +26,7 @@ from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.routing import FileMappingRouter, FrontikRouter
 from frontik.service_discovery import get_async_service_discovery, UpstreamStoreSharedMemory, UpstreamCaches
 from frontik.telemetry import Telemetry
-from frontik.util import generate_uniq_timestamp_request_id
+from frontik.util import generate_uniq_timestamp_request_id, check_request_id
 from frontik.version import version as frontik_version
 
 app_logger = logging.getLogger('http_client')
@@ -185,7 +185,8 @@ class FrontikApplication(Application):
         request_id = request.headers.get('X-Request-Id')
         if request_id is None:
             request_id = FrontikApplication.next_request_id()
-
+        if options.validate_request_id:
+            check_request_id(request_id)
         context = partial(request_context.RequestContext, {'request': request, 'request_id': request_id})
 
         def wrapped_in_context(func):

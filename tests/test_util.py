@@ -6,7 +6,7 @@ from tornado.httputil import HTTPFile, parse_body_arguments
 
 from frontik import media_types
 from frontik.util import any_to_bytes, any_to_unicode, make_mfd, make_qs, make_url, reverse_regex_named_groups,\
-    generate_uniq_timestamp_request_id
+    generate_uniq_timestamp_request_id, check_request_id
 
 
 class TestUtil(unittest.TestCase):
@@ -143,3 +143,7 @@ class TestUtil(unittest.TestCase):
         self.assertNotEqual(first, second)
         int(first, 16)
         int(second, 16)
+
+    def test_check_request_id(self):
+        self.assertTrue(check_request_id('12345678910abcdef'))
+        self.assertFalse(check_request_id('not_hex_format_123'))
