@@ -63,6 +63,6 @@ class FrontikIdGenerator(IdGenerator):
         try:
             request_id = int(request_context.get_request_id(), 16)
             return request_id
-        except ValueError:
+        except Exception:
             log.debug('request_id is not valid hex-format. Generating random trace_id')
         return random.getrandbits(128)
