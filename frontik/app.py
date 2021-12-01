@@ -26,6 +26,7 @@ from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.routing import FileMappingRouter, FrontikRouter
 from frontik.service_discovery import get_async_service_discovery, UpstreamStoreSharedMemory, UpstreamCaches
 from frontik.telemetry import Telemetry
+from frontik.util import generate_uniq_timestamp_request_id, check_request_id
 from frontik.version import version as frontik_version
 
 app_logger = logging.getLogger('http_client')
@@ -101,7 +102,7 @@ class PydevdHandler(RequestHandler):
 
 
 class FrontikApplication(Application):
-    request_id = 0
+    request_id = ''
 
     class DefaultConfig:
         pass
@@ -184,7 +185,8 @@ class FrontikApplication(Application):
         request_id = request.headers.get('X-Request-Id')
         if request_id is None:
             request_id = FrontikApplication.next_request_id()
-
+        if options.validate_request_id:
+            check_request_id(request_id)
         context = partial(request_context.RequestContext, {'request': request, 'request_id': request_id})
 
         def wrapped_in_context(func):
@@ -231,8 +233,8 @@ class FrontikApplication(Application):
 
     @staticmethod
     def next_request_id():
-        FrontikApplication.request_id += 1
-        return str(FrontikApplication.request_id)
+        FrontikApplication.request_id = generate_uniq_timestamp_request_id()
+        return FrontikApplication.request_id
 
     def get_current_status(self):
         if self.init_workers_count_down.value > 0:

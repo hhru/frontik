@@ -14,6 +14,7 @@ define('tornado_settings', default=None, type=dict)
 define('max_active_handlers', default=100, type=int)
 define('reuse_port', default=True, type=bool)
 define('xheaders', default=False, type=bool)
+define('validate_request_id', default=False, type=bool)
 
 define('config', None, str)
 define('host', '0.0.0.0', str)

@@ -1,6 +1,9 @@
 import asyncio
+import datetime
+import logging
 import mimetypes
 import os.path
+import random
 import re
 from typing import Dict, Awaitable
 from urllib.parse import urlencode
@@ -9,6 +12,8 @@ from uuid import uuid4
 from tornado.escape import to_unicode, utf8
 
 from frontik import media_types
+
+logger = logging.getLogger('util')
 
 
 def any_to_unicode(s):
@@ -84,6 +89,7 @@ def make_mfd(fields, files):
     fields :: { field_name : field_value }
     files :: { field_name: [{ "filename" : fn, "body" : bytes }]}
     """
+
     def addslashes(text):
         for s in (b'\\', b'"'):
             if s in text:
@@ -175,6 +181,21 @@ def get_abs_path(root_path, relative_path):
         return relative_path
 
     return os.path.normpath(os.path.join(root_path, relative_path))
+
+
+def generate_uniq_timestamp_request_id() -> str:
+    timestamp_ms_int = int(datetime.datetime.now().timestamp() * 100_000)
+    random_hex_part = f'{random.randrange(16**17):017x}'
+    return f'{timestamp_ms_int}{random_hex_part}'
+
+
+def check_request_id(request_id: str) -> bool:
+    try:
+        int(request_id, 16)
+        return True
+    except ValueError:
+        logger.error(f'request_id = {request_id} is not valid hex-format')
+        return False
 
 
 async def gather_dict(coro_dict: Dict[str, Awaitable]):

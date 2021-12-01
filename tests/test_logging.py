@@ -120,7 +120,7 @@ class TestSyslog(unittest.TestCase):
             {
                 'priority': '10',
                 'message': r'\[\d+\] [\d-]+ [\d:,]+ CRITICAL '
-                           r'custom_logger\.tests\.projects\.test_app\.pages\.log\.Page\.\d+: fatal'
+                           r'custom_logger\.tests\.projects\.test_app\.pages\.log\.Page\.\w+: fatal'
             },
         ]
 
