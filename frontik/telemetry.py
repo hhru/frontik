@@ -60,9 +60,14 @@ class FrontikIdGenerator(IdGenerator):
         return random.getrandbits(64)
 
     def generate_trace_id(self) -> int:
+        request_id = request_context.get_request_id()
         try:
-            request_id = int(request_context.get_request_id(), 16)
+            if len(request_id) < 32:
+                log.debug(f'request_id = {request_id} is less than 32 characters. Generating random trace_id ')
+                return random.getrandbits(128)
+
+            request_id = int(request_id[:32], 16)
             return request_id
         except Exception:
-            log.debug('request_id is not valid hex-format. Generating random trace_id')
+            log.debug(f'request_id = {request_id} is not valid hex-format. Generating random trace_id')
         return random.getrandbits(128)
