@@ -50,8 +50,8 @@ class Telemetry:
 
 def _client_request_hook(span, request):
     span.update_name(request_context.get_handler_name())
-    span.set_attribute("requestTimeout", request.request_timeout)
-    span.set_attribute("connectTimeout", request.connect_timeout)
+    span.set_attribute("requestTimeout", request.request_timeout * 1000)
+    span.set_attribute("connectTimeout", request.connect_timeout * 1000)
 
 
 class FrontikIdGenerator(IdGenerator):
