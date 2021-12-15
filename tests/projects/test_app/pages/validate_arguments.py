@@ -21,6 +21,7 @@ class Page(PageHandler):
         empty_default_str = self.get_str_argument('str_arg_with_default', 'default')
         empty_default_int = self.get_int_argument('int_arg_with_default', 0)
         empty_str = self.get_str_argument('str_arg')
+        none_float = self.get_float_argument('test', None)
         self.get_int_argument('int_arg')
 
         if is_custom_model:
@@ -35,6 +36,7 @@ class Page(PageHandler):
             'str_arg_with_default': empty_default_str,
             'int_arg_with_default': empty_default_int,
             'str_arg': empty_str,
+            'none_float': none_float is None
         })
 
     def post_page(self):
