@@ -31,6 +31,7 @@ class TestJsonResponse(unittest.TestCase):
         self.assertEqual('', get_data['str_arg'])
         self.assertEqual('default', get_data['str_arg_with_default'])
         self.assertEqual(0, get_data['int_arg_with_default'])
+        self.assertEqual(True, get_data['none_float'])
 
         post_data = frontik_test_app.get_page_json(
             'validate_arguments',

@@ -8,7 +8,7 @@ import math
 import asyncio
 from asyncio.futures import Future
 from functools import partial, wraps
-from typing import TYPE_CHECKING, Any, List, Type, Union, Awaitable
+from typing import TYPE_CHECKING, Any, List, Type, Union, Awaitable, overload, Optional
 
 import tornado.curl_httpclient
 import tornado.httputil
@@ -205,7 +205,7 @@ class PageHandler(RequestHandler):
         from_body: bool = False, array: bool = False, strip: bool = True
     ) -> Any:
         validator = validation.value
-        if default is not _ARG_DEFAULT:
+        if default is not _ARG_DEFAULT and default is not None:
             try:
                 params = {validator: default}
                 validated_default = self._validation_model(**params).dict().get(validator)
@@ -233,22 +233,68 @@ class PageHandler(RequestHandler):
 
         return validated_value
 
+    @overload
+    def get_str_argument(self, name: str, default: None = _ARG_DEFAULT, path_safe: bool = True,
+                         **kwargs) -> Optional[Union[str, List[str]]]:
+        ...
+
+    @overload
+    def get_str_argument(self, name: str, default: Union[str, List[str]] = _ARG_DEFAULT, path_safe: bool = True,
+                         **kwargs) -> Union[str, List[str]]:
+        ...
+
     def get_str_argument(
-        self, name: str, default: str = _ARG_DEFAULT, path_safe: bool = True, **kwargs
-    ) -> Union[str, List[str]]:
+        self, name: str, default: Optional[Union[str, List[str]]] = _ARG_DEFAULT, path_safe: bool = True, **kwargs
+    ) -> Optional[Union[str, List[str]]]:
         if path_safe:
             return self.get_validated_argument(name, Validators.PATH_SAFE_STRING, default=default, **kwargs)
         return self.get_validated_argument(name, Validators.STRING, default=default, **kwargs)
 
-    def get_int_argument(self, name: str, default: int = _ARG_DEFAULT, **kwargs) -> Union[int, List[int]]:
+    @overload
+    def get_int_argument(self, name: str, default: None = _ARG_DEFAULT,
+                         **kwargs) -> Optional[Union[int, List[int]]]:
+        ...
+
+    @overload
+    def get_int_argument(self, name: str, default: Union[int, List[int]] = _ARG_DEFAULT,
+                         **kwargs) -> Union[int, List[int]]:
+        ...
+
+    def get_int_argument(
+        self, name: str, default: Optional[Union[int, List[int]]] = _ARG_DEFAULT, **kwargs
+    ) -> Optional[Union[int, List[int]]]:
         return self.get_validated_argument(name, Validators.INTEGER, default=default, **kwargs)
 
-    def get_bool_argument(self, name: str, default: bool = _ARG_DEFAULT, **kwargs) -> Union[bool, List[bool]]:
+    @overload
+    def get_bool_argument(self, name: str, default: None = _ARG_DEFAULT,
+                          **kwargs) -> Optional[Union[bool, List[bool]]]:
+        ...
+
+    @overload
+    def get_bool_argument(self, name: str,
+                          default: Union[bool, List[bool]] = _ARG_DEFAULT, **kwargs) -> Union[bool, List[bool]]:
+        ...
+
+    def get_bool_argument(
+        self, name: str, default: Optional[Union[bool, List[bool]]] = _ARG_DEFAULT, **kwargs
+    ) -> Optional[Union[bool, List[bool]]]:
         return self.get_validated_argument(name, Validators.BOOLEAN, default=default, **kwargs)
 
+    @overload
     def get_float_argument(
-        self, name: str, default: float = _ARG_DEFAULT, **kwargs
+        self, name: str, default: None = _ARG_DEFAULT, **kwargs
+    ) -> Optional[Union[float, List[float]]]:
+        ...
+
+    @overload
+    def get_float_argument(
+        self, name: str, default: Union[float, List[float]] = _ARG_DEFAULT, **kwargs
     ) -> Union[float, List[float]]:
+        ...
+
+    def get_float_argument(
+        self, name: str, default: Optional[Union[float, List[float]]] = _ARG_DEFAULT, **kwargs
+    ) -> Optional[Union[float, List[float]]]:
         return self.get_validated_argument(name, Validators.FLOAT, default=default, **kwargs)
 
     def _get_request_mime_type(self, request):
