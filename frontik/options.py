@@ -100,7 +100,6 @@ define('upstreams', default=[], type=list)
 define('fail_start_on_empty_upstream', default=True, type=bool)
 
 # opentelemetry options
-define('opentelemetry_collector_host', default='127.0.0.1', type=str)
-define('opentelemetry_collector_port', default=2360, type=int)
+define('opentelemetry_collector_url', default='http://127.0.0.1:2360', type=str)
 define('opentelemetry_sampler_ratio', default=0.01, type=float)
 define('opentelemetry_enabled', default=False, type=bool)
