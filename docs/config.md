@@ -114,8 +114,7 @@ Opentelemetry options:
 
 | Option name                         | Type   | Default value | Description                                                            |
 |-------------------------------------|--------|---------------|------------------------------------------------------------------------|
-| `opentelemetry_collector_host`      | `str`  | `127.0.0.1`   | OpenTelemetry collector host                                           |
-| `opentelemetry_collector_port`      | `int`  | `None`        | OpenTelemetry collector port                                           |
+| `opentelemetry_collector_url`       | `str`  | `127.0.0.1`   | OpenTelemetry collector url                                            |
 | `opentelemetry_sampler_ratio`       | `float`| `0.01`        | Probability (between 0 and 1) that a span will be sampled              |
 | `opentelemetry_enabled`             | `bool` | `False`       | Enable OpenTelemetry features                                          |
 

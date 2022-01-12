@@ -122,9 +122,6 @@ async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_r
         log.info('requested shutdown')
         log.info('close shared objects manager')
         app.upstream_caches._stop_shared_objects_manager()
-        if app.telemetry:
-            log.info('stop telemetry')
-            app.telemetry.stop_instrumentation()
         log.info('shutting down server on %s:%d', options.host, options.port)
         ioloop.add_callback_from_signal(server_stop)
 

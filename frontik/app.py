@@ -25,7 +25,6 @@ from frontik.handler import ErrorHandler
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.routing import FileMappingRouter, FrontikRouter
 from frontik.service_discovery import get_async_service_discovery, UpstreamStoreSharedMemory, UpstreamCaches
-from frontik.telemetry import Telemetry
 from frontik.util import generate_uniq_timestamp_request_id, check_request_id
 from frontik.version import version as frontik_version
 
@@ -131,7 +130,6 @@ class FrontikApplication(Application):
         self.router = FrontikRouter(self)
         self.init_workers_count_down = multiprocessing.Value('i', options.workers)
 
-        self.telemetry = None
         core_handlers = [
             (r'/version/?', VersionHandler),
             (r'/status/?', StatusHandler),
@@ -146,11 +144,6 @@ class FrontikApplication(Application):
         super().__init__(core_handlers, **tornado_settings)
 
     async def init(self):
-        if options.opentelemetry_enabled:
-            app_logger.info('start telemetry')
-            self.telemetry = Telemetry(options)
-            self.telemetry.start_instrumentation()
-
         self.service_discovery_client = get_async_service_discovery(options)
         self.transforms.insert(0, partial(DebugTransform, self))
         self.upstream_store = UpstreamStoreSharedMemory(self.upstream_caches.lock, self.upstream_caches.upstreams)

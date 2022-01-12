@@ -1,7 +1,7 @@
 import unittest
 
 from frontik import request_context
-from frontik.telemetry import FrontikIdGenerator
+from frontik.integrations.telemetry import FrontikIdGenerator, get_netloc
 
 
 class TelemetryTestCase(unittest.TestCase):
@@ -43,3 +43,10 @@ class TelemetryTestCase(unittest.TestCase):
         trace_id = self.trace_id_generator.generate_trace_id()
         self.assertIsNotNone(trace_id)
         self.assertNotEqual('0x163897206', hex(trace_id))
+
+    def test_get_netloc(self):
+        self.assertEqual('balancer:7000', get_netloc('balancer:7000/xml/get-article/'))
+        self.assertEqual('balancer:7000', get_netloc('//balancer:7000/xml/get-article/'))
+        self.assertEqual('balancer:7000', get_netloc('https://balancer:7000/xml/get-article/'))
+        self.assertEqual('hh.ru', get_netloc('https://hh.ru'))
+        self.assertEqual('ftp:', get_netloc('ftp://hh.ru'))
