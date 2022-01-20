@@ -31,6 +31,7 @@ define('asyncio_task_critical_threshold_sec', None, float)
 
 define(LOG_DIR_OPTION_NAME, default=None, type=str, help='Log file name')
 define('log_level', default='info', type=str, help='Log level')
+define('update_log_level_interval_in_seconds', default=300, type=int)
 define('log_json', default=True, type=bool, help='Enable JSON logging for files and syslog')
 define('log_text_format', default='[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s',
        type=str, help='Log format for files and syslog when JSON logging is disabled')
