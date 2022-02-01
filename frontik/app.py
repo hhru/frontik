@@ -49,6 +49,7 @@ def get_frontik_and_apps_versions(application):
     etree.SubElement(versions, 'lxml.etree.LIBXSLT').text = '.'.join(str(x) for x in etree.LIBXSLT_VERSION)
     etree.SubElement(versions, 'pycurl').text = pycurl.version
     etree.SubElement(versions, 'python').text = sys.version.replace('\n', '')
+    etree.SubElement(versions, 'event_loop').text = str(type(asyncio.get_event_loop())).split("'")[1]
     etree.SubElement(versions, 'application', name=options.app).extend(application.application_version_xml())
 
     return versions
