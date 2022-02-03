@@ -81,6 +81,14 @@ def main(config_file=None):
 def _run_worker(app, count_down_lock, need_to_init=False):
     gc.enable()
     MDC.init('worker')
+
+    try:
+        import uvloop
+    except ImportError:
+        log.info('There is no installed uvloop; use asyncio event loop')
+    else:
+        uvloop.install()
+
     ioloop = tornado.ioloop.IOLoop.current()
     executor = ThreadPoolExecutor(options.common_executor_pool_size)
     ioloop.asyncio_loop.set_default_executor(executor)
@@ -104,7 +112,6 @@ async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_r
     if options.asyncio_task_threshold_sec is not None:
         slow_tasks_logger = bootstrap_logger('slow_tasks', logging.WARNING, use_json_formatter=False)
 
-        import asyncio
         import reprlib
 
         reprlib.aRepr.maxother = 256
