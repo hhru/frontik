@@ -33,4 +33,4 @@ if __name__ == '__main__':
     # consul_port need to defined in config file,
     # but for easily startup example we in-line free local machine port in options
     options.consul_port = server.server_port
-    main('./frontik.cfg')
+    main('examples/frontik.cfg')
