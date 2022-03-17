@@ -5,6 +5,7 @@ import os
 import signal
 import sys
 import time
+import random
 from dataclasses import dataclass
 
 from tornado.options import options
@@ -96,6 +97,7 @@ def _start_child(i, state):
     if pid == 0:
         state.server = False
         state.children = {}
+        random.seed()
         return True
     else:
         state.children[pid] = i
