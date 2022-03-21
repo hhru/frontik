@@ -5,7 +5,7 @@ from frontik import media_types
 from frontik.handler import PageHandler
 from frontik.futures import AsyncGroup
 
-from tests.projects.balancer_app import get_server, get_non_listening_server
+from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_occupied
 
 
