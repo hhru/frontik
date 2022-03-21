@@ -6,8 +6,6 @@ Each virtual host is added or modified using `register_upstream` method of HttpC
 * `name` - any unique string used to identify virtual host
 * `upstream_config` - dict with configuration parameters:
     * `max_tries` - maximum number of tries to perform request
-    * `max_fails` - maximum concurrent errors for server to be considered dead
-    * `fail_timeout_sec` - timeout before restoring a dead server
     * `connect_timeout_sec` - default connect timeout for requests to this host
     * `request_timeout_sec` - default request timeout for requests to this host
     * `max_timeout_tries` - request timeout multiplier
@@ -23,4 +21,4 @@ Each virtual host is added or modified using `register_upstream` method of HttpC
 Virtual host could be added, updated or deleted at any time.
 To make configuration of virtual hosts easier, `update_upstream` function accepts string representation of configuration:
 
-`max_tries=10 fail_timeout_sec=1 max_fails=30 request_timeout_sec=0.2 connect_timeout_sec=1 max_timeout_tries=2 | server=172.17.0.1:1111 | server=172.17.0.1:2222`
+`max_tries=10 request_timeout_sec=0.2 connect_timeout_sec=1 max_timeout_tries=2 | server=172.17.0.1:1111 | server=172.17.0.1:2222`

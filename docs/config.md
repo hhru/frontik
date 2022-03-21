@@ -65,8 +65,6 @@ HTTP client options:
 | `http_client_default_request_timeout_sec`     | `float` | `2.0`              | Default request timeout                                                                    |
 | `http_client_default_max_tries`               | `int`   | `2`                | Maximum number of retries per request + 1                                                  |
 | `http_client_default_max_timeout_tries`       | `int`   | `1`                | Maximum number of retries due to timeout per request + 1                                   |
-| `http_client_default_max_fails`               | `int`   | `0`                | Number of consecutive fails before server is considered dead                               |
-| `http_client_default_fail_timeout_sec`        | `float` | `10`               | Timeout before starting making requests to a dead server                                   |
 | `http_client_default_retry_policy`            | `dict`  | `{599: False, 503: False}` | Conditions when request retry is possible                                                  |
 | `http_proxy_host`                             | `str`   | `None`             | HTTP proxy host for Curl HTTP client                                                       |
 | `http_proxy_port`                             | `int`   | `3128`             | HTTP proxy port for Curl HTTP client                                                       |
