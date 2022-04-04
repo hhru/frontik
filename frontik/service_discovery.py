@@ -206,8 +206,7 @@ class UpstreamStoreSharedMemory(UpstreamStore):
         self.upstreams = upstreams
 
     def get_upstream(self, host):
-        with self.lock:
-            shared_upstream = self.upstreams.get(host, None)
+        shared_upstream = self.upstreams.get(host, None)
 
         return shared_upstream
 
@@ -223,7 +222,7 @@ class UpstreamCaches:
         self._shared_objects_manager = multiprocessing.Manager()
         self._service_name = options.app
 
-        self.upstreams = self._shared_objects_manager.dict()
+        self.upstreams = {}
         self.lock = multiprocessing.Lock()
 
     def initial_upstreams_caches(self):
@@ -271,8 +270,7 @@ class UpstreamCaches:
             self._check_empty_upstreams_on_startup()
 
     def _check_empty_upstreams_on_startup(self):
-        with self.lock:
-            empty_upstreams = [k for k, v in self.upstreams.items() if not v.servers]
+        empty_upstreams = [k for k, v in self.upstreams.items() if not v.servers]
         if empty_upstreams:
             raise RuntimeError(
                 f'failed startup application, because for next upstreams got empty servers: {empty_upstreams}'
@@ -299,8 +297,7 @@ class UpstreamCaches:
     def _update_upstreams(self, key):
         servers_from_all_dc = self._combine_servers(key)
         log.info(f'current servers for upstream {key}: [{",".join(str(s) for s in servers_from_all_dc)}]')
-        with self.lock:
-            self.upstreams[key] = Upstream(key, self._upstreams_config.get(key, {}), servers_from_all_dc)
+        self.upstreams[key] = Upstream(key, self._upstreams_config.get(key, {}), servers_from_all_dc)
 
     def _combine_servers(self, key):
         servers_from_all_dc = []
