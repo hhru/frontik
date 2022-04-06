@@ -11,6 +11,7 @@ import logging
 import pycurl
 import tornado
 from lxml import etree
+from tornado import httputil
 from tornado.options import options
 from tornado.httpclient import AsyncHTTPClient
 from tornado.stack_context import StackContext
@@ -197,7 +198,7 @@ class FrontikApplication(Application):
 
             return wrapper
 
-        delegate = wrapped_in_context(super().find_handler)(request, **kwargs)
+        delegate: httputil.HTTPMessageDelegate = wrapped_in_context(super().find_handler)(request, **kwargs)
         delegate.headers_received = wrapped_in_context(delegate.headers_received)
         delegate.data_received = wrapped_in_context(delegate.data_received)
         delegate.finish = wrapped_in_context(delegate.finish)

@@ -9,7 +9,6 @@ import signal
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Type
 
 import tornado.autoreload
 import tornado.httpserver
@@ -112,12 +111,12 @@ async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_r
     """Starts Frontik server for an application"""
 
     if options.asyncio_task_threshold_sec is not None:
-        slow_tasks_logger = bootstrap_logger('slow_tasks', logging.WARNING, use_json_formatter=False)
+        slow_tasks_logger = bootstrap_logger('slow_tasks', logging.WARNING)
 
         import reprlib
 
         reprlib.aRepr.maxother = 256
-        wrap_handle_with_time_logging(asyncio.Handle, app, slow_tasks_logger)
+        wrap_handle_with_time_logging(app, slow_tasks_logger)
 
     log.info('starting server on %s:%s', options.host, options.port)
     http_server = tornado.httpserver.HTTPServer(app, xheaders=options.xheaders)
@@ -217,17 +216,14 @@ async def _deinit_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_
             log.exception('failed to deinit, deinit returned: %s', e)
 
 
-def wrap_handle_with_time_logging(handle: Type[asyncio.Handle], app: FrontikApplication, slow_tasks_logger):
-    old_run = handle._run
+def wrap_handle_with_time_logging(app: FrontikApplication, slow_tasks_logger):
+    old_run = asyncio.Handle._run
 
-    def run(self):
-        start_time = self._loop.time()
-        old_run(self)
-        delta = self._loop.time() - start_time
-        if delta >= options.asyncio_task_threshold_sec:
-            delta_ms = delta * 1000
-            app.statsd_client.time('long_task.time', int(delta_ms))
-            slow_tasks_logger.warning('%s took %.2fms', self, delta_ms)
+    def _log_slow_tasks(handle: asyncio.Handle, delta: float):
+        delta_ms = delta * 1000
+        app.statsd_client.time('long_task.time', int(delta_ms))
+        slow_tasks_logger.warning('%s took %.2fms', handle, delta_ms)
+
         if options.asyncio_task_critical_threshold_sec and delta >= options.asyncio_task_critical_threshold_sec:
             request = get_request() or HTTPServerRequest('GET', '/asyncio_long_task_stub')
             sentry_logger = app.get_sentry_logger(request)
@@ -235,6 +231,14 @@ def wrap_handle_with_time_logging(handle: Type[asyncio.Handle], app: FrontikAppl
 
             if sentry_logger:
                 slow_tasks_logger.warning('no sentry logger available')
-                sentry_logger.capture_message(f'{self} took {(delta * 1000):.2f} ms', stack=True)
+                sentry_logger.capture_message(f'{handle} took {delta_ms:.2f} ms', stack=True)
+
+    def run(self):
+        start_time = self._loop.time()
+        old_run(self)
+        delta = self._loop.time() - start_time
+
+        if delta >= options.asyncio_task_threshold_sec:
+            self._context.run(partial(_log_slow_tasks, self, delta))
 
     asyncio.Handle._run = run
