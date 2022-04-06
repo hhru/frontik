@@ -8,7 +8,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 class Page(handler.PageHandler):
     def get_page(self):
-        self.application.upstream_caches.upstreams['no_available_backend'] = Upstream('no_available_backend', {}, [])
+        self.application.http_client_factory.update_upstream(Upstream('no_available_backend', {}, []))
 
         def check_requests_cb():
             check_all_requests_done(self, 'no_available_backend')

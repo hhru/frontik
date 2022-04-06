@@ -9,8 +9,8 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 class Page(handler.PageHandler):
     def get_page(self):
-        self.application.upstream_caches.upstreams['no_retry_error'] = Upstream('no_retry_error', {},
-                                                                                [get_server(self, 'broken')])
+        self.application.http_client_factory.update_upstream(
+            Upstream('no_retry_error', {}, [get_server(self, 'broken')]))
 
         def check_requests_cb():
             check_all_requests_done(self, 'no_retry_error')
