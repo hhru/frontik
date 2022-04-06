@@ -11,9 +11,8 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 class Page(PageHandler):
     def get_page(self):
-        self.application.upstream_caches.upstreams['retry_on_timeout'] = Upstream('retry_on_timeout', {},
-                                                                                  [get_server(self, 'broken'),
-                                                                                   get_server(self, 'normal')])
+        self.application.http_client_factory.update_upstream(
+            Upstream('retry_on_timeout', {}, [get_server(self, 'broken'), get_server(self, 'normal')]))
 
         def check_requests_cb():
             check_all_requests_done(self, 'retry_on_timeout')

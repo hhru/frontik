@@ -16,8 +16,8 @@ class Page(PageHandler):
         normal_server.rack = 'rack1'
         normal_server.datacenter = 'dc2'
 
-        self.application.upstream_caches.upstreams['different_datacenter'] = Upstream('different_datacenter', {},
-                                                                                      [free_server, normal_server])
+        self.application.http_client_factory.update_upstream(
+            Upstream('different_datacenter', {}, [free_server, normal_server]))
 
         def callback(text, response):
             server = next(

@@ -24,7 +24,7 @@ from frontik.debug import DebugTransform
 from frontik.handler import ErrorHandler
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.routing import FileMappingRouter, FrontikRouter
-from frontik.service_discovery import get_async_service_discovery, UpstreamStoreSharedMemory, UpstreamCaches
+from frontik.service_discovery import get_async_service_discovery, UpstreamCaches
 from frontik.util import generate_uniq_timestamp_request_id, check_request_id
 from frontik.version import version as frontik_version
 
@@ -126,8 +126,9 @@ class FrontikApplication(Application):
         self.service_discovery_client = None
         self.tornado_http_client = None
         self.http_client_factory = None
-        self.upstream_store = None
-        self.upstream_caches = UpstreamCaches()
+        self.upstreams = {}
+        self.children_pipes = {}
+        self.upstream_caches = UpstreamCaches(self.children_pipes, self.upstreams)
         self.router = FrontikRouter(self)
         self.init_workers_count_down = multiprocessing.Value('i', options.workers)
 
@@ -147,7 +148,6 @@ class FrontikApplication(Application):
     async def init(self):
         self.service_discovery_client = get_async_service_discovery(options)
         self.transforms.insert(0, partial(DebugTransform, self))
-        self.upstream_store = UpstreamStoreSharedMemory(self.upstream_caches.lock, self.upstream_caches.upstreams)
 
         AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
         self.tornado_http_client = AsyncHTTPClient()
@@ -172,7 +172,6 @@ class FrontikApplication(Application):
         kafka_producer = self.get_kafka_producer(kafka_cluster) if send_metrics_to_kafka else None
 
         self.http_client_factory = HttpClientFactory(self.app, self.tornado_http_client,
-                                                     upstream_store=self.upstream_store,
                                                      statsd_client=self.statsd_client, kafka_producer=kafka_producer)
 
     def find_handler(self, request, **kwargs):
