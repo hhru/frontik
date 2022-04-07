@@ -23,7 +23,7 @@ from frontik.loggers import bootstrap_logger, bootstrap_core_logging, MDC
 from frontik.options import options
 from frontik.process import fork_workers
 from frontik.request_context import get_request
-from frontik.service_discovery import get_sync_service_discovery
+from frontik.service_discovery import get_sync_service_discovery, UpstreamUpdateListener
 
 log = logging.getLogger('server')
 
@@ -65,20 +65,22 @@ def main(config_file=None):
         gc.freeze()
         if options.workers != 1:
             service_discovery_client = get_sync_service_discovery(options)
-            fork_workers(partial(_run_worker, app, count_down_lock),
+            fork_workers(partial(_run_worker, app, count_down_lock, False),
+                         app=app,
                          init_workers_count_down=app.init_workers_count_down,
                          num_workers=options.workers,
                          after_workers_up_action=service_discovery_client.register_service,
-                         before_workers_shutdown_action=service_discovery_client.deregister_service_and_close)
+                         before_workers_shutdown_action=service_discovery_client.deregister_service_and_close,
+                         children_pipes=app.children_pipes)
         else:
             # run in single process mode
-            _run_worker(app, count_down_lock, True)
+            _run_worker(app, count_down_lock, True, None)
     except Exception as e:
         log.exception('frontik application exited with exception: %s', e)
         sys.exit(1)
 
 
-def _run_worker(app, count_down_lock, need_to_init=False):
+def _run_worker(app, count_down_lock, need_to_init, pipe):
     gc.enable()
     MDC.init('worker')
 
@@ -93,7 +95,7 @@ def _run_worker(app, count_down_lock, need_to_init=False):
     executor = ThreadPoolExecutor(options.common_executor_pool_size)
     ioloop.asyncio_loop.set_default_executor(executor)
     initialize_application_task = ioloop.asyncio_loop.create_task(
-        _init_app(app, ioloop, count_down_lock, need_to_init)
+        _init_app(app, ioloop, count_down_lock, need_to_init, pipe)
     )
 
     def initialize_application_task_result_handler(future):
@@ -126,10 +128,7 @@ async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_r
         tornado.autoreload.start(1000)
 
     def sigterm_handler(signum, frame):
-        log.info('requested shutdown')
-        log.info('close shared objects manager')
-        app.upstream_caches._stop_shared_objects_manager()
-        log.info('shutting down server on %s:%d', options.host, options.port)
+        log.info('requested shutdown, shutting down server on %s:%d', options.host, options.port)
         ioloop.add_callback_from_signal(server_stop)
 
     def ioloop_is_running():
@@ -183,8 +182,10 @@ def parse_configs(config_files):
 
 
 async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, count_down_lock,
-                    need_to_register_in_service_discovery):
+                    need_to_register_in_service_discovery, pipe):
     await app.init()
+    if not need_to_register_in_service_discovery:
+        await UpstreamUpdateListener(app.http_client_factory, pipe).get_init_future()
     await run_server(app, ioloop, need_to_register_in_service_discovery)
     log.info(f'Successfully inited application {app.app}')
     with count_down_lock:

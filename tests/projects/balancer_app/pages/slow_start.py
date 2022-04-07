@@ -15,11 +15,13 @@ class Page(PageHandler):
         server = get_server(self, 'normal')
         server.weight = 5
 
+        same_server = get_server(self, 'normal')
+        same_server.weight = 5
+
         server_slow_start = Server('127.0.0.1:12345', weight=5, dc='Test')
 
-        self.application.upstream_caches.upstreams['slow_start'] = Upstream('slow_start',
-                                                                            {'slow_start_interval_sec': '0.1'},
-                                                                            [server])
+        self.application.http_client_factory.update_upstream(
+            Upstream('slow_start', {'slow_start_interval_sec': '0.1'}, [server]))
         self.text = ''
 
         def check_requests_cb():
@@ -32,9 +34,8 @@ class Page(PageHandler):
 
         self.post_url('slow_start', self.request.path, callback=async_group.add(callback_post))
         time.sleep(0.2)
-        self.application.upstream_caches.upstreams['slow_start'] = Upstream('slow_start',
-                                                                            {'slow_start_interval_sec': '10'},
-                                                                            [server, server_slow_start])
+        self.application.http_client_factory.update_upstream(
+            Upstream('slow_start', {'slow_start_interval_sec': '10'}, [same_server, server_slow_start]))
 
         self.post_url('slow_start', self.request.path, callback=async_group.add(callback_post))
         self.post_url('slow_start', self.request.path, callback=async_group.add(callback_post))

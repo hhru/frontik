@@ -13,11 +13,13 @@ class ServiceDiscoveryTestCase(unittest.TestCase):
         self.frontik_single_worker_app = FrontikTestInstance(
             f'./frontik-test --app=tests.projects.no_debug_app {common_frontik_start_options} '
             f' --config=tests/projects/frontik_no_debug.cfg --consul_port={self.consul_mock.port} '
-            f' --consul_enabled=True')
+            f' --consul_enabled=True'
+            f' --fail_start_on_empty_upstream=False')
         self.frontik_multiple_worker_app = FrontikTestInstance(
             f'./frontik-test --app=tests.projects.no_debug_app {common_frontik_start_options} '
             f' --config=tests/projects/frontik_no_debug.cfg --consul_port={self.consul_mock.port} --workers=3'
-            f' --consul_enabled=True')
+            f' --consul_enabled=True'
+            f' --fail_start_on_empty_upstream=False')
 
     def tearDown(self):
         self.frontik_single_worker_app.stop()

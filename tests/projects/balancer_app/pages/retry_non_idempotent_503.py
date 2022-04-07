@@ -18,13 +18,10 @@ class Page(PageHandler):
                 }
             }
         }
-        self.application.upstream_caches.upstreams['retry_non_idempotent_503'] = Upstream('retry_non_idempotent_503',
-                                                                                          idempotent_retry_policy,
-                                                                                          [get_server(self, 'normal')])
-        self.application.upstream_caches.upstreams['do_not_retry_non_idempotent_503'] = Upstream(
-            'do_not_retry_non_idempotent_503', {},
-            [get_server(self, 'broken')]
-        )
+        self.application.http_client_factory.update_upstream(
+            Upstream('retry_non_idempotent_503', idempotent_retry_policy, [get_server(self, 'normal')]))
+        self.application.http_client_factory.update_upstream(
+            Upstream('do_not_retry_non_idempotent_503', {}, [get_server(self, 'broken')]))
 
         def check_requests_cb():
             check_all_requests_done(self, 'retry_non_idempotent_503')

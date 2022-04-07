@@ -1,17 +1,24 @@
 import logging
-import multiprocessing
 import socket
+import struct
+import pickle
+import sys
+from asyncio import Future
+from threading import Lock
 
+import asyncio
 from consul import Check, Consul
 from consul.aio import Consul as AsyncConsul
 from consul.base import Weight, KVCache, ConsistencyMode, HealthCache
-from http_client import UpstreamStore, consul_parser, Upstream
+from http_client import consul_parser, Upstream
 from tornado.options import options
+from tornado.iostream import PipeIOStream, StreamClosedError
 
 from frontik.version import version
 
 DEFAULT_WEIGHT = 100
 AUTO_RESOLVE_ADDRESS_VALUE = 'resolve'
+MESSAGE_SIZE_STRUCT = '=Q'
 
 log = logging.getLogger('service_discovery')
 
@@ -196,35 +203,48 @@ class _SyncStub:
         pass
 
 
-class UpstreamStoreSharedMemory(UpstreamStore):
-    """
-    Implementation for processing upstream via shared memory
-    """
+class UpstreamUpdateListener:
+    def __init__(self, http_client_factory, pipe):
+        self.http_client_factory = http_client_factory
+        self.stream = PipeIOStream(pipe)
+        self.init_future = Future()
 
-    def __init__(self, lock, upstreams):
-        self.lock = lock
-        self.upstreams = upstreams
+        self.task = asyncio.create_task(self._process())
 
-    def get_upstream(self, host):
-        with self.lock:
-            shared_upstream = self.upstreams.get(host, None)
+    def get_init_future(self):
+        return self.init_future
 
-        return shared_upstream
+    async def _process(self):
+        while True:
+            try:
+                size_header = await self.stream.read_bytes(8)
+                size, = struct.unpack(MESSAGE_SIZE_STRUCT, size_header)
+                data = await self.stream.read_bytes(size)
+                upstreams = pickle.loads(data)
+                for upstream in upstreams:
+                    self.http_client_factory.update_upstream(upstream)
+                log.info('got upstreams: %s', str(upstreams))
+                if (upstreams or not options.fail_start_on_empty_upstream) and not self.init_future.done():
+                    self.init_future.set_result(True)
+            except StreamClosedError:
+                log.exception('upstream update pipe is closed')
+                sys.exit(1)
+            except Exception:
+                log.exception('failed to fetch upstream updates')
 
 
 class UpstreamCaches:
-    def __init__(self):
+    def __init__(self, children_pipes, upstreams):
         self._upstreams_config = {}
         self._upstreams_servers = {}
         self._upstream_list = options.upstreams
         self._datacenter_list = options.datacenters
         self._current_dc = options.datacenter
         self._allow_cross_dc_requests = options.http_client_allow_cross_datacenter_requests
-        self._shared_objects_manager = multiprocessing.Manager()
         self._service_name = options.app
-
-        self.upstreams = self._shared_objects_manager.dict()
-        self.lock = multiprocessing.Lock()
+        self._upstreams = upstreams
+        self._children_pipes = children_pipes
+        self._lock = Lock()
 
     def initial_upstreams_caches(self):
         service_discovery = get_sync_service_discovery(options)
@@ -241,38 +261,27 @@ class UpstreamCaches:
         )
         upstream_cache.add_listener(self._update_upstreams_config, True)
         upstream_cache.start()
+
         for upstream in self._upstream_list:
-            if self._allow_cross_dc_requests:
-                for dc in self._datacenter_list:
-                    health_cache = HealthCache(
-                        service=upstream,
-                        health_client=service_discovery.consul.health,
-                        passing=True,
-                        watch_seconds=service_discovery.consul_weight_watch_seconds,
-                        backoff_delay_seconds=service_discovery.consul_cache_backoff_delay_seconds,
-                        dc=dc,
-                        caller=self._service_name
-                    )
-                    health_cache.add_listener(self._update_upstreams_service, True)
-                    health_cache.start()
-            else:
+            datacenters = self._datacenter_list if self._allow_cross_dc_requests else (self._current_dc,)
+            for dc in datacenters:
                 health_cache = HealthCache(
                     service=upstream,
                     health_client=service_discovery.consul.health,
                     passing=True,
                     watch_seconds=service_discovery.consul_weight_watch_seconds,
                     backoff_delay_seconds=service_discovery.consul_cache_backoff_delay_seconds,
-                    dc=self._current_dc,
+                    dc=dc,
                     caller=self._service_name
                 )
                 health_cache.add_listener(self._update_upstreams_service, True)
                 health_cache.start()
+
         if options.fail_start_on_empty_upstream:
             self._check_empty_upstreams_on_startup()
 
     def _check_empty_upstreams_on_startup(self):
-        with self.lock:
-            empty_upstreams = [k for k, v in self.upstreams.items() if not v.servers]
+        empty_upstreams = [k for k, v in self._upstreams.items() if not v.servers]
         if empty_upstreams:
             raise RuntimeError(
                 f'failed startup application, because for next upstreams got empty servers: {empty_upstreams}'
@@ -281,7 +290,7 @@ class UpstreamCaches:
     def _update_upstreams_service(self, key, values):
         if values is not None:
             dc, servers = consul_parser.parse_consul_health_servers_data(values)
-            log.info(f'update servers for upstream {key}: [{",".join(str(s) for s in servers)}]')
+            log.info(f'update servers for upstream {key}, datacenter {dc}: [{",".join(str(s) for s in servers)}]')
             self._upstreams_servers[f'{key}-{dc}'] = servers
             self._update_upstreams(key)
 
@@ -299,8 +308,21 @@ class UpstreamCaches:
     def _update_upstreams(self, key):
         servers_from_all_dc = self._combine_servers(key)
         log.info(f'current servers for upstream {key}: [{",".join(str(s) for s in servers_from_all_dc)}]')
-        with self.lock:
-            self.upstreams[key] = Upstream(key, self._upstreams_config.get(key, {}), servers_from_all_dc)
+        with self._lock:
+            self._upstreams[key] = Upstream(key, self._upstreams_config.get(key, {}), servers_from_all_dc)
+
+            if self._children_pipes:
+                self.send_updates()
+
+    def send_updates(self):
+        data = pickle.dumps(list(self._upstreams.values()))
+        for client_id, pipe in self._children_pipes.items():
+            try:
+                pipe.write(struct.pack(MESSAGE_SIZE_STRUCT, len(data)))
+                pipe.write(data)
+                pipe.flush()
+            except BlockingIOError:
+                log.exception(f'client {client_id} pipe blocked')
 
     def _combine_servers(self, key):
         servers_from_all_dc = []
@@ -309,6 +331,3 @@ class UpstreamCaches:
             if servers:
                 servers_from_all_dc += servers
         return servers_from_all_dc
-
-    def _stop_shared_objects_manager(self):
-        self._shared_objects_manager.shutdown()

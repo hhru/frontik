@@ -17,13 +17,15 @@ log = logging.getLogger('fork')
 class State:
     server: bool
     children: dict
+    read_pipe: int
+    write_pipes: dict
     terminating: bool
 
 
-def fork_workers(worker_function, *, init_workers_count_down, num_workers, after_workers_up_action,
-                 before_workers_shutdown_action):
+def fork_workers(worker_function, *, app, init_workers_count_down, num_workers, after_workers_up_action,
+                 before_workers_shutdown_action, children_pipes):
     log.info("starting %d processes", num_workers)
-    state = State(server=True, children={}, terminating=False)
+    state = State(server=True, children={}, read_pipe=0, write_pipes=children_pipes, terminating=False)
 
     def sigterm_handler(signum, frame):
         if not state.server:
@@ -41,7 +43,7 @@ def fork_workers(worker_function, *, init_workers_count_down, num_workers, after
     for i in range(num_workers):
         is_worker = _start_child(i, state)
         if is_worker:
-            worker_function()
+            worker_function(state.read_pipe)
             return
 
     gc.enable()
@@ -52,6 +54,7 @@ def fork_workers(worker_function, *, init_workers_count_down, num_workers, after
                 f'workers did not started after {options.init_workers_timeout_sec} seconds,'
                 f' do not started {init_workers_count_down.value} workers'
             )
+        app.upstream_caches.send_updates()
         time.sleep(0.1)
     after_workers_up_action()
     _supervise_workers(state, worker_function)
@@ -70,12 +73,18 @@ def _supervise_workers(state, worker_function):
             continue
 
         id = state.children.pop(pid)
+
+        try:
+            state.write_pipes.pop(pid).close()
+        except Exception:
+            log.warning('failed to close pipe for %d', pid)
+
         if os.WIFSIGNALED(status):
             log.warning("child %d (pid %d) killed by signal %d, restarting", id, pid, os.WTERMSIG(status))
         elif os.WEXITSTATUS(status) != 0:
             log.warning("child %d (pid %d) exited with status %d, restarting", id, pid, os.WEXITSTATUS(status))
         else:
-            log.info("child %d (pid %d) exited normally", id, pid)
+            log.info('child %d (pid %d) exited normally', id, pid)
             continue
 
         if state.terminating:
@@ -84,20 +93,26 @@ def _supervise_workers(state, worker_function):
 
         is_worker = _start_child(id, state)
         if is_worker:
-            worker_function()
+            worker_function(state.read_pipe)
             return
     log.info('all children terminated, exiting')
     sys.exit(0)
 
 
+# returns True inside child process, otherwise False
 def _start_child(i, state):
-    # returns True inside child process, therwise False
+    read_fd, write_fd = os.pipe2(os.O_NONBLOCK)
     pid = os.fork()
     if pid == 0:
+        os.close(write_fd)
         state.server = False
+        state.read_pipe = read_fd
+        state.write_pipes = {}
         state.children = {}
         return True
     else:
+        os.close(read_fd)
         state.children[pid] = i
+        state.write_pipes[pid] = os.fdopen(write_fd, 'wb')
         log.info('started child %d, pid=%d', i, pid)
         return False
