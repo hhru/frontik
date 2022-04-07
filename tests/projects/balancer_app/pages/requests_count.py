@@ -10,8 +10,8 @@ from tests.projects.balancer_app.pages import check_all_requests_done, check_all
 
 class Page(PageHandler):
     def get_page(self):
-        self.application.upstream_caches.upstreams['requests_count'] = Upstream('requests_count', {},
-                                                                                [get_server(self, 'normal')])
+        self.application.http_client_factory.update_upstream(
+            Upstream('requests_count', {}, [get_server(self, 'normal')]))
         self.text = ''
 
         def check_requests_cb():
@@ -24,8 +24,8 @@ class Page(PageHandler):
 
         self.post_url('requests_count', self.request.path)
         self.post_url('requests_count', self.request.path)
-        self.application.upstream_caches.upstreams['requests_count'] = Upstream('requests_count', {},
-                                                                                [get_server(self, 'normal')])
+        self.application.http_client_factory.update_upstream(
+            Upstream('requests_count', {}, [get_server(self, 'normal')]))
         self.post_url('requests_count', self.request.path, callback=async_group.add(callback_post))
         check_all_servers_occupied(self, 'requests_count')
 
