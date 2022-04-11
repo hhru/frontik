@@ -1,3 +1,4 @@
+import io
 import logging
 import socket
 import struct
@@ -12,7 +13,7 @@ from consul.aio import Consul as AsyncConsul
 from consul.base import Weight, KVCache, ConsistencyMode, HealthCache
 from http_client import consul_parser, Upstream
 from tornado.options import options
-from tornado.iostream import PipeIOStream, StreamClosedError
+from tornado.iostream import BaseIOStream, PipeIOStream, StreamClosedError, _set_nonblocking
 
 from frontik.version import version
 
@@ -203,10 +204,19 @@ class _SyncStub:
         pass
 
 
+class PipeBinaryIOStream(PipeIOStream):
+    def __init__(self, fd, *args, **kwargs):
+        self.fd = fd
+        self._fio = io.FileIO(self.fd, 'rb')
+        _set_nonblocking(fd)
+
+        BaseIOStream.__init__(self, *args, **kwargs)
+
+
 class UpstreamUpdateListener:
     def __init__(self, http_client_factory, pipe):
         self.http_client_factory = http_client_factory
-        self.stream = PipeIOStream(pipe)
+        self.stream = PipeBinaryIOStream(pipe)
         self.init_future = Future()
 
         self.task = asyncio.create_task(self._process())
@@ -223,7 +233,6 @@ class UpstreamUpdateListener:
                 upstreams = pickle.loads(data)
                 for upstream in upstreams:
                     self.http_client_factory.update_upstream(upstream)
-                log.info('got upstreams: %s', str(upstreams))
                 if (upstreams or not options.fail_start_on_empty_upstream) and not self.init_future.done():
                     self.init_future.set_result(True)
             except StreamClosedError:

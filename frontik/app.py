@@ -172,7 +172,9 @@ class FrontikApplication(Application):
         kafka_producer = self.get_kafka_producer(kafka_cluster) if send_metrics_to_kafka else None
 
         self.http_client_factory = HttpClientFactory(self.app, self.tornado_http_client,
-                                                     statsd_client=self.statsd_client, kafka_producer=kafka_producer)
+                                                     upstreams=self.upstreams,
+                                                     statsd_client=self.statsd_client,
+                                                     kafka_producer=kafka_producer)
 
     def find_handler(self, request, **kwargs):
         request_id = request.headers.get('X-Request-Id')
