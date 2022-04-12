@@ -8,4 +8,4 @@ python-consul2-hh @ https://github.com/hhru/python-consul2/archive/v0.2.6.zip
 opentelemetry-sdk == 1.8.0
 opentelemetry-api == 1.8.0
 opentelemetry-exporter-otlp-proto-grpc == 1.8.0
-opentelemetry-instrumentation-tornado == 0.27b0
+opentelemetry-instrumentation-tornado @ https://github.com/hhru/opentelemetry-python-contrib/archive/v0.27b0-hh.zip#subdirectory=instrumentation/opentelemetry-instrumentation-tornado
