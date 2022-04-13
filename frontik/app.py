@@ -128,6 +128,7 @@ class FrontikApplication(Application):
         self.http_client_factory = None
         self.upstreams = {}
         self.children_pipes = {}
+        self.upstream_update_listener = None
         self.upstream_caches = UpstreamCaches(self.children_pipes, self.upstreams)
         self.router = FrontikRouter(self)
         self.init_workers_count_down = multiprocessing.Value('i', options.workers)

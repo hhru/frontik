@@ -49,20 +49,16 @@ class ConsulRegistrationTestCase(unittest.TestCase):
         self.assertEqual(registration_call_count, 1, 'Application should register only once')
 
     def test_multiple_worker_not_registration(self):
-        def check_function(instance):
-            for i in range(10):
-                try:
-                    time.sleep(0.2)
-                    response = instance.get_page('status')
-                    if response.status_code == 200:
-                        return
-                except Exception:
-                    pass
+        self.frontik_multiple_worker_app_timeout_barrier.start_with_check(lambda _: None)
 
-            def check_registered_status():
-                instance.get_page('check_workers_count_down')
+        for i in range(10):
+            time.sleep(0.2)
+            if not self.frontik_multiple_worker_app_timeout_barrier.is_alive():
+                break
+        else:
+            raise Exception('application didn\'t stop')
 
-            self.assertRaises(ConnectionError, check_registered_status)
+        registration_call_count = self.consul_mock.get_page_json('call_registration_stat')
+        self.assertEqual(registration_call_count, {}, 'Application should not register')
 
-        self.frontik_multiple_worker_app_timeout_barrier.start_with_check(check_function)
         self.frontik_multiple_worker_app_timeout_barrier.stop()

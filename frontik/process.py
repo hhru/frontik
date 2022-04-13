@@ -5,12 +5,17 @@ import os
 import signal
 import sys
 import time
+import fcntl
 from dataclasses import dataclass
 
 from tornado.options import options
 from tornado.util import errno_from_exception
 
 log = logging.getLogger('fork')
+
+
+F_SETPIPE_SZ = 1031
+PIPE_BUFFER_SIZE = 1000000
 
 
 @dataclass
@@ -54,8 +59,8 @@ def fork_workers(worker_function, *, app, init_workers_count_down, num_workers, 
                 f'workers did not started after {options.init_workers_timeout_sec} seconds,'
                 f' do not started {init_workers_count_down.value} workers'
             )
-        app.upstream_caches.send_updates()
         time.sleep(0.1)
+    app.upstream_caches.send_updates()
     after_workers_up_action()
     _supervise_workers(state, worker_function)
 
@@ -106,6 +111,7 @@ def _start_child(i, state):
     if pid == 0:
         os.close(write_fd)
         state.server = False
+        _set_pipe_size(read_fd, i)
         state.read_pipe = read_fd
         state.write_pipes = {}
         state.children = {}
@@ -113,6 +119,14 @@ def _start_child(i, state):
     else:
         os.close(read_fd)
         state.children[pid] = i
+        _set_pipe_size(write_fd, i)
         state.write_pipes[pid] = os.fdopen(write_fd, 'wb')
         log.info('started child %d, pid=%d', i, pid)
         return False
+
+
+def _set_pipe_size(fd, i):
+    try:
+        fcntl.fcntl(fd, F_SETPIPE_SZ, PIPE_BUFFER_SIZE)
+    except OSError:
+        log.warning('failed to set pipe size for %d', i)

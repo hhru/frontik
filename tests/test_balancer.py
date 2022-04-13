@@ -69,3 +69,8 @@ class TestHttpError(unittest.TestCase):
         response = frontik_balancer_app.get_page(self.make_url('slow_start'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'1')
+
+    def test_retry_count_limit(self):
+        response = frontik_balancer_app.get_page(self.make_url('retry_count_limit'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'3')
