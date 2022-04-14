@@ -222,7 +222,7 @@ class UpstreamUpdateListener:
                 size_header = await self.stream.read_bytes(8)
                 size, = struct.unpack(MESSAGE_SIZE_STRUCT, size_header)
                 data = await self.stream.read_bytes(size)
-                log.debug('received upstreams length: %d, data: %s', size, data)
+                log.debug('received upstreams length: %d', size)
                 upstreams = pickle.loads(data)
                 for upstream in upstreams:
                     self.http_client_factory.update_upstream(upstream)
@@ -331,7 +331,7 @@ class UpstreamCaches:
     def send_updates(self, upstream=None):
         upstreams = list(self._upstreams.values()) if upstream is None else [upstream]
         data = pickle.dumps(upstreams)
-        log.debug('sending upstreams to all length: %d, data: %s', len(data), data)
+        log.debug('sending upstreams to all length: %d', len(data))
         for client_id, pipe in self._children_pipes.items():
             self._send_update(client_id, pipe, data)
 
@@ -369,7 +369,7 @@ class UpstreamCaches:
             data = pickle.dumps(list(self._upstreams.values()))
             with self._lock:
                 clients = list(self._resend_dict.keys())
-                log.debug('sending upstreams to %s length: %d, data: %s', ','.join(clients), len(data), data)
+                log.debug('sending upstreams to %s length: %d', ','.join(clients), len(data))
                 self._resend_dict.clear()
 
                 for client_id in clients:
