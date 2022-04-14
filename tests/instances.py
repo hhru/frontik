@@ -88,6 +88,9 @@ class FrontikTestInstance:
         self.popen.wait(300)
         self.port = None
 
+    def is_alive(self):
+        return self.popen.poll() is None
+
     def get_page(self, page, notpl=False, method=requests.get, **kwargs):
         if not self.port:
             self.start()

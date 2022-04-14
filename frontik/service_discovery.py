@@ -1,11 +1,14 @@
-import io
 import logging
 import socket
 import struct
 import pickle
+from random import shuffle
+
+import time
+
 import sys
-from asyncio import Future
-from threading import Lock
+from threading import Lock, Thread
+from queue import Queue, Full
 
 import asyncio
 from consul import Check, Consul
@@ -13,12 +16,13 @@ from consul.aio import Consul as AsyncConsul
 from consul.base import Weight, KVCache, ConsistencyMode, HealthCache
 from http_client import consul_parser, Upstream
 from tornado.options import options
-from tornado.iostream import BaseIOStream, PipeIOStream, StreamClosedError, _set_nonblocking
+from tornado.iostream import PipeIOStream, StreamClosedError
 
 from frontik.version import version
 
 DEFAULT_WEIGHT = 100
 AUTO_RESOLVE_ADDRESS_VALUE = 'resolve'
+MESSAGE_HEADER_MAGIC = b'T1uf31f'
 MESSAGE_SIZE_STRUCT = '=Q'
 
 log = logging.getLogger('service_discovery')
@@ -204,37 +208,24 @@ class _SyncStub:
         pass
 
 
-class PipeBinaryIOStream(PipeIOStream):
-    def __init__(self, fd, *args, **kwargs):
-        self.fd = fd
-        self._fio = io.FileIO(self.fd, 'rb')
-        _set_nonblocking(fd)
-
-        BaseIOStream.__init__(self, *args, **kwargs)
-
-
 class UpstreamUpdateListener:
     def __init__(self, http_client_factory, pipe):
         self.http_client_factory = http_client_factory
-        self.stream = PipeBinaryIOStream(pipe)
-        self.init_future = Future()
+        self.stream = PipeIOStream(pipe)
 
         self.task = asyncio.create_task(self._process())
-
-    def get_init_future(self):
-        return self.init_future
 
     async def _process(self):
         while True:
             try:
+                await self.stream.read_until(MESSAGE_HEADER_MAGIC)
                 size_header = await self.stream.read_bytes(8)
                 size, = struct.unpack(MESSAGE_SIZE_STRUCT, size_header)
                 data = await self.stream.read_bytes(size)
+                log.debug('received upstreams length: %d, data: %s', size, data)
                 upstreams = pickle.loads(data)
                 for upstream in upstreams:
                     self.http_client_factory.update_upstream(upstream)
-                if (upstreams or not options.fail_start_on_empty_upstream) and not self.init_future.done():
-                    self.init_future.set_result(True)
             except StreamClosedError:
                 log.exception('upstream update pipe is closed')
                 sys.exit(1)
@@ -254,8 +245,13 @@ class UpstreamCaches:
         self._upstreams = upstreams
         self._children_pipes = children_pipes
         self._lock = Lock()
+        self._resend_dict = {}
+        self._resend_notification = Queue(maxsize=1)
+        self._resend_thread = Thread(target=self._resend, daemon=True)
 
     def initial_upstreams_caches(self):
+        self._resend_thread.start()
+
         service_discovery = get_sync_service_discovery(options)
         upstream_cache = KVCache(
             service_discovery.consul.kv,
@@ -317,21 +313,45 @@ class UpstreamCaches:
     def _update_upstreams(self, key):
         servers_from_all_dc = self._combine_servers(key)
         log.info(f'current servers for upstream {key}: [{",".join(str(s) for s in servers_from_all_dc)}]')
+        shuffle(servers_from_all_dc)
         with self._lock:
-            self._upstreams[key] = Upstream(key, self._upstreams_config.get(key, {}), servers_from_all_dc)
+            upstream = Upstream(key, self._upstreams_config.get(key, {}), servers_from_all_dc)
+
+            current_upstream = self._upstreams.get(key)
+
+            if current_upstream is None:
+                self._upstreams[key] = upstream
+                current_upstream = upstream
+            else:
+                current_upstream.update(upstream)
 
             if self._children_pipes:
-                self.send_updates()
+                self.send_updates(upstream=current_upstream)
 
-    def send_updates(self):
-        data = pickle.dumps(list(self._upstreams.values()))
+    def send_updates(self, upstream=None):
+        upstreams = list(self._upstreams.values()) if upstream is None else [upstream]
+        data = pickle.dumps(upstreams)
+        log.debug('sending upstreams to all length: %d, data: %s', len(data), data)
         for client_id, pipe in self._children_pipes.items():
-            try:
-                pipe.write(struct.pack(MESSAGE_SIZE_STRUCT, len(data)))
-                pipe.write(data)
-                pipe.flush()
-            except BlockingIOError:
-                log.exception(f'client {client_id} pipe blocked')
+            self._send_update(client_id, pipe, data)
+
+    def _send_update(self, client_id, pipe, data):
+        header_written = False
+        try:
+            pipe.write(MESSAGE_HEADER_MAGIC + struct.pack(MESSAGE_SIZE_STRUCT, len(data)))
+            header_written = True
+            pipe.write(data)
+            pipe.flush()
+        except BlockingIOError:
+            log.warning(f'client {client_id} pipe blocked')
+            if header_written:
+                self._resend_dict[client_id] = True
+                try:
+                    self._resend_notification.put_nowait(True)
+                except Full:
+                    pass
+        except Exception:
+            log.exception(f'client {client_id} pipe write failed')
 
     def _combine_servers(self, key):
         servers_from_all_dc = []
@@ -340,3 +360,24 @@ class UpstreamCaches:
             if servers:
                 servers_from_all_dc += servers
         return servers_from_all_dc
+
+    def _resend(self):
+        while True:
+            self._resend_notification.get()
+            time.sleep(1.0)
+
+            data = pickle.dumps(list(self._upstreams.values()))
+            with self._lock:
+                clients = list(self._resend_dict.keys())
+                log.debug('sending upstreams to %s length: %d, data: %s', ','.join(clients), len(data), data)
+                self._resend_dict.clear()
+
+                for client_id in clients:
+                    pipe = self._children_pipes.get(client_id, None)
+
+                    if pipe is None:
+                        continue
+
+                    # writing 2 times to ensure fix of client reading pattern
+                    self._send_update(client_id, pipe, data)
+                    self._send_update(client_id, pipe, data)
