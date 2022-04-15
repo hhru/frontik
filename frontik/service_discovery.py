@@ -311,22 +311,19 @@ class UpstreamCaches:
                         self._update_upstreams(key)
 
     def _update_upstreams(self, key):
-        servers_from_all_dc = self._combine_servers(key)
-        log.info(f'current servers for upstream {key}: [{",".join(str(s) for s in servers_from_all_dc)}]')
-        shuffle(servers_from_all_dc)
         with self._lock:
-            upstream = Upstream(key, self._upstreams_config.get(key, {}), servers_from_all_dc)
+            upstream = self._create_upstream(key)
+            log.info(f'current servers for upstream {key}: [{",".join(str(s) for s in upstream.servers)}]')
 
             current_upstream = self._upstreams.get(key)
 
             if current_upstream is None:
                 self._upstreams[key] = upstream
-                current_upstream = upstream
             else:
                 current_upstream.update(upstream)
 
             if self._children_pipes:
-                self.send_updates(upstream=current_upstream)
+                self.send_updates(upstream=upstream)
 
     def send_updates(self, upstream=None):
         upstreams = list(self._upstreams.values()) if upstream is None else [upstream]
@@ -366,8 +363,8 @@ class UpstreamCaches:
             self._resend_notification.get()
             time.sleep(1.0)
 
-            data = pickle.dumps(list(self._upstreams.values()))
             with self._lock:
+                data = pickle.dumps([self._create_upstream(key) for key in self._upstreams.keys()])
                 clients = list(self._resend_dict.keys())
                 log.debug('sending upstreams to %s length: %d', ','.join(clients), len(data))
                 self._resend_dict.clear()
@@ -381,3 +378,8 @@ class UpstreamCaches:
                     # writing 2 times to ensure fix of client reading pattern
                     self._send_update(client_id, pipe, data)
                     self._send_update(client_id, pipe, data)
+
+    def _create_upstream(self, key):
+        servers = self._combine_servers(key)
+        shuffle(servers)
+        return Upstream(key, self._upstreams_config.get(key, {}), servers)
