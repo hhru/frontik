@@ -823,7 +823,7 @@ class PageHandler(RequestHandler):
         return self._execute_http_client_method(host, uri, client_method, waited, callback)
 
     def put_url(self, host, uri, *, name=None, data='', headers=None, content_type=None, follow_redirects=True,
-                connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=False,
+                connect_timeout=None, request_timeout=None, max_timeout_tries=None,  idempotent=True,
                 callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
