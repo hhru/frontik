@@ -822,16 +822,17 @@ class PageHandler(RequestHandler):
 
         return self._execute_http_client_method(host, uri, client_method, waited, callback)
 
-    def put_url(self, host, uri, *, name=None, data='', headers=None, content_type=None,
-                connect_timeout=None, request_timeout=None, max_timeout_tries=None,
+    def put_url(self, host, uri, *, name=None, data='', headers=None, content_type=None, follow_redirects=True,
+                connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=True,
                 callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
 
         client_method = lambda callback: self._http_client.put_url(
             host, uri, name=name, data=data, headers=headers, content_type=content_type,
-            connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+            follow_redirects=follow_redirects, connect_timeout=connect_timeout, request_timeout=request_timeout,
+            max_timeout_tries=max_timeout_tries, idempotent=idempotent, callback=callback,
+            parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
         )
 
         return self._execute_http_client_method(host, uri, client_method, waited, callback)
