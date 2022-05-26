@@ -1,5 +1,3 @@
-from tornado.escape import to_unicode
-
 from frontik import handler, media_types
 
 

@@ -1,9 +1,6 @@
-from lxml import etree
-
 import frontik.handler
 
 
 class Page(frontik.handler.AwaitablePageHandler):
     async def get_page(self):
-        self.set_xsl('simple.xsl')
-        self.doc.put(etree.Element('ok'))
+        assert not hasattr(self, 'get_sentry_logger')

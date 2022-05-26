@@ -10,6 +10,10 @@ class TestHandler(unittest.TestCase):
         text = frontik_no_debug_app.get_page_text('recursion?n=6')
         self.assertEqual(text, '200 200 200 200 200 503')
 
+    def test_active_limit_async(self):
+        text = frontik_no_debug_app.get_page_text('recursion_async?n=6')
+        self.assertEqual(text, '200 200 200 200 200 503')
+
     def test_check_finished(self):
         text = frontik_test_app.get_page_text('handler/check_finished')
         self.assertEqual(text, 'Callback not called')
