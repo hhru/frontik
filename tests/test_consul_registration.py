@@ -1,8 +1,6 @@
 import time
 import unittest
 
-from requests.exceptions import ConnectionError
-
 from .instances import FrontikTestInstance, common_frontik_start_options
 
 

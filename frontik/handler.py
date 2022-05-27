@@ -32,7 +32,7 @@ from frontik.debug import DEBUG_HEADER_NAME, DebugMode
 from frontik.timeout_tracking import get_timeout_checker
 from frontik.loggers.stages import StagesLogger
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors, _get_preprocessor_name
-from frontik.util import make_url
+from frontik.util import make_url, gather_dict
 from frontik.version import version as frontik_version
 from frontik.validator import BaseValidationModel, Validators
 from frontik.http_status import ALLOWED_STATUSES
@@ -882,10 +882,7 @@ class RedirectHandler(PageHandler, tornado.web.RedirectHandler):
 
 
 class AwaitablePageHandler(PageHandler):
-    """
-    This is an experimental page handler.
-    Use it at your own risk.
-    """
+
     preprocessors = ()
     _priority_preprocessor_names = []
 
@@ -974,14 +971,6 @@ class AwaitablePageHandler(PageHandler):
         self.finish_group.add_future(task)
         return task
 
-    async def _put_xml_to_response_coro(self: 'AwaitablePageHandler', request_coro: Awaitable):
-        result = await request_coro
-        if not result.failed:
-            self.doc.put(result.data)
-
-    def put_xml_to_response(self: 'AwaitablePageHandler', request_coro: Awaitable):
-        return self.run_task(self._put_xml_to_response_coro(request_coro))
-
     @staticmethod
     def wrap_sync_to_coroutine(func):
         async def wrapper(*args, **kwargs):
@@ -1066,3 +1055,96 @@ class AwaitablePageHandler(PageHandler):
                 return None
 
         return rendered_template
+
+    def group(self, futures):
+        return self.run_task(gather_dict(coro_dict=futures))
+
+    def get_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True,
+                connect_timeout=None, request_timeout=None, max_timeout_tries=None,
+                waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+
+        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
+
+        client_method = lambda: self._http_client.get_url(
+            host, uri, name=name, data=data, headers=headers, follow_redirects=follow_redirects,
+            connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
+            parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+        )
+
+        return self._execute_http_client_method(host, uri, client_method, waited)
+
+    def head_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True,
+                 connect_timeout=None, request_timeout=None, max_timeout_tries=None,
+                 waited=True, fail_fast=False):
+
+        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
+
+        client_method = lambda: self._http_client.head_url(
+            host, uri, data=data, name=name, headers=headers, follow_redirects=follow_redirects,
+            connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
+            fail_fast=fail_fast
+        )
+
+        return self._execute_http_client_method(host, uri, client_method, waited)
+
+    def post_url(self, host, uri, *,
+                 name=None, data='', headers=None, files=None, content_type=None, follow_redirects=True,
+                 connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=False,
+                 waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+
+        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
+
+        client_method = lambda: self._http_client.post_url(
+            host, uri, data=data, name=name, headers=headers, files=files, content_type=content_type,
+            follow_redirects=follow_redirects, connect_timeout=connect_timeout, request_timeout=request_timeout,
+            max_timeout_tries=max_timeout_tries, idempotent=idempotent,
+            parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+        )
+
+        return self._execute_http_client_method(host, uri, client_method, waited)
+
+    def put_url(self, host, uri, *, name=None, data='', headers=None, content_type=None, follow_redirects=True,
+                connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=True,
+                waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+
+        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
+
+        client_method = lambda: self._http_client.put_url(
+            host, uri, name=name, data=data, headers=headers, content_type=content_type,
+            follow_redirects=follow_redirects, connect_timeout=connect_timeout, request_timeout=request_timeout,
+            max_timeout_tries=max_timeout_tries, idempotent=idempotent,
+            parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+        )
+
+        return self._execute_http_client_method(host, uri, client_method, waited)
+
+    def delete_url(self, host, uri, *, name=None, data=None, headers=None, content_type=None,
+                   connect_timeout=None, request_timeout=None, max_timeout_tries=None,
+                   waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+
+        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
+
+        client_method = lambda: self._http_client.delete_url(
+            host, uri, name=name, data=data, headers=headers, content_type=content_type,
+            connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
+            parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+        )
+
+        return self._execute_http_client_method(host, uri, client_method, waited)
+
+    def _execute_http_client_method(self, host, uri, client_method, waited):
+        if waited and (self.is_finished() or self.finish_group.is_finished()):
+            handler_logger.info(
+                'attempted to make waited http request to %s %s in finished handler, ignoring', host, uri
+            )
+
+            future = Future()
+            future.set_exception(AbortAsyncGroup())
+            return future
+
+        future = client_method()
+
+        if waited:
+            self.finish_group.add_future(future)
+
+        return future

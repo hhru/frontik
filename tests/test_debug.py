@@ -83,63 +83,68 @@ class DebugTestCase(unittest.TestCase):
         return response
 
     def test_debug_by_basic_auth(self):
-        for param in ('debug', 'noxsl', 'notpl'):
-            response = self.assertDebugResponseCode(f'simple?{param}', http.client.UNAUTHORIZED)
-            self.assertIn('Www-Authenticate', response.headers)
-            self.assertRegex(response.headers['Www-Authenticate'], 'Basic realm="[^"]+"')
+        for url in ('simple', 'simple_async'):
+            for param in ('debug', 'noxsl', 'notpl'):
+                response = self.assertDebugResponseCode(f'simple?{param}', http.client.UNAUTHORIZED)
+                self.assertIn('Www-Authenticate', response.headers)
+                self.assertRegex(response.headers['Www-Authenticate'], 'Basic realm="[^"]+"')
 
-            self.assertDebugResponseCode(
-                f'simple?{param}', http.client.OK, headers={'Authorization': self.DEBUG_BASIC_AUTH}
-            )
+                self.assertDebugResponseCode(
+                    f'{url}?{param}', http.client.OK, headers={'Authorization': self.DEBUG_BASIC_AUTH}
+                )
 
     def test_debug_by_basic_auth_with_invalid_header(self):
-        invalid_headers = (
-            'Token user:god',
-            'Bearer abcdfe0123456789',
-            'Basic',
-            'Basic ',
-            'Basic ScrewYou',
-            create_basic_auth_header(':'),
-            create_basic_auth_header(''),
-            create_basic_auth_header('not:pass'),
-            'BASIC {}'.format(to_unicode(base64.b64encode(b'user:god')))
-        )
+        for url in ('simple', 'simple_async'):
+            invalid_headers = (
+                'Token user:god',
+                'Bearer abcdfe0123456789',
+                'Basic',
+                'Basic ',
+                'Basic ScrewYou',
+                create_basic_auth_header(':'),
+                create_basic_auth_header(''),
+                create_basic_auth_header('not:pass'),
+                'BASIC {}'.format(to_unicode(base64.b64encode(b'user:god')))
+            )
 
-        for h in invalid_headers:
-            self.assertDebugResponseCode('simple?debug', http.client.UNAUTHORIZED, headers={'Authorization': h})
+            for h in invalid_headers:
+                self.assertDebugResponseCode(f'{url}?debug', http.client.UNAUTHORIZED, headers={'Authorization': h})
 
     def test_debug_by_header(self):
-        for param in ('debug', 'noxsl', 'notpl'):
-            response = self.assertDebugResponseCode(f'simple?{param}', http.client.UNAUTHORIZED)
+        for url in ('simple', 'simple_async'):
+            for param in ('debug', 'noxsl', 'notpl'):
+                response = self.assertDebugResponseCode(f'simple?{param}', http.client.UNAUTHORIZED)
 
-            self.assertIn('Www-Authenticate', response.headers)
-            self.assertEqual('Basic realm="Secure Area"', response.headers['Www-Authenticate'])
+                self.assertIn('Www-Authenticate', response.headers)
+                self.assertEqual('Basic realm="Secure Area"', response.headers['Www-Authenticate'])
 
-            self.assertDebugResponseCode(
-                f'simple?{param}', http.client.OK, headers={'Frontik-Debug-Auth': 'user:god'}
-            )
+                self.assertDebugResponseCode(
+                    f'simple?{param}', http.client.OK, headers={'Frontik-Debug-Auth': 'user:god'}
+                )
 
-            self.assertDebugResponseCode(
-                f'simple?{param}', http.client.OK,
-                headers={'Frontik-Debug-Auth': 'user:god', 'Authorization': 'Basic bad'}
-            )
+                self.assertDebugResponseCode(
+                    f'{url}?{param}', http.client.OK,
+                    headers={'Frontik-Debug-Auth': 'user:god', 'Authorization': 'Basic bad'}
+                )
 
     def test_debug_by_header_with_wrong_header(self):
-        for value in ('', 'not:pass', 'user: god', self.DEBUG_BASIC_AUTH):
-            response = self.assertDebugResponseCode(
-                'simple?debug', http.client.UNAUTHORIZED, headers={'Frontik-Debug-Auth': value}
-            )
+        for url in ('simple', 'simple_async'):
+            for value in ('', 'not:pass', 'user: god', self.DEBUG_BASIC_AUTH):
+                response = self.assertDebugResponseCode(
+                    f'{url}?debug', http.client.UNAUTHORIZED, headers={'Frontik-Debug-Auth': value}
+                )
 
-            self.assertIn('Www-Authenticate', response.headers)
-            self.assertEqual('Frontik-Debug-Auth-Header realm="Secure Area"', response.headers['Www-Authenticate'])
+                self.assertIn('Www-Authenticate', response.headers)
+                self.assertEqual('Frontik-Debug-Auth-Header realm="Secure Area"', response.headers['Www-Authenticate'])
 
     def test_debug_by_cookie(self):
-        for param in ('debug', 'noxsl', 'notpl'):
-            self.assertDebugResponseCode(
-                'simple', http.client.UNAUTHORIZED, headers={'Cookie': f'{param}=true'}
-            )
+        for url in ('simple', 'simple_async'):
+            for param in ('debug', 'noxsl', 'notpl'):
+                self.assertDebugResponseCode(
+                    url, http.client.UNAUTHORIZED, headers={'Cookie': f'{param}=true'}
+                )
 
-            self.assertDebugResponseCode(
-                'simple', http.client.OK,
-                headers={'Cookie': f'{param}=true;', 'Authorization': self.DEBUG_BASIC_AUTH}
-            )
+                self.assertDebugResponseCode(
+                    url, http.client.OK,
+                    headers={'Cookie': f'{param}=true;', 'Authorization': self.DEBUG_BASIC_AUTH}
+                )

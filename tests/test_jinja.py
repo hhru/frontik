@@ -22,6 +22,10 @@ class TestJinja(unittest.TestCase):
         response = frontik_no_debug_app.get_page('jinja_no_environment')
         self.assertEqual(response.status_code, 500)
 
+    def test_jinja_no_environment_async(self):
+        response = frontik_no_debug_app.get_page('jinja_no_environment_async')
+        self.assertEqual(response.status_code, 500)
+
     def test_jinja_no_template_exists(self):
         response = frontik_test_app.get_page('json_page?template=no.html')
         self.assertEqual(response.status_code, 500)

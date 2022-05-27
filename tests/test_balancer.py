@@ -20,8 +20,18 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'resultresultresult')
 
+    def test_retry_connect_async(self):
+        response = frontik_balancer_app.get_page(self.make_url('retry_connect_async'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'resultresultresult')
+
     def test_retry_connect_timeout(self):
         response = frontik_balancer_app.get_page(self.make_url('retry_connect_timeout'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'resultresultresult')
+
+    def test_retry_connect_timeout_async(self):
+        response = frontik_balancer_app.get_page(self.make_url('retry_connect_timeout_async'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'resultresultresult')
 
@@ -30,8 +40,18 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'resultresultresult')
 
+    def test_retry_error_async(self):
+        response = frontik_balancer_app.get_page(self.make_url('retry_error_async'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'resultresultresult')
+
     def test_no_retry_error(self):
         response = frontik_balancer_app.get_page(self.make_url('no_retry_error'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'no retry error')
+
+    def test_no_retry_error_async(self):
+        response = frontik_balancer_app.get_page(self.make_url('no_retry_error_async'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'no retry error')
 
@@ -40,8 +60,18 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'no retry timeout')
 
+    def test_no_retry_timeout_async(self):
+        response = frontik_balancer_app.get_page(self.make_url('no_retry_timeout_async'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'no retry timeout')
+
     def test_no_available_backend(self):
         response = frontik_balancer_app.get_page(self.make_url('no_available_backend'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'no backend available')
+
+    def test_no_available_backend_async(self):
+        response = frontik_balancer_app.get_page(self.make_url('no_available_backend_async'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'no backend available')
 
@@ -50,8 +80,18 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'result')
 
+    def test_retry_on_timeout_async(self):
+        response = frontik_balancer_app.get_page(self.make_url('retry_on_timeout_async'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'result')
+
     def test_retry_non_idempotent(self):
         response = frontik_balancer_app.get_page(self.make_url('retry_non_idempotent_503'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'result')
+
+    def test_retry_non_idempotent_async(self):
+        response = frontik_balancer_app.get_page(self.make_url('retry_non_idempotent_503_async'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'result')
 
@@ -60,8 +100,18 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'no backend available')
 
+    def test_different_datacenter_async(self):
+        response = frontik_balancer_app.get_page(self.make_url('different_datacenter_async'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'no backend available')
+
     def test_requests_count(self):
         response = frontik_balancer_app.get_page(self.make_url('requests_count'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'3')
+
+    def test_requests_count_async(self):
+        response = frontik_balancer_app.get_page(self.make_url('requests_count_async'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'3')
 
@@ -70,7 +120,17 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'1')
 
+    def test_slow_start_async(self):
+        response = frontik_balancer_app.get_page(self.make_url('slow_start_async'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'1')
+
     def test_retry_count_limit(self):
         response = frontik_balancer_app.get_page(self.make_url('retry_count_limit'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'3')
+
+    def test_retry_count_limit_async(self):
+        response = frontik_balancer_app.get_page(self.make_url('retry_count_limit_async'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'3')

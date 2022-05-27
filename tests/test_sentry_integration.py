@@ -27,9 +27,38 @@ class TestSentryIntegration(unittest.TestCase):
         else:
             self.fail('Exception not sent to Sentry')
 
+    def test_sentry_exception_async(self):
+        frontik_test_app.get_page('api/sentry/store', method=requests.delete)
+        frontik_test_app.get_page('sentry_error_async')
+
+        for exception in self._get_sentry_messages():
+            if exception['message'] == 'Exception: Runtime exception for Sentry':
+                self.assertEqual(logging.ERROR, exception['level'])
+                self.assertIn('/sentry_error', exception['request']['url'])
+                self.assertEqual('123456', exception['user']['id'])
+                break
+        else:
+            self.fail('Exception not sent to Sentry')
+
     def test_sentry_message(self):
         frontik_test_app.get_page('api/sentry/store', method=requests.delete)
         frontik_test_app.get_page('sentry_error', method=requests.put)
+
+        for exception in self._get_sentry_messages():
+            if exception['message'] == 'Message for Sentry':
+                self.assertEqual(logging.ERROR, exception['level'])
+                self.assertEqual('PUT', exception['request']['method'])
+                self.assertIn('/sentry_error', exception['request']['url'])
+                self.assertEqual('123456', exception['user']['id'])
+                break
+            else:
+                self.fail(exception)
+        else:
+            self.fail('Message not sent to Sentry')
+
+    def test_sentry_message_async(self):
+        frontik_test_app.get_page('api/sentry/store', method=requests.delete)
+        frontik_test_app.get_page('sentry_error_async', method=requests.put)
 
         for exception in self._get_sentry_messages():
             if exception['message'] == 'Message for Sentry':
@@ -51,8 +80,19 @@ class TestSentryIntegration(unittest.TestCase):
             if 'HTTPError for Sentry' in exception['message']:
                 self.fail('HTTPError must not be sent to Sentry')
 
+    def test_sentry_http_error_async(self):
+        frontik_test_app.get_page('api/sentry/store', method=requests.delete)
+        frontik_test_app.get_page('sentry_error_async', method=requests.post)
+
+        for exception in self._get_sentry_messages():
+            if 'HTTPError for Sentry' in exception['message']:
+                self.fail('HTTPError must not be sent to Sentry')
+
     def test_sentry_not_configured(self):
         self.assertEqual(200, frontik_re_app.get_page('sentry_not_configured').status_code)
+
+    def test_sentry_not_configured_async(self):
+        self.assertEqual(200, frontik_re_app.get_page('sentry_not_configured_async').status_code)
 
     @staticmethod
     def _get_sentry_messages():
