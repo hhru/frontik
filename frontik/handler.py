@@ -533,7 +533,7 @@ class PageHandler(RequestHandler):
             if self.log.isEnabledFor(logging.WARNING):
                 _max_uri_length = 24
 
-                request_name = request.get_host() + request.uri[:_max_uri_length]
+                request_name = request.get_host_name() + request.uri[:_max_uri_length]
                 if len(request.uri) > _max_uri_length:
                     request_name += '...'
                 if request.name:
@@ -779,7 +779,7 @@ class PageHandler(RequestHandler):
         return group_future
 
     def get_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True,
-                connect_timeout=None, request_timeout=None, max_timeout_tries=None,
+                connect_timeout=None, request_timeout=None, max_timeout_tries=None, speculative_timeout=None,
                 callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
@@ -787,58 +787,60 @@ class PageHandler(RequestHandler):
         client_method = lambda callback: self._http_client.get_url(
             host, uri, name=name, data=data, headers=headers, follow_redirects=follow_redirects,
             connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+            speculative_timeout=speculative_timeout, callback=callback, parse_response=parse_response,
+            parse_on_error=parse_on_error, fail_fast=fail_fast
         )
 
         return self._execute_http_client_method(host, uri, client_method, waited, callback)
 
     def head_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                 callback=None, waited=True, fail_fast=False):
+                 speculative_timeout=None, callback=None, waited=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
 
         client_method = lambda callback: self._http_client.head_url(
             host, uri, data=data, name=name, headers=headers, follow_redirects=follow_redirects,
             connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            callback=callback, fail_fast=fail_fast
+            speculative_timeout=speculative_timeout, callback=callback, fail_fast=fail_fast
         )
 
         return self._execute_http_client_method(host, uri, client_method, waited, callback)
 
     def post_url(self, host, uri, *,
                  name=None, data='', headers=None, files=None, content_type=None, follow_redirects=True,
-                 connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=False,
-                 callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                 connect_timeout=None, request_timeout=None, max_timeout_tries=None, speculative_timeout=None,
+                 idempotent=False, callback=None, waited=True, parse_response=True,
+                 parse_on_error=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
 
         client_method = lambda callback: self._http_client.post_url(
             host, uri, data=data, name=name, headers=headers, files=files, content_type=content_type,
             follow_redirects=follow_redirects, connect_timeout=connect_timeout, request_timeout=request_timeout,
-            max_timeout_tries=max_timeout_tries, idempotent=idempotent,
+            max_timeout_tries=max_timeout_tries, speculative_timeout=speculative_timeout, idempotent=idempotent,
             callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
         )
 
         return self._execute_http_client_method(host, uri, client_method, waited, callback)
 
     def put_url(self, host, uri, *, name=None, data='', headers=None, content_type=None, follow_redirects=True,
-                connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=True,
-                callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                connect_timeout=None, request_timeout=None, max_timeout_tries=None, speculative_timeout=None,
+                idempotent=True, callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
 
         client_method = lambda callback: self._http_client.put_url(
             host, uri, name=name, data=data, headers=headers, content_type=content_type,
             follow_redirects=follow_redirects, connect_timeout=connect_timeout, request_timeout=request_timeout,
-            max_timeout_tries=max_timeout_tries, idempotent=idempotent, callback=callback,
-            parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+            max_timeout_tries=max_timeout_tries, speculative_timeout=speculative_timeout, idempotent=idempotent,
+            callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
         )
 
         return self._execute_http_client_method(host, uri, client_method, waited, callback)
 
     def delete_url(self, host, uri, *, name=None, data=None, headers=None, content_type=None,
-                   connect_timeout=None, request_timeout=None, max_timeout_tries=None,
+                   connect_timeout=None, request_timeout=None, max_timeout_tries=None, speculative_timeout=None,
                    callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
@@ -846,7 +848,8 @@ class PageHandler(RequestHandler):
         client_method = lambda callback: self._http_client.delete_url(
             host, uri, name=name, data=data, headers=headers, content_type=content_type,
             connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            callback=callback, parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+            speculative_timeout=speculative_timeout, callback=callback, parse_response=parse_response,
+            parse_on_error=parse_on_error, fail_fast=fail_fast
         )
 
         return self._execute_http_client_method(host, uri, client_method, waited, callback)
@@ -1061,28 +1064,29 @@ class AwaitablePageHandler(PageHandler):
 
     def get_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True,
                 connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                speculative_timeout=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
 
         client_method = lambda: self._http_client.get_url(
             host, uri, name=name, data=data, headers=headers, follow_redirects=follow_redirects,
             connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+            speculative_timeout=speculative_timeout, parse_response=parse_response,
+            parse_on_error=parse_on_error, fail_fast=fail_fast
         )
 
         return self._execute_http_client_method(host, uri, client_method, waited)
 
     def head_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                 waited=True, fail_fast=False):
+                 speculative_timeout=None, waited=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
 
         client_method = lambda: self._http_client.head_url(
             host, uri, data=data, name=name, headers=headers, follow_redirects=follow_redirects,
             connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            fail_fast=fail_fast
+            speculative_timeout=speculative_timeout, fail_fast=fail_fast
         )
 
         return self._execute_http_client_method(host, uri, client_method, waited)
@@ -1090,14 +1094,14 @@ class AwaitablePageHandler(PageHandler):
     def post_url(self, host, uri, *,
                  name=None, data='', headers=None, files=None, content_type=None, follow_redirects=True,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=False,
-                 waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                 speculative_timeout=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
 
         client_method = lambda: self._http_client.post_url(
             host, uri, data=data, name=name, headers=headers, files=files, content_type=content_type,
             follow_redirects=follow_redirects, connect_timeout=connect_timeout, request_timeout=request_timeout,
-            max_timeout_tries=max_timeout_tries, idempotent=idempotent,
+            max_timeout_tries=max_timeout_tries, idempotent=idempotent, speculative_timeout=speculative_timeout,
             parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
         )
 
@@ -1105,21 +1109,21 @@ class AwaitablePageHandler(PageHandler):
 
     def put_url(self, host, uri, *, name=None, data='', headers=None, content_type=None, follow_redirects=True,
                 connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=True,
-                waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                speculative_timeout=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
 
         client_method = lambda: self._http_client.put_url(
             host, uri, name=name, data=data, headers=headers, content_type=content_type,
             follow_redirects=follow_redirects, connect_timeout=connect_timeout, request_timeout=request_timeout,
-            max_timeout_tries=max_timeout_tries, idempotent=idempotent,
+            max_timeout_tries=max_timeout_tries, idempotent=idempotent, speculative_timeout=speculative_timeout,
             parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
         )
 
         return self._execute_http_client_method(host, uri, client_method, waited)
 
     def delete_url(self, host, uri, *, name=None, data=None, headers=None, content_type=None,
-                   connect_timeout=None, request_timeout=None, max_timeout_tries=None,
+                   connect_timeout=None, request_timeout=None, max_timeout_tries=None, speculative_timeout=None,
                    waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
 
         fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
@@ -1127,7 +1131,8 @@ class AwaitablePageHandler(PageHandler):
         client_method = lambda: self._http_client.delete_url(
             host, uri, name=name, data=data, headers=headers, content_type=content_type,
             connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
+            parse_response=parse_response, parse_on_error=parse_on_error,
+            speculative_timeout=speculative_timeout, fail_fast=fail_fast
         )
 
         return self._execute_http_client_method(host, uri, client_method, waited)

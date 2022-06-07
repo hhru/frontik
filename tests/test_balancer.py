@@ -134,3 +134,13 @@ class TestHttpError(unittest.TestCase):
         response = frontik_balancer_app.get_page(self.make_url('retry_count_limit_async'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'3')
+
+    def test_speculative_retry(self):
+        response = frontik_balancer_app.get_page(self.make_url('speculative_retry'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'result')
+
+    def test_speculative_no_retry(self):
+        response = frontik_balancer_app.get_page(self.make_url('speculative_no_retry'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'no retry')
