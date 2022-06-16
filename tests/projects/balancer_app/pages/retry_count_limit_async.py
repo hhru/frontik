@@ -1,8 +1,9 @@
 from http_client import Upstream
 
 from frontik.handler import AwaitablePageHandler
+from tests.instances import find_free_port
 
-from tests.projects.balancer_app import get_server
+from tests.projects.balancer_app import get_server_with_port
 
 
 class Page(AwaitablePageHandler):
@@ -10,7 +11,9 @@ class Page(AwaitablePageHandler):
         upstream = Upstream(
             'retry_count_limit_async',
             {'max_tries': 3},
-            [get_server(self, 'free'), get_server(self, 'free'), get_server(self, 'free'), get_server(self, 'free')])
+            [get_server_with_port(find_free_port(11000, 20000)), get_server_with_port(find_free_port(12000, 20000)),
+             get_server_with_port(find_free_port(13000, 20000)), get_server_with_port(find_free_port(14000, 20000))]
+        )
 
         self.application.http_client_factory.update_upstream(upstream)
 
