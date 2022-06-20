@@ -13,7 +13,7 @@ class Page(AwaitablePageHandler):
             Upstream('speculative_retry', {}, [get_server(self, 'broken'), get_server(self, 'normal')]))
 
         result = await self.put_url('speculative_retry', self.request.path, connect_timeout=0.1,
-                                    request_timeout=0.5, max_timeout_tries=1, speculative_timeout=0.1)
+                                    request_timeout=0.5, max_timeout_tries=1, speculative_timeout_pct=0.1)
 
         if result.failed or result.data is None:
             raise HTTPError(500)

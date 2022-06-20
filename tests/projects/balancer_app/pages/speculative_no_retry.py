@@ -13,7 +13,7 @@ class Page(AwaitablePageHandler):
             Upstream('speculative_no_retry', {}, [get_server(self, 'broken'), get_server(self, 'normal')]))
 
         result = await self.post_url('speculative_no_retry', self.request.path, connect_timeout=0.1,
-                                     request_timeout=0.5, max_timeout_tries=1, speculative_timeout=0.10)
+                                     request_timeout=0.5, max_timeout_tries=1, speculative_timeout_pct=0.10)
 
         if result.failed or result.response.code == 500:
             self.text = 'no retry'
