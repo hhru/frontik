@@ -23,6 +23,9 @@ from frontik.options import options
 from frontik.process import fork_workers
 from frontik.request_context import get_request
 from frontik.service_discovery import get_sync_service_discovery, UpstreamUpdateListener
+import memray
+import os
+import time
 
 log = logging.getLogger('server')
 
@@ -80,31 +83,32 @@ def main(config_file=None):
 
 
 def _run_worker(app, count_down_lock, need_to_init, pipe):
-    gc.enable()
-    MDC.init('worker')
+    with memray.Tracker(f"/var/log/memray_output_{os.getpid()}_{time.time()}.bin"):
+        gc.enable()
+        MDC.init('worker')
 
-    try:
-        import uvloop
-    except ImportError:
-        log.info('There is no installed uvloop; use asyncio event loop')
-    else:
-        uvloop.install()
+        try:
+            import uvloop
+        except ImportError:
+            log.info('There is no installed uvloop; use asyncio event loop')
+        else:
+            uvloop.install()
 
-    ioloop = tornado.ioloop.IOLoop.current()
-    executor = ThreadPoolExecutor(options.common_executor_pool_size)
-    ioloop.asyncio_loop.set_default_executor(executor)
-    initialize_application_task = ioloop.asyncio_loop.create_task(
-        _init_app(app, ioloop, count_down_lock, need_to_init, pipe)
-    )
+        ioloop = tornado.ioloop.IOLoop.current()
+        executor = ThreadPoolExecutor(options.common_executor_pool_size)
+        ioloop.asyncio_loop.set_default_executor(executor)
+        initialize_application_task = ioloop.asyncio_loop.create_task(
+            _init_app(app, ioloop, count_down_lock, need_to_init, pipe)
+        )
 
-    def initialize_application_task_result_handler(future):
-        if future.exception():
-            ioloop.stop()
+        def initialize_application_task_result_handler(future):
+            if future.exception():
+                ioloop.stop()
 
-    initialize_application_task.add_done_callback(initialize_application_task_result_handler)
-    ioloop.start()
-    # to raise init exception if any
-    initialize_application_task.result()
+        initialize_application_task.add_done_callback(initialize_application_task_result_handler)
+        ioloop.start()
+        # to raise init exception if any
+        initialize_application_task.result()
 
 
 async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_register_in_service_discovery):
