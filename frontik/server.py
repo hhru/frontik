@@ -23,6 +23,9 @@ from frontik.options import options
 from frontik.process import fork_workers
 from frontik.request_context import get_request
 from frontik.service_discovery import get_sync_service_discovery, UpstreamUpdateListener
+import memray
+import os
+import time
 
 log = logging.getLogger('server')
 
@@ -80,6 +83,11 @@ def main(config_file=None):
 
 
 def _run_worker(app, count_down_lock, need_to_init, pipe):
+    with memray.Tracker(f"/var/log/output_file_{os.getpid()}_{time.time()}.bin"):
+        _run_worker2(app, count_down_lock, need_to_init, pipe)
+
+
+def _run_worker2(app, count_down_lock, need_to_init, pipe):
     gc.enable()
     MDC.init('worker')
 
