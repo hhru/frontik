@@ -7,11 +7,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 from lxml import etree
 from tornado.ioloop import IOLoop
-from tornado.options import options
 
 import frontik.doc
 import frontik.util
 from frontik import file_cache, media_types
+from frontik.options import options
 from frontik.producers import ProducerFactory
 from frontik.util import get_abs_path
 from frontik.xml_util import xml_from_file, xsl_from_file

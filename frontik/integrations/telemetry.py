@@ -4,6 +4,7 @@ from asyncio import Future
 from typing import Optional
 from urllib.parse import urlparse
 
+from http_client.options import options as http_client_options
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation import tornado
@@ -43,7 +44,7 @@ class TelemetryIntegration(Integration):
             ResourceAttributes.SERVICE_NAME: options.app,
             ResourceAttributes.SERVICE_VERSION: app.application_version(),
             ResourceAttributes.HOST_NAME: options.node_name,
-            ResourceAttributes.CLOUD_REGION: options.datacenter,
+            ResourceAttributes.CLOUD_REGION: http_client_options.datacenter,
         })
         otlp_exporter = OTLPSpanExporter(endpoint=options.opentelemetry_collector_url, insecure=True)
 

@@ -12,11 +12,10 @@ import pycurl
 import tornado
 from lxml import etree
 from tornado import httputil
-from tornado.options import options
 from tornado.httpclient import AsyncHTTPClient
 from tornado.stack_context import StackContext
 from tornado.web import Application, RequestHandler, HTTPError
-from http_client import HttpClientFactory
+from http_client import HttpClientFactory, options as http_client_options
 
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
@@ -24,6 +23,7 @@ from frontik import integrations, media_types, request_context
 from frontik.debug import DebugTransform
 from frontik.handler import ErrorHandler
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
+from frontik.options import options
 from frontik.routing import FileMappingRouter, FrontikRouter
 from frontik.service_discovery import get_async_service_discovery, UpstreamCaches
 from frontik.util import generate_uniq_timestamp_request_id, check_request_id
@@ -247,7 +247,7 @@ class FrontikApplication(Application):
 
         return {
             'uptime': uptime_value,
-            'datacenter': options.datacenter,
+            'datacenter': http_client_options.datacenter,
             'workers': {
                 'total': len(self.http_client_factory.tornado_http_client._curls),
                 'free': len(self.http_client_factory.tornado_http_client._free_list)

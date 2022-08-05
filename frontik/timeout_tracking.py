@@ -1,9 +1,11 @@
 import logging
 from collections import namedtuple
-from frontik.request_context import get_handler_name
 from functools import partial
+
 from tornado.ioloop import PeriodicCallback
-from tornado.options import options
+
+from frontik.options import options
+from frontik.request_context import get_handler_name
 
 
 timeout_tracking_logger = logging.getLogger('timeout_tracking')
