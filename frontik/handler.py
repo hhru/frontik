@@ -15,7 +15,6 @@ import tornado.httputil
 import tornado.web
 from tornado import gen, stack_context
 from tornado.ioloop import IOLoop
-from tornado.options import options
 from tornado.web import RequestHandler
 from pydantic import ValidationError, BaseModel
 from http_client import FailFastError, HttpClient, RequestResult, USER_AGENT_HEADER
@@ -31,6 +30,7 @@ from frontik.futures import AbortAsyncGroup, AsyncGroup
 from frontik.debug import DEBUG_HEADER_NAME, DebugMode
 from frontik.timeout_tracking import get_timeout_checker
 from frontik.loggers.stages import StagesLogger
+from frontik.options import options
 from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors, _get_preprocessor_name
 from frontik.util import make_url, gather_dict
 from frontik.version import version as frontik_version

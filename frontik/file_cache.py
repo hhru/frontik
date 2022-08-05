@@ -1,7 +1,7 @@
 import copy
 import os
 
-import tornado.options
+from frontik.options import options
 
 
 # This implementation is broken in so many ways
@@ -87,7 +87,7 @@ class InvalidOptionCache:
 def make_file_cache(cache_name, option_name, root_dir, fun, max_len=None, step=None, deepcopy=False):
     if root_dir:
         # disable cache in development environment
-        max_len = 0 if tornado.options.options.debug else max_len
+        max_len = 0 if options.debug else max_len
         return FileCache(cache_name, root_dir, fun, max_len, step, deepcopy)
     else:
         return InvalidOptionCache(option_name)

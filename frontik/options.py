@@ -1,106 +1,120 @@
+from dataclasses import dataclass, field, fields
 import logging.handlers
-
-from tornado.options import define, options as tornado_options
 
 LOG_DIR_OPTION_NAME = 'log_dir'
 STDERR_LOG_OPTION_NAME = 'stderr_log'
 
-options = tornado_options
 
-define('app', default=None, type=str)
-define('app_class', default=None, type=str)
-define('workers', default=1, type=int)
-define('init_workers_timeout_sec', default=60, type=int)
-define('tornado_settings', default=None, type=dict)
-define('max_active_handlers', default=100, type=int)
-define('reuse_port', default=True, type=bool)
-define('xheaders', default=False, type=bool)
-define('validate_request_id', default=False, type=bool)
+@dataclass
+class Options:
+    app: str = None
+    app_class: str = None
+    workers: int = 1
+    init_workers_timeout_sec: int = 60
+    tornado_settings: dict = None
+    max_active_handlers: int = 100
+    reuse_port: bool = True
+    xheaders: bool = False
+    validate_request_id: bool = False
 
-define('config', None, str)
-define('host', '0.0.0.0', str)
-define('port', 8080, int)
-if 'node_name' not in options:
-    define('node_name', default='', type=str)
-define('common_executor_pool_size', 10, int)
+    config: str = None
+    host: str = '0.0.0.0'
+    port: int = 8080
+    node_name: str = ''
+    common_executor_pool_size: int = 10
 
-define('autoreload', False, bool)
-define('stop_timeout', 3, int)
-define('asyncio_task_threshold_sec', None, float)
-define('asyncio_task_critical_threshold_sec', None, float)
+    autoreload: bool = False
+    stop_timeout: int = 3
+    asyncio_task_threshold_sec: float = None
+    asyncio_task_critical_threshold_sec: float = None
 
-define(LOG_DIR_OPTION_NAME, default=None, type=str, help='Log file name')
-define('log_level', default='info', type=str, help='Log level')
-define('update_log_level_interval_in_seconds', default=300, type=int)
-define('log_json', default=True, type=bool, help='Enable JSON logging for files and syslog')
-define('log_text_format', default='[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s',
-       type=str, help='Log format for files and syslog when JSON logging is disabled')
+    log_dir: str = None
+    log_level: str = 'info'
+    update_log_level_interval_in_seconds: int = 300
+    log_json: bool = True
+    log_text_format: str = '[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s'
 
-define(STDERR_LOG_OPTION_NAME, default=False, type=bool, help='Send log output to stderr (colorized if possible).')
-define('stderr_format', default='%(color)s[%(levelname)1.1s %(asctime)s %(name)s '
-                                '%(module)s:%(lineno)d]%(end_color)s %(message)s', type=str)
-define('stderr_dateformat', default='%H:%M:%S', type=str)
+    stderr_log: bool = False
+    stderr_format: str = '%(color)s[%(levelname)1.1s %(asctime)s %(name)s ' \
+                         '%(module)s:%(lineno)d]%(end_color)s %(message)s'
+    stderr_dateformat: str = '%H:%M:%S'
 
-define('syslog', default=False, type=bool)
-define('syslog_host', default='127.0.0.1', type=str)
-define('syslog_port', default=logging.handlers.SYSLOG_UDP_PORT, type=int)
-define('syslog_facility', default='user', type=str)
+    syslog: bool = False
+    syslog_host: str = '127.0.0.1'
+    syslog_port: int = logging.handlers.SYSLOG_UDP_PORT
+    syslog_facility: str = 'user'
 
-define('suppressed_loggers', default=['tornado.curl_httpclient'], type=list)
+    suppressed_loggers: list = field(default_factory=lambda: ['tornado.curl_httpclient'])
 
-define('debug', default=False, type=bool)
-define('debug_login', default=None, type=str)
-define('debug_password', default=None, type=str)
+    debug: bool = False
+    debug_login: str = None
+    debug_password: str = None
 
-define('http_client_metrics_kafka_cluster', default=None, type=str)
+    http_client_metrics_kafka_cluster: str = None
 
-define('kafka_clusters', default={}, type=dict)
+    kafka_clusters: dict = field(default_factory=lambda: {})
 
-define('statsd_host', default=None, type=str)
-define('statsd_port', default=None, type=int)
-define('gc_metrics_send_interval_ms', default=None, type=int)
+    statsd_host: str = None
+    statsd_port: int = None
+    gc_metrics_send_interval_ms: int = None
 
-define('xml_root', default=None, type=str)
-define('xml_cache_limit', default=None, type=int)
-define('xml_cache_step', default=None, type=int)
-define('xsl_root', default=None, type=str)
-define('xsl_cache_limit', default=None, type=int)
-define('xsl_cache_step', default=None, type=int)
-define('xsl_executor_pool_size', default=1, type=int)
-define('jinja_template_root', default=None, type=str)
-define('jinja_template_cache_limit', default=50, type=int)
-define('jinja_streaming_render_timeout_ms', default=50, type=int)
+    xml_root: str = None
+    xml_cache_limit: int = None
+    xml_cache_step: int = None
+    xsl_root: str = None
+    xsl_cache_limit: int = None
+    xsl_cache_step: int = None
+    xsl_executor_pool_size: int = 1
+    jinja_template_root: str = None
+    jinja_template_cache_limit: int = 50
+    jinja_streaming_render_timeout_ms: int = 50
 
-define('sentry_dsn', default=None, type=str, metavar='http://public:secret@example.com/1')
-define('sentry_connect_timeout_sec', default=0.2, type=float)
-define('sentry_request_timeout_sec', default=2.0, type=float)
+    sentry_dsn: str = None
+    sentry_connect_timeout_sec: float = 0.2
+    sentry_request_timeout_sec: float = 2.0
 
-define('max_http_clients', default=100, type=int)
-define('max_http_clients_connects', default=None, type=int)
-define('send_timeout_stats_interval_ms', default=60000, type=int)
+    max_http_clients: int = 100
+    max_http_clients_connects: int = None
+    send_timeout_stats_interval_ms: int = 60000
 
-# consul options
-define('consul_enabled', default=True, type=bool)
-define('consul_host', default='127.0.0.1', type=str)
-define('consul_port', default=None, type=int)
-define('consul_service_address', default=None, type=str)
-define('consul_check_host', default=None, type=str)
-define('consul_http_check_interval_sec', default=10, type=int)
-define('consul_http_check_timeout_sec', default=1, type=float)
-define('consul_tags', default=[], type=list)
-define('consul_weight_watch_seconds', default=600, type=int)
-define('consul_weight_total_timeout_sec', default=650, type=int)
-define('consul_cache_initial_warmup_timeout_sec', default=2, type=int)
-define('consul_cache_backoff_delay_seconds', default=10, type=int)
-define('consul_consistency_mode', default='default', type=str)
-define('consul_weight_consistency_mode', default=options.consul_consistency_mode, type=str)
-define('consul_deregister_critical_timeout', default='120h', type=str)
+    # consul options
+    consul_enabled: bool = True
+    consul_host: str = '127.0.0.1'
+    consul_port: int = None
+    consul_service_address: str = None
+    consul_check_host: str = None
+    consul_http_check_interval_sec: int = 10
+    consul_http_check_timeout_sec: float = 1
+    consul_tags: list = field(default_factory=lambda: [])
+    consul_weight_watch_seconds: int = 600
+    consul_weight_total_timeout_sec: int = 650
+    consul_cache_initial_warmup_timeout_sec: int = 2
+    consul_cache_backoff_delay_seconds: int = 10
+    consul_consistency_mode: str = 'default'
+    consul_weight_consistency_mode: str = 'default'  # options.consul_consistency_mode
+    consul_deregister_critical_timeout: str = '120h'
 
-# upstream options
-define('upstreams', default=[], type=list)
-define('fail_start_on_empty_upstream', default=True, type=bool)
+    # upstream options
+    upstreams: list = field(default_factory=lambda: [])
+    fail_start_on_empty_upstream: bool = True
 
-# opentelemetry options
-define('opentelemetry_collector_url', default='http://127.0.0.1:2360', type=str)
-define('opentelemetry_sampler_ratio', default=0.01, type=float)
-define('opentelemetry_enabled', default=False, type=bool)
+    # opentelemetry options
+    opentelemetry_collector_url: str = 'http://127.0.0.1:2360'
+    opentelemetry_sampler_ratio: float = 0.01
+    opentelemetry_enabled: bool = False
+
+
+options = Options()
+
+
+def parse_config_file(path):
+    config = {}
+    with open(path, 'rb') as config_file:
+        exec(config_file.read(), config, config)
+
+    for attr in fields(Options):
+        new_value = config.get(attr.name, getattr(options, attr.name))
+        if attr.type == int and isinstance(new_value, str):
+            new_value = int(new_value)
+
+        setattr(options, attr.name, new_value)
