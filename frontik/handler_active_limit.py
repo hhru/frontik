@@ -1,7 +1,8 @@
 import logging
 
-from tornado.options import options
 from tornado.web import HTTPError
+
+from frontik.options import options
 
 handlers_count_logger = logging.getLogger('handlers_count')
 

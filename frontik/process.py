@@ -8,8 +8,9 @@ import time
 import fcntl
 from dataclasses import dataclass
 
-from tornado.options import options
 from tornado.util import errno_from_exception
+
+from frontik.options import options
 
 log = logging.getLogger('fork')
 
