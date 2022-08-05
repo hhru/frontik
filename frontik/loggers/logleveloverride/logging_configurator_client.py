@@ -2,7 +2,7 @@ import copy
 import logging
 
 from tornado.ioloop import PeriodicCallback
-from tornado.options import options
+from frontik.options import options
 
 from frontik.loggers.logleveloverride.log_level_override_extension import LogLevelOverrideExtension
 

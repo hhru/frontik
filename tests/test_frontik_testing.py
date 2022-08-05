@@ -1,9 +1,9 @@
-import tornado
 from lxml import etree
 from tornado.ioloop import IOLoop
 
 from frontik.app import FrontikApplication
 from frontik.handler import PageHandler
+from frontik.options import options
 from frontik.testing import FrontikTestCase
 from tests.projects.test_app.pages.handler import delete
 
@@ -34,7 +34,7 @@ class CheckConfigHandler(PageHandler):
 
 class TestFrontikTesting(FrontikTestCase):
     def setUp(self):
-        tornado.options.options.consul_enabled = False
+        options.consul_enabled = False
         super().setUp()
         self.configure_app(serviceHost='http://service.host')
 

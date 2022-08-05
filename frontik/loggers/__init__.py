@@ -8,9 +8,9 @@ from logging.handlers import SysLogHandler
 from typing import TYPE_CHECKING
 
 from tornado.log import LogFormatter
-from tornado.options import options
 
 from frontik import request_context
+from frontik.options import options
 
 if TYPE_CHECKING:
     from typing import List, Optional
