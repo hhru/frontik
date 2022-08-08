@@ -8,7 +8,7 @@ from http_client.options import parse_config_file as http_client_parse_config_fi
 from frontik.loggers import bootstrap_core_logging, MDC
 from frontik.options import options, parse_config_file
 
-log = logging.getLogger('server')
+log = logging.getLogger('config_parser')
 
 
 def parse_configs(config_files):
