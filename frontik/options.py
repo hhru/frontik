@@ -100,6 +100,22 @@ class Options:
     opentelemetry_sampler_ratio: float = 0.01
     opentelemetry_enabled: bool = False
 
+    # http_client options
+    datacenter: str = None
+    datacenters: list = field(default_factory=lambda: [])
+    timeout_multiplier: float = 1.0
+    http_client_default_connect_timeout_sec: float = 0.2
+    http_client_default_request_timeout_sec: float = 2.0
+    http_client_default_max_tries: int = 2
+    http_client_default_max_timeout_tries: int = 1
+    http_client_default_retry_policy: dict = field(default_factory=lambda: {599: False, 503: False})
+    http_client_default_retry_policy_cassandra: str = 'timeout,http_503'
+    http_client_default_session_required: bool = False
+    http_proxy_host: str = None
+    http_proxy_port: int = 3128
+    http_client_allow_cross_datacenter_requests: bool = False
+    self_node_filter_enabled: bool = False
+
 
 options = Options()
 
