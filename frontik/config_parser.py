@@ -2,8 +2,9 @@ import logging
 import sys
 from dataclasses import asdict
 
+import http_client
 import tornado.autoreload
-from http_client.options import parse_config_file as http_client_parse_config_file
+# from http_client.options import parse_config_file as http_client_parse_config_file
 
 from frontik.loggers import bootstrap_core_logging, MDC
 from frontik.options import options, parse_config_file
@@ -26,11 +27,13 @@ def parse_configs(config_files):
     )
 
     for config in configs_to_read:
-        http_client_parse_config_file(config)
+        # http_client_parse_config_file(config)
         parse_config_file(config)
 
     # override options from config with command line options
     parse_command_line()
+    http_client.options = options
+
     MDC.init('master')
     bootstrap_core_logging()
     for config in configs_to_read:
