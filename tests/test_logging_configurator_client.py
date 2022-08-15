@@ -3,8 +3,6 @@ import unittest
 from typing import List
 
 import pytest as pytest
-from tornado import options
-from tornado.options import define
 
 from frontik.loggers.logleveloverride.log_level_override_extension import LogLevelOverrideExtension, LogLevelOverride
 from frontik.loggers.logleveloverride.logging_configurator_client import LoggingConfiguratorClient
@@ -23,13 +21,6 @@ class TestLogLevelOverrideExtension(LogLevelOverrideExtension):
 
 
 class TestLoggingConfiguratorClient(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        if 'update_log_level_interval_in_seconds' not in options.options:
-            define('update_log_level_interval_in_seconds', default=1, type=int)
-        if 'log_level' not in options.options:
-            define('log_level', default='info', type=str)
 
     def setUp(self) -> None:
         self.logging_configurator_client = LoggingConfiguratorClient(TestLogLevelOverrideExtension())

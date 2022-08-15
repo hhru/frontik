@@ -4,7 +4,7 @@ These parameters can be set for a Frontik application, by passing them to Fronti
 
 The reason for having another config (besides Frontik configuration file: [Configuring Frontik](/docs/config.md))
 is that sometimes it is desirable to provide a more advanced initialization logic.
-Frontik configuration file is executed by `tornado.options.parse_config_file` function, which uses `exec` internally.
+Frontik configuration file is executed by `config_parser.parse_config_file` function, which uses `exec` internally.
 This sets some limitations, for example you can't use `__file__` constant in your code.
 Application's config is free of this limitation.
 

@@ -5,10 +5,10 @@ import weakref
 import jinja2
 from jinja2.utils import concat
 from tornado.escape import to_unicode
-from tornado.options import options
 
 from frontik import json_builder, media_types
 from frontik.util import get_abs_path, get_cookie_or_url_param_value
+from frontik.options import options
 from frontik.producers import ProducerFactory
 
 

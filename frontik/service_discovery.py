@@ -14,10 +14,10 @@ import asyncio
 from consul import Check, Consul
 from consul.aio import Consul as AsyncConsul
 from consul.base import Weight, KVCache, ConsistencyMode, HealthCache
-from http_client import consul_parser, Upstream
-from tornado.options import options
+from http_client import consul_parser, Upstream, options as http_client_options
 from tornado.iostream import PipeIOStream, StreamClosedError
 
+from frontik.options import options
 from frontik.version import version
 
 DEFAULT_WEIGHT = 100
@@ -238,9 +238,9 @@ class UpstreamCaches:
         self._upstreams_config = {}
         self._upstreams_servers = {}
         self._upstream_list = options.upstreams
-        self._datacenter_list = options.datacenters
-        self._current_dc = options.datacenter
-        self._allow_cross_dc_requests = options.http_client_allow_cross_datacenter_requests
+        self._datacenter_list = http_client_options.datacenters
+        self._current_dc = http_client_options.datacenter
+        self._allow_cross_dc_requests = http_client_options.http_client_allow_cross_datacenter_requests
         self._service_name = options.app
         self._upstreams = upstreams
         self._children_pipes = children_pipes

@@ -5,16 +5,16 @@ import unittest
 from queue import Queue
 from threading import Thread
 
-from frontik import options
+from frontik.options import options
 from frontik.service_discovery import UpstreamCaches, UpstreamUpdateListener
-from http_client import Upstream, Server
+from http_client import Upstream, Server, options as http_client_options
 
 
 class UpstreamCachesTestCase(unittest.TestCase):
 
     def test_update_upstreams_servers_different_dc(self):
-        options.options.upstreams = ['app']
-        options.options.datacenters = ['Test', 'AnoTher']
+        options.upstreams = ['app']
+        http_client_options.datacenters = ['Test', 'AnoTher']
         value_one_dc = [
             {
                 'Node': {
@@ -65,8 +65,8 @@ class UpstreamCachesTestCase(unittest.TestCase):
         self.assertEqual(len(upstream_cache._upstreams['app'].servers), 2)
 
     def test_update_upstreams_servers_same_dc(self):
-        options.options.upstreams = ['app']
-        options.options.datacenters = ['test', 'another']
+        options.upstreams = ['app']
+        http_client_options.datacenters = ['test', 'another']
         value_one_dc = [
             {
                 'Node': {
@@ -96,8 +96,8 @@ class UpstreamCachesTestCase(unittest.TestCase):
         self.assertEqual(len(upstream_cache._upstreams['app'].servers), 1)
 
     def test_multiple_update_upstreams_servers_different_dc(self):
-        options.options.upstreams = ['app']
-        options.options.datacenters = ['test', 'another']
+        options.upstreams = ['app']
+        http_client_options.datacenters = ['test', 'another']
         value_one_dc = [
             {
                 'Node': {
@@ -150,8 +150,8 @@ class UpstreamCachesTestCase(unittest.TestCase):
         self.assertEqual(len(upstream_cache._upstreams['app'].servers), 2)
 
     def test_remove_upstreams_servers_different_dc(self):
-        options.options.upstreams = ['app']
-        options.options.datacenters = ['test', 'another']
+        options.upstreams = ['app']
+        http_client_options.datacenters = ['test', 'another']
         value_test_dc = [
             {
                 'Node': {
@@ -249,8 +249,8 @@ class UpstreamCachesTestCase(unittest.TestCase):
         self.assertEqual(len([server for server in upstream_cache._upstreams['app'].servers if server is not None]), 2)
 
     def test_pipe_buffer_overflow(self):
-        options.options.upstreams = ['app']
-        options.options.datacenters = ['Test']
+        options.upstreams = ['app']
+        http_client_options.datacenters = ['Test']
 
         read_fd, write_fd = os.pipe2(os.O_NONBLOCK)
         upstreams = {

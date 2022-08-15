@@ -9,16 +9,18 @@ import signal
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
+from dataclasses import asdict
 
+from http_client.options import options as http_client_options
 import tornado.autoreload
 import tornado.httpserver
 import tornado.ioloop
 from tornado.httputil import HTTPServerRequest
-from tornado.options import parse_command_line, parse_config_file
 from tornado.platform.asyncio import BaseAsyncIOLoop
 
 from frontik.app import FrontikApplication
-from frontik.loggers import bootstrap_logger, bootstrap_core_logging, MDC
+from frontik.config_parser import parse_configs
+from frontik.loggers import bootstrap_logger, MDC
 from frontik.options import options
 from frontik.process import fork_workers
 from frontik.request_context import get_request
@@ -56,7 +58,8 @@ def main(config_file=None):
     application = getattr(module, app_class_name) if app_class_name is not None else FrontikApplication
 
     try:
-        app = application(app_root=os.path.dirname(module.__file__), app_module=app_module_name, **options.as_dict())
+        app = application(app_root=os.path.dirname(module.__file__), app_module=app_module_name,
+                          **{**asdict(options), **asdict(http_client_options)})
         count_down_lock = multiprocessing.Lock()
 
         gc.disable()
@@ -150,34 +153,6 @@ async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_r
 
     signal.signal(signal.SIGTERM, sigterm_handler)
     signal.signal(signal.SIGINT, sigterm_handler)
-
-
-def parse_configs(config_files):
-    """Reads command line options / config file and bootstraps logging.
-    """
-
-    parse_command_line(final=False)
-
-    if options.config:
-        configs_to_read = options.config
-    else:
-        configs_to_read = config_files
-
-    configs_to_read = filter(
-        None, [configs_to_read] if not isinstance(configs_to_read, (list, tuple)) else configs_to_read
-    )
-
-    for config in configs_to_read:
-        parse_config_file(config, final=False)
-
-    # override options from config with command line options
-    parse_command_line(final=False)
-    MDC.init('master')
-    bootstrap_core_logging()
-    for config in configs_to_read:
-        log.debug('using config: %s', config)
-        if options.autoreload:
-            tornado.autoreload.watch(config)
 
 
 async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, count_down_lock,
