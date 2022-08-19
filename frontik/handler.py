@@ -36,6 +36,8 @@ from frontik.util import make_url, gather_dict
 from frontik.version import version as frontik_version
 from frontik.validator import BaseValidationModel, Validators
 from frontik.http_status import ALLOWED_STATUSES
+from pycallgraph import PyCallGraph
+from pycallgraph.output import GraphvizOutput
 
 if TYPE_CHECKING:
     from http_client import BalancedHttpRequest
@@ -372,6 +374,11 @@ class PageHandler(RequestHandler):
 
     @gen.coroutine
     def _execute_page(self, page_handler_method):
+        graphviz = GraphvizOutput()
+        graphviz.output_file = f'/var/log/pycallgraph_{str(self)}.png'
+        profiler = PyCallGraph(output=graphviz)
+        profiler.start()
+
         self.stages_logger.commit_stage('prepare')
         preprocessors = _get_preprocessors(page_handler_method.__func__)
 
@@ -398,6 +405,10 @@ class PageHandler(RequestHandler):
         render_result = yield self._postprocess()
         if render_result is not None:
             self.write(render_result)
+
+        profiler.done()
+        with open('/var/log/qqqqqqq', 'a') as mafile:
+            mafile.write('-------------- ZAPISALI \n')
 
     def get_page(self):
         """ This method can be implemented in the subclass """
