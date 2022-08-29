@@ -56,6 +56,7 @@ class Options:
 
     statsd_host: str = None
     statsd_port: int = None
+    statsd_default_periodic_send_interval_sec: int = 60
     gc_metrics_send_interval_ms: int = None
 
     xml_root: str = None

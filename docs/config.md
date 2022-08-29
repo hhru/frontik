@@ -32,28 +32,29 @@ These options can be set for each Frontik instance (see [options.py](/frontik/op
 
 Logging options:
 
-| Option name                            | Type    | Default value | Description                                                            |
-|----------------------------------------|---------|---------------|------------------------------------------------------------------------|
-| `log_level`                            | `str`   | `info`        | Python log level                                                       |
-| `logformat`                            | `str`   | see code      | Log entry format for files and syslog                                  |
-| `log_dir`                              | `str`   | `None`        | Log directory location (set to `None` to disable logging to file)      |
-| `log_json`                             | `bool`  | `True`        | Enable JSON logging for files and syslog                               |
-| `log_text_format`                      | `str`   | see code      | Log format for files and syslog when JSON logging is disabled          |
-| `stderr_log`                           | `bool`  | `False`       | Send log output to stderr (colorized if possible)                      |
-| `stderr_format`                        | `str`   | see code      | Log entry format for stderr output                                     |
-| `stderr_dateformat`                    | `str`   | see code      | Log entry date format for stderr output                                |
-| `syslog`                               | `bool`  | `False`       | Enables sending logs to syslog                                         |
-| `syslog_host`                          | `str`   | `127.0.0.1`   | Syslog host                                                            |
-| `syslog_port`                          | `int`   | `None`        | Syslog port. If this value is None, unix socket is used, UDP otherwise |
-| `syslog_facility`                      | `str`   | `'user'`      | Syslog facility                                                        |
-| `suppressed_loggers`                   | `list`  | `[]`          | List of logger names to be excluded from debug output                  |
-| `sentry_dsn`                           | `str`   | `None`        | Enable Sentry and set Sentry DSN for sending errors                    |
-| `sentry_connect_timeout_sec`           | `float` | `0.2`         | Sentry connect timeout                                                 |
-| `sentry_request_timeout_sec`           | `float` | `2.0`         | sentry request timeout                                                 |
-| `statsd_host`                          | `str`   | `None`        | Stats server host for metrics                                          |
-| `statsd_port`                          | `int`   | `None`        | Stats server port for metrics                                          |
-| `asyncio_task_threshold_sec`           | `float` | `None`        | Threshold for logging long-running asyncio tasks                       |
-| `asyncio_task_critical_threshold_sec`  | `float` | `None`        | Threshold for send to Sentry long-running asyncio tasks                |
+| Option name                                 | Type    | Default value | Description                                                            |
+|---------------------------------------------|---------|---------------|------------------------------------------------------------------------|
+| `log_level`                                 | `str`   | `info`        | Python log level                                                       |
+| `logformat`                                 | `str`   | see code      | Log entry format for files and syslog                                  |
+| `log_dir`                                   | `str`   | `None`        | Log directory location (set to `None` to disable logging to file)      |
+| `log_json`                                  | `bool`  | `True`        | Enable JSON logging for files and syslog                               |
+| `log_text_format`                           | `str`   | see code      | Log format for files and syslog when JSON logging is disabled          |
+| `stderr_log`                                | `bool`  | `False`       | Send log output to stderr (colorized if possible)                      |
+| `stderr_format`                             | `str`   | see code      | Log entry format for stderr output                                     |
+| `stderr_dateformat`                         | `str`   | see code      | Log entry date format for stderr output                                |
+| `syslog`                                    | `bool`  | `False`       | Enables sending logs to syslog                                         |
+| `syslog_host`                               | `str`   | `127.0.0.1`   | Syslog host                                                            |
+| `syslog_port`                               | `int`   | `None`        | Syslog port. If this value is None, unix socket is used, UDP otherwise |
+| `syslog_facility`                           | `str`   | `'user'`      | Syslog facility                                                        |
+| `suppressed_loggers`                        | `list`  | `[]`          | List of logger names to be excluded from debug output                  |
+| `sentry_dsn`                                | `str`   | `None`        | Enable Sentry and set Sentry DSN for sending errors                    |
+| `sentry_connect_timeout_sec`                | `float` | `0.2`         | Sentry connect timeout                                                 |
+| `sentry_request_timeout_sec`                | `float` | `2.0`         | sentry request timeout                                                 |
+| `statsd_host`                               | `str`   | `None`        | Stats server host for metrics                                          |
+| `statsd_port`                               | `int`   | `None`        | Stats server port for metrics                                          |
+| `statsd_default_periodic_send_interval_sec` | `int`   | `60`          | Stats default periodic metrics sending interval                        |
+| `asyncio_task_threshold_sec`                | `float` | `None`        | Threshold for logging long-running asyncio tasks                       |
+| `asyncio_task_critical_threshold_sec`       | `float` | `None`        | Threshold for send to Sentry long-running asyncio tasks                |
 
 HTTP client options:
 

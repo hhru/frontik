@@ -1,9 +1,10 @@
 import socket
 import collections
+import threading
+import time
+from functools import partial
 from asyncio import Future
 from typing import Optional
-
-from tornado.ioloop import IOLoop
 
 from frontik.integrations import Integration, integrations_logger
 from frontik.options import options
@@ -14,14 +15,7 @@ class StatsdIntegration(Integration):
         self.statsd_client = None
 
     def initialize_app(self, app) -> Optional[Future]:
-        if options.statsd_host is None or options.statsd_port is None:
-            self.statsd_client = StatsDClientStub()
-            integrations_logger.info(
-                'statsd integration is disabled: statsd_host / statsd_port options are not configured'
-            )
-        else:
-            self.statsd_client = StatsDClient(options.statsd_host, options.statsd_port, app=app.app)
-
+        self.statsd_client = create_statsd_client(options, app)
         app.statsd_client = self.statsd_client
         return None
 
@@ -44,6 +38,24 @@ def _encode_str(some):
     return some if isinstance(some, (bytes, bytearray)) else some.encode('utf-8')
 
 
+class Counters:
+    def __init__(self):
+        self._metrics = {}
+        self._lock = threading.Lock()
+
+    def add(self, value, **kwargs):
+        with self._lock:
+            tags = tuple(sorted(kwargs.items()))
+            self._metrics.setdefault(tags, 0)
+            self._metrics[tags] += value
+
+    def get_snapshot_and_reset(self):
+        with self._lock:
+            snapshot = self._metrics
+            self._metrics = {}
+            return snapshot.items()
+
+
 class StatsDClientStub:
     def __init__(self):
         pass
@@ -57,17 +69,24 @@ class StatsDClientStub:
     def count(self, aspect, delta, **kwargs):
         pass
 
+    def counters(self, aspect, counters):
+        pass
+
     def time(self, aspect, value, **kwargs):
         pass
 
     def gauge(self, aspect, value, **kwargs):
         pass
 
+    def send_periodically(self, callback, send_interval_sec=None):
+        pass
+
 
 class StatsDClient:
-    def __init__(self, host, port, app=None, max_udp_size=508, reconnect_timeout=2):
+    def __init__(self, host, port, default_periodic_send_interval_sec, app=None, max_udp_size=508, reconnect_timeout=2):
         self.host = host
         self.port = port
+        self.default_periodic_send_interval_sec = default_periodic_send_interval_sec
         self.app = app
         self.max_udp_size = max_udp_size
         self.reconnect_timeout = reconnect_timeout
@@ -93,7 +112,7 @@ class StatsDClient:
     def _close(self):
         self.socket.close()
         self.socket = None
-        IOLoop.current().add_timeout(IOLoop.current().time() + self.reconnect_timeout, self._connect)
+        threading.Timer(self.reconnect_timeout, self._connect).start()
 
     def _send(self, message):
         if len(message) > self.max_udp_size:
@@ -143,8 +162,38 @@ class StatsDClient:
     def count(self, aspect, delta, **kwargs):
         self._send('{}{}:{}|c'.format(aspect, _convert_tags(dict(kwargs, app=self.app)), delta))
 
+    def counters(self, aspect, counters):
+        for tags, count in counters.get_snapshot_and_reset():
+            self.count(aspect, count, **dict(tags))
+
     def time(self, aspect, value, **kwargs):
         self._send('{}{}:{}|ms'.format(aspect, _convert_tags(dict(kwargs, app=self.app)), value))
 
     def gauge(self, aspect, value, **kwargs):
         self._send('{}{}:{}|g'.format(aspect, _convert_tags(dict(kwargs, app=self.app)), value))
+
+    def send_periodically(self, callback, send_interval_sec=None):
+        if send_interval_sec is None:
+            send_interval_sec = self.default_periodic_send_interval_sec
+        threading.Thread(target=partial(self._send_periodically, callback, send_interval_sec), daemon=True).start()
+
+    @staticmethod
+    def _send_periodically(callback, send_interval_sec):
+        while True:
+            try:
+                time.sleep(send_interval_sec)
+                callback()
+            except Exception as e:
+                integrations_logger.warning('statsd: writing error: %s', e)
+
+
+def create_statsd_client(options, app):
+    if options.statsd_host is None or options.statsd_port is None:
+        statsd_client = StatsDClientStub()
+        integrations_logger.info(
+            'statsd integration is disabled: statsd_host / statsd_port options are not configured'
+        )
+    else:
+        statsd_client = StatsDClient(options.statsd_host, options.statsd_port,
+                                     options.statsd_default_periodic_send_interval_sec, app=app.app)
+    return statsd_client

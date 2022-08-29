@@ -61,7 +61,6 @@ def fork_workers(worker_function, *, app, init_workers_count_down, num_workers, 
                 f' do not started {init_workers_count_down.value} workers'
             )
         time.sleep(0.1)
-    app.upstream_caches.send_updates()
     after_workers_up_action()
     _supervise_workers(state, worker_function)
 

@@ -26,7 +26,7 @@ from frontik.loggers import bootstrap_logger, MDC
 from frontik.options import options
 from frontik.process import fork_workers
 from frontik.request_context import get_request
-from frontik.service_discovery import get_sync_service_discovery, UpstreamUpdateListener
+from frontik.service_discovery import UpstreamUpdateListener
 
 log = logging.getLogger('server')
 
@@ -68,13 +68,14 @@ def main(config_file=None):
         gc.collect()
         gc.freeze()
         if options.workers != 1:
-            service_discovery_client = get_sync_service_discovery(options)
             fork_workers(partial(_run_worker, app, count_down_lock, False),
                          app=app,
                          init_workers_count_down=app.init_workers_count_down,
                          num_workers=options.workers,
-                         after_workers_up_action=service_discovery_client.register_service,
-                         before_workers_shutdown_action=service_discovery_client.deregister_service_and_close,
+                         after_workers_up_action=lambda: {
+                             app.upstream_caches.send_updates(),
+                             app.service_discovery_client.register_service()},
+                         before_workers_shutdown_action=app.service_discovery_client.deregister_service_and_close,
                          children_pipes=app.children_pipes)
         else:
             # run in single process mode
