@@ -11,9 +11,8 @@ from threading import Lock, Thread
 from queue import Queue, Full
 
 import asyncio
-from consul import Check, Consul
-from consul.aio import Consul as AsyncConsul
-from consul.base import Weight, KVCache, ConsistencyMode, HealthCache
+from frontik.consul import AsyncConsul, SyncConsul
+from consul.base import Check, Weight, KVCache, ConsistencyMode, HealthCache
 from http_client import consul_parser, Upstream, options as http_client_options
 from tornado.iostream import PipeIOStream, StreamClosedError
 
@@ -136,7 +135,7 @@ class _AsyncServiceDiscovery:
 class _SyncServiceDiscovery:
     def __init__(self, options):
         self.options = options
-        self.consul = Consul(host=options.consul_host, port=options.consul_port)
+        self.consul = SyncConsul(host=options.consul_host, port=options.consul_port)
         self.service_name = options.app
         self.hostname = _get_hostname_or_raise(options.node_name)
         self.service_id = _make_service_id(options, service_name=self.service_name, hostname=self.hostname)
