@@ -40,20 +40,17 @@ def _encode_str(some):
 
 class Counters:
     def __init__(self):
-        self._metrics = {}
-        self._lock = threading.Lock()
+        self._tags_to_counter = {}
 
     def add(self, value, **kwargs):
-        with self._lock:
-            tags = tuple(sorted(kwargs.items()))
-            self._metrics.setdefault(tags, 0)
-            self._metrics[tags] += value
+        tags = tuple(sorted(kwargs.items()))
+        self._tags_to_counter.setdefault(tags, 0)
+        self._tags_to_counter[tags] += value
 
     def get_snapshot_and_reset(self):
-        with self._lock:
-            snapshot = self._metrics
-            self._metrics = {}
-            return snapshot.items()
+        snapshot = self._tags_to_counter
+        self._tags_to_counter = {}
+        return snapshot.items()
 
 
 class StatsDClientStub:

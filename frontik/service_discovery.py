@@ -15,7 +15,7 @@ from consul.base import Check, Weight, KVCache, ConsistencyMode, HealthCache
 from http_client import consul_parser, Upstream, options as http_client_options
 from tornado.iostream import PipeIOStream, StreamClosedError
 
-from frontik.consul import AsyncConsul, SyncConsul, ClientEventCallback
+from frontik.consul_client import AsyncConsulClient, SyncConsulClient, ClientEventCallback
 from frontik.integrations.statsd import Counters
 from frontik.options import options
 from frontik.version import version
@@ -91,10 +91,10 @@ def _get_hostname_or_raise(node_name: str):
 class _AsyncServiceDiscovery:
     def __init__(self, options, statsd_client, event_loop=None):
         self.options = options
-        self.consul = AsyncConsul(host=options.consul_host,
-                                  port=options.consul_port,
-                                  loop=event_loop,
-                                  client_event_callback=ConsulMetricsTracker(statsd_client))
+        self.consul = AsyncConsulClient(host=options.consul_host,
+                                        port=options.consul_port,
+                                        loop=event_loop,
+                                        client_event_callback=ConsulMetricsTracker(statsd_client))
         self.service_name = options.app
         self.hostname = _get_hostname_or_raise(options.node_name)
         self.service_id = _make_service_id(options, service_name=self.service_name, hostname=self.hostname)
@@ -143,9 +143,9 @@ class _AsyncServiceDiscovery:
 class _SyncServiceDiscovery:
     def __init__(self, options, statsd_client):
         self.options = options
-        self.consul = SyncConsul(host=options.consul_host,
-                                 port=options.consul_port,
-                                 client_event_callback=ConsulMetricsTracker(statsd_client))
+        self.consul = SyncConsulClient(host=options.consul_host,
+                                       port=options.consul_port,
+                                       client_event_callback=ConsulMetricsTracker(statsd_client))
         self.service_name = options.app
         self.hostname = _get_hostname_or_raise(options.node_name)
         self.service_id = _make_service_id(options, service_name=self.service_name, hostname=self.hostname)

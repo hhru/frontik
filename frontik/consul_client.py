@@ -16,13 +16,13 @@ HTTP_METHOD_PUT = "PUT"
 HTTP_METHOD_DELETE = "DELETE"
 
 
-class Consul(base.Consul):
+class ConsulClient(base.Consul):
     def __init__(self, *args, client_event_callback=None, **kwargs):
         self._client_event_callback = ClientEventCallback() if client_event_callback is None else client_event_callback
         super().__init__(*args, **kwargs)
 
 
-class AsyncConsul(Consul):
+class AsyncConsulClient(ConsulClient):
     def __init__(self, *args, loop=None, client_event_callback=None, **kwargs):
         self._loop = loop or asyncio.get_event_loop()
         super().__init__(*args, client_event_callback=client_event_callback, **kwargs)
@@ -32,7 +32,7 @@ class AsyncConsul(Consul):
                                       client_event_callback=self._client_event_callback)
 
 
-class SyncConsul(Consul):
+class SyncConsulClient(ConsulClient):
     def http_connect(self, host, port, scheme, verify=True, cert=None, timeout=None):
         return _SyncConsulHttpClient(host, port, scheme, verify, cert, timeout,
                                      client_event_callback=self._client_event_callback)
