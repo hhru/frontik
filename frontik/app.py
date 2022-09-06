@@ -20,12 +20,13 @@ from http_client import HttpClientFactory, options as http_client_options
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
 from frontik import integrations, media_types, request_context
+from frontik.integrations.statsd import create_statsd_client
 from frontik.debug import DebugTransform
 from frontik.handler import ErrorHandler
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.options import options
 from frontik.routing import FileMappingRouter, FrontikRouter
-from frontik.service_discovery import get_async_service_discovery, UpstreamCaches
+from frontik.service_discovery import get_sync_service_discovery, get_async_service_discovery, UpstreamCaches
 from frontik.util import generate_uniq_timestamp_request_id, check_request_id
 from frontik.version import version as frontik_version
 
@@ -124,13 +125,11 @@ class FrontikApplication(Application):
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
         self.available_integrations = None
-        self.service_discovery_client = None
         self.tornado_http_client = None
         self.http_client_factory = None
         self.upstreams = {}
         self.children_pipes = {}
         self.upstream_update_listener = None
-        self.upstream_caches = UpstreamCaches(self.children_pipes, self.upstreams)
         self.router = FrontikRouter(self)
         self.init_workers_count_down = multiprocessing.Value('i', options.workers)
 
@@ -142,13 +141,17 @@ class FrontikApplication(Application):
 
         if options.debug:
             core_handlers.insert(0, (r'/pydevd/?', PydevdHandler))
-        if options.consul_enabled:
-            self.upstream_caches.initial_upstreams_caches()
+
+        statsd_client = create_statsd_client(options, self)
+        sync_service_discovery = get_sync_service_discovery(options, statsd_client)
+        self.service_discovery_client = get_async_service_discovery(options, statsd_client) \
+            if options.workers == 1 else sync_service_discovery
+        self.upstream_caches = UpstreamCaches(self.children_pipes, self.upstreams, sync_service_discovery) \
+            if options.consul_enabled else UpstreamCaches(self.children_pipes, self.upstreams)
 
         super().__init__(core_handlers, **tornado_settings)
 
     async def init(self):
-        self.service_discovery_client = get_async_service_discovery(options)
         self.transforms.insert(0, partial(DebugTransform, self))
 
         AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)

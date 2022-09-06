@@ -11,12 +11,12 @@ from threading import Lock, Thread
 from queue import Queue, Full
 
 import asyncio
-from consul import Check, Consul
-from consul.aio import Consul as AsyncConsul
-from consul.base import Weight, KVCache, ConsistencyMode, HealthCache
+from consul.base import Check, Weight, KVCache, ConsistencyMode, HealthCache
 from http_client import consul_parser, Upstream, options as http_client_options
 from tornado.iostream import PipeIOStream, StreamClosedError
 
+from frontik.consul_client import AsyncConsulClient, SyncConsulClient, ClientEventCallback
+from frontik.integrations.statsd import Counters
 from frontik.options import options
 from frontik.version import version
 
@@ -24,6 +24,10 @@ DEFAULT_WEIGHT = 100
 AUTO_RESOLVE_ADDRESS_VALUE = 'resolve'
 MESSAGE_HEADER_MAGIC = b'T1uf31f'
 MESSAGE_SIZE_STRUCT = '=Q'
+
+CONSUL_REQUESTS_METRIC = "consul.request"
+CONSUL_REQUEST_SUCCESSFUL_RESULT = "success"
+CONSUL_REQUEST_FAILED_RESULT = "failure"
 
 log = logging.getLogger('service_discovery')
 
@@ -36,20 +40,20 @@ def _get_service_address(options):
         return options.consul_service_address
 
 
-def get_async_service_discovery(opts, *, event_loop=None):
+def get_async_service_discovery(opts, statsd_client, *, event_loop=None):
     if not opts.consul_enabled:
         log.info('Consul disabled, skipping')
         return _AsyncStub()
     else:
-        return _AsyncServiceDiscovery(opts, event_loop)
+        return _AsyncServiceDiscovery(opts, statsd_client, event_loop)
 
 
-def get_sync_service_discovery(opts):
+def get_sync_service_discovery(opts, statsd_client):
     if not opts.consul_enabled:
         log.info('Consul disabled, skipping')
         return _SyncStub()
     else:
-        return _SyncServiceDiscovery(opts)
+        return _SyncServiceDiscovery(opts, statsd_client)
 
 
 def _make_service_id(options, *, service_name, hostname):
@@ -85,9 +89,12 @@ def _get_hostname_or_raise(node_name: str):
 
 
 class _AsyncServiceDiscovery:
-    def __init__(self, options, event_loop=None):
+    def __init__(self, options, statsd_client, event_loop=None):
         self.options = options
-        self.consul = AsyncConsul(host=options.consul_host, port=options.consul_port, loop=event_loop)
+        self.consul = AsyncConsulClient(host=options.consul_host,
+                                        port=options.consul_port,
+                                        loop=event_loop,
+                                        client_event_callback=ConsulMetricsTracker(statsd_client))
         self.service_name = options.app
         self.hostname = _get_hostname_or_raise(options.node_name)
         self.service_id = _make_service_id(options, service_name=self.service_name, hostname=self.hostname)
@@ -134,9 +141,11 @@ class _AsyncServiceDiscovery:
 
 
 class _SyncServiceDiscovery:
-    def __init__(self, options):
+    def __init__(self, options, statsd_client):
         self.options = options
-        self.consul = Consul(host=options.consul_host, port=options.consul_port)
+        self.consul = SyncConsulClient(host=options.consul_host,
+                                       port=options.consul_port,
+                                       client_event_callback=ConsulMetricsTracker(statsd_client))
         self.service_name = options.app
         self.hostname = _get_hostname_or_raise(options.node_name)
         self.service_id = _make_service_id(options, service_name=self.service_name, hostname=self.hostname)
@@ -208,6 +217,29 @@ class _SyncStub:
         pass
 
 
+class ConsulMetricsTracker(ClientEventCallback):
+
+    def __init__(self, statsd_client):
+        self._statsd_client = statsd_client
+        self._request_counters = Counters()
+        self._statsd_client.send_periodically(self._send_metrics)
+
+    def on_http_request_success(self, method, path, response_code):
+        self._request_counters.add(1, method=method, url=path, result=CONSUL_REQUEST_SUCCESSFUL_RESULT,
+                                   type=response_code)
+
+    def on_http_request_failure(self, method, path, ex):
+        self._request_counters.add(1, method=method, url=path, result=CONSUL_REQUEST_FAILED_RESULT,
+                                   type=type(ex).__name__)
+
+    def on_http_request_invalid(self, method, path, response_code):
+        self._request_counters.add(1, method=method, url=path, result=CONSUL_REQUEST_FAILED_RESULT,
+                                   type=response_code)
+
+    def _send_metrics(self):
+        self._statsd_client.counters(CONSUL_REQUESTS_METRIC, self._request_counters)
+
+
 class UpstreamUpdateListener:
     def __init__(self, http_client_factory, pipe):
         self.http_client_factory = http_client_factory
@@ -234,7 +266,7 @@ class UpstreamUpdateListener:
 
 
 class UpstreamCaches:
-    def __init__(self, children_pipes, upstreams):
+    def __init__(self, children_pipes, upstreams, service_discovery=None):
         self._upstreams_config = {}
         self._upstreams_servers = {}
         self._upstream_list = options.upstreams
@@ -249,41 +281,40 @@ class UpstreamCaches:
         self._resend_notification = Queue(maxsize=1)
         self._resend_thread = Thread(target=self._resend, daemon=True)
 
-    def initial_upstreams_caches(self):
-        self._resend_thread.start()
+        if service_discovery is not None:
+            self._resend_thread.start()
 
-        service_discovery = get_sync_service_discovery(options)
-        upstream_cache = KVCache(
-            service_discovery.consul.kv,
-            path='upstream/',
-            watch_seconds=service_discovery.consul_weight_watch_seconds,
-            backoff_delay_seconds=service_discovery.consul_cache_backoff_delay_seconds,
-            total_timeout=service_discovery.consul_weight_total_timeout_sec,
-            cache_initial_warmup_timeout=service_discovery.consul_cache_initial_warmup_timeout_sec,
-            consistency_mode=service_discovery.consul_weight_consistency_mode,
-            recurse=True,
-            caller=self._service_name
-        )
-        upstream_cache.add_listener(self._update_upstreams_config, True)
-        upstream_cache.start()
+            upstream_cache = KVCache(
+                service_discovery.consul.kv,
+                path='upstream/',
+                watch_seconds=service_discovery.consul_weight_watch_seconds,
+                backoff_delay_seconds=service_discovery.consul_cache_backoff_delay_seconds,
+                total_timeout=service_discovery.consul_weight_total_timeout_sec,
+                cache_initial_warmup_timeout=service_discovery.consul_cache_initial_warmup_timeout_sec,
+                consistency_mode=service_discovery.consul_weight_consistency_mode,
+                recurse=True,
+                caller=self._service_name
+            )
+            upstream_cache.add_listener(self._update_upstreams_config, True)
+            upstream_cache.start()
 
-        for upstream in self._upstream_list:
-            datacenters = self._datacenter_list if self._allow_cross_dc_requests else (self._current_dc,)
-            for dc in datacenters:
-                health_cache = HealthCache(
-                    service=upstream,
-                    health_client=service_discovery.consul.health,
-                    passing=True,
-                    watch_seconds=service_discovery.consul_weight_watch_seconds,
-                    backoff_delay_seconds=service_discovery.consul_cache_backoff_delay_seconds,
-                    dc=dc,
-                    caller=self._service_name
-                )
-                health_cache.add_listener(self._update_upstreams_service, True)
-                health_cache.start()
+            for upstream in self._upstream_list:
+                datacenters = self._datacenter_list if self._allow_cross_dc_requests else (self._current_dc,)
+                for dc in datacenters:
+                    health_cache = HealthCache(
+                        service=upstream,
+                        health_client=service_discovery.consul.health,
+                        passing=True,
+                        watch_seconds=service_discovery.consul_weight_watch_seconds,
+                        backoff_delay_seconds=service_discovery.consul_cache_backoff_delay_seconds,
+                        dc=dc,
+                        caller=self._service_name
+                    )
+                    health_cache.add_listener(self._update_upstreams_service, True)
+                    health_cache.start()
 
-        if options.fail_start_on_empty_upstream:
-            self._check_empty_upstreams_on_startup()
+            if options.fail_start_on_empty_upstream:
+                self._check_empty_upstreams_on_startup()
 
     def _check_empty_upstreams_on_startup(self):
         empty_upstreams = [k for k, v in self._upstreams.items() if not v.servers]
