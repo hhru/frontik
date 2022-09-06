@@ -38,6 +38,8 @@ class SyncConsulClient(ConsulClient):
                                      client_event_callback=self._client_event_callback)
 
 
+# this implementation was copied from https://github.com/hhru/python-consul2/blob/master/consul/aio.py#L16
+# and then _client_event_callback was added
 class _AsyncConsulHttpClient(base.HTTPClient):
     """Asyncio adapter for python consul using aiohttp library"""
 
@@ -120,6 +122,8 @@ class _AsyncConsulHttpClient(base.HTTPClient):
         await self._session.close()
 
 
+# this implementation was copied from https://github.com/hhru/python-consul2/blob/master/consul/std.py#L8
+# and then _client_event_callback was added
 class _SyncConsulHttpClient(base.HTTPClient):
     def __init__(self, *args, client_event_callback, **kwargs):
         super(_SyncConsulHttpClient, self).__init__(*args, **kwargs)
