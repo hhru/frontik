@@ -25,7 +25,7 @@ AUTO_RESOLVE_ADDRESS_VALUE = 'resolve'
 MESSAGE_HEADER_MAGIC = b'T1uf31f'
 MESSAGE_SIZE_STRUCT = '=Q'
 
-CONSUL_REQUESTS_METRIC = "consul.request"
+CONSUL_REQUESTS_METRIC = "consul-client.request"
 CONSUL_REQUEST_SUCCESSFUL_RESULT = "success"
 CONSUL_REQUEST_FAILED_RESULT = "failure"
 
@@ -225,16 +225,13 @@ class ConsulMetricsTracker(ClientEventCallback):
         self._statsd_client.send_periodically(self._send_metrics)
 
     def on_http_request_success(self, method, path, response_code):
-        self._request_counters.add(1, method=method, url=path, result=CONSUL_REQUEST_SUCCESSFUL_RESULT,
-                                   type=response_code)
+        self._request_counters.add(1, result=CONSUL_REQUEST_SUCCESSFUL_RESULT, type=response_code)
 
     def on_http_request_failure(self, method, path, ex):
-        self._request_counters.add(1, method=method, url=path, result=CONSUL_REQUEST_FAILED_RESULT,
-                                   type=type(ex).__name__)
+        self._request_counters.add(1, result=CONSUL_REQUEST_FAILED_RESULT, type=type(ex).__name__)
 
     def on_http_request_invalid(self, method, path, response_code):
-        self._request_counters.add(1, method=method, url=path, result=CONSUL_REQUEST_FAILED_RESULT,
-                                   type=response_code)
+        self._request_counters.add(1, result=CONSUL_REQUEST_FAILED_RESULT, type=response_code)
 
     def _send_metrics(self):
         self._statsd_client.counters(CONSUL_REQUESTS_METRIC, self._request_counters)
