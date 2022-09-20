@@ -10,8 +10,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from dataclasses import asdict
-import json
-import time
+from datetime import datetime
 
 from http_client.options import options as http_client_options
 import tornado.autoreload
@@ -197,10 +196,12 @@ async def _deinit_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_
 def wrap_handle_with_time_logging(app: FrontikApplication, slow_tasks_logger):
     old_run = asyncio.Handle._run
 
-    def _log_slow_tasks(ts: float, handle: asyncio.Handle, delta: float):
+    def _log_slow_tasks(ts: datetime, handle: asyncio.Handle, delta: float):
         delta_ms = delta * 1000
         app.statsd_client.time('long_task.time', int(delta_ms))
-        slow_tasks_logger.warning('ts: %s, %s took %.2fms', ts, handle, delta_ms)
+        trace_id = get_trace_id(handle)
+        ts = ts.strftime("%Y-%m-%d %H:%M:%S.%f")
+        slow_tasks_logger.warning('ts: %s, trace_id: %s, %s took %.2fms', ts, trace_id, handle, delta_ms)
 
         if options.asyncio_task_critical_threshold_sec and delta >= options.asyncio_task_critical_threshold_sec:
             request = get_request() or HTTPServerRequest('GET', '/asyncio_long_task_stub')
@@ -211,15 +212,11 @@ def wrap_handle_with_time_logging(app: FrontikApplication, slow_tasks_logger):
                 slow_tasks_logger.warning('no sentry logger available')
                 sentry_logger.capture_message(f'{handle} took {delta_ms:.2f} ms', stack=True)
 
-        if slow_tasks_logger.level == logging.DEBUG:
-            result = deep_refs_collect(handle, 'self', app.app, objects=set(), result={})
-            slow_tasks_logger.debug(json.dumps(result, indent=2))
-
     def run(self):
         start_time = self._loop.time()
         old_run(self)
         delta = self._loop.time() - start_time
-        end_time = time.time()
+        end_time = datetime.now()
 
         if delta >= options.asyncio_task_threshold_sec:
             self._context.run(partial(_log_slow_tasks, end_time, self, delta))
@@ -227,36 +224,8 @@ def wrap_handle_with_time_logging(app: FrontikApplication, slow_tasks_logger):
     asyncio.Handle._run = run
 
 
-def deep_refs_collect(obj, title, app_name, objects, result):
-    if type(obj) in (list, set, tuple):
-        for i, item in enumerate(obj):
-            deep_refs_collect(item, f'{title}_{i}', app_name, objects, result)
-        return
-    elif type(obj) == dict or type(obj).__name__ == 'Context':
-        for key, item in obj.items():
-            deep_refs_collect(item, f'{title}_{key}', app_name, objects, result)
-        return
-    elif type(obj).__name__ == 'cell':
-        deep_refs_collect(obj.cell_contents, title, app_name, objects, result)
-        return
-
-    if id(obj) in objects:
-        return
-    objects.add(id(obj))
-
-    if hasattr(obj, '__module__') and str(obj.__module__).startswith(app_name):
-        title = f"{title}.{obj.__module__}.{obj.__name__}"
-        key = str((title, str(obj)[:240]))
-        result[key] = {}
-        return result
-
-    key = str((title, str(obj)[:240]))
-    result[key] = {}
-
-    fields = ('_callback', '__func__', 'func', 'gen', 'result_future', '_args', '_context', '_callbacks',
-              'callback', '__closure__', '__self__')
-    for field_name in fields:
-        if hasattr(obj, field_name) and getattr(obj, field_name) is not None:
-            deep_refs_collect(getattr(obj, field_name), field_name, app_name, objects, result[key])
-
-    return result
+def get_trace_id(handle):
+    try:
+        return hex(list(next(handle._context.items())[1].values())[0]._context.trace_id)
+    except Exception:
+        return None
