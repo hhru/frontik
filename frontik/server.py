@@ -28,6 +28,7 @@ from frontik.request_context import get_request
 from frontik.service_discovery import UpstreamUpdateListener
 
 log = logging.getLogger('server')
+current_callback = None
 
 
 def main(config_file=None):
@@ -213,6 +214,8 @@ def wrap_handle_with_time_logging(app: FrontikApplication, slow_tasks_logger):
                 sentry_logger.capture_message(f'{handle} took {delta_ms:.2f} ms', stack=True)
 
     def run(self):
+        global current_callback
+        current_callback = self
         start_time = self._loop.time()
         old_run(self)
         delta = self._loop.time() - start_time
