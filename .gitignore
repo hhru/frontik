@@ -15,6 +15,9 @@ frontik.egg-info/
 .eggs/
 .pytest_cache/
 
+tornado/
+http_client/
+
 *.log
 *.slog
 .coverage*
