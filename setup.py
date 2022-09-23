@@ -46,7 +46,7 @@ setup(
         'requests <= 2.20.0',
         'lxml-asserts',
         'tornado-httpclient-mock',
-        'protobuf == 3.20.1'
+        'protobuf == 3.20.2'
     ],
     extras_require={
         'sentry': ['raven'],
