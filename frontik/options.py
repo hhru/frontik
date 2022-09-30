@@ -58,6 +58,8 @@ class Options:
     statsd_port: int = None
     statsd_default_periodic_send_interval_sec: int = 60
     gc_metrics_send_interval_ms: int = None
+    long_gc_log_enabled: bool = True
+    long_gc_log_threshold_sec: float = 0.003
 
     xml_root: str = None
     xml_cache_limit: int = None
