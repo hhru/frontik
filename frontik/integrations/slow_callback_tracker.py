@@ -105,4 +105,4 @@ def long_gc_tracker(phase, info):
             GC_STATS.sum_duration = gc_duration
 
         if long_gc_log is not None and gc_duration > options.long_gc_log_threshold_sec:
-            long_gc_log.warning(f'ts: {gc_end_time}, GC took {gc_duration*1000} ms')
+            long_gc_log.warning(f'GC took {gc_duration*1000} ms')
