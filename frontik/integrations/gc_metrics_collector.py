@@ -28,12 +28,27 @@ class GCMetricsCollectorIntegration(Integration):
 
 
 class GCStats:
-    __slots__ = ('start', 'duration', 'count')
+    __slots__ = ('start', 'duration', 'count', 'max_stw')
 
     def __init__(self):
         self.start = None
         self.duration = 0
         self.count = 0
+        self.max_stw = 0
+
+    def on_gc_start(self):
+        self.start = time.perf_counter()
+
+    def on_gc_stop(self):
+        gc_duration = time.perf_counter() - self.start
+        self.duration += gc_duration
+        self.count += 1
+        self.max_stw = max(self.max_stw, gc_duration)
+
+    def clear(self):
+        self.duration = 0
+        self.count = 0
+        self.max_stw = 0
 
 
 GC_STATS = GCStats()
@@ -41,17 +56,18 @@ GC_STATS = GCStats()
 
 def gc_metrics_collector(phase, info):
     if phase == 'start':
-        GC_STATS.start = time.time()
+        GC_STATS.on_gc_start()
     elif phase == 'stop' and GC_STATS.start is not None:
-        GC_STATS.duration += time.time() - GC_STATS.start
-        GC_STATS.count += 1
+        GC_STATS.on_gc_stop()
 
 
 def send_metrics(app):
     if GC_STATS.count == 0:
         app.statsd_client.time('gc.duration', 0)
         app.statsd_client.count('gc.count', 0)
+        app.statsd_client.gauge('gc.max_duration_ms', 0)
     else:
         app.statsd_client.time('gc.duration', int(GC_STATS.duration * 1000))
         app.statsd_client.count('gc.count', GC_STATS.count)
-        GC_STATS.duration = GC_STATS.count = 0
+        app.statsd_client.gauge('gc.max_duration_ms', int(GC_STATS.max_stw * 1000))
+        GC_STATS.clear()
