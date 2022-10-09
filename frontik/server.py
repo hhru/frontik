@@ -7,6 +7,7 @@ import os.path
 import re
 import signal
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from dataclasses import asdict
@@ -43,6 +44,7 @@ def main(config_file=None):
             app_module_name = options.app
             app_class_name = options.app_class
 
+        time.sleep(10000)
         module = importlib.import_module(app_module_name)
     except Exception as e:
         log.exception('failed to import application module "%s": %s', options.app, e)
