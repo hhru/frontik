@@ -7,5 +7,9 @@ COPY examples /home/building/examples/
 COPY scripts /home/building/scripts/
 WORKDIR /home/building
 
+RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -yq libssl-dev=1.1.1f-1ubuntu2.16
+ENV PYCURL_SSL_LIBRARY openssl
 RUN pip3 install --upgrade pip && pip3 install --prefer-binary raven && pip3 install --prefer-binary -r requirements.txt
+RUN apt-get remove -yq libssl-dev
+
 RUN python3.7 setup.py test
