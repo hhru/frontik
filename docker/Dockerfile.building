@@ -7,5 +7,12 @@ COPY examples /home/building/examples/
 COPY scripts /home/building/scripts/
 WORKDIR /home/building
 
+RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -yq \
+    gcc \
+    python3.7-dev \
+    libgnutls28-dev \
+    libcurl4-gnutls-dev
 RUN pip3 install --upgrade pip && pip3 install --prefer-binary raven && pip3 install --prefer-binary -r requirements.txt
+RUN apt-get remove -yq gcc python3.7-dev libcurl4-gnutls-dev libgnutls28-dev
+
 RUN python3.7 setup.py test
