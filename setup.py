@@ -37,7 +37,7 @@ setup(
         'frontik': ['debug/*.xsl'],
     },
     scripts=['scripts/frontik'],
-    python_requires='>=3.7',
+    python_requires='>=3.9',
     install_requires=install_requirements,
     test_suite='tests',
     tests_require=[
@@ -46,7 +46,7 @@ setup(
         'requests <= 2.20.0',
         'lxml-asserts',
         'tornado-httpclient-mock',
-        'protobuf == 3.20.1'
+        'protobuf == 3.20.2'
     ],
     extras_require={
         'sentry': ['raven'],
