@@ -1,5 +1,5 @@
 jinja2 == 3.0.3
-lxml == 4.6.5
+lxml == 4.9.1
 pycurl == 7.45.1
 pydantic == v1.7.3
 tornado @ https://github.com/hhru/tornado/archive/5.1.1.zip
