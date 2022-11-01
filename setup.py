@@ -1,9 +1,12 @@
+import os
 import sys
 
 from setuptools import setup
 from setuptools.command.test import test
 
-from frontik.version import version
+PACKAGE_INFO = {}
+with open(os.path.join(os.path.dirname(__file__), 'frontik', 'version.py'), encoding="utf-8") as f:
+    exec(f.read(), PACKAGE_INFO)
 
 
 class TestHook(test):
@@ -23,7 +26,7 @@ with open('requirements.txt', 'r') as requirements_txt:
 
 setup(
     name='frontik',
-    version=version,
+    version=PACKAGE_INFO['version'],
     description='Frontik is an asyncronous Tornado-based application server',
     long_description=open('README.md').read(),
     url='https://github.com/hhru/frontik',
@@ -41,8 +44,8 @@ setup(
     install_requires=install_requirements,
     test_suite='tests',
     tests_require=[
-        'pytest <= 3.8.2',
-        'pycodestyle == 2.5.0',
+        'pytest >= 3.8.2',
+        'pycodestyle >= 2.5.0',
         'requests <= 2.20.0',
         'lxml-asserts',
         'tornado-httpclient-mock',
