@@ -14,6 +14,7 @@ dist/
 frontik.egg-info/
 .eggs/
 .pytest_cache/
+.venv/
 
 tornado/
 http_client/
