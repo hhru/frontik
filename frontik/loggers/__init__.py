@@ -21,6 +21,13 @@ JSON_REQUESTS_LOGGER = logging.getLogger('requests')
 CUSTOM_JSON_EXTRA = 'custom_json'
 
 
+class FixedSysLogHandler(SysLogHandler):
+    def emit(self, record):
+        if not self.socket:
+            self.createSocket()
+        super().emit(record)
+
+
 class Mdc:
 
     def __init__(self):
@@ -221,9 +228,9 @@ def _configure_stderr(formatter: 'Optional[Formatter]' = None):
 def _configure_syslog(logger_name: str,
                       use_json_formatter: bool = True, formatter: 'Optional[Formatter]' = None) -> 'List[Handler]':
     try:
-        syslog_handler = SysLogHandler(
+        syslog_handler = FixedSysLogHandler(
             address=(options.syslog_host, options.syslog_port),
-            facility=SysLogHandler.facility_names[options.syslog_facility],
+            facility=FixedSysLogHandler.facility_names[options.syslog_facility],
             socktype=socket.SOCK_DGRAM
         )
         log_extension = '.slog' if use_json_formatter else '.log'
