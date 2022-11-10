@@ -1,6 +1,12 @@
+-   name: 6.4.2
+    date: '2022-11-10T14:13:00.407062+03:00'
+    description: ''
+    instructions: ''
+    compatible: true
+
 -   name: 6.4.1
     date: '2022-10-24T12:13:04.469516+03:00'
-    description: 'Up python to 3.9'
+    description: Up python to 3.9
     instructions: ''
     compatible: true
 
