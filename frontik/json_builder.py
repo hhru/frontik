@@ -3,29 +3,29 @@ import json
 from tornado.concurrent import Future
 
 
-def _encode_value(v):
-    def _encode_iterable(l):
-        return [_encode_value(v) for v in l]
+def _encode_value(value):
+    def _encode_iterable(values):
+        return [_encode_value(v) for v in values]
 
     def _encode_dict(d):
         return {k: _encode_value(v) for k, v in d.items()}
 
-    if isinstance(v, dict):
-        return _encode_dict(v)
+    if isinstance(value, dict):
+        return _encode_dict(value)
 
-    elif isinstance(v, (set, frozenset, list, tuple)):
-        return _encode_iterable(v)
+    elif isinstance(value, (set, frozenset, list, tuple)):
+        return _encode_iterable(value)
 
-    elif isinstance(v, Future):
-        if v.done() and v.exception() is None:
-            return _encode_value(v.result())
+    elif isinstance(value, Future):
+        if value.done() and value.exception() is None:
+            return _encode_value(value.result())
 
         return None
 
-    elif hasattr(v, 'to_dict'):
-        return v.to_dict()
+    elif hasattr(value, 'to_dict'):
+        return value.to_dict()
 
-    return v
+    return value
 
 
 class FrontikJsonEncoder(json.JSONEncoder):
