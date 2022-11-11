@@ -40,7 +40,7 @@ setup(
         'frontik': ['debug/*.xsl'],
     },
     scripts=['scripts/frontik'],
-    python_requires='>=3.9',
+    python_requires='>=3.8',
     install_requires=install_requirements,
     test_suite='tests',
     tests_require=[
