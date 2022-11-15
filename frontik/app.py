@@ -238,7 +238,8 @@ class FrontikApplication(Application):
 
     def get_current_status(self):
         if self.init_workers_count_down.value > 0:
-            raise HTTPError(500)
+            raise HTTPError(500, f'some workers are not started '
+                                 f'init_workers_count_down={self.init_workers_count_down.value}')
 
         cur_uptime = time.time() - self.start_time
         if cur_uptime < 60:
