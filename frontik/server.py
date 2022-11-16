@@ -19,12 +19,15 @@ from tornado.platform.asyncio import BaseAsyncIOLoop
 
 from frontik.app import FrontikApplication
 from frontik.config_parser import parse_configs
+from frontik.loggers import bootstrap_logger
 from frontik.loggers import MDC
 from frontik.options import options
 from frontik.process import fork_workers
 from frontik.service_discovery import UpstreamUpdateListener
 
 log = logging.getLogger('server')
+init_logger = logging.getLogger('frontik_init')
+init_log = bootstrap_logger((init_logger, 'frontik_init'), logging.INFO)
 
 
 def main(config_file=None):
@@ -113,8 +116,11 @@ async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_r
     """Starts Frontik server for an application"""
 
     log.info('starting server on %s:%s', options.host, options.port)
+    init_log.info(f'worker: {os.getpid()}, create HTTPServer qqq')
     http_server = tornado.httpserver.HTTPServer(app, xheaders=options.xheaders)
+    init_log.info(f'worker: {os.getpid()}, bind port')
     http_server.bind(options.port, options.host, reuse_port=options.reuse_port)
+    init_log.info(f'worker: {os.getpid()}, start server')
     http_server.start()
 
     if options.autoreload:
@@ -149,13 +155,18 @@ async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_r
 async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, count_down_lock,
                     need_to_register_in_service_discovery, pipe):
     await app.init()
+    init_log.info(f'worker: {os.getpid()}, user app inited')
     if not need_to_register_in_service_discovery:
+        init_log.info(f'worker: {os.getpid()}, create UpstreamUpdateListener')
         app.upstream_update_listener = UpstreamUpdateListener(app.http_client_factory, pipe)
+    init_log.info(f'worker: {os.getpid()}, run_server')
     await run_server(app, ioloop, need_to_register_in_service_discovery)
     log.info(f'Successfully inited application {app.app}')
+    init_log.info(f'worker: {os.getpid()}, count_down_lock')
     with count_down_lock:
         app.init_workers_count_down.value -= 1
         log.info(f'worker is up, remaining workers = {app.init_workers_count_down.value}')
+    init_log.info(f'worker: {os.getpid()}, worker has started')
     if need_to_register_in_service_discovery:
         register_task = ioloop.asyncio_loop.create_task(app.service_discovery_client.register_service())
 
