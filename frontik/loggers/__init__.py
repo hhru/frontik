@@ -11,6 +11,7 @@ from tornado.log import LogFormatter
 from frontik import request_context
 from frontik.options import options
 from frontik.loggers.fixed_syslog_handler import FixedSysLogHandler
+from logging.handlers import SysLogHandler
 
 if TYPE_CHECKING:
     from typing import List, Optional
@@ -221,9 +222,9 @@ def _configure_stderr(formatter: 'Optional[Formatter]' = None):
 def _configure_syslog(logger_name: str,
                       use_json_formatter: bool = True, formatter: 'Optional[Formatter]' = None) -> 'List[Handler]':
     try:
-        syslog_handler = FixedSysLogHandler(
+        syslog_handler = SysLogHandler(
             address=(options.syslog_host, options.syslog_port),
-            facility=FixedSysLogHandler.facility_names[options.syslog_facility],
+            facility=SysLogHandler.facility_names[options.syslog_facility],
             socktype=socket.SOCK_DGRAM
         )
         log_extension = '.slog' if use_json_formatter else '.log'

@@ -26,8 +26,8 @@ from frontik.process import fork_workers
 from frontik.service_discovery import UpstreamUpdateListener
 
 log = logging.getLogger('server')
-init_logger = logging.getLogger('frontik_init')
-init_log = bootstrap_logger((init_logger, 'frontik_init'), logging.INFO)
+init_log = logging.getLogger('frontik_init')
+# init_log = bootstrap_logger((init_logger, 'frontik_init'), logging.INFO)
 
 
 def main(config_file=None):
@@ -155,7 +155,7 @@ async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_r
 async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, count_down_lock,
                     need_to_register_in_service_discovery, pipe):
     await app.init()
-    init_log.info(f'worker: {os.getpid()}, user app inited')
+    init_log.info(f'worker: {os.getpid()}, user app inited qqqqqqqqqqqqqqq')
     if not need_to_register_in_service_discovery:
         init_log.info(f'worker: {os.getpid()}, create UpstreamUpdateListener')
         app.upstream_update_listener = UpstreamUpdateListener(app.http_client_factory, pipe)
