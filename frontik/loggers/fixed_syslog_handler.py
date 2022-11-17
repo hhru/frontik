@@ -116,7 +116,6 @@ class FixedSysLogHandler(SysLogHandler):
 
             if not self.socket:
                 self.createSocket()
-            super().emit(record)
 
             if self.unixsocket:
                 try:
