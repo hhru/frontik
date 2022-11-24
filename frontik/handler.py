@@ -1012,7 +1012,10 @@ class AwaitablePageHandler(PageHandler):
     # Preprocessors and postprocessors
 
     async def _run_preprocessor_function(self, preprocessor_function):
-        await preprocessor_function(self)
+        if asyncio.iscoroutinefunction(preprocessor_function):
+            await preprocessor_function(self)
+        else:
+            preprocessor_function(self)
         self._launched_preprocessors.append(
             _get_preprocessor_name(preprocessor_function)
         )
