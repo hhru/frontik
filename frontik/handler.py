@@ -31,7 +31,8 @@ from frontik.debug import DEBUG_HEADER_NAME, DebugMode
 from frontik.timeout_tracking import get_timeout_checker
 from frontik.loggers.stages import StagesLogger
 from frontik.options import options
-from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors, _get_preprocessor_name
+from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors, _get_preprocessor_name, \
+    _gen_coroutine_from_preprocessor
 from frontik.util import make_url, gather_dict
 from frontik.version import version as frontik_version
 from frontik.validator import BaseValidationModel, Validators
@@ -463,6 +464,14 @@ class PageHandler(RequestHandler):
 
         self.add_future(self._postprocess(), _cb)
 
+    def run_task(self, coro: Awaitable):
+        """
+        Only asyncio coroutine allowed in `coro` argument.
+        """
+        task = asyncio.create_task(coro)
+        self.finish_group.add_future(task)
+        return task
+
     @gen.coroutine
     def _postprocess(self):
         if self._finished:
@@ -657,7 +666,7 @@ class PageHandler(RequestHandler):
 
     @gen.coroutine
     def _run_preprocessor_function(self, preprocessor_function):
-        yield gen.coroutine(preprocessor_function)(self)
+        yield _gen_coroutine_from_preprocessor(preprocessor_function)(self)
         self._launched_preprocessors.append(
             _get_preprocessor_name(preprocessor_function)
         )
