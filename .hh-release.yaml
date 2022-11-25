@@ -1,7 +1,7 @@
 version: 6.4.8
 docker_context: .
 build_docker_file: docker/Dockerfile.building
-build_method: nope_build
+build_method: pytest_run
 update_method: python_update
 python_version_file: frontik/version.py
 deploy_method: nope_deploy
