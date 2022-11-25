@@ -64,9 +64,9 @@ class FrontikTestInstance:
         self.port = find_free_port()
         self.popen = _run_command(self.command, self.port)
 
-        for i in range(10):
+        for i in range(50):
             try:
-                time.sleep(0.2)
+                time.sleep(0.1)
                 response = self.get_page('status')
                 if response.status_code == 200:
                     return
@@ -107,7 +107,7 @@ class FrontikTestInstance:
             auth = kwargs['auth']
             kwargs['auth'] = HTTPBasicAuth(auth[1], auth[2])
 
-        kwargs['timeout'] = 1
+        kwargs['timeout'] = 4
 
         return method(url, **kwargs)
 

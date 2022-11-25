@@ -1,41 +1,27 @@
-import os
-import sys
+import pathlib
 
-from setuptools import setup
-from setuptools.command.test import test
+from setuptools import setup, find_packages
+
+root_dir = pathlib.Path(__file__).parent
 
 PACKAGE_INFO = {}
-with open(os.path.join(os.path.dirname(__file__), 'frontik', 'version.py'), encoding="utf-8") as f:
-    exec(f.read(), PACKAGE_INFO)
+version_file = (root_dir / 'frontik' / 'version.py').read_text()
+exec(version_file, PACKAGE_INFO)
 
-
-class TestHook(test):
-    user_options = [('with-coverage', 'c', 'Run test suite with coverage')]
-
-    def initialize_options(self):
-        self.with_coverage = False
-        test.initialize_options(self)
-
-    def run_tests(self):
-        import pytest
-        sys.exit(pytest.main(['tests', '--tb', 'native']))
-
-
-with open('requirements.txt', 'r') as requirements_txt:
+with (root_dir / 'requirements.txt').open('r') as requirements_txt:
     install_requirements = [requirement.strip() for requirement in requirements_txt]
+
+with (root_dir / 'requirements_venv.txt').open('r') as requirements_vent_txt:
+    dev_requirements = [requirement.strip() for requirement in requirements_vent_txt]
 
 setup(
     name='frontik',
     version=PACKAGE_INFO['version'],
     description='Frontik is an asyncronous Tornado-based application server',
-    long_description=open('README.md').read(),
+    long_description=(root_dir / 'README.md').read_text(),
     url='https://github.com/hhru/frontik',
-    cmdclass={
-        'test': TestHook
-    },
-    packages=[
-        'frontik', 'frontik/loggers', 'frontik/loggers/logleveloverride', 'frontik/producers', 'frontik/integrations'
-    ],
+
+    packages=find_packages(exclude=['tests*']),
     package_data={
         'frontik': ['debug/*.xsl'],
     },
@@ -43,14 +29,7 @@ setup(
     python_requires='>=3.8',
     install_requires=install_requirements,
     test_suite='tests',
-    tests_require=[
-        'pytest >= 3.8.2',
-        'pycodestyle >= 2.5.0',
-        'requests <= 2.20.0',
-        'lxml-asserts',
-        'tornado-httpclient-mock',
-        'protobuf == 3.20.2'
-    ],
+    tests_require=dev_requirements,
     extras_require={
         'sentry': ['raven'],
         'kafka': ['aiokafka'],
