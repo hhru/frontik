@@ -49,8 +49,8 @@ class ConsulRegistrationTestCase(unittest.TestCase):
     def test_multiple_worker_not_registration(self):
         self.frontik_multiple_worker_app_timeout_barrier.start_with_check(lambda _: None)
 
-        for i in range(10):
-            time.sleep(0.2)
+        for i in range(50):
+            time.sleep(0.1)
             if not self.frontik_multiple_worker_app_timeout_barrier.is_alive():
                 break
         else:

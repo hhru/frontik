@@ -3,13 +3,13 @@ FROM registry.pyn.ru/python3.9-ubuntu20-production:2022.10.24
 
 RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-COPY frontik-test setup.py requirements.txt README.md MANIFEST.in /home/building/
+COPY frontik-test setup.py requirements.txt requirements_venv.txt README.md MANIFEST.in /home/building/
 COPY frontik /home/building/frontik/
 COPY tests /home/building/tests/
 COPY examples /home/building/examples/
 COPY scripts /home/building/scripts/
 WORKDIR /home/building
 
-RUN --mount=type=ssh pip3 install --upgrade pip && pip3 install --prefer-binary raven && pip3 install --prefer-binary -r requirements.txt
-
-RUN python3.9 setup.py test
+RUN --mount=type=ssh pip3 install --upgrade pip && \
+    pip3 install --prefer-binary -r requirements.txt && \
+    pip3 install --prefer-binary -r requirements_venv.txt
