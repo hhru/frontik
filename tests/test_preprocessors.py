@@ -46,6 +46,18 @@ class TestPreprocessors(unittest.TestCase):
             }
         )
 
+    def test_was_async_preprocessor_called(self):
+        response_json = frontik_test_app.get_page_json('preprocessors/was_async_preprocessor_called')
+        self.assertEqual(
+            response_json,
+            {
+                'pp0': True,
+                'pp1': True,
+                'pp2': True,
+                'pp3': False,
+            }
+        )
+
     def test_priority_preprocessors(self):
         response_json = frontik_test_app.get_page_json('preprocessors/priority_preprocessors')
         self.assertEqual(
