@@ -1053,7 +1053,10 @@ class AwaitablePageHandler(PageHandler):
 
     async def _run_postprocessors(self, postprocessors):
         for p in postprocessors:
-            await p(self)
+            if asyncio.iscoroutinefunction(p):
+                await p(self)
+            else:
+                p(self)
 
             if self._finished:
                 self.log.warning('page was already finished, breaking postprocessors chain')
@@ -1063,7 +1066,10 @@ class AwaitablePageHandler(PageHandler):
 
     async def _run_template_postprocessors(self, postprocessors, rendered_template, meta_info):
         for p in postprocessors:
-            rendered_template = await p(self, rendered_template, meta_info)
+            if asyncio.iscoroutinefunction(p):
+                rendered_template = await p(self, rendered_template, meta_info)
+            else:
+                rendered_template = p(self, rendered_template, meta_info)
 
             if self._finished:
                 self.log.warning('page was already finished, breaking postprocessors chain')
