@@ -1,3 +1,9 @@
+-   name: 6.5.1
+    date: '2022-11-30T15:29:20.233334+03:00'
+    description: ''
+    instructions: ''
+    compatible: true
+
 -   name: 6.5.0
     date: '2022-11-29T11:42:23.301326+03:00'
     description: Добавлена поддержка async/await препроцессоров
