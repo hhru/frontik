@@ -118,22 +118,22 @@ class TestHttpError(unittest.TestCase):
     def test_slow_start(self):
         response = frontik_balancer_app.get_page(self.make_url('slow_start'))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'1')
+        self.assertEqual(response.content, b'6')
 
     def test_slow_start_async(self):
         response = frontik_balancer_app.get_page(self.make_url('slow_start_async'))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'1')
+        self.assertEqual(response.content, b'3')
 
     def test_retry_count_limit(self):
         response = frontik_balancer_app.get_page(self.make_url('retry_count_limit'))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'3')
+        self.assertEqual(response.content, b'1')
 
     def test_retry_count_limit_async(self):
         response = frontik_balancer_app.get_page(self.make_url('retry_count_limit_async'))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'3')
+        self.assertEqual(response.content, b'1')
 
     def test_speculative_retry(self):
         response = frontik_balancer_app.get_page(self.make_url('speculative_retry'))

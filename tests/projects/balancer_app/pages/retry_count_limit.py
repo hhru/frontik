@@ -1,4 +1,4 @@
-from http_client import Upstream
+from http_client.balancing import Upstream
 
 from frontik.handler import PageHandler
 from tests.instances import find_free_port
@@ -15,10 +15,10 @@ class Page(PageHandler):
              get_server_with_port(find_free_port(13000, 20000)), get_server_with_port(find_free_port(14000, 20000))]
         )
 
-        self.application.http_client_factory.update_upstream(upstream)
+        self.application.upstream_manager.update_upstream(upstream)
 
         self.text = ''
 
         yield self.get_url('retry_count_limit', self.request.path)
 
-        self.text = str(sum(server.requests for server in upstream.servers))
+        self.text = str(sum(server.stat_requests for server in upstream.servers))

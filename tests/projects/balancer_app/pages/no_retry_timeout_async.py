@@ -1,4 +1,4 @@
-from http_client import Upstream
+from http_client.balancing import Upstream
 
 from frontik import handler, media_types
 
@@ -8,9 +8,9 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 class Page(handler.AwaitablePageHandler):
     async def get_page(self):
-        self.application.http_client_factory.upstreams['no_retry_timeout_async'] = Upstream('no_retry_timeout_async',
-                                                                                            {}, [])
-        self.application.http_client_factory.update_upstream(
+        self.application.upstream_manager.upstreams['no_retry_timeout_async'] = Upstream('no_retry_timeout_async',
+                                                                                         {}, [])
+        self.application.upstream_manager.update_upstream(
             Upstream('no_retry_timeout_async', {'max_timeout_tries': 2},
                      [get_server(self, 'broken'), get_server(self, 'normal')]))
 

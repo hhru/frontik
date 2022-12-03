@@ -1,4 +1,4 @@
-from http_client import Upstream
+from http_client.balancing import Upstream
 from tornado.web import HTTPError
 
 from frontik import media_types
@@ -18,9 +18,9 @@ class Page(PageHandler):
                 }
             }
         }
-        self.application.http_client_factory.update_upstream(
+        self.application.upstream_manager.update_upstream(
             Upstream('retry_non_idempotent_503', idempotent_retry_policy, [get_server(self, 'normal')]))
-        self.application.http_client_factory.update_upstream(
+        self.application.upstream_manager.update_upstream(
             Upstream('do_not_retry_non_idempotent_503', {}, [get_server(self, 'broken')]))
 
         def check_requests_cb():

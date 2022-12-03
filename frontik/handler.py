@@ -542,7 +542,7 @@ class PageHandler(RequestHandler):
             if self.log.isEnabledFor(logging.WARNING):
                 _max_uri_length = 24
 
-                request_name = request.get_host_name() + request.uri[:_max_uri_length]
+                request_name = request.host + request.uri[:_max_uri_length]
                 if len(request.uri) > _max_uri_length:
                     request_name += '...'
                 if request.name:

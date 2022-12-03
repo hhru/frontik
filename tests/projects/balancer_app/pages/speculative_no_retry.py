@@ -1,4 +1,4 @@
-from http_client import Upstream
+from http_client.balancing import Upstream
 
 from frontik import media_types
 from frontik.handler import AwaitablePageHandler
@@ -7,9 +7,9 @@ from tests.projects.balancer_app import get_server
 
 class Page(AwaitablePageHandler):
     async def get_page(self):
-        self.application.http_client_factory.upstreams['speculative_no_retry'] = Upstream('speculative_no_retry',
-                                                                                          {}, [])
-        self.application.http_client_factory.update_upstream(
+        self.application.upstream_manager.upstreams['speculative_no_retry'] = Upstream('speculative_no_retry',
+                                                                                       {}, [])
+        self.application.upstream_manager.update_upstream(
             Upstream('speculative_no_retry', {}, [get_server(self, 'broken'), get_server(self, 'normal')]))
 
         result = await self.post_url('speculative_no_retry', self.request.path, connect_timeout=0.1,

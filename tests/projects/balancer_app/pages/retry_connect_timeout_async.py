@@ -1,6 +1,6 @@
 import asyncio
 
-from http_client import Upstream
+from http_client.balancing import Upstream
 from tornado.web import HTTPError
 
 from frontik import media_types
@@ -12,8 +12,8 @@ from tests.projects.balancer_app.pages import check_all_requests_done, check_all
 
 class Page(AwaitablePageHandler):
     async def get_page(self):
-        self.application.http_client_factory.update_upstream(Upstream('retry_connect_timeout', {},
-                                                                      [get_server(self, 'normal')]))
+        self.application.upstream_manager.update_upstream(Upstream('retry_connect_timeout', {},
+                                                                   [get_server(self, 'normal')]))
         self.text = ''
 
         async def make_request():

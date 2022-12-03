@@ -1,4 +1,4 @@
-from http_client import Server
+from http_client.balancing import Server
 
 from frontik.app import FrontikApplication
 

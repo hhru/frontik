@@ -15,7 +15,6 @@ Each virtual host is added or modified using `register_upstream` method of HttpC
 * `servers` - list of Server objects with:
     * `server` - ip address and port of the server
     * `weigth` - controls how many requests should be send to this server
-    * `rack` - group servers by rack or blade system. Client will try to make a retry request to a different rack
     * `dc` - unless specifically allowed, servers from datacenter other than that of the current application will be ignored
 
 Virtual host could be added, updated or deleted at any time.

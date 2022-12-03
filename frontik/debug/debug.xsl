@@ -448,7 +448,6 @@
 
     <xsl:template match="server" mode="params-info-body">
         <div>datacenter:&#160;<xsl:value-of select="@datacenter"/></div>
-        <div>rack:&#160;<xsl:value-of select="@rack"/></div>
     </xsl:template>
 
     <xsl:template match="response">

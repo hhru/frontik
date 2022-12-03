@@ -7,7 +7,8 @@ from threading import Thread
 
 from frontik.options import options
 from frontik.service_discovery import UpstreamCaches, UpstreamUpdateListener
-from http_client import Upstream, Server, options as http_client_options
+from http_client import options as http_client_options
+from http_client.balancing import Upstream, Server
 
 
 class UpstreamCachesTestCase(unittest.TestCase):

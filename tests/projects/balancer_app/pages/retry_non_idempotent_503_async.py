@@ -1,6 +1,6 @@
 import asyncio
 
-from http_client import Upstream
+from http_client.balancing import Upstream
 from tornado.web import HTTPError
 
 from frontik import media_types
@@ -19,13 +19,13 @@ class Page(AwaitablePageHandler):
                 }
             }
         }
-        self.application.http_client_factory.update_upstream(Upstream('retry_non_idempotent_503_async',
-                                                                      idempotent_retry_policy,
-                                                                      [get_server(self, 'normal')]))
+        self.application.upstream_manager.update_upstream(Upstream('retry_non_idempotent_503_async',
+                                                                   idempotent_retry_policy,
+                                                                   [get_server(self, 'normal')]))
 
-        self.application.http_client_factory.update_upstream(Upstream('do_not_retry_non_idempotent_503_async',
-                                                                      {},
-                                                                      [get_server(self, 'broken')]))
+        self.application.upstream_manager.update_upstream(Upstream('do_not_retry_non_idempotent_503_async',
+                                                                   {},
+                                                                   [get_server(self, 'broken')]))
 
         async def post_with_retry():
             result = await self.post_url('retry_non_idempotent_503_async', self.request.path)
