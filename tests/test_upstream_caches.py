@@ -273,9 +273,10 @@ class UpstreamCachesTestCase(unittest.TestCase):
         notification_queue = Queue()
 
         class ListenerCallback:
-            def update_upstream(self, upstream):
-                listener_upstreams[upstream.name] = upstream
-                notification_queue.put(True)
+            def update_upstreams(self, upstreams):
+                for upstream in upstreams:
+                    listener_upstreams[upstream.name] = upstream
+                    notification_queue.put(True)
 
         async def _listener():
             UpstreamUpdateListener(ListenerCallback(), read_fd)

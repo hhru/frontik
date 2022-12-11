@@ -23,7 +23,7 @@ class TestApplication(FrontikApplication):
     async def init(self):
         await super().init()
 
-        self.http_client_factory.kafka_producer = TestKafkaProducer()
+        self.http_client_factory.request_engine_builder.kafka_producer = TestKafkaProducer()
 
     def application_urls(self):
         return [
