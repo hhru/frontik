@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM registry.pyn.ru/python3.9-ubuntu20-production:2022.10.24
+FROM registry.pyn.ru/python3.9-ubuntu20-building:2022.10.24
 
 RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
 

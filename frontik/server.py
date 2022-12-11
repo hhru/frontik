@@ -150,7 +150,7 @@ async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, count_down
                     need_to_register_in_service_discovery, pipe):
     await app.init()
     if not need_to_register_in_service_discovery:
-        app.upstream_update_listener = UpstreamUpdateListener(app.http_client_factory, pipe)
+        app.upstream_update_listener = UpstreamUpdateListener(app.upstream_manager, pipe)
     await run_server(app, ioloop, need_to_register_in_service_discovery)
     log.info(f'Successfully inited application {app.app}')
     with count_down_lock:

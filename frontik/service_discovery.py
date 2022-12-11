@@ -12,7 +12,8 @@ from queue import Queue, Full
 
 import asyncio
 from consul.base import Check, Weight, KVCache, ConsistencyMode, HealthCache
-from http_client import consul_parser, Upstream, options as http_client_options
+from http_client import consul_parser, options as http_client_options
+from http_client.balancing import Upstream
 from tornado.iostream import PipeIOStream, StreamClosedError
 
 from frontik.consul_client import AsyncConsulClient, SyncConsulClient, ClientEventCallback
@@ -238,8 +239,8 @@ class ConsulMetricsTracker(ClientEventCallback):
 
 
 class UpstreamUpdateListener:
-    def __init__(self, http_client_factory, pipe):
-        self.http_client_factory = http_client_factory
+    def __init__(self, upstream_manager, pipe):
+        self.upstream_manager = upstream_manager
         self.stream = PipeIOStream(pipe)
 
         self.task = asyncio.create_task(self._process())
@@ -253,8 +254,7 @@ class UpstreamUpdateListener:
                 data = await self.stream.read_bytes(size)
                 log.debug('received upstreams length: %d', size)
                 upstreams = pickle.loads(data)
-                for upstream in upstreams:
-                    self.http_client_factory.update_upstream(upstream)
+                self.upstream_manager.update_upstreams(upstreams)
             except StreamClosedError:
                 log.exception('upstream update pipe is closed')
                 sys.exit(1)

@@ -1,4 +1,4 @@
-from http_client import Upstream
+from http_client.balancing import Upstream
 
 from frontik import handler, media_types
 from frontik.futures import AsyncGroup
@@ -9,7 +9,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 class Page(handler.PageHandler):
     def get_page(self):
-        self.application.http_client_factory.update_upstream(
+        self.application.upstream_manager.update_upstream(
             Upstream('no_retry_timeout', {}, [get_server(self, 'broken')]))
 
         def check_requests_cb():

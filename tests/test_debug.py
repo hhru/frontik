@@ -46,7 +46,7 @@ class DebugTestCase(unittest.TestCase):
 
         # Check that all http requests are present
 
-        self.assertEqual(response_content.count('<div class="timebar">'), 15)
+        self.assertEqual(response_content.count('<div class="timebar">'), 17)
 
         # Inherited debug
 

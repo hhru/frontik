@@ -7,7 +7,8 @@ from threading import Thread
 
 from frontik.options import options
 from frontik.service_discovery import UpstreamCaches, UpstreamUpdateListener
-from http_client import Upstream, Server, options as http_client_options
+from http_client import options as http_client_options
+from http_client.balancing import Upstream, Server
 
 
 class UpstreamCachesTestCase(unittest.TestCase):
@@ -272,9 +273,10 @@ class UpstreamCachesTestCase(unittest.TestCase):
         notification_queue = Queue()
 
         class ListenerCallback:
-            def update_upstream(self, upstream):
-                listener_upstreams[upstream.name] = upstream
-                notification_queue.put(True)
+            def update_upstreams(self, upstreams):
+                for upstream in upstreams:
+                    listener_upstreams[upstream.name] = upstream
+                    notification_queue.put(True)
 
         async def _listener():
             UpstreamUpdateListener(ListenerCallback(), read_fd)

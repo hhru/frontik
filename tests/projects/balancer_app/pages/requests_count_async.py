@@ -1,6 +1,6 @@
 import asyncio
 
-from http_client import Upstream
+from http_client.balancing import Upstream
 
 from frontik import media_types
 from frontik.handler import AwaitablePageHandler
@@ -11,14 +11,14 @@ from tests.projects.balancer_app.pages import check_all_requests_done, check_all
 
 class Page(AwaitablePageHandler):
     async def get_page(self):
-        self.application.http_client_factory.update_upstream(Upstream('requests_count_async', {},
-                                                                      [get_server(self, 'normal')]))
+        self.application.upstream_manager.update_upstream(Upstream('requests_count_async', {},
+                                                                   [get_server(self, 'normal')]))
         self.text = ''
 
         result1 = self.post_url('requests_count_async', self.request.path)
         result2 = self.post_url('requests_count_async', self.request.path)
-        self.application.http_client_factory.update_upstream(Upstream('requests_count_async', {},
-                                                                      [get_server(self, 'normal')]))
+        self.application.upstream_manager.update_upstream(Upstream('requests_count_async', {},
+                                                                   [get_server(self, 'normal')]))
         result3 = self.post_url('requests_count_async', self.request.path)
 
         await asyncio.sleep(0)
@@ -33,5 +33,5 @@ class Page(AwaitablePageHandler):
 
     async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
-        servers = self.application.http_client_factory.upstreams['requests_count_async'].servers
+        servers = self.application.upstream_manager.upstreams['requests_count_async'].servers
         self.text = str(servers[0].current_requests)

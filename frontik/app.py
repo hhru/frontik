@@ -16,6 +16,7 @@ from tornado.httpclient import AsyncHTTPClient
 from tornado.stack_context import StackContext
 from tornado.web import Application, RequestHandler, HTTPError
 from http_client import HttpClientFactory, options as http_client_options
+from http_client.balancing import RequestBalancerBuilder, UpstreamManager
 
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
@@ -127,6 +128,7 @@ class FrontikApplication(Application):
         self.available_integrations = None
         self.tornado_http_client = None
         self.http_client_factory = None
+        self.upstream_manager = None
         self.upstreams = {}
         self.children_pipes = {}
         self.upstream_update_listener = None
@@ -176,10 +178,11 @@ class FrontikApplication(Application):
 
         kafka_producer = self.get_kafka_producer(kafka_cluster) if send_metrics_to_kafka else None
 
-        self.http_client_factory = HttpClientFactory(self.app, self.tornado_http_client,
-                                                     upstreams=self.upstreams,
-                                                     statsd_client=self.statsd_client,
-                                                     kafka_producer=kafka_producer)
+        self.upstream_manager = UpstreamManager(self.upstreams)
+        request_balancer_builder = RequestBalancerBuilder(self.upstream_manager,
+                                                          statsd_client=self.statsd_client,
+                                                          kafka_producer=kafka_producer)
+        self.http_client_factory = HttpClientFactory(self.app, self.tornado_http_client, request_balancer_builder)
 
     def find_handler(self, request, **kwargs):
         request_id = request.headers.get('X-Request-Id')

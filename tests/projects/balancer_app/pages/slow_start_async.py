@@ -1,6 +1,6 @@
 import asyncio
 
-from http_client import Upstream, Server
+from http_client.balancing import Upstream, Server
 
 from frontik import media_types
 from frontik.handler import AwaitablePageHandler
@@ -16,11 +16,12 @@ class Page(AwaitablePageHandler):
 
         server_slow_start = Server('127.0.0.1:12345', weight=5, dc='Test')
 
-        self.application.http_client_factory.update_upstream(
+        self.application.upstream_manager.update_upstream(
             Upstream('slow_start_async', {'slow_start_interval_sec': '0.1'}, [server]))
         self.text = ''
 
-        async def make_request():
+        async def make_request(delay=0):
+            await asyncio.sleep(delay)
             result = await self.post_url('slow_start_async', self.request.path)
             self.text = result.data
 
@@ -28,18 +29,20 @@ class Page(AwaitablePageHandler):
 
         await asyncio.sleep(0.5)
 
-        self.application.http_client_factory.update_upstream(
-            Upstream('slow_start_async', {'slow_start_interval_sec': '10'}, [server, server_slow_start]))
+        self.application.upstream_manager.update_upstream(
+            Upstream('slow_start_async', {'slow_start_interval_sec': '1'}, [server, server_slow_start]))
 
         request2 = self.run_task(make_request())
         request3 = self.run_task(make_request())
+        request4 = self.run_task(make_request(1))
 
         await asyncio.gather(request2, request3)
+        await asyncio.wait_for(request4, timeout=1)
 
         check_all_requests_done(self, 'slow_start_async')
 
     async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
-        servers = self.application.http_client_factory.upstreams['slow_start_async'].servers
+        servers = self.application.upstream_manager.upstreams['slow_start_async'].servers
         if len(servers) > 1:
-            self.text = str(servers[1].requests)
+            self.text = str(servers[1].stat_requests)
