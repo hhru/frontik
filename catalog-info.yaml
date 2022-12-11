@@ -1,0 +1,13 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: frontik
+  annotations:
+    github.com/project-slug: hhru/frontik
+  tags:
+    - backend
+    - python
+spec:
+  type: library
+  lifecycle: production
