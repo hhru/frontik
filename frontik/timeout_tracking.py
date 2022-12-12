@@ -89,7 +89,7 @@ class TimeoutChecker:
             diff = request_timeout_ms - expected_timeout_ms
             if diff > self.threshold_ms:
                 data = LoggingData(self.outer_caller, self.outer_timeout_ms,
-                                   request.upstream.name if request.upstream else None,
+                                   request.upstream_name,
                                    get_handler_name(),
                                    request_timeout_ms)
                 _sender.send_data(data, already_spent_time_ms)
