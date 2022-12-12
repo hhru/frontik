@@ -1,3 +1,9 @@
+-   name: 6.5.3
+    date: '2022-12-12T18:37:55.122139+03:00'
+    description: Исправлен дефект, возникший после подключения balancing-http-client:1.4.0
+    instructions: ''
+    compatible: true
+
 -   name: 6.5.2
     date: '2022-12-11T23:40:18.637833+03:00'
     description: Подключена новая версия balancing-http-client 1.4.0
