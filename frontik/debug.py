@@ -129,8 +129,8 @@ def request_to_xml(request):
 def balanced_request_to_xml(balanced_request, retry, datacenter):
     info = etree.Element('meta-info')
 
-    if balanced_request.upstream.balanced:
-        etree.SubElement(info, 'upstream', name=balanced_request.upstream.name.upper())
+    if balanced_request.upstream_name != balanced_request.host:
+        etree.SubElement(info, 'upstream', name=balanced_request.upstream_name.upper())
         server_params = {'datacenter': datacenter}
         etree.SubElement(info, 'server', **{key: value for key, value in server_params.items() if value})
 
@@ -306,9 +306,7 @@ class DebugBufferedHandler(BufferedHandler):
 
         if getattr(record, '_request', None) is not None:
             entry.append(request_to_xml(record._request))
-
-        if getattr(record, '_balanced_request', None) is not None:
-            entry.append(balanced_request_to_xml(record._balanced_request, record._request_retry,
+            entry.append(balanced_request_to_xml(record._request, record._request_retry,
                                                  record._datacenter))
 
         if getattr(record, '_debug_response', None) is not None:
