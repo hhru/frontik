@@ -39,7 +39,7 @@ from frontik.validator import BaseValidationModel, Validators
 from frontik.http_status import ALLOWED_STATUSES
 
 if TYPE_CHECKING:
-    from http_client import BalancedHttpRequest
+    from tornado.httpclient import HTTPRequest
 
 
 def _fallback_status_code(status_code):
@@ -744,7 +744,7 @@ class PageHandler(RequestHandler):
 
     # HTTP client methods
 
-    def modify_http_client_request(self, balanced_request: 'BalancedHttpRequest'):
+    def modify_http_client_request(self, balanced_request: 'HTTPRequest'):
         balanced_request.headers['x-request-id'] = request_context.get_request_id()
 
         balanced_request.headers[OUTER_TIMEOUT_MS_HEADER] = f'{balanced_request.request_timeout * 1000:.0f}'
