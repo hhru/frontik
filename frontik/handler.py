@@ -937,7 +937,10 @@ class AwaitablePageHandler(PageHandler):
             self.log.info('page was already finished, skipping page method')
             return
 
-        await page_handler_method()
+        if asyncio.iscoroutinefunction(page_handler_method):
+            await page_handler_method()
+        else:
+            page_handler_method()
 
         self._handler_finished_notification()
         await self.finish_group.get_gathering_future()
