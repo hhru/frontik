@@ -1,3 +1,9 @@
+-   name: 6.6.1
+    date: '2022-12-19T13:03:07.662144+03:00'
+    description: ''
+    instructions: ''
+    compatible: true
+
 -   name: 6.6.0
     date: '2022-12-14T16:23:36.253305+03:00'
     description: "Подключена новая версия balancing-http-client 1.4.1. \r\nРаньше\
