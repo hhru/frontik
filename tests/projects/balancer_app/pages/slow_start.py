@@ -1,6 +1,6 @@
 import time
 
-from http_client.balancing import Upstream, Server
+from http_client.balancing import Upstream, Server, UpstreamConfig
 
 from frontik import media_types
 from frontik.handler import PageHandler
@@ -20,8 +20,9 @@ class Page(PageHandler):
 
         server_slow_start = Server('127.0.0.1:12345', weight=5, dc='Test')
 
+        upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=0.1)}
         self.application.upstream_manager.update_upstream(
-            Upstream('slow_start', {'slow_start_interval_sec': '0.1'}, [server]))
+            Upstream('slow_start', upstream_config, [server]))
         self.text = ''
 
         def check_requests_cb():
@@ -34,8 +35,9 @@ class Page(PageHandler):
 
         self.post_url('slow_start', self.request.path, callback=async_group.add(callback_post))
         time.sleep(0.2)
+        upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=1)}
         self.application.upstream_manager.update_upstream(
-            Upstream('slow_start', {'slow_start_interval_sec': '1'}, [same_server, server_slow_start]))
+            Upstream('slow_start', upstream_config, [same_server, server_slow_start]))
         self.post_url('slow_start', self.request.path, callback=async_group.add(callback_post))
         time.sleep(1)
         self.post_url('slow_start', self.request.path, callback=async_group.add(callback_post))

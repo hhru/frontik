@@ -8,7 +8,7 @@ from threading import Thread
 from frontik.options import options
 from frontik.service_discovery import UpstreamCaches, UpstreamUpdateListener
 from http_client import options as http_client_options
-from http_client.balancing import Upstream, Server
+from http_client.balancing import Upstream, Server, UpstreamConfig
 
 
 class UpstreamCachesTestCase(unittest.TestCase):
@@ -254,13 +254,14 @@ class UpstreamCachesTestCase(unittest.TestCase):
         http_client_options.datacenters = ['Test']
 
         read_fd, write_fd = os.pipe2(os.O_NONBLOCK)
+        upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(
+            max_timeout_tries=10,
+            retry_policy={
+                '403': {'idempotent': 'false'},
+                '500': {'idempotent': 'true'}
+            })}
         upstreams = {
-            'upstream': Upstream('upstream', {
-                'max_timeout_tries': 10,
-                'retry_policy': {
-                    '403': {'idempotent': 'false'},
-                    '500': {'idempotent': 'true'}
-                }}, [Server('12.2.3.5'), Server('12.22.3.5')])
+            'upstream': Upstream('upstream', upstream_config, [Server('12.2.3.5'), Server('12.22.3.5')])
         }
         upstream_cache = UpstreamCaches({0: os.fdopen(write_fd, 'wb')}, upstreams)
 

@@ -1,6 +1,6 @@
 import asyncio
 
-from http_client.balancing import Upstream, Server
+from http_client.balancing import Upstream, Server, UpstreamConfig
 
 from frontik import media_types
 from frontik.handler import AwaitablePageHandler
@@ -16,8 +16,9 @@ class Page(AwaitablePageHandler):
 
         server_slow_start = Server('127.0.0.1:12345', weight=5, dc='Test')
 
+        upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=0.1)}
         self.application.upstream_manager.update_upstream(
-            Upstream('slow_start_async', {'slow_start_interval_sec': '0.1'}, [server]))
+            Upstream('slow_start_async', upstream_config, [server]))
         self.text = ''
 
         async def make_request(delay=0):
@@ -29,8 +30,9 @@ class Page(AwaitablePageHandler):
 
         await asyncio.sleep(0.5)
 
+        upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=1)}
         self.application.upstream_manager.update_upstream(
-            Upstream('slow_start_async', {'slow_start_interval_sec': '1'}, [server, server_slow_start]))
+            Upstream('slow_start_async', upstream_config, [server, server_slow_start]))
 
         request2 = self.run_task(make_request())
         request3 = self.run_task(make_request())

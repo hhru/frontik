@@ -1,4 +1,4 @@
-from http_client.balancing import Upstream
+from http_client.balancing import Upstream, UpstreamConfig
 
 from frontik import handler, media_types
 
@@ -10,8 +10,9 @@ class Page(handler.AwaitablePageHandler):
     async def get_page(self):
         self.application.upstream_manager.upstreams['no_retry_timeout_async'] = Upstream('no_retry_timeout_async',
                                                                                          {}, [])
+        upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(max_timeout_tries=2)}
         self.application.upstream_manager.update_upstream(
-            Upstream('no_retry_timeout_async', {'max_timeout_tries': 2},
+            Upstream('no_retry_timeout_async', upstream_config,
                      [get_server(self, 'broken'), get_server(self, 'normal')]))
 
         result = await self.post_url('no_retry_timeout_async', self.request.path, request_timeout=0.2)

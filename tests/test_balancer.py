@@ -144,3 +144,13 @@ class TestHttpError(unittest.TestCase):
         response = frontik_balancer_app.get_page(self.make_url('speculative_no_retry'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'no retry')
+
+    def test_upstream_profile_with_retry(self):
+        response = frontik_balancer_app.get_page(self.make_url('profile_with_retry'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'result')
+
+    def test_upstream_profile_without_retry(self):
+        response = frontik_balancer_app.get_page(self.make_url('profile_without_retry'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'no retry')

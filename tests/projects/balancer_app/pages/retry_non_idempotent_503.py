@@ -1,4 +1,4 @@
-from http_client.balancing import Upstream
+from http_client.balancing import Upstream, UpstreamConfig
 from tornado.web import HTTPError
 
 from frontik import media_types
@@ -11,15 +11,13 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 class Page(PageHandler):
     def get_page(self):
-        idempotent_retry_policy = {
-            'retry_policy': {
-                503: {
-                    "idempotent": "true"
-                }
+        upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(retry_policy={
+            503: {
+                "idempotent": "true"
             }
-        }
+        })}
         self.application.upstream_manager.update_upstream(
-            Upstream('retry_non_idempotent_503', idempotent_retry_policy, [get_server(self, 'normal')]))
+            Upstream('retry_non_idempotent_503', upstream_config, [get_server(self, 'normal')]))
         self.application.upstream_manager.update_upstream(
             Upstream('do_not_retry_non_idempotent_503', {}, [get_server(self, 'broken')]))
 
