@@ -1,4 +1,4 @@
-from http_client.balancing import Upstream
+from http_client.balancing import Upstream, UpstreamConfig
 
 from frontik.handler import PageHandler
 from tests.instances import find_free_port
@@ -10,7 +10,7 @@ class Page(PageHandler):
     def get_page(self):
         upstream = Upstream(
             'retry_count_limit',
-            {'max_tries': 3},
+            {Upstream.DEFAULT_PROFILE: UpstreamConfig(max_tries=3)},
             [get_server_with_port(find_free_port(11000, 20000)), get_server_with_port(find_free_port(12000, 20000)),
              get_server_with_port(find_free_port(13000, 20000)), get_server_with_port(find_free_port(14000, 20000))]
         )

@@ -14,7 +14,7 @@ class Page(AwaitablePageHandler):
     async def get_page(self):
         self.application.upstream_manager.update_upstream(Upstream('retry_error_async', {},
                                                                    [get_server(self, 'broken'),
-                                                                   get_server(self, 'normal')]))
+                                                                    get_server(self, 'normal')]))
         self.text = ''
 
         async def make_request():

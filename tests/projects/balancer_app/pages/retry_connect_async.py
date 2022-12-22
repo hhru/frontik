@@ -13,7 +13,7 @@ class Page(AwaitablePageHandler):
     async def get_page(self):
         self.application.upstream_manager.update_upstream(Upstream('retry_connect_async', {},
                                                                    [get_server(self, 'free'),
-                                                                   get_server(self, 'normal')]))
+                                                                    get_server(self, 'normal')]))
         self.text = ''
 
         async def make_request():
