@@ -425,19 +425,19 @@ class PageHandler(RequestHandler):
         self.finish()
 
     def get_page_fail_fast(self, request_result: RequestResult):
-        self.__return_error(request_result.response.code)
+        self.__return_error(request_result.response.code, error_info={'is_fail_fast': True})
 
     def post_page_fail_fast(self, request_result: RequestResult):
-        self.__return_error(request_result.response.code)
+        self.__return_error(request_result.response.code, error_info={'is_fail_fast': True})
 
     def put_page_fail_fast(self, request_result: RequestResult):
-        self.__return_error(request_result.response.code)
+        self.__return_error(request_result.response.code, error_info={'is_fail_fast': True})
 
     def delete_page_fail_fast(self, request_result: RequestResult):
-        self.__return_error(request_result.response.code)
+        self.__return_error(request_result.response.code, error_info={'is_fail_fast': True})
 
-    def __return_error(self, response_code):
-        self.send_error(response_code if 300 <= response_code < 500 else 502)
+    def __return_error(self, response_code, **kwargs):
+        self.send_error(response_code if 300 <= response_code < 500 else 502, **kwargs)
 
     # Finish page
 
@@ -556,7 +556,7 @@ class PageHandler(RequestHandler):
                 if callable(method):
                     method(e.failed_request)
                 else:
-                    self.__return_error(e.failed_request.response.code)
+                    self.__return_error(e.failed_request.response.code, error_info={'is_fail_fast': True})
 
             except Exception as exc:
                 super()._handle_request_exception(exc)
