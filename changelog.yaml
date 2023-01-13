@@ -1,3 +1,9 @@
+-   name: 6.6.3
+    date: '2023-01-13T21:31:04.640810+03:00'
+    description: ''
+    instructions: ''
+    compatible: true
+
 -   name: 6.6.2
     date: '2022-12-22T21:15:18.446029+03:00'
     description: Добавлена поддержка профилей апстримов
