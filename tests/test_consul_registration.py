@@ -1,5 +1,6 @@
 import time
 import unittest
+import logging
 
 from .instances import FrontikTestInstance, common_frontik_start_options
 
@@ -37,6 +38,7 @@ class ConsulRegistrationTestCase(unittest.TestCase):
     def test_single_worker_registration(self):
         self.frontik_single_worker_app.start()
         self.frontik_single_worker_app.stop()
+        logging.warning(self.consul_mock.get_page_json('call_registration_stat'))
         registration_call_count = self.consul_mock.get_page_json('call_registration_stat')['put_page']
         self.assertEqual(registration_call_count, 1, 'Application should register only once')
 

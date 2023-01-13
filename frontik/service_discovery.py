@@ -46,6 +46,7 @@ def get_async_service_discovery(opts, statsd_client, *, event_loop=None):
         log.info('Consul disabled, skipping')
         return _AsyncStub()
     else:
+        log.warn(f'IMMA HERE 1')
         return _AsyncServiceDiscovery(opts, statsd_client, event_loop)
 
 
@@ -54,6 +55,7 @@ def get_sync_service_discovery(opts, statsd_client):
         log.info('Consul disabled, skipping')
         return _SyncStub()
     else:
+        log.warn(f'IMMA HERE 2')
         return _SyncServiceDiscovery(opts, statsd_client)
 
 
@@ -103,8 +105,10 @@ class _AsyncServiceDiscovery:
         self.consul_weight_total_timeout_sec = options.consul_weight_total_timeout_sec
         self.consul_weight_consistency_mode = ConsistencyMode(options.consul_weight_consistency_mode.lower())
         self.consul_cache_initial_warmup_timeout_sec = options.consul_cache_initial_warmup_timeout_sec
+        log.warn(f'IMMA _AsyncServiceDiscovery INIT')
 
     async def register_service(self):
+        log.warn(f'IMMA REGISTER ASYNC SERVICE')
         address = _get_service_address(self.options)
         http_check = _create_http_check(self.options, address)
         index = None
@@ -118,6 +122,8 @@ class _AsyncServiceDiscovery:
                 consistency=self.consul_weight_consistency_mode,
             )
             weight = _get_weight_or_default(value)
+            log.info(f'######### Got weight {weight}')
+            log.info(f'######### Compare {old_weight} <> {weight}')
             if old_weight != weight:
                 old_weight = weight
                 register_params = {
@@ -169,12 +175,14 @@ class _SyncServiceDiscovery:
             caller=self.service_name
         )
         self.kvCache.add_listener(self._update_register, False)
+        log.warn(f'IMMA _SyncServiceDiscovery INIT')
 
     def _update_register(self, key, new_value):
         weight = _get_weight_or_default(new_value)
         self._sync_register(weight)
 
     def register_service(self):
+        log.warn(f'IMMA REGISTER SYNC SERVICE')
         weight = _get_weight_or_default(self.kvCache.get_value())
         self._sync_register(weight)
         self.kvCache.start()
@@ -189,6 +197,8 @@ class _SyncServiceDiscovery:
             'weights': Weight.weights(weight, 0),
             'caller': self.service_name
         }
+
+        log.warn(f'IMMA SYNC REGISTER')
         if self.consul.agent.service.register(self.service_name, **register_params):
             log.info('Successfully registered service %s', register_params)
         else:

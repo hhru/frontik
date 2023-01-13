@@ -10,6 +10,7 @@ import requests
 from frontik import options
 from lxml import etree
 from tornado.escape import to_unicode, utf8
+import logging
 
 try:
     import coverage
@@ -26,6 +27,8 @@ def _run_command(command, port):
         executable = f'{python} {coverage} run {command} --port={port}'
     else:
         executable = f'{python} {command} --port={port}'
+
+    logging.warning(f'IMMA EXECUTABLE {executable}')
 
     return subprocess.Popen(executable.split())
 
@@ -85,7 +88,9 @@ class FrontikTestInstance:
             return
 
         self.popen.terminate()
+        logging.warning(f'IMMA returncode {self.popen.returncode}')
         self.popen.wait(300)
+        logging.warning(f'IMMA returncode {self.popen.returncode}')
         self.port = None
 
     def is_alive(self):
@@ -100,6 +105,7 @@ class FrontikTestInstance:
             page=page.format(port=self.port),
             notpl=('?' if '?' not in page else '&') + 'notpl' if notpl else ''
         )
+        logging.warning(f'IMMA URL {url}')
 
         # workaround for different versions of requests library
         if 'auth' in kwargs and requests.__version__ > '1.0':
@@ -121,6 +127,7 @@ class FrontikTestInstance:
 
     def get_page_json(self, page, notpl=False, method=requests.get, **kwargs):
         content = self.get_page_text(page, notpl=notpl, method=method, **kwargs)
+        logging.warning(f'IMMA {content}')
 
         try:
             return json.loads(content)
