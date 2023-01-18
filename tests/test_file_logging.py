@@ -12,7 +12,7 @@ class LogToFileTestCase(unittest.TestCase):
         self.tmp_log_dir = tempfile.mkdtemp()
         self.service = FrontikTestInstance(
             f'./frontik-test --app=tests.projects.consul_mock_app {common_frontik_start_options} '
-            f' --config=tests/projects/frontik_consul_mock.cfg --log_dir={self.tmp_log_dir}',
+            f' --config=tests/projects/frontik_consul_mock.cfg --log_dir={self.tmp_log_dir} --log_level=debug',
             allow_to_create_log_files=True)
 
     def tearDown(self):
