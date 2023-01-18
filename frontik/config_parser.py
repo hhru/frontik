@@ -34,7 +34,7 @@ def parse_configs(config_files):
     parse_command_line(options, allowed_options)
     parse_command_line(http_client_options, allowed_options)
     MDC.init('master')
-    bootstrap_core_logging()
+    bootstrap_core_logging(options.log_level, options.log_json, options.suppressed_loggers)
     for config in configs_to_read:
         log.debug('using config: %s', config)
         if options.autoreload:

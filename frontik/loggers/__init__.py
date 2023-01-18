@@ -243,18 +243,18 @@ def _configure_syslog(logger_name: str,
         return []
 
 
-def bootstrap_core_logging():
+def bootstrap_core_logging(log_level, use_json, suppressed_loggers):
     """This is a replacement for standard Tornado logging configuration."""
 
-    level = getattr(logging, options.log_level.upper())
+    level = getattr(logging, log_level.upper())
     ROOT_LOGGER.setLevel(logging.NOTSET)
 
-    bootstrap_logger((ROOT_LOGGER, 'service'), level, use_json_formatter=options.log_json)
+    bootstrap_logger((ROOT_LOGGER, 'service'), level, use_json_formatter=use_json)
 
-    if options.log_json:
+    if use_json:
         bootstrap_logger((JSON_REQUESTS_LOGGER, 'requests'), level, use_json_formatter=True)
 
-    for logger_name in options.suppressed_loggers:
+    for logger_name in suppressed_loggers:
         logging.getLogger(logger_name).setLevel(logging.WARN)
 
     logging.captureWarnings(True)
