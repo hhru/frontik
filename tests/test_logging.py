@@ -22,7 +22,8 @@ class TestSyslog(unittest.TestCase):
 
         cls.test_app = FrontikTestInstance(
             './frontik-test --app=tests.projects.test_app --config=tests/projects/frontik_debug.cfg '
-            f'--syslog=true --consul_enabled=False --syslog_host=127.0.0.1 --log_level=debug --syslog_port={port}'
+            f'--syslog=true --consul_enabled=False --syslog_host=127.0.0.1 --syslog_tag=test'
+            f' --log_level=debug --syslog_port={port}'
         )
 
     @classmethod
@@ -103,7 +104,7 @@ class TestSyslog(unittest.TestCase):
             },
         ]
 
-        self.assert_json_logs_match(expected_service_logs, parsed_logs['service.slog'])
+        self.assert_json_logs_match(expected_service_logs, parsed_logs['test/service.slog/'])
 
         expected_requests_logs = [
             {
@@ -114,7 +115,7 @@ class TestSyslog(unittest.TestCase):
             },
         ]
 
-        self.assert_json_logs_match(expected_requests_logs, parsed_logs['requests.slog'])
+        self.assert_json_logs_match(expected_requests_logs, parsed_logs['test/requests.slog/'])
 
         expected_custom_logs = [
             {
@@ -124,7 +125,7 @@ class TestSyslog(unittest.TestCase):
             },
         ]
 
-        self.assert_text_logs_match(expected_custom_logs, parsed_logs['custom_logger.log'])
+        self.assert_text_logs_match(expected_custom_logs, parsed_logs['test/custom_logger.log/'])
 
     def assert_json_logs_match(self, expected_logs, parsed_logs):
         for expected_log in expected_logs:

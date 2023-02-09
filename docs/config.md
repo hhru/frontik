@@ -46,6 +46,7 @@ Logging options:
 | `syslog_host`                               | `str`   | `127.0.0.1`   | Syslog host                                                            |
 | `syslog_port`                               | `int`   | `None`        | Syslog port. If this value is None, unix socket is used, UDP otherwise |
 | `syslog_facility`                           | `str`   | `'user'`      | Syslog facility                                                        |
+| `syslog_tag`                                | `str`   | `''`          | Syslog tag                                                             |
 | `suppressed_loggers`                        | `list`  | `[]`          | List of logger names to be excluded from debug output                  |
 | `sentry_dsn`                                | `str`   | `None`        | Enable Sentry and set Sentry DSN for sending errors                    |
 | `sentry_connect_timeout_sec`                | `float` | `0.2`         | Sentry connect timeout                                                 |
