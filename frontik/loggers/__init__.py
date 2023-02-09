@@ -227,7 +227,7 @@ def _configure_syslog(logger_name: str,
             socktype=socket.SOCK_DGRAM
         )
         log_extension = '.slog' if use_json_formatter else '.log'
-        syslog_handler.ident = f'{logger_name}{log_extension}: '
+        syslog_handler.ident = f'{options.syslog_tag}/{logger_name}{log_extension}/: '
         if formatter is not None:
             syslog_handler.setFormatter(formatter)
         elif use_json_formatter:

@@ -42,6 +42,7 @@ class Options:
     syslog: bool = False
     syslog_host: str = '127.0.0.1'
     syslog_port: int = logging.handlers.SYSLOG_UDP_PORT
+    syslog_tag: str = ''
     syslog_facility: str = 'user'
 
     suppressed_loggers: list = field(default_factory=lambda: ['tornado.curl_httpclient'])
