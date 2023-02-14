@@ -1,3 +1,11 @@
+-   name: 6.7.1
+    date: '2023-02-14T11:11:28.853965+03:00'
+    description: "В gather_dict теперь можно передавать None в качестве корутины,\
+        \ результат будет None.\r\nТакже появился gather_list, аналогичный asyncio.gather,\
+        \ но с возможностью None"
+    instructions: ''
+    compatible: true
+
 -   name: 6.7.0
     date: '2023-02-09T18:38:21.340086+03:00'
     description: Добавили возможность устанавливать syslogtag  через конфиг syslog_tag
