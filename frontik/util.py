@@ -198,6 +198,16 @@ def check_request_id(request_id: str) -> bool:
         return False
 
 
-async def gather_dict(coro_dict: Dict[str, Awaitable]):
-    results = await asyncio.gather(*coro_dict.values())
+async def gather_list(*coros):
+    """
+    Similar to asyncio.gather, but None can be used in coros_or_futures param
+    """
+    return await asyncio.gather(*[asyncio.sleep(0) if coro is None else coro for coro in coros])
+
+
+async def gather_dict(coro_dict):
+    """
+    None can be used in coros, see :func:`gather_list`
+    """
+    results = await gather_list(*coro_dict.values())
     return dict(zip(coro_dict.keys(), results))
