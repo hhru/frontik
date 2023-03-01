@@ -8,7 +8,7 @@ from tests.projects.balancer_app import get_server
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         free_server = get_server(self, 'free')
         free_server.datacenter = 'dc1'
         normal_server = get_server(self, 'normal')
@@ -17,19 +17,17 @@ class Page(PageHandler):
         self.application.upstream_manager.update_upstream(
             Upstream('different_datacenter', {}, [free_server, normal_server]))
 
-        def callback(text, response):
-            for server in self.application.upstream_manager.upstreams.get('different_datacenter').servers:
-                if server.stat_requests != 0:
-                    raise HTTPError(500)
+        result = await self.post_url('different_datacenter', self.request.path)
+        for server in self.application.upstream_manager.upstreams.get('different_datacenter').servers:
+            if server.stat_requests != 0:
+                raise HTTPError(500)
 
-            if response.error and response.code == 502:
-                self.text = 'no backend available'
-                return
+        if result.response.error and result.response.code == 502:
+            self.text = 'no backend available'
+            return
 
-            self.text = text
+        self.text = result.data
 
-        self.post_url('different_datacenter', self.request.path, callback=callback)
-
-    def post_page(self):
+    async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'

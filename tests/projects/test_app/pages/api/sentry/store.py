@@ -1,7 +1,7 @@
 import frontik.handler
 
 
-class Page(frontik.handler.AwaitablePageHandler):
+class Page(frontik.handler.PageHandler):
     exceptions = []
 
     async def post_page(self):

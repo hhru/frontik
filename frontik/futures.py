@@ -75,7 +75,7 @@ class AsyncGroup:
     def _dec(self):
         self._counter -= 1
 
-    def add(self, intermediate_cb):
+    def add(self, intermediate_cb, exception_handler=None):
         self._inc()
 
         @wraps(intermediate_cb)
@@ -87,9 +87,12 @@ class AsyncGroup:
             try:
                 self._dec()
                 intermediate_cb(*args, **kwargs)
-            except Exception:
+            except Exception as ex:
                 self.abort()
-                raise
+                if exception_handler is not None:
+                    exception_handler(ex)
+                else:
+                    raise
 
             self.try_finish()
 

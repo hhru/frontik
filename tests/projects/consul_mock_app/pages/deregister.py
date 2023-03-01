@@ -1,7 +1,7 @@
-from frontik.handler import AwaitablePageHandler
+from frontik.handler import PageHandler
 
 
-class Page(AwaitablePageHandler):
+class Page(PageHandler):
     async def get_page(self):
         self.set_status(200)
         self.application.deregistration_call_counter['get_page'] += 1

@@ -24,16 +24,19 @@ def waiting_preprocessor(sleep_time_sec, preprocessor_name, add_preprocessor_fut
 
 
 @preprocessor
-def pp_1(handler):
+async def pp_1(handler):
+    def add_preprocessor():
+        handler.add_preprocessor_future(Future())
+
     def _done(_):
         handler.add_timeout(
-            time.time() + 0.2, handler.finish_group.add(lambda: handler.add_preprocessor_future(Future()))
+            time.time() + 0.2, handler.finish_group.add(add_preprocessor, handler._handle_request_exception)
         )
 
     future = Future()
     handler.add_future(future, handler.finish_group.add(_done))
     future.set_result(None)
-    yield future
+    await future
 
 
 class Page(PageHandler):
@@ -43,10 +46,10 @@ class Page(PageHandler):
     @waiting_preprocessor(0.1, "should_finish_first", False)
     @waiting_preprocessor(0.3, "should_finish_second", True)
     @waiting_preprocessor(0.9, "should_finish_after_page_finish", False)
-    def get_page(self):
+    async def get_page(self):
         assert hasattr(self, 'completed_preprocessors')
         self.json.put({'preprocessors': self.completed_preprocessors})
 
     @pp_1
-    def post_page(self):
+    async def post_page(self):
         pass

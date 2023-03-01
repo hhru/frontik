@@ -4,7 +4,7 @@ from frontik import handler, media_types
 
 
 class Page(handler.PageHandler):
-    def delete_page(self):
+    async def delete_page(self):
         self.add_timeout(
             time.time() + 2, self.finish_group.add(self.check_finished(self.timeout_callback))
         )

@@ -1,8 +1,6 @@
 import asyncio
 from functools import wraps
 
-from tornado import gen
-
 
 def _get_preprocessor_name(preprocessor_function):
     return f'{preprocessor_function.__module__}.{preprocessor_function.__name__}'
@@ -86,10 +84,3 @@ def _wrap_async_func_to_tornado_coroutine(func):
     wrapper.__tornado_coroutine__ = True
 
     return wrapper
-
-
-def _gen_coroutine_from_preprocessor(preprocessor_function):
-    if asyncio.iscoroutinefunction(preprocessor_function):
-        return _wrap_async_func_to_tornado_coroutine(preprocessor_function)
-
-    return gen.coroutine(preprocessor_function)

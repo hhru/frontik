@@ -2,7 +2,7 @@ import frontik.handler
 
 
 class Page(frontik.handler.PageHandler):
-    def get_page(self):
+    async def get_page(self):
         raise Exception('exception in handler')
 
     def write_error(self, status_code=500, **kwargs):

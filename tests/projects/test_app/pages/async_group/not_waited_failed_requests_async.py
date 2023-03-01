@@ -1,7 +1,7 @@
-from frontik.handler import AwaitablePageHandler
+from frontik.handler import PageHandler
 
 
-class Page(AwaitablePageHandler):
+class Page(PageHandler):
     data = {}
 
     async def get_page(self):

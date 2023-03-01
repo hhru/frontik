@@ -16,7 +16,7 @@ class CustomModel(BaseValidationModel):
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         is_custom_model = self.get_bool_argument('model', False)
         empty_default_str = self.get_str_argument('str_arg_with_default', 'default')
         empty_default_int = self.get_int_argument('int_arg_with_default', 0)
@@ -39,7 +39,7 @@ class Page(PageHandler):
             'none_float': none_float is None
         })
 
-    def post_page(self):
+    async def post_page(self):
         str_body_arg = self.get_str_argument('str_argument', 'default', from_body=True)
         int_body_arg = self.get_int_argument('int_argument', 0, from_body=True)
 
@@ -48,5 +48,5 @@ class Page(PageHandler):
             'int_body_arg': int_body_arg,
         })
 
-    def put_page(self):
+    async def put_page(self):
         self.get_str_argument('str_arg', 3)

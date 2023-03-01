@@ -5,7 +5,7 @@ from frontik import handler, media_types
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
-class Page(handler.AwaitablePageHandler):
+class Page(handler.PageHandler):
     async def get_page(self):
         self.application.upstream_manager.update_upstream(Upstream('no_available_backend', {}, []))
 

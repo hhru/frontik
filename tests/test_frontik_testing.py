@@ -5,30 +5,29 @@ from frontik.app import FrontikApplication
 from frontik.handler import PageHandler
 from frontik.options import options
 from frontik.testing import FrontikTestCase
+from frontik.util import gather_list
 from tests.projects.test_app.pages.handler import delete
 
 
 class AsyncHandler(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         self.result = 0
 
-        def finished(_):
-            res = etree.Element('result')
-            res.text = str(self.result)
-            self.doc.put(res)
-            self.set_status(400)
+        res1, res2 = await gather_list(
+            self.get_url(self.config.serviceHost, '/val1/1'),
+            self.get_url(self.config.serviceHost, '/val2/2')
+        )
+        self.result += int(res1.data.findtext('val'))
+        self.result += int(res2.data.findtext('val'))
 
-        def accumulate(xml, response):
-            self.result += int(xml.findtext('val'))
-
-        self.group({
-            'val1': self.get_url(self.config.serviceHost, '/val1/1', callback=accumulate),
-            'val2': self.get_url(self.config.serviceHost, '/val2/2', callback=accumulate)
-        }, callback=finished)
+        res = etree.Element('result')
+        res.text = str(self.result)
+        self.doc.put(res)
+        self.set_status(400)
 
 
 class CheckConfigHandler(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         self.text = self.config.config_param
 
 

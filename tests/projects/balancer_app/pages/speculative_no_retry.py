@@ -1,11 +1,11 @@
 from http_client.balancing import Upstream
 
 from frontik import media_types
-from frontik.handler import AwaitablePageHandler
+from frontik.handler import PageHandler
 from tests.projects.balancer_app import get_server
 
 
-class Page(AwaitablePageHandler):
+class Page(PageHandler):
     async def get_page(self):
         self.application.upstream_manager.upstreams['speculative_no_retry'] = Upstream('speculative_no_retry',
                                                                                        {}, [])

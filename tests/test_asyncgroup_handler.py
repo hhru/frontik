@@ -1,3 +1,4 @@
+import time
 import unittest
 
 from .instances import frontik_test_app
@@ -84,6 +85,7 @@ class TestAsyncGroup(unittest.TestCase):
         json = frontik_test_app.get_page_json('async_group/not_waited_requests')
         self.assertEqual(json, {'get': True})
 
+        time.sleep(0.1)
         json = frontik_test_app.get_page_json('async_group/not_waited_requests')
         self.assertEqual(json, {'post_made': True, 'put_made': True, 'delete_cancelled': True})
 

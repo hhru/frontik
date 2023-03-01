@@ -1,9 +1,9 @@
 import asyncio
 
-from frontik.handler import AbortAsyncGroup, AwaitablePageHandler
+from frontik.handler import AbortAsyncGroup, PageHandler
 
 
-class Page(AwaitablePageHandler):
+class Page(PageHandler):
     data = {}
 
     async def get_page(self):

@@ -7,13 +7,12 @@ import math
 
 import asyncio
 from asyncio.futures import Future
-from functools import partial, wraps
-from typing import TYPE_CHECKING, Any, List, Type, Union, Awaitable, overload, Optional
+from functools import wraps
+from typing import TYPE_CHECKING, Any, List, Type, Union, overload, Optional, Coroutine
 
 import tornado.curl_httpclient
 import tornado.httputil
 import tornado.web
-from tornado import gen, stack_context
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler
 from pydantic import ValidationError, BaseModel
@@ -31,8 +30,7 @@ from frontik.debug import DEBUG_HEADER_NAME, DebugMode
 from frontik.timeout_tracking import get_timeout_checker
 from frontik.loggers.stages import StagesLogger
 from frontik.options import options
-from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors, _get_preprocessor_name, \
-    _gen_coroutine_from_preprocessor
+from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors, _get_preprocessor_name
 from frontik.util import make_url, gather_dict
 from frontik.version import version as frontik_version
 from frontik.validator import BaseValidationModel, Validators
@@ -345,34 +343,31 @@ class PageHandler(RequestHandler):
 
     def _execute(self, transforms, *args, **kwargs):
         request_context.set_handler_name(repr(self))
-        with stack_context.ExceptionStackContext(self._stack_context_handle_exception):
+        try:
             return super()._execute(transforms, *args, **kwargs)
+        except Exception as ex:
+            self._handle_request_exception(ex)
+            return True
 
-    @gen.coroutine
-    def get(self, *args, **kwargs):
-        yield self._execute_page(self.get_page)
+    async def get(self, *args, **kwargs):
+        await self._execute_page(self.get_page)
 
-    @gen.coroutine
-    def post(self, *args, **kwargs):
-        yield self._execute_page(self.post_page)
+    async def post(self, *args, **kwargs):
+        await self._execute_page(self.post_page)
 
-    @gen.coroutine
-    def head(self, *args, **kwargs):
-        yield self._execute_page(self.get_page)
+    async def put(self, *args, **kwargs):
+        await self._execute_page(self.put_page)
 
-    @gen.coroutine
-    def delete(self, *args, **kwargs):
-        yield self._execute_page(self.delete_page)
+    async def delete(self, *args, **kwargs):
+        await self._execute_page(self.delete_page)
 
-    @gen.coroutine
-    def put(self, *args, **kwargs):
-        yield self._execute_page(self.put_page)
+    async def head(self, *args, **kwargs):
+        await self._execute_page(self.get_page)
 
     def options(self, *args, **kwargs):
         self.__return_405()
 
-    @gen.coroutine
-    def _execute_page(self, page_handler_method):
+    async def _execute_page(self, page_handler_method):
         self.stages_logger.commit_stage('prepare')
         preprocessors = _get_preprocessors(page_handler_method.__func__)
 
@@ -385,34 +380,35 @@ class PageHandler(RequestHandler):
 
         preprocessors.sort(key=_prioritise_preprocessor_by_list)
         preprocessors_to_run = _unwrap_preprocessors(self.preprocessors) + preprocessors
-        preprocessors_completed = yield self._run_preprocessors(preprocessors_to_run)
+        preprocessors_completed = await self._run_preprocessors(preprocessors_to_run)
 
         if not preprocessors_completed:
             self.log.info('page was already finished, skipping page method')
             return
 
-        yield gen.coroutine(page_handler_method)()
+        await page_handler_method()
 
         self._handler_finished_notification()
-        yield self.finish_group.get_finish_future()
+        await self.finish_group.get_gathering_future()
+        await self.finish_group.get_finish_future()
 
-        render_result = yield self._postprocess()
+        render_result = await self._postprocess()
         if render_result is not None:
             self.write(render_result)
 
-    def get_page(self):
+    async def get_page(self):
         """ This method can be implemented in the subclass """
         self.__return_405()
 
-    def post_page(self):
+    async def post_page(self):
         """ This method can be implemented in the subclass """
         self.__return_405()
 
-    def put_page(self):
+    async def put_page(self):
         """ This method can be implemented in the subclass """
         self.__return_405()
 
-    def delete_page(self):
+    async def delete_page(self):
         """ This method can be implemented in the subclass """
         self.__return_405()
 
@@ -462,23 +458,19 @@ class PageHandler(RequestHandler):
             if future.result() is not None:
                 self.finish(future.result())
 
-        self.add_future(self._postprocess(), _cb)
+        asyncio.create_task(self._postprocess()).add_done_callback(_cb)
 
-    def run_task(self, coro: Awaitable):
-        """
-        Only asyncio coroutine allowed in `coro` argument.
-        """
+    def run_task(self: 'PageHandler', coro: Coroutine):
         task = asyncio.create_task(coro)
         self.finish_group.add_future(task)
         return task
 
-    @gen.coroutine
-    def _postprocess(self):
+    async def _postprocess(self):
         if self._finished:
             self.log.info('page was already finished, skipping postprocessors')
             return
 
-        postprocessors_completed = yield self._run_postprocessors(self._postprocessors)
+        postprocessors_completed = await self._run_postprocessors(self._postprocessors)
         self.stages_logger.commit_stage('page')
 
         if not postprocessors_completed:
@@ -493,10 +485,13 @@ class PageHandler(RequestHandler):
             renderer = self.xml_producer
 
         self.log.debug('using %s renderer', renderer)
-        rendered_result, meta_info = yield renderer()
+        rendered_result, meta_info = await renderer()
 
-        postprocessed_result = yield self._run_template_postprocessors(self._render_postprocessors,
-                                                                       rendered_result, meta_info)
+        postprocessed_result = await self._run_template_postprocessors(
+            self._render_postprocessors,
+            rendered_result,
+            meta_info
+        )
         return postprocessed_result
 
     def on_connection_close(self):
@@ -664,368 +659,6 @@ class PageHandler(RequestHandler):
     def was_preprocessor_called(self, preprocessor):
         return preprocessor.preprocessor_name in self._launched_preprocessors
 
-    @gen.coroutine
-    def _run_preprocessor_function(self, preprocessor_function):
-        yield _gen_coroutine_from_preprocessor(preprocessor_function)(self)
-        self._launched_preprocessors.append(
-            _get_preprocessor_name(preprocessor_function)
-        )
-
-    @gen.coroutine
-    def run_preprocessor(self, preprocessor):
-        if self._finished:
-            self.log.info('page was already finished, cannot init preprocessor')
-            return False
-        yield self._run_preprocessor_function(preprocessor.function)
-
-    @gen.coroutine
-    def _run_preprocessors(self, preprocessor_functions):
-        for p in preprocessor_functions:
-            yield self._run_preprocessor_function(p)
-            if self._finished:
-                self.log.info('page was already finished, breaking preprocessors chain')
-                return False
-        yield gen.multi(self._preprocessor_futures)
-
-        self._preprocessor_futures = None
-
-        if self._finished:
-            self.log.info('page was already finished, breaking preprocessors chain')
-            return False
-
-        return True
-
-    @gen.coroutine
-    def _run_postprocessors(self, postprocessors):
-        for p in postprocessors:
-            yield gen.coroutine(p)(self)
-
-            if self._finished:
-                self.log.warning('page was already finished, breaking postprocessors chain')
-                return False
-
-        return True
-
-    @gen.coroutine
-    def _run_template_postprocessors(self, postprocessors, rendered_template, meta_info):
-        for p in postprocessors:
-            rendered_template = yield gen.coroutine(p)(self, rendered_template, meta_info)
-
-            if self._finished:
-                self.log.warning('page was already finished, breaking postprocessors chain')
-                return None
-
-        return rendered_template
-
-    def add_render_postprocessor(self, postprocessor):
-        self._render_postprocessors.append(postprocessor)
-
-    def add_postprocessor(self, postprocessor):
-        self._postprocessors.append(postprocessor)
-
-    # Producers
-
-    async def _generic_producer(self):
-        self.log.debug('finishing plaintext')
-
-        if self._headers.get('Content-Type') is None:
-            self.set_header('Content-Type', media_types.TEXT_HTML)
-
-        return self.text, None
-
-    def xml_from_file(self, filename):
-        return self.xml_producer.xml_from_file(filename)
-
-    def set_xsl(self, filename):
-        return self.xml_producer.set_xsl(filename)
-
-    def set_template(self, filename):
-        return self.json_producer.set_template(filename)
-
-    # HTTP client methods
-
-    def modify_http_client_request(self, balanced_request: 'HTTPRequest'):
-        balanced_request.headers['x-request-id'] = request_context.get_request_id()
-
-        balanced_request.headers[OUTER_TIMEOUT_MS_HEADER] = f'{balanced_request.request_timeout * 1000:.0f}'
-
-        if self.timeout_checker is not None:
-            self.timeout_checker.check(balanced_request)
-
-        if self.debug_mode.pass_debug:
-            balanced_request.headers[DEBUG_HEADER_NAME] = 'true'
-
-            # debug_timestamp is added to avoid caching of debug responses
-            balanced_request.uri = make_url(balanced_request.uri, debug_timestamp=int(time.time()))
-
-            for header_name in ('Authorization', DEBUG_AUTH_HEADER_NAME):
-                authorization = self.request.headers.get(header_name)
-                if authorization is not None:
-                    balanced_request.headers[header_name] = authorization
-
-    def group(self, futures, callback=None, name=None):
-        group_future = Future()
-        results_holder = {}
-
-        def group_callback():
-            if callable(callback):
-                callback(results_holder)
-            group_future.set_result(results_holder)
-
-        def future_callback(name, future):
-            results_holder[name] = future.result()
-
-        async_group = AsyncGroup(self.finish_group.add(self.check_finished(group_callback)), name=name)
-
-        for name, future in futures.items():
-            if future.done():
-                future_callback(name, future)
-            else:
-                self.add_future(future, async_group.add(partial(future_callback, name)))
-
-        async_group.try_finish_async()
-
-        return group_future
-
-    def get_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True, profile=None,
-                connect_timeout=None, request_timeout=None, max_timeout_tries=None, speculative_timeout_pct=None,
-                callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
-
-        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
-
-        client_method = lambda callback: self._http_client.get_url(
-            host, uri, name=name, data=data, headers=headers, follow_redirects=follow_redirects, profile=profile,
-            connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            speculative_timeout_pct=speculative_timeout_pct, callback=callback, parse_response=parse_response,
-            parse_on_error=parse_on_error, fail_fast=fail_fast
-        )
-
-        return self._execute_http_client_method(host, uri, client_method, waited, callback)
-
-    def head_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True, profile=None,
-                 connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                 speculative_timeout_pct=None, callback=None, waited=True, fail_fast=False):
-
-        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
-
-        client_method = lambda callback: self._http_client.head_url(
-            host, uri, data=data, name=name, headers=headers, follow_redirects=follow_redirects, profile=profile,
-            connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            speculative_timeout_pct=speculative_timeout_pct, callback=callback, fail_fast=fail_fast
-        )
-
-        return self._execute_http_client_method(host, uri, client_method, waited, callback)
-
-    def post_url(self, host, uri, *,
-                 name=None, data='', headers=None, files=None, content_type=None, follow_redirects=True, profile=None,
-                 connect_timeout=None, request_timeout=None, max_timeout_tries=None, speculative_timeout_pct=None,
-                 idempotent=False, callback=None, waited=True, parse_response=True,
-                 parse_on_error=True, fail_fast=False):
-
-        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
-
-        client_method = lambda callback: self._http_client.post_url(
-            host, uri, data=data, name=name, headers=headers, files=files, content_type=content_type,
-            follow_redirects=follow_redirects, profile=profile, connect_timeout=connect_timeout,
-            request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            speculative_timeout_pct=speculative_timeout_pct, idempotent=idempotent, callback=callback,
-            parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
-        )
-
-        return self._execute_http_client_method(host, uri, client_method, waited, callback)
-
-    def put_url(self, host, uri, *, name=None, data='', headers=None, content_type=None, follow_redirects=True,
-                profile=None, connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                speculative_timeout_pct=None, idempotent=True, callback=None, waited=True, parse_response=True,
-                parse_on_error=True, fail_fast=False):
-
-        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
-
-        client_method = lambda callback: self._http_client.put_url(
-            host, uri, name=name, data=data, headers=headers, content_type=content_type,
-            follow_redirects=follow_redirects, profile=profile, connect_timeout=connect_timeout,
-            request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            speculative_timeout_pct=speculative_timeout_pct, idempotent=idempotent, callback=callback,
-            parse_response=parse_response, parse_on_error=parse_on_error, fail_fast=fail_fast
-        )
-
-        return self._execute_http_client_method(host, uri, client_method, waited, callback)
-
-    def delete_url(self, host, uri, *, name=None, data=None, headers=None, content_type=None, profile=None,
-                   connect_timeout=None, request_timeout=None, max_timeout_tries=None, speculative_timeout_pct=None,
-                   callback=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
-
-        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
-
-        client_method = lambda callback: self._http_client.delete_url(
-            host, uri, name=name, data=data, headers=headers, content_type=content_type, profile=profile,
-            connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
-            speculative_timeout_pct=speculative_timeout_pct, callback=callback, parse_response=parse_response,
-            parse_on_error=parse_on_error, fail_fast=fail_fast
-        )
-
-        return self._execute_http_client_method(host, uri, client_method, waited, callback)
-
-    def _execute_http_client_method(self, host, uri, client_method, waited, callback):
-        if waited and (self.is_finished() or self.finish_group.is_finished()):
-            handler_logger.info(
-                'attempted to make waited http request to %s %s in finished handler, ignoring', host, uri
-            )
-
-            future = Future()
-            future.set_exception(AbortAsyncGroup())
-            return future
-
-        if waited and callable(callback):
-            callback = self.check_finished(callback)
-
-        future = client_method(callback)
-
-        if waited:
-            self.finish_group.add_future(future)
-
-        return future
-
-
-class ErrorHandler(PageHandler, tornado.web.ErrorHandler):
-    pass
-
-
-class RedirectHandler(PageHandler, tornado.web.RedirectHandler):
-    def get_page(self):
-        tornado.web.RedirectHandler.get(self)
-
-
-class AwaitablePageHandler(PageHandler):
-
-    preprocessors = ()
-    _priority_preprocessor_names = []
-
-    # Requests handling
-
-    async def get(self, *args, **kwargs):
-        await self._execute_page(self.get_page)
-
-    async def post(self, *args, **kwargs):
-        await self._execute_page(self.post_page)
-
-    async def head(self, *args, **kwargs):
-        await self._execute_page(self.get_page)
-
-    async def delete(self, *args, **kwargs):
-        await self._execute_page(self.delete_page)
-
-    async def put(self, *args, **kwargs):
-        await self._execute_page(self.put_page)
-
-    def options(self, *args, **kwargs):
-        self.__return_405()
-
-    async def _execute_page(self, page_handler_method):
-        self.stages_logger.commit_stage('prepare')
-        preprocessors = _get_preprocessors(page_handler_method.__func__)
-
-        def _prioritise_preprocessor_by_list(preprocessor):
-            name = _get_preprocessor_name(preprocessor)
-            if name in self._priority_preprocessor_names:
-                return self._priority_preprocessor_names.index(name)
-            else:
-                return math.inf
-
-        preprocessors.sort(key=_prioritise_preprocessor_by_list)
-        preprocessors_to_run = _unwrap_preprocessors(self.preprocessors) + preprocessors
-        preprocessors_completed = await self._run_preprocessors(preprocessors_to_run)
-
-        if not preprocessors_completed:
-            self.log.info('page was already finished, skipping page method')
-            return
-
-        if asyncio.iscoroutinefunction(page_handler_method):
-            await page_handler_method()
-        else:
-            page_handler_method()
-
-        self._handler_finished_notification()
-        await self.finish_group.get_gathering_future()
-        await self.finish_group.get_finish_future()
-
-        render_result = await self._postprocess()
-        if render_result is not None:
-            self.write(render_result)
-
-    async def get_page(self):
-        """ This method can be implemented in the subclass """
-        self.__return_405()
-
-    async def post_page(self):
-        """ This method can be implemented in the subclass """
-        self.__return_405()
-
-    async def put_page(self):
-        """ This method can be implemented in the subclass """
-        self.__return_405()
-
-    async def delete_page(self):
-        """ This method can be implemented in the subclass """
-        self.__return_405()
-
-    def __return_405(self):
-        super()._PageHandler__return_405()
-
-    # Finish page
-
-    def finish_with_postprocessors(self):
-        if not self.finish_group.get_finish_future().done():
-            self.finish_group.abort()
-
-        def _cb(future):
-            if future.result() is not None:
-                self.finish(future.result())
-
-        asyncio.create_task(self._postprocess()).add_done_callback(_cb)
-
-    def run_task(self: 'AwaitablePageHandler', coro: Awaitable):
-        task = asyncio.create_task(coro)
-        self.finish_group.add_future(task)
-        return task
-
-    @staticmethod
-    def wrap_sync_to_coroutine(func):
-        async def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-        return wrapper
-
-    async def _postprocess(self):
-        if self._finished:
-            self.log.info('page was already finished, skipping postprocessors')
-            return
-
-        postprocessors_completed = await self._run_postprocessors(self._postprocessors)
-        self.stages_logger.commit_stage('page')
-
-        if not postprocessors_completed:
-            self.log.info('page was already finished, skipping page producer')
-            return
-
-        if self.text is not None:
-            renderer = self._generic_producer
-        elif not self.json.is_empty():
-            renderer = self.json_producer
-        else:
-            renderer = self.xml_producer
-
-        self.log.debug('using %s renderer', renderer)
-        rendered_result, meta_info = await renderer()
-
-        postprocessed_result = await self._run_template_postprocessors(
-            self._render_postprocessors,
-            rendered_result,
-            meta_info
-        )
-        return postprocessed_result
-
-    # Preprocessors and postprocessors
-
     async def _run_preprocessor_function(self, preprocessor_function):
         if asyncio.iscoroutinefunction(preprocessor_function):
             await preprocessor_function(self)
@@ -1082,6 +715,52 @@ class AwaitablePageHandler(PageHandler):
                 return None
 
         return rendered_template
+
+    def add_render_postprocessor(self, postprocessor):
+        self._render_postprocessors.append(postprocessor)
+
+    def add_postprocessor(self, postprocessor):
+        self._postprocessors.append(postprocessor)
+
+    # Producers
+
+    async def _generic_producer(self):
+        self.log.debug('finishing plaintext')
+
+        if self._headers.get('Content-Type') is None:
+            self.set_header('Content-Type', media_types.TEXT_HTML)
+
+        return self.text, None
+
+    def xml_from_file(self, filename):
+        return self.xml_producer.xml_from_file(filename)
+
+    def set_xsl(self, filename):
+        return self.xml_producer.set_xsl(filename)
+
+    def set_template(self, filename):
+        return self.json_producer.set_template(filename)
+
+    # HTTP client methods
+
+    def modify_http_client_request(self, balanced_request: 'HTTPRequest'):
+        balanced_request.headers['x-request-id'] = request_context.get_request_id()
+
+        balanced_request.headers[OUTER_TIMEOUT_MS_HEADER] = f'{balanced_request.request_timeout * 1000:.0f}'
+
+        if self.timeout_checker is not None:
+            self.timeout_checker.check(balanced_request)
+
+        if self.debug_mode.pass_debug:
+            balanced_request.headers[DEBUG_HEADER_NAME] = 'true'
+
+            # debug_timestamp is added to avoid caching of debug responses
+            balanced_request.uri = make_url(balanced_request.uri, debug_timestamp=int(time.time()))
+
+            for header_name in ('Authorization', DEBUG_AUTH_HEADER_NAME):
+                authorization = self.request.headers.get(header_name)
+                if authorization is not None:
+                    balanced_request.headers[header_name] = authorization
 
     def group(self, futures):
         return self.run_task(gather_dict(coro_dict=futures))
@@ -1179,3 +858,12 @@ class AwaitablePageHandler(PageHandler):
             self.finish_group.add_future(future)
 
         return future
+
+
+class ErrorHandler(PageHandler, tornado.web.ErrorHandler):
+    pass
+
+
+class RedirectHandler(PageHandler, tornado.web.RedirectHandler):
+    def get_page(self):
+        tornado.web.RedirectHandler.get(self)
