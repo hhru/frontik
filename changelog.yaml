@@ -1,3 +1,10 @@
+-   name: 7.0.0
+    date: '2023-03-06T17:42:01.148574+03:00'
+    description: "AwaitablePageHandler переименован в PageHandler, старый удален\r\
+        \nСоответственно, для обновления, все yield корутины должны быть удалены"
+    instructions: ''
+    compatible: true
+
 -   name: 6.7.1
     date: '2023-02-14T11:11:28.853965+03:00'
     description: "В gather_dict теперь можно передавать None в качестве корутины,\
