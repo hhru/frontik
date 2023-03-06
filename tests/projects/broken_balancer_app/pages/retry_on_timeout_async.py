@@ -3,7 +3,7 @@ import asyncio
 from frontik import handler, media_types
 
 
-class Page(handler.AwaitablePageHandler):
+class Page(handler.PageHandler):
     async def delete_page(self):
         await asyncio.sleep(2)
 

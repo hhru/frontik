@@ -4,7 +4,7 @@ from frontik import handler, media_types
 
 
 class Page(handler.PageHandler):
-    def get_page(self):
+    async def get_page(self):
         self.log.debug('debug: starting debug page')
 
         def _exception_trace():
@@ -41,7 +41,7 @@ class Page(handler.PageHandler):
         self.log.debug('testing utf-8 text output', extra={'_text': 'some\nmultiline\nюникод\ndebug'})
         self.log.debug('testing unicode text output', extra={'_text': 'some\nmultiline\nюникод\ndebug'})
 
-    def post_page(self):
+    async def post_page(self):
         self.log.debug('this page returns json')
 
         self.json.put({
@@ -50,7 +50,7 @@ class Page(handler.PageHandler):
             'тест': 'value'
         })
 
-    def put_page(self):
+    async def put_page(self):
         content_type = self.get_argument('type')
 
         if content_type == 'html':

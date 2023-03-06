@@ -13,7 +13,6 @@ import tornado
 from lxml import etree
 from tornado import httputil
 from tornado.httpclient import AsyncHTTPClient
-from tornado.stack_context import StackContext
 from tornado.web import Application, RequestHandler, HTTPError
 from http_client import HttpClientFactory, options as http_client_options
 from http_client.balancing import RequestBalancerBuilder, UpstreamManager
@@ -190,15 +189,13 @@ class FrontikApplication(Application):
             request_id = FrontikApplication.next_request_id()
         if options.validate_request_id:
             check_request_id(request_id)
-        context = partial(request_context.RequestContext, {'request': request, 'request_id': request_id})
 
         def wrapped_in_context(func):
             def wrapper(*args, **kwargs):
                 token = request_context.initialize(request, request_id)
 
                 try:
-                    with StackContext(context):
-                        return func(*args, **kwargs)
+                    return func(*args, **kwargs)
                 finally:
                     request_context.reset(token)
 

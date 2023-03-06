@@ -1,7 +1,7 @@
 from frontik import handler, media_types
 
 
-class Page(handler.AwaitablePageHandler):
+class Page(handler.PageHandler):
     async def get_page(self):
         n = int(self.get_argument('n'))
         if n > 0:

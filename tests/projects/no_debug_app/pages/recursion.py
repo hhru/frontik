@@ -2,17 +2,14 @@ from frontik import handler, media_types
 
 
 class Page(handler.PageHandler):
-    def get_page(self):
-        def _cb(text, response):
-            self.set_header('Content-Type', media_types.TEXT_PLAIN)
-            if response.error:
-                self.text = str(response.code)
-            else:
-                self.text = f'200 {text}'
-
+    async def get_page(self):
         n = int(self.get_argument('n'))
         if n > 0:
-            self.get_url(
+            result = await self.get_url(
                 self.request.host, self.request.path + f'?n={n - 1}',
-                callback=_cb
             )
+            self.set_header('Content-Type', media_types.TEXT_PLAIN)
+            if result.response.error:
+                self.text = str(result.response.code)
+            else:
+                self.text = f'200 {result.data}'

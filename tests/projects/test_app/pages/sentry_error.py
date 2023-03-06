@@ -7,13 +7,13 @@ from frontik.handler import PageHandler
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         raise Exception('Runtime exception for Sentry')
 
-    def post_page(self):
+    async def post_page(self):
         raise HTTPError(500, 'HTTPError for Sentry')
 
-    def put_page(self):
+    async def put_page(self):
         self.get_sentry_logger().capture_message('Message for Sentry')
 
     def finish(self, chunk=None):

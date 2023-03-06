@@ -10,11 +10,12 @@ def pp_before(handler):
 
 
 @preprocessor
-def pp(handler):
-    def _cb(_, __):
+async def pp(handler):
+    async def post_request():
+        await handler.put_url(handler.request.host, handler.request.path)
         handler.json.put({'put_request_finished': True})
 
-    future = handler.put_url(handler.request.host, handler.request.path, callback=_cb)
+    future = handler.run_task(post_request())
     handler.run.append('pp')
 
     if handler.get_argument('raise_error', 'false') != 'false':
@@ -31,7 +32,7 @@ def pp(handler):
     elif handler.get_argument('finish', 'false') != 'false':
         handler.finish('finished')
     else:
-        yield future
+        await future
 
 
 @preprocessor
@@ -53,8 +54,8 @@ class Page(PageHandler):
     @pp_before
     @pp
     @pp_after
-    def get_page(self):
+    async def get_page(self):
         self.run.append('get_page')
 
-    def put_page(self):
+    async def put_page(self):
         pass

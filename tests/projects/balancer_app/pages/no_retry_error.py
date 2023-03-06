@@ -1,31 +1,24 @@
 from http_client.balancing import Upstream
 
 from frontik import handler, media_types
-from frontik.futures import AsyncGroup
 
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
 class Page(handler.PageHandler):
-    def get_page(self):
+    async def get_page(self):
         self.application.upstream_manager.update_upstream(
             Upstream('no_retry_error', {}, [get_server(self, 'broken')]))
 
-        def check_requests_cb():
-            check_all_requests_done(self, 'no_retry_error')
+        result = await self.post_url('no_retry_error', self.request.path)
+        if result.response.error and result.response.code == 500:
+            self.text = 'no retry error'
+        else:
+            self.text = result.data
 
-        async_group = AsyncGroup(check_requests_cb)
+        check_all_requests_done(self, 'no_retry_error')
 
-        def callback_post(text, response):
-            if response.error and response.code == 500:
-                self.text = 'no retry error'
-                return
-
-            self.text = text
-
-        self.post_url('no_retry_error', self.request.path, callback=async_group.add(callback_post))
-
-    def post_page(self):
+    async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'

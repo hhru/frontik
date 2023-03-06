@@ -31,7 +31,7 @@ class Page(PageHandler):
     @pp1
     @pp3
     @pp2
-    def get_page(self):
+    async def get_page(self):
         self.json.put({
             'order': self.called_preprocessors,
         })

@@ -6,7 +6,7 @@ from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
-class Page(handler.AwaitablePageHandler):
+class Page(handler.PageHandler):
     async def get_page(self):
         self.application.upstream_manager.upstreams['no_retry_timeout_async'] = Upstream('no_retry_timeout_async',
                                                                                          {}, [])

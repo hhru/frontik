@@ -4,7 +4,7 @@ import frontik.handler
 class Page(frontik.handler.PageHandler):
     result = 'Callback not called'
 
-    def get_page(self):
+    async def get_page(self):
         # Callback must never be called
         def callback():
             Page.result = 'Callback called'

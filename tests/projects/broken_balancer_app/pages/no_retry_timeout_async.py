@@ -3,7 +3,7 @@ import asyncio
 import frontik.handler
 
 
-class Page(frontik.handler.AwaitablePageHandler):
+class Page(frontik.handler.PageHandler):
     async def post_page(self):
         await asyncio.sleep(2)
 

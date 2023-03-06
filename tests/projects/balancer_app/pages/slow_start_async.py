@@ -3,13 +3,13 @@ import asyncio
 from http_client.balancing import Upstream, Server, UpstreamConfig
 
 from frontik import media_types
-from frontik.handler import AwaitablePageHandler
+from frontik.handler import PageHandler
 
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
-class Page(AwaitablePageHandler):
+class Page(PageHandler):
     async def get_page(self):
         server = get_server(self, 'normal')
         server.weight = 5

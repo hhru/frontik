@@ -3,31 +3,26 @@ from tornado.web import HTTPError
 
 from frontik import media_types
 from frontik.handler import PageHandler
-from frontik.futures import AsyncGroup
 
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         self.application.upstream_manager.update_upstream(
             Upstream('retry_on_timeout', {}, [get_server(self, 'broken'), get_server(self, 'normal')]))
 
-        def check_requests_cb():
-            check_all_requests_done(self, 'retry_on_timeout')
+        result = await self.delete_url('retry_on_timeout', self.request.path, connect_timeout=0.1, request_timeout=0.3,
+                                       max_timeout_tries=2)
 
-        async_group = AsyncGroup(check_requests_cb)
+        if result.response.error or result.data is None:
+            raise HTTPError(500)
 
-        def callback_post(text, response):
-            if response.error or text is None:
-                raise HTTPError(500)
+        self.text = result.data
 
-            self.text = text
+        check_all_requests_done(self, 'retry_on_timeout')
 
-        self.delete_url('retry_on_timeout', self.request.path, callback=async_group.add(callback_post),
-                        connect_timeout=0.1, request_timeout=0.3, max_timeout_tries=2)
-
-    def delete_page(self):
+    async def delete_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'

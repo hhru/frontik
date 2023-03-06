@@ -7,7 +7,7 @@ from tests.projects.balancer_app import get_server_with_port
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         upstream = Upstream(
             'retry_count_limit',
             {Upstream.DEFAULT_PROFILE: UpstreamConfig(max_tries=3)},
@@ -19,6 +19,6 @@ class Page(PageHandler):
 
         self.text = ''
 
-        yield self.get_url('retry_count_limit', self.request.path)
+        await self.get_url('retry_count_limit', self.request.path)
 
         self.text = str(sum(server.stat_requests for server in upstream.servers))

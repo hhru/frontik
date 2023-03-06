@@ -6,14 +6,14 @@ from frontik.doc import Doc
 
 
 class Page(frontik.handler.PageHandler):
-    def get_page(self):
+    async def get_page(self):
         invalid_xml = self.get_argument('invalid', 'false')
 
         self.doc.put(etree.fromstring('<a>aaa</a>'))
         self.doc.put(self.post_url(self.request.host, self.request.path, data={'invalid': invalid_xml}))
         self.doc.put(Doc('c'))
 
-    def post_page(self):
+    async def post_page(self):
         invalid_xml = self.get_argument('invalid', 'false') == 'true'
 
         if not invalid_xml:

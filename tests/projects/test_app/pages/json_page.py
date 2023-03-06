@@ -14,7 +14,7 @@ class Page(handler.PageHandler):
 
         super().prepare()
 
-    def get_page(self):
+    async def get_page(self):
         invalid_json = self.get_argument('invalid', 'false')
 
         data = {
@@ -28,7 +28,7 @@ class Page(handler.PageHandler):
         self.set_template(self.get_argument('template', 'jinja.html'))
         self.json.put(data)
 
-    def post_page(self):
+    async def post_page(self):
         invalid_json = self.get_argument('invalid', 'false') == 'true'
 
         if not invalid_json:

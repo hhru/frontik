@@ -3,14 +3,14 @@ from tornado.web import HTTPError
 
 from frontik import media_types
 from frontik.handler import PageHandler
-from frontik.futures import AsyncGroup
+from frontik.util import gather_list
 
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(retry_policy={
             503: {
                 "idempotent": "true"
@@ -21,27 +21,21 @@ class Page(PageHandler):
         self.application.upstream_manager.update_upstream(
             Upstream('do_not_retry_non_idempotent_503', {}, [get_server(self, 'broken')]))
 
-        def check_requests_cb():
-            check_all_requests_done(self, 'retry_non_idempotent_503')
-            check_all_requests_done(self, 'do_not_retry_non_idempotent_503')
+        res1, res2 = await gather_list(
+            self.post_url('retry_non_idempotent_503', self.request.path),
+            self.post_url('do_not_retry_non_idempotent_503', self.request.path)
+        )
 
-        async_group = AsyncGroup(check_requests_cb)
+        if res1.response.error or res1.data is None:
+            raise HTTPError(500)
+        self.text = res1.data
 
-        def callback_post_without_retry(_, response):
-            if response.code != 503:
-                raise HTTPError(500)
+        if res2.response.code != 503:
+            raise HTTPError(500)
 
-        def callback_post_with_retry(text, response):
-            if response.error or text is None:
-                raise HTTPError(500)
+        check_all_requests_done(self, 'retry_non_idempotent_503')
+        check_all_requests_done(self, 'do_not_retry_non_idempotent_503')
 
-            self.text = text
-
-        self.post_url('retry_non_idempotent_503', self.request.path,
-                      callback=async_group.add(callback_post_with_retry))
-        self.post_url('do_not_retry_non_idempotent_503', self.request.path,
-                      callback=async_group.add(callback_post_without_retry))
-
-    def post_page(self):
+    async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'

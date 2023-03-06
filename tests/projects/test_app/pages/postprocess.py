@@ -9,7 +9,7 @@ class ContentPostprocessor:
 
 
 class Page(PageHandler):
-    def get_page(self):
+    async def get_page(self):
         if self.get_argument('raise_error', None) is not None:
             self.add_postprocessor(self._pp_1)
 

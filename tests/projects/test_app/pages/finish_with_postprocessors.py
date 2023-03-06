@@ -13,13 +13,14 @@ class Page(PageHandler):
 
         self.add_postprocessor(pp)
 
-    def get_page(self):
+    async def get_page(self):
         content_type = self.get_argument('type')
 
-        def fail_page(_, __):
+        async def fail_request():
+            await self.post_url(self.request.host, self.request.path)
             raise HTTPError(500)
 
-        self.post_url(self.request.host, self.request.path, callback=fail_page)
+        self.run_task(fail_request())
 
         if content_type == 'text':
             self.text = 'ok'
@@ -33,5 +34,5 @@ class Page(PageHandler):
 
         raise FinishWithPostprocessors()
 
-    def post_page(self):
+    async def post_page(self):
         pass

@@ -5,7 +5,7 @@ from frontik import media_types
 from frontik.doc import Doc
 
 
-class Page(frontik.handler.AwaitablePageHandler):
+class Page(frontik.handler.PageHandler):
     async def get_page(self):
         invalid_xml = self.get_argument('invalid', 'false')
 

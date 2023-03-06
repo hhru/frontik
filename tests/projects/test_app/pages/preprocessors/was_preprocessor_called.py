@@ -27,7 +27,7 @@ class Page(PageHandler):
 
     @pp1
     @pp2
-    def get_page(self):
+    async def get_page(self):
         self.json.put({
             'pp0': self.was_preprocessor_called(pp0),
             'pp1': self.was_preprocessor_called(pp1),
