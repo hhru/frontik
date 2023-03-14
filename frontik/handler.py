@@ -15,7 +15,7 @@ import tornado.httputil
 import tornado.web
 from tornado import gen, stack_context
 from tornado.ioloop import IOLoop
-from tornado.web import RequestHandler
+from tornado.web import RequestHandler, Finish
 from pydantic import ValidationError, BaseModel
 from http_client import FailFastError, HttpClient, RequestResult, USER_AGENT_HEADER
 
@@ -527,15 +527,22 @@ class PageHandler(RequestHandler):
     def _handle_request_exception(self, e):
         if isinstance(e, AbortAsyncGroup):
             self.log.info('page was aborted, skipping postprocessing')
+            return
 
-        elif isinstance(e, FinishWithPostprocessors):
+        if isinstance(e, FinishWithPostprocessors):
             if e.wait_finish_group:
                 self._handler_finished_notification()
                 self.add_future(self.finish_group.get_finish_future(), lambda _: self.finish_with_postprocessors())
             else:
                 self.finish_with_postprocessors()
+            return
 
-        elif isinstance(e, FailFastError):
+        if self._finished and not isinstance(e, Finish):
+            # tornado will handle Finish by itself
+            # any other errors can't complete after handler is finished
+            return
+
+        if isinstance(e, FailFastError):
             response = e.failed_request.response
             request = e.failed_request.request
 
