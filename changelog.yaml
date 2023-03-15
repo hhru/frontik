@@ -1,3 +1,9 @@
+-   name: 6.7.4
+    date: '2023-03-15T18:29:34.084703+03:00'
+    description: Испавлен баг с двойной обработкой ошибок failFast
+    instructions: ''
+    compatible: true
+
 -   name: 6.7.3
     date: '2023-03-14T12:11:51.046735+03:00'
     description: ''
