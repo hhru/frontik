@@ -17,6 +17,7 @@ frontik.egg-info/
 .venv/
 /python_venv
 
+asyncio
 tornado/
 http_client/
 

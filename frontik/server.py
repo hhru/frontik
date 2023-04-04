@@ -128,7 +128,7 @@ async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_r
         return ioloop.asyncio_loop.is_running()
 
     def server_stop():
-        ioloop.asyncio_loop.create_task(_deinit_app(app, ioloop, need_to_register_in_service_discovery))
+        ioloop.asyncio_loop.create_task(_deinit_app(app, need_to_register_in_service_discovery))
         http_server.stop()
 
         if ioloop_is_running():
@@ -167,7 +167,7 @@ async def _init_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, count_down
         register_task.add_done_callback(register_task_result_handler)
 
 
-async def _deinit_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_register_in_service_discovery):
+async def _deinit_app(app: FrontikApplication, need_to_register_in_service_discovery):
     if need_to_register_in_service_discovery:
         deregistration = app.service_discovery_client.deregister_service_and_close()
         deinit_futures = [asyncio.wait_for(deregistration, timeout=options.stop_timeout)]
@@ -176,7 +176,7 @@ async def _deinit_app(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_
     deinit_futures.extend([integration.deinitialize_app(app) for integration in app.available_integrations])
     if deinit_futures:
         try:
-            await asyncio.gather(*[future for future in deinit_futures if future], loop=ioloop.asyncio_loop)
+            await asyncio.gather(*[future for future in deinit_futures if future])
             log.info('Successfully deinited application')
         except Exception as e:
             log.exception('failed to deinit, deinit returned: %s', e)
