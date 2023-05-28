@@ -7,9 +7,10 @@ import time
 from distutils.spawn import find_executable
 
 import requests
-from frontik import options
 from lxml import etree
 from tornado.escape import to_unicode, utf8
+
+from frontik import options
 
 try:
     import coverage

@@ -8,13 +8,22 @@ from frontik.handler import PageHandler
 
 class Page(PageHandler):
     async def get_page(self):
-        raise Exception('Runtime exception for Sentry')
+        ip = self.get_argument('ip', None)
+        extra = self.get_argument('extra_key', None)
+        if ip or extra:
+            sentry_logger = self.get_sentry_logger()
+            sentry_logger.update_user_info(ip=ip)
+            sentry_logger.set_request_extra_data({'extra_key': extra})
+
+        raise Exception('My_sentry_exception')
 
     async def post_page(self):
-        raise HTTPError(500, 'HTTPError for Sentry')
+        raise HTTPError(500, 'my_HTTPError')
 
     async def put_page(self):
-        self.get_sentry_logger().capture_message('Message for Sentry')
+        sentry_logger = self.get_sentry_logger()
+        sentry_logger.set_request_extra_data({'extra_key': 'extra_value'})
+        sentry_logger.capture_message('sentry_message')
 
     def finish(self, chunk=None):
         # delay page finish to make sure that sentry mock got the exception

@@ -14,7 +14,7 @@ from tests.projects.test_app import config
 
 class TestApplication(FrontikApplication):
     def __init__(self, **settings):
-        options.sentry_dsn = 'http://key:secret@127.0.0.1:{}/sentry'.format(settings['port'])
+        options.sentry_dsn = 'http://secret@127.0.0.1:{}/2'.format(settings['port'])
 
         bootstrap_logger('custom_logger', logging.DEBUG, False)
 

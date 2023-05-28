@@ -31,7 +31,7 @@ setup(
     test_suite='tests',
     tests_require=dev_requirements,
     extras_require={
-        'sentry': ['raven'],
+        'sentry': ['sentry_sdk'],
         'kafka': ['aiokafka'],
     },
     zip_safe=False
