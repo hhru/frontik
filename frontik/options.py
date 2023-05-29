@@ -74,8 +74,7 @@ class Options:
     jinja_streaming_render_timeout_ms: int = 50
 
     sentry_dsn: str = None
-    sentry_connect_timeout_sec: float = 0.2
-    sentry_request_timeout_sec: float = 2.0
+    sentry_max_breadcrumbs: int = 0
 
     max_http_clients: int = 100
     max_http_clients_connects: int = None

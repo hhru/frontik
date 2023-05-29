@@ -4,17 +4,10 @@ import requests
 
 from .instances import frontik_re_app, frontik_test_app
 
-try:
-    import sentry_sdk
-    has_sentry_sdk = True
-except Exception:
-    has_sentry_sdk = False
 
-
-@unittest.skipIf(not has_sentry_sdk, 'raven library not found')
 class TestSentryIntegration(unittest.TestCase):
     def test_sentry_exception(self):
-        frontik_test_app.get_page('api/2/envelope', method=requests.delete)
+        frontik_test_app.get_page('api/2/store', method=requests.delete)
         frontik_test_app.get_page('sentry_error?ip=127.0.0.77&extra_key=extra_val')
 
         sentry_events = self._get_sentry_exceptions('My_sentry_exception')
@@ -24,9 +17,8 @@ class TestSentryIntegration(unittest.TestCase):
         self.assertEqual(len(event['breadcrumbs']['values']), 0)
         self.assertIsNone(event.get('modules'))
         self.assertEqual(event['request']['query_string'], 'ip=127.0.0.77&extra_key=extra_val')
-        self.assertEqual(event['user']['id'], '123456')
         self.assertEqual(event['user']['real_ip'], '127.0.0.77')
-        self.assertEqual(event['extra']['request_extra_data']['extra_key'], 'extra_val')
+        self.assertEqual(event['extra']['extra_key'], 'extra_val')
 
         # second request for check that sentry scope was overwritten
         frontik_test_app.get_page('sentry_error')
@@ -34,12 +26,11 @@ class TestSentryIntegration(unittest.TestCase):
         self.assertEqual(len(sentry_events), 2)
 
         event = sentry_events[1]
-        self.assertEqual(event['user']['id'], '123456')
-        self.assertEqual(event['user']['real_ip'], '127.0.0.1')
+        self.assertIsNone(event['user'].get('real_ip'))
         self.assertIsNone(event.get('extra'))
 
     def test_sentry_message(self):
-        frontik_test_app.get_page('api/2/envelope', method=requests.delete)
+        frontik_test_app.get_page('api/2/store', method=requests.delete)
         frontik_test_app.get_page('sentry_error', method=requests.put, headers={'MaHeaderKey': 'MaHeaderValue'})
 
         sentry_events = self._get_sentry_messages()
@@ -52,11 +43,11 @@ class TestSentryIntegration(unittest.TestCase):
         self.assertTrue(event['request']['url'].endswith('/sentry_error'))
         self.assertEqual(event['request']['method'], 'PUT')
         self.assertEqual(event['request']['headers']['Maheaderkey'], 'MaHeaderValue')
-        self.assertEqual(event['extra']['request_extra_data']['extra_key'], 'extra_value')
+        self.assertEqual(event['extra']['extra_key'], 'extra_value')
         self.assertEqual(event['user']['id'], '123456')
 
     def test_sentry_http_error(self):
-        frontik_test_app.get_page('api/2/envelope', method=requests.delete)
+        frontik_test_app.get_page('api/2/store', method=requests.delete)
         frontik_test_app.get_page('sentry_error', method=requests.post)
 
         sentry_events = self._get_sentry_exceptions('my_HTTPError')
@@ -67,10 +58,10 @@ class TestSentryIntegration(unittest.TestCase):
 
     @staticmethod
     def _get_sentry_messages():
-        sentry_json = frontik_test_app.get_page_json('api/2/envelope')
+        sentry_json = frontik_test_app.get_page_json('api/2/store')
         return sentry_json['exceptions']
 
     @staticmethod
     def _get_sentry_exceptions(name):
-        sentry_json = frontik_test_app.get_page_json('api/2/envelope')
+        sentry_json = frontik_test_app.get_page_json('api/2/store')
         return list(filter(lambda e: e['exception']['values'][0]['value'] == name, sentry_json['exceptions']))

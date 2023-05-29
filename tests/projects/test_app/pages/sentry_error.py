@@ -1,5 +1,6 @@
 from functools import partial
 
+import sentry_sdk
 from tornado.ioloop import IOLoop
 from tornado.web import HTTPError
 
@@ -10,10 +11,9 @@ class Page(PageHandler):
     async def get_page(self):
         ip = self.get_argument('ip', None)
         extra = self.get_argument('extra_key', None)
-        if ip or extra:
-            sentry_logger = self.get_sentry_logger()
-            sentry_logger.update_user_info(ip=ip)
-            sentry_logger.set_request_extra_data({'extra_key': extra})
+        if ip and extra:
+            sentry_sdk.set_user({'real_ip': ip})
+            sentry_sdk.set_extra('extra_key', extra)
 
         raise Exception('My_sentry_exception')
 
@@ -21,13 +21,12 @@ class Page(PageHandler):
         raise HTTPError(500, 'my_HTTPError')
 
     async def put_page(self):
-        sentry_logger = self.get_sentry_logger()
-        sentry_logger.set_request_extra_data({'extra_key': 'extra_value'})
-        sentry_logger.capture_message('sentry_message')
+        sentry_sdk.set_extra('extra_key', 'extra_value')
+        sentry_sdk.capture_message('sentry_message')
 
     def finish(self, chunk=None):
         # delay page finish to make sure that sentry mock got the exception
         self.add_timeout(IOLoop.current().time() + 0.3, partial(super().finish, chunk))
 
-    def initialize_sentry_logger(self, sentry_logger):
-        sentry_logger.update_user_info(user_id='123456')
+    def initialize_sentry_logger(self):
+        sentry_sdk.set_user({'id': '123456'})

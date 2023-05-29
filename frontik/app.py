@@ -38,8 +38,6 @@ if TYPE_CHECKING:
     from aiokafka import AIOKafkaProducer
     from tornado.httputil import HTTPServerRequest
 
-    from frontik.integrations.sentry import SentryLogger
-
 
 def get_frontik_and_apps_versions(application):
     versions = etree.Element('versions')
@@ -280,7 +278,4 @@ class FrontikApplication(Application):
         JSON_REQUESTS_LOGGER.info('', extra={CUSTOM_JSON_EXTRA: extra})
 
     def get_kafka_producer(self, producer_name: str) -> 'Optional[AIOKafkaProducer]':  # pragma: no cover
-        pass
-
-    def get_sentry_logger(self, request: 'HTTPServerRequest') -> 'Optional[SentryLogger]':  # pragma: no cover
         pass

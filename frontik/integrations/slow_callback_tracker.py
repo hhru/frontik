@@ -6,13 +6,12 @@ from asyncio import Future
 from functools import partial
 from typing import Optional
 
-from tornado.httputil import HTTPServerRequest
+import sentry_sdk
 
 from frontik.app import FrontikApplication
 from frontik.integrations import Integration, integrations_logger
 from frontik.loggers import bootstrap_logger
 from frontik.options import options
-from frontik.request_context import get_request
 
 current_callback_start = None
 long_gc_log = None
@@ -49,13 +48,8 @@ def wrap_handle_with_time_logging(app: FrontikApplication, slow_tasks_logger):
         slow_tasks_logger.warning('%s took %.2fms', handle, delta_ms)
 
         if options.asyncio_task_critical_threshold_sec and delta >= options.asyncio_task_critical_threshold_sec:
-            request = get_request() or HTTPServerRequest('GET', '/asyncio_long_task_stub')
-            sentry_logger = app.get_sentry_logger(request)
-            sentry_logger.update_user_info(ip='127.0.0.1')
-
-            if sentry_logger:
-                slow_tasks_logger.warning('no sentry logger available')
-                sentry_logger.capture_message(f'{handle} took {delta_ms:.2f} ms', stack=True)
+            if options.sentry_dsn:
+                sentry_sdk.capture_message(f'{handle} took {delta_ms:.2f} ms')
 
     def run(self):
         global current_callback_start

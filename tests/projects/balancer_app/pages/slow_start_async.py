@@ -21,7 +21,7 @@ class Page(PageHandler):
             Upstream('slow_start_async', upstream_config, [server]))
         self.text = ''
 
-        async def make_request(delay=0):
+        async def make_request(delay: float = 0):
             await asyncio.sleep(delay)
             result = await self.post_url('slow_start_async', self.request.path)
             self.text = result.data
@@ -36,7 +36,7 @@ class Page(PageHandler):
 
         request2 = self.run_task(make_request())
         request3 = self.run_task(make_request())
-        request4 = self.run_task(make_request(1))
+        request4 = self.run_task(make_request(0.9))
 
         await asyncio.gather(request2, request3)
         await asyncio.wait_for(request4, timeout=1)

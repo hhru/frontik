@@ -49,8 +49,6 @@ Logging options:
 | `syslog_tag`                                | `str`   | `''`          | Syslog tag                                                             |
 | `suppressed_loggers`                        | `list`  | `[]`          | List of logger names to be excluded from debug output                  |
 | `sentry_dsn`                                | `str`   | `None`        | Enable Sentry and set Sentry DSN for sending errors                    |
-| `sentry_connect_timeout_sec`                | `float` | `0.2`         | Sentry connect timeout                                                 |
-| `sentry_request_timeout_sec`                | `float` | `2.0`         | sentry request timeout                                                 |
 | `statsd_host`                               | `str`   | `None`        | Stats server host for metrics                                          |
 | `statsd_port`                               | `int`   | `None`        | Stats server port for metrics                                          |
 | `statsd_default_periodic_send_interval_sec` | `int`   | `60`          | Stats default periodic metrics sending interval                        |

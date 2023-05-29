@@ -9,7 +9,7 @@ class Page(frontik.handler.PageHandler):
 
     async def post_page(self):
         message = gzip.decompress(self.request.body).decode('utf8')
-        sentry_event = json.loads(message.split('\n')[2])
+        sentry_event = json.loads(message.split('\n')[-1])
         Page.exceptions.append(sentry_event)
 
     async def get_page(self):
