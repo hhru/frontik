@@ -1,0 +1,46 @@
+---
+name: Python package
+'on':
+  pull_request:
+    branches: ["master"]
+  push:
+    branches: ["master"]  # cache from master shared with child branches
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+
+      - run: |
+          sudo apt-get update
+          sudo apt-get install libcurl4-openssl-dev
+
+      - name: Install python
+        uses: actions/setup-python@bd6b4b6205c4dbad673328db7b31b7fab9e241c0
+        id: pinstall
+        with:
+          python-version-file: '.python-version'
+          cache: pip
+          cache-dependency-path: |
+            **/requirements*.txt
+
+      - name: Install package
+        run: |
+          pip3 install --prefer-binary -r requirements.txt -r requirements_venv.txt .
+
+      - name: Test with pytest
+        run: |
+          pytest
+
+      # true if cache-hit occured on the primary key
+      - run: echo '${{ steps.pinstall.outputs.cache-hit }}'
+
+#      - name: Lint with flake8
+#        run: |
+#          # stop the build if there are Python syntax errors or undefined names
+#          # flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+#          # exit-zero treats all errors as warnings
+#          flake8 . --count --exit-zero --max-complexity=10 --statistics

@@ -31,9 +31,9 @@ class Page(frontik.handler.PageHandler):
         body_parts = self.request.body.split(b'\r\n--')
 
         for part in body_parts:
-            field_part = re.search(b'name="(?P<name>.+)"\r\n\r\n(?P<value>.*)', part)
-            file_part = re.search(b'name="(?P<name>.+)"; filename="(?P<filename>.+)"\r\n'
-                                  b'Content-Type: application/octet-stream\r\n\r\n(?P<value>.*)', part)
+            field_part = re.search(rb'name="(?P<name>.+)"\r\n\r\n(?P<value>.*)', part)
+            file_part = re.search(rb'name="(?P<name>.+)"; filename="(?P<filename>.+)"\r\n'
+                                  rb'Content-Type: \S+\r\n\r\n(?P<value>.*)', part)
 
             if field_part:
                 val = field_part.group('value')
