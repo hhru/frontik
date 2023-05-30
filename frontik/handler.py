@@ -304,7 +304,16 @@ class PageHandler(RequestHandler):
         status_code = _fallback_status_code(status_code)
         super().set_status(status_code, reason=reason)
 
-    def redirect(self, url, *args, **kwargs):
+    def redirect(self, url, *args, allow_protocol_relative=False, **kwargs):
+        if not allow_protocol_relative and url.startswith('//'):
+            # A redirect with two initial slashes is a "protocol-relative" URL.
+            # This means the next path segment is treated as a hostname instead
+            # of a part of the path, making this effectively an open redirect.
+            # Reject paths starting with two slashes to prevent this.
+            # This is only reachable under certain configurations.
+            raise tornado.web.HTTPError(
+                403, 'cannot redirect path with two initial slashes'
+            )
         self.log.info('redirecting to: %s', url)
         return super().redirect(url, *args, **kwargs)
 
