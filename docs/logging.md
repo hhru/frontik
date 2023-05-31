@@ -15,19 +15,14 @@ part of the normal flow for generating error responses.
 You can also send exceptions and messages to Sentry manually:
 
 ```python
-# Sending an exception to Sentry
-self.get_sentry_logger().capture_exception(exc_info=(typ, value, tb))
-
 # Sending a message to Sentry
-self.get_sentry_logger().capture_message('Message for Sentry')
+sentry_sdk.capture_message('Message for Sentry')
 ```
 
-To provide Sentry logger customization, you can use `initialize_sentry_logger` method in the request handler.
-It is called when Sentry logger is used first time during the request to log some exception and takes
-this newly created instance of the logger as the only parameter:
+To provide Sentry logger customization, you can use `initialize_sentry_logger` method in the request handler:
 
 ```python
 class Page(frontik.handler.PageHandler):
-    def initialize_sentry_logger(self, sentry_logger):
+    def initialize_sentry_logger(self):
         pass
 ```

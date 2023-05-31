@@ -1,22 +1,23 @@
+import asyncio
 import http.client
 import json
 import logging
+import math
 import re
 import time
-import math
-
-import asyncio
 from asyncio.futures import Future
 from functools import wraps
-from typing import TYPE_CHECKING, Any, List, Type, Union, overload, Optional, Coroutine
+from typing import (TYPE_CHECKING, Any, Coroutine, List, Optional, Type, Union,
+                    overload)
 
 import tornado.curl_httpclient
 import tornado.httputil
 import tornado.web
+from http_client import (USER_AGENT_HEADER, FailFastError, HttpClient,
+                         RequestResult)
+from pydantic import BaseModel, ValidationError
 from tornado.ioloop import IOLoop
-from tornado.web import RequestHandler, Finish
-from pydantic import ValidationError, BaseModel
-from http_client import FailFastError, HttpClient, RequestResult, USER_AGENT_HEADER
+from tornado.web import Finish, RequestHandler
 
 import frontik.auth
 import frontik.handler_active_limit
@@ -25,16 +26,17 @@ import frontik.producers.xml_producer
 import frontik.util
 from frontik import media_types, request_context
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
-from frontik.futures import AbortAsyncGroup, AsyncGroup
 from frontik.debug import DEBUG_HEADER_NAME, DebugMode
-from frontik.timeout_tracking import get_timeout_checker
+from frontik.futures import AbortAsyncGroup, AsyncGroup
+from frontik.http_status import ALLOWED_STATUSES
 from frontik.loggers.stages import StagesLogger
 from frontik.options import options
-from frontik.preprocessors import _get_preprocessors, _unwrap_preprocessors, _get_preprocessor_name
-from frontik.util import make_url, gather_dict
-from frontik.version import version as frontik_version
+from frontik.preprocessors import (_get_preprocessor_name, _get_preprocessors,
+                                   _unwrap_preprocessors)
+from frontik.timeout_tracking import get_timeout_checker
+from frontik.util import gather_dict, make_url
 from frontik.validator import BaseValidationModel, Validators
-from frontik.http_status import ALLOWED_STATUSES
+from frontik.version import version as frontik_version
 
 if TYPE_CHECKING:
     from tornado.httpclient import HTTPRequest
@@ -523,10 +525,10 @@ class PageHandler(RequestHandler):
         self._exception_hooks.append(exception_hook)
 
     def log_exception(self, typ, value, tb):
-        super().log_exception(typ, value, tb)
-
         for exception_hook in self._exception_hooks:
             exception_hook(typ, value, tb)
+
+        super().log_exception(typ, value, tb)
 
     def _handle_request_exception(self, e):
         if isinstance(e, AbortAsyncGroup):
