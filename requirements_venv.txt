@@ -1,8 +1,7 @@
 pytest >= 7.2.0
 pycodestyle >= 2.5.0
-requests <= 2.20.0
+requests >= 2.0
 lxml-asserts
 tornado-httpclient-mock
-protobuf == 3.20.2
 sentry-sdk
 aiokafka
