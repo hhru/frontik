@@ -49,7 +49,7 @@ def wrap_handle_with_time_logging(app: FrontikApplication, slow_tasks_logger):
 
         if options.asyncio_task_critical_threshold_sec and delta >= options.asyncio_task_critical_threshold_sec:
             if options.sentry_dsn:
-                sentry_sdk.capture_message(f'{handle} took {delta_ms:.2f} ms')
+                sentry_sdk.capture_message(f'{handle} took {delta_ms:.2f} ms', level='error')
 
     def run(self):
         global current_callback_start
