@@ -14,7 +14,7 @@ class Page(handler.PageHandler):
 
         result = await request
 
-        if result.failed and result.response.code == 502:
+        if result.failed and result.response.code == 599:
             self.text = 'no backend available'
             return
 

@@ -68,12 +68,12 @@ class TestHttpError(unittest.TestCase):
     def test_no_available_backend(self):
         response = frontik_balancer_app.get_page(self.make_url('no_available_backend'))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'no backend available')
+        self.assertEqual(b'no backend available', response.content)
 
     def test_no_available_backend_async(self):
         response = frontik_balancer_app.get_page(self.make_url('no_available_backend_async'))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'no backend available')
+        self.assertEqual(b'no backend available', response.content)
 
     def test_retry_on_timeout(self):
         response = frontik_balancer_app.get_page(self.make_url('retry_on_timeout'))
@@ -98,12 +98,12 @@ class TestHttpError(unittest.TestCase):
     def test_different_datacenter(self):
         response = frontik_balancer_app.get_page(self.make_url('different_datacenter'))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'no backend available')
+        self.assertEqual(b'no backend available', response.content)
 
     def test_different_datacenter_async(self):
         response = frontik_balancer_app.get_page(self.make_url('different_datacenter_async'))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'no backend available')
+        self.assertEqual(b'no backend available', response.content)
 
     def test_requests_count(self):
         response = frontik_balancer_app.get_page(self.make_url('requests_count'))
@@ -123,7 +123,7 @@ class TestHttpError(unittest.TestCase):
     def test_slow_start_async(self):
         response = frontik_balancer_app.get_page(self.make_url('slow_start_async'))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'3')
+        self.assertEqual(b'3', response.content)
 
     def test_retry_count_limit(self):
         response = frontik_balancer_app.get_page(self.make_url('retry_count_limit'))

@@ -23,7 +23,7 @@ class Page(PageHandler):
             if server.stat_requests != 0:
                 raise HTTPError(500)
 
-        if result.failed and result.response.code == 502:
+        if result.failed and result.response.code == 599:
             self.text = 'no backend available'
             return
 

@@ -3,7 +3,7 @@ lxml == 4.9.2
 pycurl >= 7.43.0
 pydantic >= 1.10.5
 tornado @ https://github.com/hhru/tornado/archive/6.2.0.zip
-balancing-http-client @ https://github.com/hhru/balancing-http-client/archive/1.4.4.zip
+balancing-http-client @ https://github.com/hhru/balancing-http-client/archive/HH-182567.zip
 python-consul2-hh @ https://github.com/hhru/python-consul2/archive/v0.2.9.zip
 opentelemetry-sdk == 1.17.0
 opentelemetry-api == 1.17.0

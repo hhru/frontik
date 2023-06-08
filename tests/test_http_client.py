@@ -41,7 +41,7 @@ class TestHttpClient(unittest.TestCase):
     def test_parse_response(self):
         json = frontik_test_app.get_page_json('http_client/parse_response')
         self.assertEqual(
-            json, {'post': True, 'delete': 'deleted', 'error': {'reason': 'HTTP 400: Bad Request', 'code': 400}}
+            json, {'post': True, 'delete': 'deleted', 'error': {'reason': 'Bad Request', 'code': 400}}
         )
 
     def test_custom_headers(self):
@@ -54,4 +54,4 @@ class TestHttpClient(unittest.TestCase):
 
     def test_http_raise_error(self):
         text = frontik_test_app.get_page_text('http_client/raise_error')
-        self.assertEqual(text, 'UnicodeEncodeError')
+        self.assertEqual('UnicodeEncodeError', text)

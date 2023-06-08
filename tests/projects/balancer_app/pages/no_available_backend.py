@@ -11,7 +11,7 @@ class Page(handler.PageHandler):
 
         async def request_with_processing():
             result = await self.post_url('no_available_backend', self.request.path)
-            if result.response.error and result.response.code == 502:
+            if result.response.error and result.response.code == 599:
                 self.text = 'no backend available'
             else:
                 self.text = result.data

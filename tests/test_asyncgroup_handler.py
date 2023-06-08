@@ -38,7 +38,7 @@ class TestAsyncGroup(unittest.TestCase):
             {
                 '1': {'1': 'yay'},
                 '2': {'2': 'yay'},
-                '3': {'error': {'reason': 'HTTP 400: Bad Request', 'code': 400}},
+                '3': {'error': {'reason': 'Bad Request', 'code': 400}},
                 'final_callback_called': True,
                 'future_callback_result': 'yay'
             }
@@ -51,7 +51,7 @@ class TestAsyncGroup(unittest.TestCase):
             {
                 '1': {'1': 'yay'},
                 '2': {'2': 'yay'},
-                '3': {'error': {'reason': 'HTTP 400: Bad Request', 'code': 400}},
+                '3': {'error': {'reason': 'Bad Request', 'code': 400}},
                 'final_callback_called': True,
                 'future_callback_result': 'yay'
             }
