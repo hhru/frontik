@@ -10,8 +10,8 @@ class TestHttpClient(unittest.TestCase):
 
     def test_post_url_mfd(self):
         response = frontik_test_app.get_page('http_client/post_url')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'{"errors_count": 0}')
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(b'{"errors_count": 0}', response.content)
 
     def test_delete_query_arguments(self):
         json = frontik_test_app.get_page_json('handler/delete')
@@ -41,7 +41,7 @@ class TestHttpClient(unittest.TestCase):
     def test_parse_response(self):
         json = frontik_test_app.get_page_json('http_client/parse_response')
         self.assertEqual(
-            json, {'post': True, 'delete': 'deleted', 'error': {'reason': 'HTTP 400: Bad Request', 'code': 400}}
+            json, {'post': True, 'delete': 'deleted', 'error': {'reason': 'Bad Request', 'code': 400}}
         )
 
     def test_custom_headers(self):
@@ -52,6 +52,6 @@ class TestHttpClient(unittest.TestCase):
         json = frontik_test_app.get_page_json('http_client/future')
         self.assertEqual(json, {'additional_callback_called': True})
 
-    def test_http_raise_error(self):
+    def test_http_raise_error_ok(self):
         text = frontik_test_app.get_page_text('http_client/raise_error')
-        self.assertEqual(text, 'UnicodeEncodeError')
+        self.assertEqual('UnicodeEncodeError', text)

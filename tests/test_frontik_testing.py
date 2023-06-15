@@ -61,7 +61,7 @@ class TestFrontikTesting(FrontikTestCase):
         self.assertEqual(response.code, 200)
         self.assertEqual(response.body, b'param_value')
 
-    def test_xml_stub(self):
+    def test_xml_stub_ok(self):
         self.set_stub('http://service.host/val1/$id', response_file='tests/stub.xml', id='1', val='2')
         self.set_stub('http://service.host/val2/2', response_file='tests/stub.xml', val='3')
 
@@ -69,11 +69,11 @@ class TestFrontikTesting(FrontikTestCase):
 
         self.assertEqual(doc.findtext('result'), '5')
 
-    def test_json_stub(self):
+    def test_json_stub_ok(self):
         self.set_stub(
             f'http://127.0.0.1:{self.get_http_port()}/delete', request_method='DELETE',
             response_file='tests/stub.json', param='param'
         )
 
         json = self.fetch_json('/delete')
-        self.assertEqual(json, {'result': 'param'})
+        self.assertEqual({'result': 'param'}, json)

@@ -8,6 +8,7 @@ from functools import partial
 from typing import TYPE_CHECKING
 import logging
 
+import aiohttp
 import pycurl
 import tornado
 from lxml import etree
@@ -123,7 +124,6 @@ class FrontikApplication(Application):
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
         self.available_integrations = None
-        self.tornado_http_client = None
         self.http_client_factory = None
         self.upstream_manager = None
         self.upstreams = {}
@@ -152,12 +152,8 @@ class FrontikApplication(Application):
 
     async def init(self):
         self.transforms.insert(0, partial(DebugTransform, self))
-
-        AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
-        self.tornado_http_client = AsyncHTTPClient()
-
-        if options.max_http_clients_connects is not None:
-            self.tornado_http_client._multi.setopt(pycurl.M_MAXCONNECTS, options.max_http_clients_connects)
+        maconnector = aiohttp.TCPConnector(limit=options.max_http_clients)
+        maclient = aiohttp.ClientSession(connector=maconnector)
 
         self.available_integrations, integration_futures = integrations.load_integrations(self)
         await asyncio.gather(*[future for future in integration_futures if future])
@@ -179,7 +175,7 @@ class FrontikApplication(Application):
         request_balancer_builder = RequestBalancerBuilder(self.upstream_manager,
                                                           statsd_client=self.statsd_client,
                                                           kafka_producer=kafka_producer)
-        self.http_client_factory = HttpClientFactory(self.app, self.tornado_http_client, request_balancer_builder)
+        self.http_client_factory = HttpClientFactory(self.app, maclient, request_balancer_builder)
 
     def find_handler(self, request, **kwargs):
         request_id = request.headers.get('X-Request-Id')
@@ -251,8 +247,8 @@ class FrontikApplication(Application):
             'uptime': uptime_value,
             'datacenter': http_client_options.datacenter,
             'workers': {
-                'total': len(self.http_client_factory.tornado_http_client._curls),
-                'free': len(self.http_client_factory.tornado_http_client._free_list)
+                'total': 999,
+                'free': 999
             }
         }
 

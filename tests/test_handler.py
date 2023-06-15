@@ -29,8 +29,9 @@ class TestHandler(unittest.TestCase):
         self.assertEqual(response.content, b'')
 
     def test_head_url(self):
+        print('-------------------------')
         response = frontik_test_app.get_page('handler/head_url')
-        self.assertEqual(response.content, b'OK')
+        self.assertEqual(b'OK', response.content)
 
     def test_no_method(self):
         response = frontik_test_app.get_page('handler/head', method=requests.post)

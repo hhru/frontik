@@ -40,7 +40,7 @@ class ConsulRegistrationTestCase(unittest.TestCase):
         registration_call_count = self.consul_mock.get_page_json('call_registration_stat')['put_page']
         self.assertEqual(registration_call_count, 1, 'Application should register only once')
 
-    def test_multiple_worker_registration(self):
+    def test_multiple_worker_registration_ok(self):
         self.frontik_multiple_worker_app.start()
         self.frontik_multiple_worker_app.stop()
         registration_call_count = self.consul_mock.get_page_json('call_registration_stat')['put_page']

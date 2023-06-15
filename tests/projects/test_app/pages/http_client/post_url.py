@@ -24,7 +24,9 @@ FILES = {
 
 class Page(frontik.handler.PageHandler):
     async def get_page(self):
-        self.json.put(self.post_url(self.request.host, self.request.path, data=FIELDS, files=FILES))
+        result = await self.post_url(self.request.host, self.request.path, data=FIELDS, files=FILES)
+        if not result.failed:
+            self.json.put(result.data)
 
     async def post_page(self):
         errors_count = 0

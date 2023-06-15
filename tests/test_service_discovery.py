@@ -42,7 +42,7 @@ class ServiceDiscoveryTestCase(unittest.TestCase):
         deregistration_call_count = self.consul_mock.get_page_json('call_deregistration_stat_async')['put_page']
         self.assertEqual(deregistration_call_count, 1, 'Application should deregister only once')
 
-    def test_multiple_worker_de_registration(self):
+    def test_multiple_worker_de_registration_ok(self):
         self.frontik_multiple_worker_app.start()
         self.frontik_multiple_worker_app.stop()
         registration_call_count = self.consul_mock.get_page_json('call_registration_stat')['put_page']
@@ -50,7 +50,7 @@ class ServiceDiscoveryTestCase(unittest.TestCase):
         deregistration_call_count = self.consul_mock.get_page_json('call_deregistration_stat')['put_page']
         self.assertEqual(deregistration_call_count, 1, 'Application should deregister only once')
 
-    def test_multiple_worker_de_registration_async(self):
+    def test_multiple_worker_de_registration_async_ok(self):
         self.frontik_multiple_worker_app.start()
         self.frontik_multiple_worker_app.stop()
         registration_call_count = self.consul_mock.get_page_json('call_registration_stat_async')['put_page']

@@ -249,7 +249,7 @@ class UpstreamCachesTestCase(unittest.TestCase):
         self.assertEqual(len(upstream_cache._upstreams['app'].servers), 3)
         self.assertEqual(len([server for server in upstream_cache._upstreams['app'].servers if server is not None]), 2)
 
-    def test_pipe_buffer_overflow(self):
+    def test_pipe_buffer_overflow_ok(self):
         options.upstreams = ['app']
         http_client_options.datacenters = ['Test']
 
