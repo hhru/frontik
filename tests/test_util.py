@@ -5,8 +5,10 @@ from tornado.escape import to_unicode
 from tornado.httputil import HTTPFile, parse_body_arguments
 
 from frontik import media_types
-from frontik.util import any_to_bytes, any_to_unicode, make_mfd, make_qs, make_url, reverse_regex_named_groups,\
+from frontik.util import any_to_bytes, any_to_unicode, make_qs, make_url, reverse_regex_named_groups,\
     generate_uniq_timestamp_request_id, check_request_id
+
+from http_client.util import make_mfd
 
 
 class TestUtil(unittest.TestCase):

@@ -11,12 +11,17 @@ from lxml import etree
 from tornado.escape import to_unicode, utf8
 
 from frontik import options
+from tests import FRONTIK_ROOT
 
 try:
     import coverage
     USE_COVERAGE = '--with-coverage' in sys.argv
 except ImportError:
     USE_COVERAGE = False
+
+
+FRONTIK_RUN = f'{FRONTIK_ROOT}/frontik-test'
+TEST_PROJECTS = f'{FRONTIK_ROOT}/tests/projects'
 
 
 def _run_command(command, port):
@@ -135,48 +140,48 @@ class FrontikTestInstance:
 common_frontik_start_options = f'--{options.STDERR_LOG_OPTION_NAME}=True'
 
 frontik_consul_mock_app = FrontikTestInstance(
-    './frontik-test --app=tests.projects.consul_mock_app '
-    f' --config=tests/projects/frontik_consul_mock.cfg {common_frontik_start_options}'
+    f'{FRONTIK_RUN} --app=tests.projects.consul_mock_app '
+    f' --config={TEST_PROJECTS}/frontik_consul_mock.cfg {common_frontik_start_options}'
 )
 frontik_consul_mock_app.start()
 
 frontik_test_app = FrontikTestInstance(
-    './frontik-test --app=tests.projects.test_app '
-    f' --config=tests/projects/frontik_debug.cfg {common_frontik_start_options} '
+    f'{FRONTIK_RUN} --app=tests.projects.test_app '
+    f' --config={TEST_PROJECTS}/frontik_debug.cfg {common_frontik_start_options} '
     f' --consul_port={frontik_consul_mock_app.port}'
 )
 frontik_re_app = FrontikTestInstance(
-    './frontik-test --app=tests.projects.re_app '
-    f' --config=tests/projects/frontik_debug.cfg {common_frontik_start_options} '
+    f'{FRONTIK_RUN} --app=tests.projects.re_app '
+    f' --config={TEST_PROJECTS}/frontik_debug.cfg {common_frontik_start_options} '
     f' --consul_port={frontik_consul_mock_app.port}'
 )
 
 frontik_no_debug_app = FrontikTestInstance(
-    './frontik-test --app=tests.projects.no_debug_app '
-    f' --config=tests/projects/frontik_no_debug.cfg {common_frontik_start_options} '
+    f'{FRONTIK_RUN} --app=tests.projects.no_debug_app '
+    f' --config={TEST_PROJECTS}/frontik_no_debug.cfg {common_frontik_start_options} '
     f' --consul_port={frontik_consul_mock_app.port} '
 )
 
 frontik_broken_config_app = FrontikTestInstance(
-    './frontik-test --app=tests.projects.broken_config_app '
-    f' --config=tests/projects/frontik_debug.cfg {common_frontik_start_options} '
+    f'{FRONTIK_RUN} --app=tests.projects.broken_config_app '
+    f' --config={TEST_PROJECTS}/frontik_debug.cfg {common_frontik_start_options} '
     f' --consul_port={frontik_consul_mock_app.port}'
 )
 
 frontik_broken_init_async_app = FrontikTestInstance(
-    './frontik-test --app=tests.projects.broken_async_init_app '
-    f' --config=tests/projects/frontik_debug.cfg {common_frontik_start_options} '
+    f'{FRONTIK_RUN} --app=tests.projects.broken_async_init_app '
+    f' --config={TEST_PROJECTS}/frontik_debug.cfg {common_frontik_start_options} '
     f' --consul_port={frontik_consul_mock_app.port}'
 )
 
 frontik_balancer_app = FrontikTestInstance(
-    './frontik-test --app=tests.projects.balancer_app '
-    f' --config=tests/projects/frontik_no_debug.cfg {common_frontik_start_options} '
+    f'{FRONTIK_RUN} --app=tests.projects.balancer_app '
+    f' --config={TEST_PROJECTS}/frontik_no_debug.cfg {common_frontik_start_options} '
     f' --consul_port={frontik_consul_mock_app.port}'
 )
 
 frontik_broken_balancer_app = FrontikTestInstance(
-    './frontik-test --app=tests.projects.broken_balancer_app '
-    f' --config=tests/projects/frontik_debug.cfg {common_frontik_start_options} '
+    f'{FRONTIK_RUN} --app=tests.projects.broken_balancer_app '
+    f' --config={TEST_PROJECTS}/frontik_debug.cfg {common_frontik_start_options} '
     f' --consul_port={frontik_consul_mock_app.port}'
 )

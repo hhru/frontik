@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from tornado.escape import to_unicode
 
-from .instances import FrontikTestInstance
+from tests.instances import FrontikTestInstance
 
 
 class TestSyslog(unittest.TestCase):

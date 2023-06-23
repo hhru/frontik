@@ -1,4 +1,5 @@
 from http_client.balancing import Upstream
+from http_client.request_response import NoAvailableServerException
 
 from frontik import handler, media_types
 
@@ -14,7 +15,7 @@ class Page(handler.PageHandler):
 
         result = await request
 
-        if result.failed and result.response.code == 502:
+        if result.exc is not None and isinstance(result.exc, NoAvailableServerException):
             self.text = 'no backend available'
             return
 

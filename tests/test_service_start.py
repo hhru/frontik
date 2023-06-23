@@ -1,6 +1,6 @@
 import unittest
 
-from .instances import FrontikTestInstance
+from tests.instances import FrontikTestInstance
 
 
 class TestServiceStart(unittest.TestCase):

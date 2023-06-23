@@ -18,8 +18,8 @@ class Page(PageHandler):
             self.text = result.data
             check_all_requests_done(self, 'requests_count')
 
-        self.post_url('requests_count', self.request.path)
-        self.post_url('requests_count', self.request.path)
+        self.run_task(self.post_url('requests_count', self.request.path))
+        self.run_task(self.post_url('requests_count', self.request.path))
         self.application.upstream_manager.update_upstream(
             Upstream('requests_count', {}, [get_server(self, 'normal')]))
         self.run_task(request_with_processing())

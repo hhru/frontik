@@ -1,6 +1,6 @@
 import unittest
 
-from .instances import frontik_broken_config_app, frontik_broken_init_async_app
+from tests.instances import frontik_broken_config_app, frontik_broken_init_async_app
 
 
 class TestBrokenApp(unittest.TestCase):

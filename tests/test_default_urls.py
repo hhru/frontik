@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from .instances import frontik_re_app, frontik_test_app
+from tests.instances import frontik_re_app, frontik_test_app
 
 
 class TestDefaultUrls(unittest.TestCase):
@@ -35,4 +35,4 @@ class TestDefaultUrls(unittest.TestCase):
 
         self.assertIn('workers', json_response)
         self.assertIn('total', json_response['workers'])
-        self.assertIn('free', json_response['workers'])
+        self.assertIn('acquired', json_response['workers'])

@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 # coding=utf-8
 
+import asyncio
 from frontik.server import main
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())

@@ -2,7 +2,7 @@ from asyncio import Future
 from typing import Optional
 
 import sentry_sdk
-from http_client import FailFastError
+from http_client.request_response import FailFastError
 from sentry_sdk.integrations.tornado import TornadoIntegration
 from tornado.web import HTTPError
 

@@ -1,4 +1,5 @@
 from http_client.balancing import Upstream
+from asyncio import TimeoutError
 
 from frontik import handler, media_types
 
@@ -12,7 +13,7 @@ class Page(handler.PageHandler):
             Upstream('no_retry_timeout', {}, [get_server(self, 'broken')]))
 
         result = await self.post_url('no_retry_timeout', self.request.path, request_timeout=0.2)
-        if result.response.error and result.response.code == 599:
+        if result.failed and isinstance(result.exc, TimeoutError):
             self.text = 'no retry timeout'
         else:
             self.text = result.data

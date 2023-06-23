@@ -1,4 +1,5 @@
 from frontik import handler, media_types
+from frontik.util import gather_dict
 
 
 class Page(handler.PageHandler):
@@ -17,10 +18,11 @@ class Page(handler.PageHandler):
     async def get_page(self):
         invalid_json = self.get_argument('invalid', 'false')
 
-        data = {
+        requests = {
             'req1': self.post_url(self.request.host, self.request.path, data={'param': 1}),
             'req2': self.post_url(self.request.host, self.request.path, data={'param': 2, 'invalid': invalid_json})
         }
+        data = await gather_dict(requests)
 
         if self.get_argument('template_error', 'false') == 'true':
             del data['req1']

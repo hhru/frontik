@@ -61,6 +61,7 @@ class Options:
     gc_metrics_send_interval_ms: int = None
     long_gc_log_enabled: bool = True
     long_gc_log_threshold_sec: float = 0.01
+    send_timeout_stats_interval_ms: int = 60000
 
     xml_root: str = None
     xml_cache_limit: int = None
@@ -75,10 +76,6 @@ class Options:
 
     sentry_dsn: str = None
     sentry_max_breadcrumbs: int = 0
-
-    max_http_clients: int = 100
-    max_http_clients_connects: int = None
-    send_timeout_stats_interval_ms: int = 60000
 
     # consul options
     consul_enabled: bool = True

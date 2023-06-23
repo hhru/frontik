@@ -1,16 +1,16 @@
 import unittest
 
-from http_client import RequestBuilder, USER_AGENT_HEADER
+from http_client.request_response import RequestBuilder, USER_AGENT_HEADER
 
 from frontik import media_types
 from frontik.debug import request_to_curl_string
 
 
-class CurlStringTestCase(unittest.TestCase):
+class TestCurlString(unittest.TestCase):
     def test_curl_string_get(self):
         request = RequestBuilder('http://test.com', 'test', '/path', 'test',
                                  data={'param': 'value'},
-                                 headers={'Accept': media_types.APPLICATION_JSON}).build()
+                                 headers={'Accept': media_types.APPLICATION_JSON})
 
         self.assertEqual(
             request_to_curl_string(request),
@@ -21,7 +21,7 @@ class CurlStringTestCase(unittest.TestCase):
     def test_curl_string_post(self):
         request = RequestBuilder('http://test.com', 'test', '/path', 'test',
                                  data={'param': 'value'},
-                                 method='POST').build()
+                                 method='POST')
 
         self.assertEqual(
             request_to_curl_string(request),
@@ -34,7 +34,7 @@ class CurlStringTestCase(unittest.TestCase):
         request = RequestBuilder('http://test.com', 'test', '/path', 'test',
                                  data='DATA',
                                  method='PUT',
-                                 content_type=media_types.TEXT_PLAIN).build()
+                                 content_type=media_types.TEXT_PLAIN)
 
         self.assertEqual(
             request_to_curl_string(request),
@@ -46,7 +46,7 @@ class CurlStringTestCase(unittest.TestCase):
         request = RequestBuilder('http://test.com', 'test', '/path', 'test',
                                  data='тест',
                                  method='POST',
-                                 content_type=media_types.TEXT_PLAIN).build()
+                                 content_type=media_types.TEXT_PLAIN)
 
         self.assertEqual(
             request_to_curl_string(request),

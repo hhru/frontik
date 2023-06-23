@@ -28,7 +28,7 @@ class State:
     terminating: bool
 
 
-def fork_workers(worker_function, *, app, init_workers_count_down, num_workers, after_workers_up_action,
+async def fork_workers(worker_function, *, app, init_workers_count_down, num_workers, after_workers_up_action,
                  before_workers_shutdown_action, children_pipes):
     log.info("starting %d processes", num_workers)
     state = State(server=True, children={}, read_pipe=0, write_pipes=children_pipes, terminating=False)
@@ -49,7 +49,7 @@ def fork_workers(worker_function, *, app, init_workers_count_down, num_workers, 
     for i in range(num_workers):
         is_worker = _start_child(i, state)
         if is_worker:
-            worker_function(state.read_pipe)
+            await worker_function(state.read_pipe)
             return
 
     gc.enable()
@@ -62,10 +62,10 @@ def fork_workers(worker_function, *, app, init_workers_count_down, num_workers, 
             )
         time.sleep(0.1)
     after_workers_up_action()
-    _supervise_workers(state, worker_function)
+    await _supervise_workers(state, worker_function)
 
 
-def _supervise_workers(state, worker_function):
+async def _supervise_workers(state, worker_function):
     while state.children:
         try:
             pid, status = os.wait()
@@ -98,7 +98,7 @@ def _supervise_workers(state, worker_function):
 
         is_worker = _start_child(id, state)
         if is_worker:
-            worker_function(state.read_pipe)
+            await worker_function(state.read_pipe)
             return
     log.info('all children terminated, exiting')
     sys.exit(0)

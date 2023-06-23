@@ -7,9 +7,8 @@ CDATA_XML = b'<root><![CDATA[test<ba//d>]]></root>'
 
 class Page(frontik.handler.PageHandler):
     async def get_page(self):
-        request = self.post_url(self.request.host, self.request.path)
-        self.doc.put(request)
-        result = await request
+        result = await self.post_url(self.request.host, self.request.path)
+        self.doc.put(result.data)
 
         xpath = result.data.xpath('/doc/*')
         assert len(xpath) == 1

@@ -12,7 +12,7 @@ class Page(handler.PageHandler):
             Upstream('no_retry_error_async', {}, [get_server(self, 'broken')]))
 
         result = await self.post_url('no_retry_error_async', self.request.path)
-        if result.failed and result.response.code == 500:
+        if result.failed and result.status_code == 500:
             self.text = 'no retry error'
             return
 

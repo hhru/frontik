@@ -7,21 +7,21 @@ class Page(frontik.handler.PageHandler):
             'second_callback_must_be_async': True,
         }
 
-        def second_additional_callback(future):
+        def second_additional_callback(task):
             state['second_callback_must_be_async'] = False
 
-        def additional_callback(future):
-            assert future is request_future
+        def additional_callback(task):
+            assert task is request_task
 
             self.json.put({
                 'additional_callback_called': True
             })
 
-            self.add_future(request_future, self.finish_group.add(second_additional_callback))
+            task.add_done_callback(second_additional_callback)
             assert state['second_callback_must_be_async']
 
-        request_future = self.post_url(self.request.host, self.request.path)
-        self.add_future(request_future, self.finish_group.add(additional_callback))
+        request_task = self.run_task(self.post_url(self.request.host, self.request.path))
+        request_task.add_done_callback(additional_callback)
 
     async def post_page(self):
         self.json.put({

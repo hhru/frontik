@@ -1,10 +1,10 @@
 import unittest
 
-from .instances import frontik_no_debug_app, frontik_re_app, frontik_test_app
+from tests.instances import frontik_no_debug_app, frontik_re_app, frontik_test_app
 
 
 class TestJinja(unittest.TestCase):
-    def test_jinja_ok(self):
+    def test_jinja(self):
         response = frontik_test_app.get_page('json_page')
         self.assertTrue(response.headers['content-type'].startswith('text/html'))
         self.assertEqual(response.content, b'<html><body><b>1</b><i>2</i></body></html>')

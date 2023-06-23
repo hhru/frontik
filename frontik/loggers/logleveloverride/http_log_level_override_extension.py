@@ -37,7 +37,7 @@ class HttpLogLevelOverrideExtension(LogLevelOverrideExtension):
         result = await self.http_client_factory.get_http_client().get_url(self.host, self.uri, headers=headers)
         if result.failed:
             logger.error(f'some problem with fetching log level overrides: {result.failed}')
-            raise HTTPError(result.response.code)
+            raise HTTPError(result.status_code)
 
         log_level_overrides = parse_result_to_log_level_overrides_dto(result.data)
         return log_level_overrides

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
+import asyncio
 from frontik.server import main
 
 
 if __name__ == '__main__':
-    main('./frontik.cfg')
+    asyncio.run(main('./frontik.cfg'))

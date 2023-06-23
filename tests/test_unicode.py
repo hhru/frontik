@@ -4,7 +4,7 @@ from tornado.escape import to_unicode
 
 from frontik.util import make_url
 
-from .instances import frontik_test_app
+from tests.instances import frontik_test_app
 
 
 class TestUnicode(unittest.TestCase):

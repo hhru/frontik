@@ -12,7 +12,6 @@ import pycurl
 import tornado
 from lxml import etree
 from tornado import httputil
-from tornado.httpclient import AsyncHTTPClient
 from tornado.web import Application, RequestHandler, HTTPError
 from http_client import HttpClientFactory, options as http_client_options
 from http_client.balancing import RequestBalancerBuilder, UpstreamManager
@@ -36,7 +35,6 @@ if TYPE_CHECKING:
     from typing import Optional
 
     from aiokafka import AIOKafkaProducer
-    from tornado.httputil import HTTPServerRequest
 
 
 def get_frontik_and_apps_versions(application):
@@ -123,8 +121,7 @@ class FrontikApplication(Application):
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
         self.available_integrations = None
-        self.tornado_http_client = None
-        self.http_client_factory = None
+        self.http_client_factory: HttpClientFactory = None
         self.upstream_manager = None
         self.upstreams = {}
         self.children_pipes = {}
@@ -153,12 +150,6 @@ class FrontikApplication(Application):
     async def init(self):
         self.transforms.insert(0, partial(DebugTransform, self))
 
-        AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
-        self.tornado_http_client = AsyncHTTPClient()
-
-        if options.max_http_clients_connects is not None:
-            self.tornado_http_client._multi.setopt(pycurl.M_MAXCONNECTS, options.max_http_clients_connects)
-
         self.available_integrations, integration_futures = integrations.load_integrations(self)
         await asyncio.gather(*[future for future in integration_futures if future])
 
@@ -179,7 +170,7 @@ class FrontikApplication(Application):
         request_balancer_builder = RequestBalancerBuilder(self.upstream_manager,
                                                           statsd_client=self.statsd_client,
                                                           kafka_producer=kafka_producer)
-        self.http_client_factory = HttpClientFactory(self.app, self.tornado_http_client, request_balancer_builder)
+        self.http_client_factory = HttpClientFactory(self.app, request_balancer_builder)
 
     def find_handler(self, request, **kwargs):
         request_id = request.headers.get('X-Request-Id')
@@ -204,6 +195,8 @@ class FrontikApplication(Application):
         delegate.data_received = wrapped_in_context(delegate.data_received)
         delegate.finish = wrapped_in_context(delegate.finish)
         delegate.on_connection_close = wrapped_in_context(delegate.on_connection_close)
+
+        delegate.handler_class = wrapped_in_context(delegate.handler_class)
 
         return delegate
 
@@ -251,8 +244,8 @@ class FrontikApplication(Application):
             'uptime': uptime_value,
             'datacenter': http_client_options.datacenter,
             'workers': {
-                'total': len(self.http_client_factory.tornado_http_client._curls),
-                'free': len(self.http_client_factory.tornado_http_client._free_list)
+                'total': self.http_client_factory.http_client.connector._limit,  # это вообще нужно кому-то?
+                'acquired': self.http_client_factory.http_client.connector._limit
             }
         }
 

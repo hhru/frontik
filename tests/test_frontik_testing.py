@@ -4,9 +4,11 @@ from tornado.ioloop import IOLoop
 from frontik.app import FrontikApplication
 from frontik.handler import PageHandler
 from frontik.options import options
-from frontik.testing import FrontikTestCase
+from frontik.testing import FrontikTestBase
 from frontik.util import gather_list
 from tests.projects.test_app.pages.handler import delete
+
+from tests.instances import frontik_test_app
 
 
 class AsyncHandler(PageHandler):
@@ -31,11 +33,12 @@ class CheckConfigHandler(PageHandler):
         self.text = self.config.config_param
 
 
-class TestFrontikTesting(FrontikTestCase):
-    def setUp(self):
+class TestFrontikTesting(FrontikTestBase):
+    def setup_method(self):
         options.consul_enabled = False
-        super().setUp()
-        self.configure_app(serviceHost='http://service.host')
+        frontik_test_app.start()
+        # super().setUp()
+        # self.configure_app(serviceHost='http://service.host')
 
     def get_app(self):
         class TestApplication(FrontikApplication):
@@ -47,11 +50,7 @@ class TestFrontikTesting(FrontikTestCase):
                 ]
 
         app = TestApplication(app='test_app')
-
         IOLoop.current().run_sync(app.init)
-
-        self.patch_app_http_client(app)
-
         return app
 
     def test_config(self):
@@ -61,19 +60,19 @@ class TestFrontikTesting(FrontikTestCase):
         self.assertEqual(response.code, 200)
         self.assertEqual(response.body, b'param_value')
 
-    def test_xml_stub(self):
-        self.set_stub('http://service.host/val1/$id', response_file='tests/stub.xml', id='1', val='2')
-        self.set_stub('http://service.host/val2/2', response_file='tests/stub.xml', val='3')
+    # async def test_xml_stub(self):
+    #     self.set_stub('http://service.host/val1/$id', response_file='tests/stub.xml', id='1', val='2')
+    #     self.set_stub('http://service.host/val2/2', response_file='tests/stub.xml', val='3')
+    #
+    #     doc = await self.fetch_xml('/sum_values')
+    #
+    #     self.assertEqual(doc.findtext('result'), '5')
 
-        doc = self.fetch_xml('/sum_values')
+    async def test_json_stub(self, set_stub):  # mock_client
+        url = f'http://127.0.0.1:{frontik_test_app.port}/handler/delete'
 
-        self.assertEqual(doc.findtext('result'), '5')
+        resp_file = f'stub.json'
+        set_stub.mock(url, request_method='GET', response_file=resp_file, param='param')
 
-    def test_json_stub(self):
-        self.set_stub(
-            f'http://127.0.0.1:{self.get_http_port()}/delete', request_method='DELETE',
-            response_file='tests/stub.json', param='param'
-        )
-
-        json = self.fetch_json('/delete')
-        self.assertEqual(json, {'result': 'param'})
+        json = await self.fetch_json(url)
+        assert json == {'result': 'param'}

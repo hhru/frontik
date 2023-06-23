@@ -10,7 +10,8 @@ class Page(frontik.handler.PageHandler):
         invalid_xml = self.get_argument('invalid', 'false')
 
         self.doc.put(etree.fromstring('<a>aaa</a>'))
-        self.doc.put(self.post_url(self.request.host, self.request.path, data={'invalid': invalid_xml}))
+        result = await self.post_url(self.request.host, self.request.path, data={'invalid': invalid_xml})
+        self.doc.put(result.to_etree_element())  # TODO т.е. у нас failed, и data_parse_error и мы хотим этот ерор докпутнуть? реально?
         self.doc.put(Doc('c'))
 
     async def post_page(self):

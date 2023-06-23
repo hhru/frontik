@@ -24,7 +24,7 @@ class Page(PageHandler):
 
         results = await gather_list(*requests)
         for result in results:
-            if result.response.error or result.data is None:
+            if result.failed or result.data is None:
                 raise HTTPError(500)
 
             self.text = self.text + result.data

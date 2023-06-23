@@ -9,9 +9,11 @@ from frontik.options import options
 from frontik.service_discovery import UpstreamCaches, UpstreamUpdateListener
 from http_client import options as http_client_options
 from http_client.balancing import Upstream, Server, UpstreamConfig
+import pytest
+import sys
 
 
-class UpstreamCachesTestCase(unittest.TestCase):
+class TestUpstreamCaches(unittest.TestCase):
 
     def test_update_upstreams_servers_different_dc(self):
         options.upstreams = ['app']
@@ -249,6 +251,7 @@ class UpstreamCachesTestCase(unittest.TestCase):
         self.assertEqual(len(upstream_cache._upstreams['app'].servers), 3)
         self.assertEqual(len([server for server in upstream_cache._upstreams['app'].servers if server is not None]), 2)
 
+    @pytest.mark.skipif(sys.platform == 'darwin', reason="can't os.pipe2 on macos")
     def test_pipe_buffer_overflow(self):
         options.upstreams = ['app']
         http_client_options.datacenters = ['Test']

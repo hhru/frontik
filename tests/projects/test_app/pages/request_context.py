@@ -22,8 +22,8 @@ class Page(PageHandler):
 
         self.run_task(self.run_coroutine())
 
-        future = self.post_url(self.request.host, self.request.uri)
-        self.add_future(future, _waited_callback('future'))
+        task = self.run_task(self.post_url(self.request.host, self.request.uri))
+        task.add_done_callback(_waited_callback('future'))
 
     async def run_coroutine(self):
         self.json.put({'coroutine_before_yield': request_context.get_handler_name()})

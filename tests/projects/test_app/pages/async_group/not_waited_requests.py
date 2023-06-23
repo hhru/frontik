@@ -21,11 +21,10 @@ class Page(PageHandler):
         super(Page, self).finish(chunk)
         if self.request.method == 'GET':
             # HTTP requests with waited=False can be made after handler is finished
-            self.json.put(self.put_url(self.request.host, self.request.path, waited=False))
+            asyncio.create_task(self.put_url(self.request.host, self.request.path, waited=False))
 
     async def coro(self):
-        result = await self.post_url(self.request.host, self.request.path, waited=False)
-        self.json.put(result)
+        await self.post_url(self.request.host, self.request.path, waited=False)
 
         # HTTP requests with waited=True are aborted after handler is finished
         try:
