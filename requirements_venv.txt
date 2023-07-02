@@ -1,6 +1,7 @@
 pytest >= 7.2.0
 pycodestyle >= 2.5.0
 requests >= 2.0
+tox
 lxml-asserts
 tornado-httpclient-mock
 sentry-sdk

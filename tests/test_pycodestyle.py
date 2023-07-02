@@ -8,7 +8,7 @@ from tests import FRONTIK_ROOT
 
 
 class TestPycodestyle(unittest.TestCase):
-    CHECKED_PATHS = ('frontik', 'tests', 'examples', 'setup.py', 'frontik-test')
+    CHECKED_PATHS = ('frontik', 'tests', 'examples', 'frontik-test')
 
     def test_pycodestyle(self):
         style_guide = pycodestyle.StyleGuide(
