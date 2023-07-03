@@ -13,8 +13,8 @@ from typing import (TYPE_CHECKING, Any, Coroutine, List, Optional, Type, Union,
 import tornado.curl_httpclient
 import tornado.httputil
 import tornado.web
-from http_client import (USER_AGENT_HEADER, FailFastError, HttpClient,
-                         RequestResult)
+from http_client import HttpClient
+from http_client.request_response import USER_AGENT_HEADER, FailFastError, RequestResult, RequestBuilder
 from pydantic import BaseModel, ValidationError
 from tornado.ioloop import IOLoop
 from tornado.web import Finish, RequestHandler
@@ -76,11 +76,11 @@ OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
 handler_logger = logging.getLogger('handler')
 
 
-def _fail_fast_policy(fail_fast, waited, host, uri):
+def _fail_fast_policy(fail_fast, waited, host, path):
     if fail_fast and not waited:
         handler_logger.warning(
             'attempted to make NOT waited http request to %s %s with fail fast policy, turn off fail_fast',
-            host, uri
+            host, path
         )
         return False
 
@@ -352,10 +352,10 @@ class PageHandler(RequestHandler):
 
     # Requests handling
 
-    def _execute(self, transforms, *args, **kwargs):
+    async def _execute(self, transforms, *args, **kwargs):
         request_context.set_handler_name(repr(self))
         try:
-            return super()._execute(transforms, *args, **kwargs)
+            return await super()._execute(transforms, *args, **kwargs)
         except Exception as ex:
             self._handle_request_exception(ex)
             return True
@@ -432,16 +432,16 @@ class PageHandler(RequestHandler):
         self.finish()
 
     def get_page_fail_fast(self, request_result: RequestResult):
-        self.__return_error(request_result.response.code, error_info={'is_fail_fast': True})
+        self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
 
     def post_page_fail_fast(self, request_result: RequestResult):
-        self.__return_error(request_result.response.code, error_info={'is_fail_fast': True})
+        self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
 
     def put_page_fail_fast(self, request_result: RequestResult):
-        self.__return_error(request_result.response.code, error_info={'is_fail_fast': True})
+        self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
 
     def delete_page_fail_fast(self, request_result: RequestResult):
-        self.__return_error(request_result.response.code, error_info={'is_fail_fast': True})
+        self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
 
     def __return_error(self, response_code, **kwargs):
         self.send_error(response_code if 300 <= response_code < 500 else 502, **kwargs)
@@ -549,27 +549,27 @@ class PageHandler(RequestHandler):
             return
 
         if isinstance(e, FailFastError):
-            response = e.failed_request.response
-            request = e.failed_request.request
+            request = e.failed_result.request
 
             if self.log.isEnabledFor(logging.WARNING):
                 _max_uri_length = 24
 
-                request_name = request.host + request.uri[:_max_uri_length]
-                if len(request.uri) > _max_uri_length:
+                request_name = request.host + request.path[:_max_uri_length]
+                if len(request.path) > _max_uri_length:
                     request_name += '...'
                 if request.name:
                     request_name = f'{request_name} ({request.name})'
 
-                self.log.warning('FailFastError: request %s failed with %s code', request_name, response.code)
+                self.log.warning('FailFastError: request %s failed with %s code', request_name,
+                                 e.failed_result.status_code)
 
             try:
                 error_method_name = f'{self.request.method.lower()}_page_fail_fast'
                 method = getattr(self, error_method_name, None)
                 if callable(method):
-                    method(e.failed_request)
+                    method(e.failed_result)
                 else:
-                    self.__return_error(e.failed_request.response.code, error_info={'is_fail_fast': True})
+                    self.__return_error(e.failed_result.status_code, error_info={'is_fail_fast': True})
 
             except Exception as exc:
                 super()._handle_request_exception(exc)
@@ -761,7 +761,7 @@ class PageHandler(RequestHandler):
 
     # HTTP client methods
 
-    def modify_http_client_request(self, balanced_request: 'HTTPRequest'):
+    def modify_http_client_request(self, balanced_request: RequestBuilder):
         balanced_request.headers['x-request-id'] = request_context.get_request_id()
 
         balanced_request.headers[OUTER_TIMEOUT_MS_HEADER] = f'{balanced_request.request_timeout * 1000:.0f}'
@@ -773,7 +773,7 @@ class PageHandler(RequestHandler):
             balanced_request.headers[DEBUG_HEADER_NAME] = 'true'
 
             # debug_timestamp is added to avoid caching of debug responses
-            balanced_request.uri = make_url(balanced_request.uri, debug_timestamp=int(time.time()))
+            balanced_request.path = make_url(balanced_request.path, debug_timestamp=int(time.time()))
 
             for header_name in ('Authorization', DEBUG_AUTH_HEADER_NAME):
                 authorization = self.request.headers.get(header_name)
@@ -783,87 +783,90 @@ class PageHandler(RequestHandler):
     def group(self, futures):
         return self.run_task(gather_dict(coro_dict=futures))
 
-    def get_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True, profile=None,
+    def get_url(self, host, path, *, name=None, data=None, headers=None, follow_redirects=True, profile=None,
                 connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                speculative_timeout_pct=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                speculative_timeout_pct=None, waited=True, parse_response=True, parse_on_error=True,
+                fail_fast=False) -> Future[RequestResult]:
 
-        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
+        fail_fast = _fail_fast_policy(fail_fast, waited, host, path)
 
         client_method = lambda: self._http_client.get_url(
-            host, uri, name=name, data=data, headers=headers, follow_redirects=follow_redirects, profile=profile,
+            host, path, name=name, data=data, headers=headers, follow_redirects=follow_redirects, profile=profile,
             connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
             speculative_timeout_pct=speculative_timeout_pct, parse_response=parse_response,
             parse_on_error=parse_on_error, fail_fast=fail_fast
         )
 
-        return self._execute_http_client_method(host, uri, client_method, waited)
+        return self._execute_http_client_method(host, path, client_method, waited)
 
-    def head_url(self, host, uri, *, name=None, data=None, headers=None, follow_redirects=True, profile=None,
+    def head_url(self, host, path, *, name=None, data=None, headers=None, follow_redirects=True, profile=None,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None,
-                 speculative_timeout_pct=None, waited=True, fail_fast=False):
+                 speculative_timeout_pct=None, waited=True, fail_fast=False) -> Future[RequestResult]:
 
-        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
+        fail_fast = _fail_fast_policy(fail_fast, waited, host, path)
 
         client_method = lambda: self._http_client.head_url(
-            host, uri, data=data, name=name, headers=headers, follow_redirects=follow_redirects, profile=profile,
+            host, path, data=data, name=name, headers=headers, follow_redirects=follow_redirects, profile=profile,
             connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
             speculative_timeout_pct=speculative_timeout_pct, fail_fast=fail_fast
         )
 
-        return self._execute_http_client_method(host, uri, client_method, waited)
+        return self._execute_http_client_method(host, path, client_method, waited)
 
-    def post_url(self, host, uri, *,
+    def post_url(self, host, path, *,
                  name=None, data='', headers=None, files=None, content_type=None, follow_redirects=True, profile=None,
                  connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=False,
-                 speculative_timeout_pct=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                 speculative_timeout_pct=None, waited=True, parse_response=True, parse_on_error=True,
+                 fail_fast=False) -> Future[RequestResult]:
 
-        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
+        fail_fast = _fail_fast_policy(fail_fast, waited, host, path)
 
         client_method = lambda: self._http_client.post_url(
-            host, uri, data=data, name=name, headers=headers, files=files, content_type=content_type,
+            host, path, data=data, name=name, headers=headers, files=files, content_type=content_type,
             follow_redirects=follow_redirects, profile=profile, connect_timeout=connect_timeout,
             request_timeout=request_timeout, max_timeout_tries=max_timeout_tries, idempotent=idempotent,
             speculative_timeout_pct=speculative_timeout_pct, parse_response=parse_response,
             parse_on_error=parse_on_error, fail_fast=fail_fast
         )
 
-        return self._execute_http_client_method(host, uri, client_method, waited)
+        return self._execute_http_client_method(host, path, client_method, waited)
 
-    def put_url(self, host, uri, *, name=None, data='', headers=None, content_type=None, follow_redirects=True,
+    def put_url(self, host, path, *, name=None, data='', headers=None, content_type=None, follow_redirects=True,
                 profile=None, connect_timeout=None, request_timeout=None, max_timeout_tries=None, idempotent=True,
-                speculative_timeout_pct=None, waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                speculative_timeout_pct=None, waited=True, parse_response=True, parse_on_error=True,
+                fail_fast=False) -> Future[RequestResult]:
 
-        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
+        fail_fast = _fail_fast_policy(fail_fast, waited, host, path)
 
         client_method = lambda: self._http_client.put_url(
-            host, uri, name=name, data=data, headers=headers, content_type=content_type,
+            host, path, name=name, data=data, headers=headers, content_type=content_type,
             follow_redirects=follow_redirects, profile=profile, connect_timeout=connect_timeout,
             request_timeout=request_timeout, max_timeout_tries=max_timeout_tries, idempotent=idempotent,
             speculative_timeout_pct=speculative_timeout_pct, parse_response=parse_response,
             parse_on_error=parse_on_error, fail_fast=fail_fast
         )
 
-        return self._execute_http_client_method(host, uri, client_method, waited)
+        return self._execute_http_client_method(host, path, client_method, waited)
 
-    def delete_url(self, host, uri, *, name=None, data=None, headers=None, content_type=None, profile=None,
+    def delete_url(self, host, path, *, name=None, data=None, headers=None, content_type=None, profile=None,
                    connect_timeout=None, request_timeout=None, max_timeout_tries=None, speculative_timeout_pct=None,
-                   waited=True, parse_response=True, parse_on_error=True, fail_fast=False):
+                   waited=True, parse_response=True, parse_on_error=True, fail_fast=False) -> Future[RequestResult]:
 
-        fail_fast = _fail_fast_policy(fail_fast, waited, host, uri)
+        fail_fast = _fail_fast_policy(fail_fast, waited, host, path)
 
         client_method = lambda: self._http_client.delete_url(
-            host, uri, name=name, data=data, headers=headers, content_type=content_type, profile=profile,
+            host, path, name=name, data=data, headers=headers, content_type=content_type, profile=profile,
             connect_timeout=connect_timeout, request_timeout=request_timeout, max_timeout_tries=max_timeout_tries,
             parse_response=parse_response, parse_on_error=parse_on_error,
             speculative_timeout_pct=speculative_timeout_pct, fail_fast=fail_fast
         )
 
-        return self._execute_http_client_method(host, uri, client_method, waited)
+        return self._execute_http_client_method(host, path, client_method, waited)
 
-    def _execute_http_client_method(self, host, uri, client_method, waited):
+    def _execute_http_client_method(self, host, path, client_method, waited) -> Future[RequestResult]:
         if waited and (self.is_finished() or self.finish_group.is_finished()):
             handler_logger.info(
-                'attempted to make waited http request to %s %s in finished handler, ignoring', host, uri
+                'attempted to make waited http request to %s %s in finished handler, ignoring', host, path
             )
 
             future = Future()

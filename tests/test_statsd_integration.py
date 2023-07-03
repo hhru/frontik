@@ -3,7 +3,7 @@ import unittest
 
 from tornado.escape import to_unicode
 
-from .instances import FrontikTestInstance
+from tests.instances import FrontikTestInstance
 
 
 class TestStatsdIntegration(unittest.TestCase):

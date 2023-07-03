@@ -14,7 +14,7 @@ from lxml import etree
 from tornado import httputil
 from tornado.httpclient import AsyncHTTPClient
 from tornado.web import Application, RequestHandler, HTTPError
-from http_client import HttpClientFactory, options as http_client_options
+from http_client import HttpClientFactory, options as http_client_options, AIOHttpClientWrapper
 from http_client.balancing import RequestBalancerBuilder, UpstreamManager
 
 import frontik.producers.json_producer
@@ -123,8 +123,8 @@ class FrontikApplication(Application):
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
         self.available_integrations = None
-        self.tornado_http_client = None
-        self.http_client_factory = None
+        self.tornado_http_client: Optional[AIOHttpClientWrapper] = None
+        self.http_client_factory: Optional[HttpClientFactory] = None
         self.upstream_manager = None
         self.upstreams = {}
         self.children_pipes = {}
@@ -153,11 +153,7 @@ class FrontikApplication(Application):
     async def init(self):
         self.transforms.insert(0, partial(DebugTransform, self))
 
-        AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=options.max_http_clients)
-        self.tornado_http_client = AsyncHTTPClient()
-
-        if options.max_http_clients_connects is not None:
-            self.tornado_http_client._multi.setopt(pycurl.M_MAXCONNECTS, options.max_http_clients_connects)
+        self.tornado_http_client = AIOHttpClientWrapper()
 
         self.available_integrations, integration_futures = integrations.load_integrations(self)
         await asyncio.gather(*[future for future in integration_futures if future])
@@ -250,10 +246,6 @@ class FrontikApplication(Application):
         return {
             'uptime': uptime_value,
             'datacenter': http_client_options.datacenter,
-            'workers': {
-                'total': len(self.http_client_factory.tornado_http_client._curls),
-                'free': len(self.http_client_factory.tornado_http_client._free_list)
-            }
         }
 
     def log_request(self, handler):

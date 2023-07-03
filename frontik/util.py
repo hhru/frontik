@@ -1,17 +1,14 @@
 import asyncio
 import datetime
 import logging
-import mimetypes
 import os.path
 import random
 import re
-from typing import Dict, Awaitable
 from urllib.parse import urlencode
 from uuid import uuid4
 
 from tornado.escape import to_unicode, utf8
 
-from frontik import media_types
 
 logger = logging.getLogger('util')
 
@@ -77,73 +74,6 @@ def choose_boundary():
     See https://github.com/kennethreitz/requests/blob/master/requests/packages/urllib3/filepost.py
     """
     return utf8(uuid4().hex)
-
-
-BOUNDARY = choose_boundary()
-
-
-def make_mfd(fields, files):
-    """
-    Constructs request body in multipart/form-data format
-
-    fields :: { field_name : field_value }
-    files :: { field_name: [{ "filename" : fn, "body" : bytes }]}
-    """
-
-    def addslashes(text):
-        for s in (b'\\', b'"'):
-            if s in text:
-                text = text.replace(s, b'\\' + s)
-        return text
-
-    def create_field(name, data):
-        name = addslashes(any_to_bytes(name))
-
-        return [
-            b'--', BOUNDARY,
-            b'\r\nContent-Disposition: form-data; name="', name,
-            b'"\r\n\r\n', any_to_bytes(data), b'\r\n'
-        ]
-
-    def create_file_field(name, filename, data, content_type):
-        if content_type == 'application/unknown':
-            content_type = mimetypes.guess_type(filename)[0] or media_types.APPLICATION_OCTET_STREAM
-        else:
-            content_type = content_type.replace('\n', ' ').replace('\r', ' ')
-
-        name = addslashes(any_to_bytes(name))
-        filename = addslashes(any_to_bytes(filename))
-
-        return [
-            b'--', BOUNDARY,
-            b'\r\nContent-Disposition: form-data; name="', name, b'"; filename="', filename,
-            b'"\r\nContent-Type: ', any_to_bytes(content_type),
-            b'\r\n\r\n', any_to_bytes(data), b'\r\n'
-        ]
-
-    body = []
-
-    for name, data in fields.items():
-        if data is None:
-            continue
-
-        if isinstance(data, list):
-            for value in data:
-                if value is not None:
-                    body.extend(create_field(name, value))
-        else:
-            body.extend(create_field(name, data))
-
-    for name, files in files.items():
-        for file in files:
-            body.extend(create_file_field(
-                name, file['filename'], file['body'], file.get('content_type', 'application/unknown')
-            ))
-
-    body.extend([b'--', BOUNDARY, b'--\r\n'])
-    content_type = b'multipart/form-data; boundary=' + BOUNDARY
-
-    return b''.join(body), content_type
 
 
 def get_cookie_or_url_param_value(handler, param_name):

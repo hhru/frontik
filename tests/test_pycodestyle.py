@@ -4,7 +4,7 @@ import unittest
 
 import pycodestyle
 
-from . import FRONTIK_ROOT
+from tests import FRONTIK_ROOT
 
 
 class TestPycodestyle(unittest.TestCase):

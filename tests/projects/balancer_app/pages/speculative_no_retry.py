@@ -15,7 +15,7 @@ class Page(PageHandler):
         result = await self.post_url('speculative_no_retry', self.request.path, connect_timeout=0.1,
                                      request_timeout=0.5, max_timeout_tries=1, speculative_timeout_pct=0.10)
 
-        if result.failed or result.response.code == 500:
+        if result.failed or result.status_code == 500:
             self.text = 'no retry'
             return
 

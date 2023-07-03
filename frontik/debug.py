@@ -18,6 +18,7 @@ from lxml.builder import E
 from tornado.escape import to_unicode, utf8
 from tornado.httputil import HTTPHeaders
 from tornado.web import OutputTransform
+from http_client.request_response import RequestResult, RequestBuilder
 
 import frontik.util
 import frontik.xml_util
@@ -27,9 +28,9 @@ from frontik.loggers import BufferedHandler
 debug_log = logging.getLogger('frontik.debug')
 
 
-def response_to_xml(response):
+def response_to_xml(result: RequestResult):
     time_info = etree.Element('time_info')
-    content_type = response.headers.get('Content-Type', '')
+    content_type = result.headers.get('Content-Type', '')
     mode = ''
 
     if 'charset' in content_type:
@@ -39,44 +40,39 @@ def response_to_xml(response):
 
     try_charsets = (charset, 'cp1251')
 
+    raw_body = result.raw_body
     try:
-        if not response.body:
+        if not raw_body:
             body = ''
         elif 'text/html' in content_type:
             mode = 'html'
-            body = frontik.util.decode_string_from_charset(response.body, try_charsets)
+            body = frontik.util.decode_string_from_charset(raw_body, try_charsets)
         elif 'protobuf' in content_type:
-            body = repr(response.body)
+            body = repr(raw_body)
         elif 'xml' in content_type:
             mode = 'xml'
-            body = _pretty_print_xml(etree.fromstring(response.body))
+            body = _pretty_print_xml(etree.fromstring(raw_body))
         elif 'json' in content_type:
             mode = 'javascript'
-            body = _pretty_print_json(json.loads(response.body))
+            body = _pretty_print_json(json.loads(raw_body))
         else:
             if 'javascript' in content_type:
                 mode = 'javascript'
-            body = frontik.util.decode_string_from_charset(response.body, try_charsets)
+            body = frontik.util.decode_string_from_charset(raw_body, try_charsets)
 
     except Exception:
         debug_log.exception('cannot parse response body')
-        body = repr(response.body)
-
-    try:
-        for name, value in response.time_info.items():
-            time_info.append(E.time(f'{value * 1000} ms', name=name))
-    except Exception:
-        debug_log.exception('cannot append time info')
+        body = repr(raw_body)
 
     try:
         response = E.response(
             E.body(body, content_type=content_type, mode=mode),
-            E.code(str(response.code)),
-            E.error(str(response.error)),
-            E.size(str(len(response.body)) if response.body is not None else '0'),
-            E.request_time(_format_number(response.request_time * 1000)),
-            _headers_to_xml(response.headers),
-            _cookies_to_xml(response.headers),
+            E.code(str(result.status_code)),
+            E.error(str(result.error)),
+            E.size(str(len(raw_body)) if raw_body is not None else '0'),
+            E.request_time(_format_number(result.elapsed_time * 1000)),
+            _headers_to_xml(result.headers),
+            _cookies_to_xml(result.headers),
             time_info,
         )
     except Exception:
@@ -86,7 +82,7 @@ def response_to_xml(response):
     return response
 
 
-def request_to_xml(request):
+def request_to_xml(request: RequestBuilder):
     content_type = request.headers.get('Content-Type', '')
     body = etree.Element('body', content_type=content_type)
 
@@ -108,7 +104,6 @@ def request_to_xml(request):
     try:
         request = E.request(
             body,
-            E.start_time(_format_number(request.start_time)),
             E.method(request.method),
             E.url(request.url),
             _params_to_xml(request.url),
@@ -140,7 +135,7 @@ def balanced_request_to_xml(balanced_request, retry, datacenter):
     return info
 
 
-def request_to_curl_string(request):
+def request_to_curl_string(request: RequestBuilder):
     def _escape_apos(string):
         return string.replace("'", "'\"'\"'")
 

@@ -4,7 +4,7 @@ from frontik import request_context
 from frontik.integrations.telemetry import FrontikIdGenerator, get_netloc
 
 
-class TelemetryTestCase(unittest.TestCase):
+class TestTelemetry(unittest.TestCase):
     def setUp(self):
         self.trace_id_generator = FrontikIdGenerator()
 

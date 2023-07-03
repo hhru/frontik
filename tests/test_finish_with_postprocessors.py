@@ -2,7 +2,7 @@ import unittest
 
 import requests
 
-from .instances import frontik_test_app
+from tests.instances import frontik_test_app
 
 
 class TestFinishWithPostprocessors(unittest.TestCase):

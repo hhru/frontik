@@ -76,8 +76,6 @@ class Options:
     sentry_dsn: str = None
     sentry_max_breadcrumbs: int = 0
 
-    max_http_clients: int = 100
-    max_http_clients_connects: int = None
     send_timeout_stats_interval_ms: int = 60000
 
     # consul options

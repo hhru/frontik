@@ -4,10 +4,10 @@ import unittest
 
 from tornado.escape import to_unicode
 
-from .instances import create_basic_auth_header, frontik_test_app, frontik_no_debug_app
+from tests.instances import create_basic_auth_header, frontik_test_app, frontik_no_debug_app
 
 
-class DebugTestCase(unittest.TestCase):
+class TestDebug(unittest.TestCase):
     DEBUG_BASIC_AUTH = create_basic_auth_header('user:god')
 
     def test_complex_debug_page(self):

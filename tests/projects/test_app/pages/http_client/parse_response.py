@@ -5,8 +5,10 @@ from frontik.handler import HTTPErrorWithPostprocessors, PageHandler
 
 class Page(PageHandler):
     async def get_page(self):
-        self.json.put(self.post_url(self.request.host, self.request.path, parse_on_error=True))
-        self.json.put(self.put_url(self.request.host, self.request.path, parse_on_error=False))
+        result = await self.post_url(self.request.host, self.request.path, parse_on_error=True)
+        self.json.put(result.data)
+        result = await self.put_url(self.request.host, self.request.path, parse_on_error=False)
+        self.json.put(result.to_dict())
 
         result = await self.delete_url(self.request.host, self.request.path, parse_response=False)
         if not result.failed:

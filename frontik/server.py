@@ -174,6 +174,8 @@ async def _deinit_app(app: FrontikApplication, need_to_register_in_service_disco
     else:
         deinit_futures = []
     deinit_futures.extend([integration.deinitialize_app(app) for integration in app.available_integrations])
+    if app.tornado_http_client is not None:
+        deinit_futures.append(app.tornado_http_client.client_session.close())
     if deinit_futures:
         try:
             await asyncio.gather(*[future for future in deinit_futures if future])

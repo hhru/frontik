@@ -4,8 +4,8 @@ from frontik.app import FrontikApplication
 from frontik.util import get_abs_path
 from frontik.options import options
 
-from . import config
-from .pages import handler_404
+from tests.projects.re_app import config
+from tests.projects.re_app.pages import handler_404
 
 
 class TestApplication(FrontikApplication):

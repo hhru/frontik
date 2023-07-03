@@ -6,7 +6,7 @@ try:
 except Exception:
     has_kafka = False
 
-from .instances import frontik_test_app
+from tests.instances import frontik_test_app
 
 
 @unittest.skipIf(not has_kafka, 'aiokafka library not found')
