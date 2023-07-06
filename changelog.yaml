@@ -1,3 +1,12 @@
+-   name: 7.0.0
+    date: '2023-07-06T09:49:36.618353+03:00'
+    description: Обновлен balancing-http-client до 2.0.0. Теперь в качестве оснвного
+        клиента используется aiohttp, раньше был tornado_curl
+    instructions: "1. Вместо собирания полей из внутреннего объекта result.response.code/result.response.body/result.response.error,\
+        \ теперь нужно брать поля напрямую result.status_code/result.data/result.error\r\
+        \n2. В fetch вызовах неправильно названный параметр uri переименован в path"
+    compatible: false
+
 -   name: 6.7.13
     date: '2023-07-03T12:47:16.766600+03:00'
     description: ''
