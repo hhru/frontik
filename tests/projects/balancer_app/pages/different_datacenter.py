@@ -1,4 +1,5 @@
 from http_client.balancing import Upstream
+from http_client.request_response import NoAvailableServerException
 from tornado.web import HTTPError
 
 from frontik import media_types
@@ -22,7 +23,7 @@ class Page(PageHandler):
             if server.stat_requests != 0:
                 raise HTTPError(500)
 
-        if result.response.error and result.response.code == 502:
+        if result.exc is not None and isinstance(result.exc, NoAvailableServerException):
             self.text = 'no backend available'
             return
 

@@ -2,16 +2,12 @@ import requests
 import unittest
 
 from frontik import media_types
-from .instances import frontik_no_debug_app, frontik_test_app
+from tests.instances import frontik_no_debug_app, frontik_test_app
 
 
 class TestHandler(unittest.TestCase):
     def test_active_limit(self):
         text = frontik_no_debug_app.get_page_text('recursion?n=6')
-        self.assertEqual(text, '200 200 200 200 200 503')
-
-    def test_active_limit_async(self):
-        text = frontik_no_debug_app.get_page_text('recursion_async?n=6')
         self.assertEqual(text, '200 200 200 200 200 503')
 
     def test_check_finished(self):
@@ -30,7 +26,7 @@ class TestHandler(unittest.TestCase):
 
     def test_head_url(self):
         response = frontik_test_app.get_page('handler/head_url')
-        self.assertEqual(response.content, b'OK')
+        self.assertEqual(b'OK', response.content)
 
     def test_no_method(self):
         response = frontik_test_app.get_page('handler/head', method=requests.post)

@@ -52,7 +52,8 @@ def parse_command_line(options, allowed_options):
         arg = args[i].lstrip("-")
         name, equals, value = arg.partition("=")
         if name not in allowed_options:
-            raise Exception('Unrecognized command line option: %r' % name)
+            log.error(f'Unrecognized command line option: {name}, skipped')
+            continue
 
         option = next(filter(lambda x: x.name == name, fields(options)), None)
         if option is None:

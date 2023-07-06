@@ -27,9 +27,9 @@ class Page(PageHandler):
             'delete': self.delete_url(self.request.host, self.request.path, data={'invalid_dict_value': 'true'}),
         })
 
-        assert results['post'].response.code == 200
-        assert results['put'].response.code == 401
-        assert results['delete'].response.code == 500
+        assert results['post'].status_code == 200
+        assert results['put'].status_code == 401
+        assert results['delete'].status_code == 500
 
         self.json.put(results)
 

@@ -2,7 +2,7 @@ import unittest
 
 import requests
 
-from .instances import frontik_re_app, frontik_test_app
+from tests.instances import frontik_re_app, frontik_test_app
 
 
 class TestSentryIntegration(unittest.TestCase):

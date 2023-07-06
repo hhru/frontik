@@ -3,10 +3,10 @@ import shutil
 import tempfile
 import unittest
 
-from .instances import FrontikTestInstance, common_frontik_start_options
+from tests.instances import FrontikTestInstance, common_frontik_start_options
 
 
-class LogToFileTestCase(unittest.TestCase):
+class TestLogToFile(unittest.TestCase):
 
     def setUp(self):
         self.tmp_log_dir = tempfile.mkdtemp()

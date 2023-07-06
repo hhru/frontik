@@ -1,6 +1,6 @@
 import unittest
 
-from .instances import create_basic_auth_header, frontik_no_debug_app
+from tests.instances import create_basic_auth_header, frontik_no_debug_app
 
 
 class TestNonDebugMode(unittest.TestCase):

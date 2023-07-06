@@ -7,6 +7,7 @@ from frontik.options import options
 from frontik.testing import FrontikTestCase
 from frontik.util import gather_list
 from tests.projects.test_app.pages.handler import delete
+from tests import FRONTIK_ROOT
 
 
 class AsyncHandler(PageHandler):
@@ -58,12 +59,12 @@ class TestFrontikTesting(FrontikTestCase):
         self.configure_app(config_param='param_value')
         response = self.fetch('/config')
 
-        self.assertEqual(response.code, 200)
-        self.assertEqual(response.body, b'param_value')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.raw_body, b'param_value')
 
     def test_xml_stub(self):
-        self.set_stub('http://service.host/val1/$id', response_file='tests/stub.xml', id='1', val='2')
-        self.set_stub('http://service.host/val2/2', response_file='tests/stub.xml', val='3')
+        self.set_stub('http://service.host/val1/$id', response_file=f'{FRONTIK_ROOT}/tests/stub.xml', id='1', val='2')
+        self.set_stub('http://service.host/val2/2', response_file=f'{FRONTIK_ROOT}/tests/stub.xml', val='3')
 
         doc = self.fetch_xml('/sum_values')
 
@@ -72,7 +73,7 @@ class TestFrontikTesting(FrontikTestCase):
     def test_json_stub(self):
         self.set_stub(
             f'http://127.0.0.1:{self.get_http_port()}/delete', request_method='DELETE',
-            response_file='tests/stub.json', param='param'
+            response_file=f'{FRONTIK_ROOT}/tests/stub.json', param='param'
         )
 
         json = self.fetch_json('/delete')

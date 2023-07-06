@@ -2,13 +2,14 @@ import json
 
 from lxml import etree
 from tornado.escape import utf8
-from tornado.httpclient import AsyncHTTPClient
 from tornado.testing import AsyncHTTPTestCase
 from tornado_mock.httpclient import patch_http_client, safe_template, set_stub
 
 # noinspection PyUnresolvedReferences
 import frontik.options
 from frontik.util import make_url
+from http_client import AIOHttpClientWrapper
+from http_client.request_response import RequestResult
 
 
 class FrontikTestCase(AsyncHTTPTestCase):
@@ -20,10 +21,10 @@ class FrontikTestCase(AsyncHTTPTestCase):
 
         This allows mocking HTTP requests made by application in unit tests.
         """
-        AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient')
-        return AsyncHTTPClient(force_instance=True)
+        self.forced_client = AIOHttpClientWrapper()
+        return self.forced_client
 
-    def fetch(self, path, query=None, **kwargs):
+    def fetch(self, path, query=None, **kwargs) -> RequestResult:
         """Extends `AsyncHTTPTestCase.fetch` method with `query` kwarg.
         This argument accepts a `dict` of request query parameters that will be encoded
         and added to request path.
@@ -34,11 +35,11 @@ class FrontikTestCase(AsyncHTTPTestCase):
 
     def fetch_xml(self, path, query=None, **kwargs):
         """Fetch the request and parse xml document from response body."""
-        return etree.fromstring(utf8(self.fetch(path, query, **kwargs).body))
+        return etree.fromstring(utf8(self.fetch(path, query, **kwargs).raw_body))
 
     def fetch_json(self, path, query=None, **kwargs):
         """Fetch the request and parse JSON tree from response body."""
-        return json.loads(self.fetch(path, query, **kwargs).body)
+        return json.loads(self.fetch(path, query, **kwargs).raw_body)
 
     def patch_app_http_client(self, app):
         """Patches application HTTPClient to enable requests stubbing."""
@@ -56,6 +57,14 @@ class FrontikTestCase(AsyncHTTPTestCase):
         )
 
     def tearDown(self) -> None:
+        if self._app.tornado_http_client is not None:
+            self.io_loop.run_sync(
+                self._app.tornado_http_client.client_session.close
+            )
+        if self.forced_client is not None:
+            self.io_loop.run_sync(
+                self.forced_client.client_session.close
+            )
         super().tearDown()
 
     def configure_app(self, **kwargs):

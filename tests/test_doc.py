@@ -3,7 +3,7 @@ import unittest
 from lxml import etree
 from lxml_asserts.testcase import LxmlTestCaseMixin
 from tornado.concurrent import Future
-from http_client import DataParseError, RequestResult
+from http_client.request_response import DataParseError, RequestResult
 
 from frontik.doc import Doc
 

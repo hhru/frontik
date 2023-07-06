@@ -1,14 +1,13 @@
-import unittest
 from urllib.parse import urlencode
 
 import requests
 
-from .instances import frontik_test_app
+from tests.instances import frontik_test_app
 
 
-class TestJsonResponse(unittest.TestCase):
+class TestJsonResponse:
 
-    def setUp(self) -> None:
+    def setup_method(self):
         self.query_args = {
             'list': [1, 2],
             'string': 'safestring',
@@ -16,7 +15,6 @@ class TestJsonResponse(unittest.TestCase):
             'int_arg_with_default': '',
             'int_arg': '',
         }
-        return super().setUp()
 
     def test_validation(self):
 
@@ -26,12 +24,12 @@ class TestJsonResponse(unittest.TestCase):
             notpl=True
         )
 
-        self.assertEqual([1, 2], get_data['list'])
-        self.assertEqual('safestring', get_data['string'])
-        self.assertEqual('', get_data['str_arg'])
-        self.assertEqual('default', get_data['str_arg_with_default'])
-        self.assertEqual(0, get_data['int_arg_with_default'])
-        self.assertEqual(True, get_data['none_float'])
+        assert get_data['list'] == [1, 2]
+        assert get_data['string'] == 'safestring'
+        assert get_data['str_arg'] == ''
+        assert get_data['str_arg_with_default'] == 'default'
+        assert get_data['int_arg_with_default'] == 0
+        assert get_data['none_float'] is True
 
         post_data = frontik_test_app.get_page_json(
             'validate_arguments',
@@ -39,24 +37,24 @@ class TestJsonResponse(unittest.TestCase):
             method=requests.post,
             data=self.query_args,
         )
-        self.assertEqual('default', post_data['str_body_arg'])
-        self.assertEqual(0, post_data['int_body_arg'])
+        assert post_data['str_body_arg'] == 'default'
+        assert post_data['int_body_arg'] == 0
 
     def test_validation_failed(self):
         self.query_args.update(string='un/safe')
         response = frontik_test_app.get_page(f'validate_arguments?{urlencode(self.query_args, doseq=True)}', notpl=True)
 
-        self.assertEqual(response.status_code, 400)
+        assert response.status_code == 400
 
     def test_arg_validation_raises_for_empty_value_with_no_default(self):
         response = frontik_test_app.get_page(f'validate_arguments?{urlencode(self.query_args, doseq=True)}', notpl=True)
 
-        self.assertEqual(response.status_code, 400)
+        assert response.status_code == 400
 
     def test_arg_validation_raises_for_default_of_incorrect_type(self):
         response = frontik_test_app.get_page('validate_arguments?str_arg=test', method=requests.put, notpl=True)
 
-        self.assertEqual(response.status_code, 500)
+        assert response.status_code == 500
 
     def test_validation_model(self):
         self.query_args.update(int_arg=0)
@@ -67,5 +65,5 @@ class TestJsonResponse(unittest.TestCase):
             notpl=True
         )
 
-        self.assertEqual([1, 2], data['list'])
-        self.assertEqual('customString', data['string'])
+        assert data['list'] == [1, 2]
+        assert data['string'] == 'customString'
