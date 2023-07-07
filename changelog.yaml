@@ -1,3 +1,9 @@
+-   name: 7.0.1
+    date: '2023-07-07T12:17:41.196149+03:00'
+    description: Pycurl удален из зависимостей
+    instructions: ''
+    compatible: true
+
 -   name: 7.0.0
     date: '2023-07-06T09:49:36.618353+03:00'
     description: Обновлен balancing-http-client до 2.0.0. Теперь в качестве оснвного
