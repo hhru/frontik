@@ -1,1 +1,1 @@
-aiokafka
+aiokafka == 0.8.1
