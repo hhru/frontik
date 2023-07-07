@@ -10,7 +10,6 @@ from functools import wraps
 from typing import (TYPE_CHECKING, Any, Coroutine, List, Optional, Type, Union,
                     overload)
 
-import tornado.curl_httpclient
 import tornado.httputil
 import tornado.web
 from http_client import HttpClient

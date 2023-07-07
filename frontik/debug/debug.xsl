@@ -339,9 +339,6 @@
                     <xsl:with-param name="label" select="'copy as cURL'"/>
                     <xsl:with-param name="select" select="true()"/>
                 </xsl:apply-templates>
-                <xsl:apply-templates select="response/time_info" mode="params-info">
-                    <xsl:with-param name="label" select="'pycurl time info'"/>
-                </xsl:apply-templates>
                 <xsl:apply-templates select="meta-info/server" mode="params-info">
                     <xsl:with-param name="label" select="'server info'"/>
                 </xsl:apply-templates>

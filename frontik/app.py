@@ -8,11 +8,10 @@ from functools import partial
 from typing import TYPE_CHECKING
 import logging
 
-import pycurl
+import aiohttp
 import tornado
 from lxml import etree
 from tornado import httputil
-from tornado.httpclient import AsyncHTTPClient
 from tornado.web import Application, RequestHandler, HTTPError
 from http_client import HttpClientFactory, options as http_client_options, AIOHttpClientWrapper
 from http_client.balancing import RequestBalancerBuilder, UpstreamManager
@@ -36,7 +35,6 @@ if TYPE_CHECKING:
     from typing import Optional
 
     from aiokafka import AIOKafkaProducer
-    from tornado.httputil import HTTPServerRequest
 
 
 def get_frontik_and_apps_versions(application):
@@ -47,7 +45,7 @@ def get_frontik_and_apps_versions(application):
     etree.SubElement(versions, 'lxml.etree.LXML').text = '.'.join(str(x) for x in etree.LXML_VERSION)
     etree.SubElement(versions, 'lxml.etree.LIBXML').text = '.'.join(str(x) for x in etree.LIBXML_VERSION)
     etree.SubElement(versions, 'lxml.etree.LIBXSLT').text = '.'.join(str(x) for x in etree.LIBXSLT_VERSION)
-    etree.SubElement(versions, 'pycurl').text = pycurl.version
+    etree.SubElement(versions, 'aiohttp').text = aiohttp.__version__
     etree.SubElement(versions, 'python').text = sys.version.replace('\n', '')
     etree.SubElement(versions, 'event_loop').text = str(type(asyncio.get_event_loop())).split("'")[1]
     etree.SubElement(versions, 'application', name=options.app).extend(application.application_version_xml())
