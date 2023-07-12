@@ -3,11 +3,10 @@ FROM registry.pyn.ru/python3.11-bullseye-building:2023.06.01
 
 RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-COPY frontik-test setup.py requirements.txt requirements_venv.txt README.md MANIFEST.in /home/building/
+COPY frontik-test requirements*txt README.md MANIFEST.in /home/building/
 COPY frontik /home/building/frontik/
 COPY tests /home/building/tests/
 COPY examples /home/building/examples/
-COPY scripts /home/building/scripts/
 WORKDIR /home/building
 
 RUN --mount=type=ssh pip3 install --upgrade pip && \

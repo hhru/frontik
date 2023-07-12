@@ -1,6 +1,36 @@
 [build-system]
-requires = ["setuptools >= 46.4"]
+requires = ["setuptools >= 66.1"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "frontik"
+description = "Frontik is an asyncronous Tornado-based application server"
+requires-python = ">=3.8"
+dynamic = ["dependencies", "optional-dependencies", "readme", "version"]
+
+[project.scripts]
+frontik = "frontik.server:main"
+
+[project.urls]
+Homepage = "https://github.com/hhru/frontik"
+Repository = "https://github.com/hhru/frontik.git"
+
+[tool.setuptools]
+zip-safe = false
+
+[tool.setuptools.dynamic]
+dependencies = {file = "requirements.txt"}
+optional-dependencies.test = {file = "requirements_venv.txt"}
+optional-dependencies.sentry = {file = "requirements_sentry.txt"}
+optional-dependencies.kafka = {file = "requirements_kafka.txt"}
+readme = {file = "README.md"}
+version = {attr = "frontik.version.version"}
+
+[tool.setuptools.packages.find]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+"frontik" = ["debug/*.xsl"]
 
 [tool.pytest.ini_options]
 addopts = "--tb native"
