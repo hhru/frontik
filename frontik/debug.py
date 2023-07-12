@@ -104,6 +104,7 @@ def request_to_xml(request: RequestBuilder):
     try:
         request = E.request(
             body,
+            E.start_time(_format_number(request.start_time or 0)),
             E.method(request.method),
             E.url(request.url),
             _params_to_xml(request.url),

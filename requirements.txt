@@ -3,7 +3,7 @@ jinja2 == 3.1.2
 lxml == 4.9.2
 pydantic >= 1.10.5, < 2
 tornado == 6.2.0
-http-client @ https://github.com/hhru/balancing-http-client/archive/2.0.1.zip
+http-client @ https://github.com/hhru/balancing-http-client/archive/2.0.2.zip
 python-consul2-hh @ https://github.com/hhru/python-consul2/archive/v0.2.9.zip
 opentelemetry-sdk == 1.17.0
 opentelemetry-api == 1.17.0
