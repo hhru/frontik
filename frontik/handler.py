@@ -7,8 +7,9 @@ import re
 import time
 from asyncio.futures import Future
 from functools import wraps
-from typing import (TYPE_CHECKING, Any, Coroutine, List, Optional, Type, Union,
-                    overload)
+from typing import (
+    TYPE_CHECKING, Any, Coroutine, List, Optional, Type, Union, overload, Callable, Awaitable
+)
 
 import tornado.httputil
 import tornado.web
@@ -87,7 +88,6 @@ def _fail_fast_policy(fail_fast, waited, host, path):
 
 
 class PageHandler(RequestHandler):
-
     preprocessors = ()
     _priority_preprocessor_names = []
 
@@ -396,7 +396,7 @@ class PageHandler(RequestHandler):
             self.log.info('page was already finished, skipping page method')
             return
 
-        await page_handler_method()
+        await self.call_page_handler_method(page_handler_method)
 
         self._handler_finished_notification()
         await self.finish_group.get_gathering_future()
@@ -429,6 +429,10 @@ class PageHandler(RequestHandler):
         self.set_header('Allow', ', '.join(allowed_methods))
         self.set_status(405)
         self.finish()
+
+    async def call_page_handler_method(self, page_handler_method: Callable[..., Awaitable]):
+        """Override this method to have custom return value handling"""
+        await page_handler_method()
 
     def get_page_fail_fast(self, request_result: RequestResult):
         self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
