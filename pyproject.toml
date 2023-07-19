@@ -20,11 +20,13 @@ zip-safe = false
 
 [tool.setuptools.dynamic]
 dependencies = {file = "requirements.txt"}
-optional-dependencies.test = {file = "requirements_venv.txt"}
-optional-dependencies.sentry = {file = "requirements_sentry.txt"}
-optional-dependencies.kafka = {file = "requirements_kafka.txt"}
 readme = {file = "README.md"}
 version = {attr = "frontik.version.version"}
+
+[tool.setuptools.dynamic.optional-dependencies]
+kafka = {file = "requirements_kafka.txt"}
+sentry = {file = "requirements_sentry.txt"}
+test = {file = "requirements_venv.txt"}
 
 [tool.setuptools.packages.find]
 exclude = ["tests*"]
