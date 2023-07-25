@@ -1,6 +1,6 @@
 aiohttp == 3.8.3
 jinja2 == 3.1.2
-lxml == 4.9.2
+lxml == 4.9.3
 pydantic >= 1.10.5, < 2
 tornado == 6.2.0
 http-client @ https://github.com/hhru/balancing-http-client/archive/2.0.4.zip
