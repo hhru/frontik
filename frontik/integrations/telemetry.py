@@ -4,17 +4,21 @@ from asyncio import Future
 from typing import Optional
 from urllib.parse import urlparse
 
+import aiohttp
+from http_client import client_request_context
 from http_client.options import options as http_client_options
+from http_client.request_response import RequestBuilder
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation import tornado
+from opentelemetry.instrumentation import aiohttp_client, tornado
 from opentelemetry.propagate import set_global_textmap
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider, IdGenerator
+from opentelemetry.sdk.trace import IdGenerator, TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import Span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.util.http import ExcludeList
 
@@ -32,7 +36,8 @@ tornado._excluded_urls = ExcludeList(list(tornado._excluded_urls._excluded_urls)
 
 class TelemetryIntegration(Integration):
     def __init__(self):
-        self.instrumentation = None
+        self.aiohttp_instrumentor = None
+        self.tornado_instrumentor = None
 
     def initialize_app(self, app) -> Optional[Future]:
         if not options.opentelemetry_enabled:
@@ -55,10 +60,14 @@ class TelemetryIntegration(Integration):
         provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
         trace.set_tracer_provider(provider)
 
-        self.instrumentation = tornado.TornadoInstrumentor()
-        self.instrumentation.instrument(
+        self.aiohttp_instrumentor = aiohttp_client.AioHttpClientInstrumentor()
+        self.aiohttp_instrumentor.instrument(
+            request_hook=_client_request_hook,
+        )
+
+        self.tornado_instrumentor = tornado.TornadoInstrumentor()
+        self.tornado_instrumentor.instrument(
             server_request_hook=_server_request_hook,
-            client_request_hook=_client_request_hook,
         )
 
     def deinitialize_app(self, app) -> Optional[Future]:
@@ -66,7 +75,8 @@ class TelemetryIntegration(Integration):
             return
 
         integrations_logger.info('stop telemetry')
-        self.instrumentation.uninstrument()
+        self.aiohttp_instrumentor.uninstrument()
+        self.tornado_instrumentor.uninstrument()
 
     def initialize_handler(self, handler):
         pass
@@ -77,7 +87,14 @@ def _server_request_hook(span, handler):
     span.set_attribute(SpanAttributes.HTTP_TARGET, handler.request.uri)
 
 
-def _client_request_hook(span, request):
+def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams):
+    if not span or not span.is_recording():
+        return
+
+    request: RequestBuilder = client_request_context.get(None)
+    if request is None:
+        return
+
     upstream_datacenter = getattr(request, 'upstream_datacenter', None)
     upstream_name = getattr(request, 'upstream_name', None)
     if upstream_name is None:

@@ -151,10 +151,10 @@ class FrontikApplication(Application):
     async def init(self):
         self.transforms.insert(0, partial(DebugTransform, self))
 
-        self.tornado_http_client = AIOHttpClientWrapper()
-
         self.available_integrations, integration_futures = integrations.load_integrations(self)
         await asyncio.gather(*[future for future in integration_futures if future])
+
+        self.tornado_http_client = AIOHttpClientWrapper()
 
         kafka_cluster = options.http_client_metrics_kafka_cluster
         send_metrics_to_kafka = kafka_cluster and kafka_cluster in options.kafka_clusters
