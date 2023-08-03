@@ -639,13 +639,12 @@ source = ["Cython (>=0.29.7)"]
 
 [[package]]
 name = "lxml-asserts"
-version = "0.1.1"
+version = "0.1.2"
 description = "Handy functions for testing lxml etree objects for equality and compatibility"
 optional = false
 python-versions = "*"
 files = [
-    {file = "lxml-asserts-0.1.1.tar.gz", hash = "sha256:3155325b63f9850c69f817b2152b856758f5a6f1d54b4ba25f79e96c5ac46bb7"},
-    {file = "lxml_asserts-0.1.1-py2.py3-none-any.whl", hash = "sha256:ccbfe0b4894fa5935c162f57418945171426ebb9059c09080568a46765c5cde0"},
+    {file = "lxml-asserts-0.1.2.tar.gz", hash = "sha256:49ab3af441ce3d6179f3d6c094b54bbab61fbccf62bd607033c822d5b16be2f9"},
 ]
 
 [package.dependencies]
@@ -1537,4 +1536,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.*"
-content-hash = "1d44e59ce2a68f90e6817b9c8208b922ee7344e4c3e3a575153fd0fe1afedc82"
+content-hash = "650a7968119ebdd361763c4cfe2e7bbee44a82546008668cfb3c8d6d49fc007a"
