@@ -1,3 +1,9 @@
+-   name: 7.1.0
+    date: '2023-08-03T13:33:22.214324+03:00'
+    description: Переход на pyproject.toml + poetry
+    instructions: ''
+    compatible: true
+
 -   name: 7.0.5
     date: '2023-07-25T16:48:25.386234+03:00'
     description: ''
