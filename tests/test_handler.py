@@ -24,7 +24,7 @@ class TestHandler(unittest.TestCase):
         self.assertEqual(response.headers['X-Foo'], 'Bar')
         self.assertEqual(response.content, b'')
 
-    def test_head_url(self):
+    async def test_head_url(self):
         response = frontik_test_app.get_page('handler/head_url')
         self.assertEqual(b'OK', response.content)
 

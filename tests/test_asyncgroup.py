@@ -12,7 +12,7 @@ logging.root.setLevel(logging.NOTSET)
 
 
 class TestAsyncGroup(unittest.TestCase):
-    def test_callbacks(self):
+    async def test_callbacks(self):
         data = []
 
         def callback2():
