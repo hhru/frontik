@@ -113,7 +113,7 @@ class TestJsonBuilder(unittest.TestCase):
         self.assertEqual(j.to_dict()['a'], 'b')
         self.assertEqual(j.to_string(), """{"a": "b"}""")
 
-    def test_future_string_value(self):
+    async def test_future_string_value(self):
         j = JsonBuilder()
         f = Future()
         result = TestDoc.get_test_request_result()
@@ -124,7 +124,7 @@ class TestJsonBuilder(unittest.TestCase):
 
         self.assertEqual(j.to_dict(), {})
 
-    def test_failed_future(self):
+    async def test_failed_future(self):
         j = JsonBuilder()
         f = Future()
         result = TestDoc.get_test_request_result()
@@ -150,7 +150,7 @@ class TestJsonBuilder(unittest.TestCase):
 
         self.assertEqual(j.to_string(), """{"nested": {"a": ["b", "c"]}}""")
 
-    def test_nested_future_error_node(self):
+    async def test_nested_future_error_node(self):
         j = JsonBuilder()
         f1 = Future()
         f2 = Future()

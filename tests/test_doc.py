@@ -28,7 +28,7 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
             b"""<?xml version='1.0' encoding='utf-8'?>\n<a><b>\xd1\x82\xd0\xb5\xd1\x81\xd1\x82</b></a>"""
         )
 
-    def test_future_simple(self):
+    async def test_future_simple(self):
         d = Doc('a')
         f = Future()
         d.put(f)
@@ -39,7 +39,7 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
 
         self.assertXmlEqual(d.to_etree_element(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a><test/></a>""")
 
-    def test_future_etree_element(self):
+    async def test_future_etree_element(self):
         d = Doc('a')
         f = Future()
         f.set_result(etree.Element('b'))
@@ -47,7 +47,7 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
 
         self.assertXmlEqual(d.to_etree_element(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a><b/></a>""")
 
-    def test_future_list(self):
+    async def test_future_list(self):
         d = Doc('a')
         f = Future()
         f.set_result([etree.Comment('ccc'), etree.Element('bbb')])
@@ -55,7 +55,7 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
 
         self.assertXmlEqual(d.to_etree_element(), """<?xml version='1.0'?>\n<a><!--ccc--><bbb/></a>""")
 
-    def test_failed_future(self):
+    async def test_failed_future(self):
         d = Doc('a')
         f = Future()
         result = self.get_test_request_result()
@@ -67,7 +67,7 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
             d.to_etree_element(), """<?xml version='1.0'?>\n<a><error reason="error" code="code"/></a>"""
         )
 
-    def test_future_string_value(self):
+    async def test_future_string_value(self):
         d = Doc('a')
         f = Future()
         result = self.get_test_request_result()
@@ -144,4 +144,4 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
         class FakeRequest:
             name = 'name'
 
-        return RequestResult(FakeRequest(), None, False, False)
+        return RequestResult(FakeRequest(), None, None, False, False)

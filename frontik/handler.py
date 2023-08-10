@@ -671,7 +671,7 @@ class PageHandler(RequestHandler):
     def clear_cookie(self, name, path="/", domain=None):
         if name in self._mandatory_cookies:
             del self._mandatory_cookies[name]
-        super().clear_cookie(name, path, domain)
+        super().clear_cookie(name, path=path, domain=domain)
 
     def was_preprocessor_called(self, preprocessor):
         return preprocessor.preprocessor_name in self._launched_preprocessors
