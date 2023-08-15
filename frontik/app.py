@@ -198,6 +198,7 @@ class FrontikApplication(Application):
         delegate.data_received = wrapped_in_context(delegate.data_received)
         delegate.finish = wrapped_in_context(delegate.finish)
         delegate.on_connection_close = wrapped_in_context(delegate.on_connection_close)
+        delegate.handler_class = wrapped_in_context(delegate.handler_class)
 
         return delegate
 

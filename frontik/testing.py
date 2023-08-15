@@ -22,6 +22,14 @@ from frontik.media_types import APPLICATION_JSON, APPLICATION_XML, APPLICATION_P
 from frontik.options import options
 from frontik.util import make_url, safe_template
 
+from tornado.testing import bind_unused_port
+from tornado.httpserver import HTTPServer
+import pytest_asyncio
+from http_client.request_response import RequestBuilder, RequestResult
+from tornado.httputil import HTTPServerRequest, HTTPHeaders, HTTPConnection
+from asyncio import Future
+from typing import Optional
+
 
 class FrontikTestCase(AsyncHTTPTestCase):
     """Deprecated, use FrontikTestBase instead"""
@@ -86,6 +94,30 @@ class FrontikTestCase(AsyncHTTPTestCase):
         return self
 
 
+class FetchResult:
+    def __init__(self, status, headers, body, reason):
+        self.status_code = status
+        self.headers = headers
+        self.raw_body = body
+        self.reason = reason
+
+
+class TestHTTPConnection(HTTPConnection):
+    def set_close_callback(self, *args):
+        pass
+
+    def finish(self):
+        pass
+
+    def write(self, chunk: bytes):
+        future = Future()
+        future.set_result(None)
+        return future
+
+    def write_headers(self, start_line, headers: HTTPHeaders, chunk: Optional[bytes] = None):
+        self.handler_result = FetchResult(start_line.code, headers, chunk, start_line.reason)
+
+
 class FrontikTestBase:
     @pytest.fixture(scope="function", autouse=True)
     def setup_mock_client(self, mock_client):
@@ -123,13 +155,29 @@ class FrontikTestBase:
     def get_http_port(self) -> int:
         return self._port
 
-    async def fetch(self, path: str, query=None, **kwargs) -> RequestResult:
+    async def fetch(self, path: str, query=None, method: str = 'GET', **kwargs) -> RequestResult:
+        headers = kwargs.get('headers')
+        if headers is None:
+            headers = {}
+
         query = {} if query is None else query
         path = make_url(path, **query)
-        host = f'http://127.0.0.1:{self.get_http_port()}'
 
-        request = RequestBuilder(host, 'test', path, 'test_request', request_timeout=2, **kwargs)
-        return await self.http_client.fetch(request)
+        """
+        monkey patch for tornado.web._HandlerDelegate.execute
+        """
+        conn = TestHTTPConnection()
+        request = HTTPServerRequest(method=method, uri=path, headers=headers, body=None, connection=conn)
+        delegate = self.get_app().find_handler(request)
+        delegate.handler = delegate.handler_class(
+            delegate.application, delegate.request, **delegate.handler_kwargs
+        )
+        transforms = [t(delegate.request) for t in delegate.application.transforms]
+
+        await delegate.handler._execute(transforms, *delegate.path_args, **delegate.path_kwargs)
+        await delegate.handler.response_written_future
+
+        return conn.handler_result
 
     async def fetch_xml(self, path, query=None, **kwargs):
         resp = await self.fetch(path, query, **kwargs)

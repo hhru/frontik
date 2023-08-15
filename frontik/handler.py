@@ -125,6 +125,13 @@ class PageHandler(RequestHandler):
             self.timeout_checker = get_timeout_checker(request.headers.get(USER_AGENT_HEADER),
                                                        float(outer_timeout),
                                                        request.request_time)
+        """
+        есть торнадовская finish_future но она нам не подходит тк
+        если завязаться на нее, то в момент завершения невозможно дотянуться то записанных чанков (статус/боди)
+        
+        так что нам нужна своя фьюча которой будем перехватывать чанки во всевозможных выходах в finish()
+        """
+        self.response_written_future = Future()
 
     def __repr__(self):
         return '.'.join([self.__module__, self.__class__.__name__])
@@ -621,6 +628,10 @@ class PageHandler(RequestHandler):
             self.finish_with_postprocessors()
             return
 
+        if exception is not None:
+            self.response_written_future.set_exception(exception)
+        else:
+            self.response_written_future.set_exception(Exception(self._reason))
         self.set_header('Content-Type', media_types.TEXT_HTML)
         return super().write_error(status_code, **kwargs)
 
@@ -643,6 +654,8 @@ class PageHandler(RequestHandler):
             self._write_buffer = []
             chunk = None
 
+        if not self.response_written_future.done():
+            self.response_written_future.set_result(None)
         super().finish(chunk)
         self.cleanup()
 
