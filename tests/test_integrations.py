@@ -12,7 +12,7 @@ FRONTIK_RUN = f'{FRONTIK_ROOT}/frontik-test'
 TEST_PROJECTS = f'{FRONTIK_ROOT}/tests/projects'
 
 
-class IntegrationTestCase(unittest.TestCase):
+class TestIntegrations(unittest.TestCase):
 
     def setUp(self):
         self.frontik_multiple_worker_app = FrontikTestInstance(
