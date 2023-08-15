@@ -4,29 +4,25 @@ import logging
 import os.path
 import random
 import re
+from string import Template
 from urllib.parse import urlencode
 from uuid import uuid4
 
-from tornado.escape import to_unicode, utf8
-
+from tornado.escape import utf8
+from http_client.util import to_unicode, any_to_unicode, any_to_bytes
 
 logger = logging.getLogger('util')
 
 
-def any_to_unicode(s):
-    if isinstance(s, bytes):
-        return to_unicode(s)
+def safe_template(format_string, **kwargs):
+    """Safe templating using PEP-292 template strings
+    (see https://docs.python.org/3/library/string.html#template-strings).
 
-    return str(s)
-
-
-def any_to_bytes(s):
-    if isinstance(s, str):
-        return utf8(s)
-    elif isinstance(s, bytes):
-        return s
-
-    return utf8(str(s))
+    :param str format_string: a string to be formatted.
+    :param kwargs: placeholder values.
+    :return str: formatted string.
+    """
+    return Template(to_unicode(format_string)).safe_substitute(**kwargs)
 
 
 def make_qs(query_args):

@@ -1,10 +1,11 @@
 from lxml import etree
+import pytest
 from tornado.ioloop import IOLoop
 
 from frontik.app import FrontikApplication
 from frontik.handler import PageHandler
 from frontik.options import options
-from frontik.testing import FrontikTestCase
+from frontik.testing import FrontikTestCase, FrontikTestBase
 from frontik.util import gather_list
 from tests.projects.test_app.pages.handler import delete
 from tests import FRONTIK_ROOT
@@ -32,21 +33,22 @@ class CheckConfigHandler(PageHandler):
         self.text = self.config.config_param
 
 
-class TestFrontikTesting(FrontikTestCase):
+class TestApplication(FrontikApplication):
+    def application_urls(self):
+        return [
+            ('/config', CheckConfigHandler),
+            ('/sum_values', AsyncHandler),
+            ('/delete', delete.Page),
+        ]
+
+
+class TestFrontikTestingOld(FrontikTestCase):
     def setUp(self):
         options.consul_enabled = False
         super().setUp()
         self.configure_app(serviceHost='http://service.host')
 
     def get_app(self):
-        class TestApplication(FrontikApplication):
-            def application_urls(self):
-                return [
-                    ('/config', CheckConfigHandler),
-                    ('/sum_values', AsyncHandler),
-                    ('/delete', delete.Page),
-                ]
-
         app = TestApplication(app='test_app')
 
         IOLoop.current().run_sync(app.init)
@@ -78,3 +80,34 @@ class TestFrontikTesting(FrontikTestCase):
 
         json = self.fetch_json('/delete')
         self.assertEqual(json, {'result': 'param'})
+
+
+class TestFrontikTesting(FrontikTestBase):
+    @pytest.fixture(scope='class')
+    def test_app(self):
+        yield TestApplication(app='test_app')
+
+    async def test_config(self):
+        self.configure_app(config_param='param_value')
+        response = await self.fetch('/config')
+
+        assert response.status_code == 200
+        assert response.raw_body == b'param_value'
+
+    async def test_json_stub(self):
+        self.configure_app(serviceHost='http://service.host')
+        self.set_stub(
+            f'http://backend/delete', request_method='DELETE',
+            response_file=f'{FRONTIK_ROOT}/tests/stub.json', param='param'
+        )
+
+        json = await self.fetch_json('/delete', method='POST')
+        assert json == {'result': 'param'}
+
+    async def test_xml_stub(self):
+        self.set_stub('http://service.host/val1/$id', response_file=f'{FRONTIK_ROOT}/tests/stub.xml', id='1', val='2')
+        self.set_stub('http://service.host/val2/2', response_file=f'{FRONTIK_ROOT}/tests/stub.xml', val='3')
+
+        doc = await self.fetch_xml('/sum_values')
+
+        assert doc.findtext('result') == '5'
