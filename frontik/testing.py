@@ -1,19 +1,30 @@
 import json
+import logging
+import re
 
-from lxml import etree
-from tornado.escape import utf8
-from tornado.testing import AsyncHTTPTestCase
-from tornado_mock.httpclient import patch_http_client, safe_template, set_stub
-
-# noinspection PyUnresolvedReferences
-import frontik.options
-from frontik.util import make_url
+from aioresponses import aioresponses
 from http_client import AIOHttpClientWrapper
-from http_client.request_response import RequestResult
+from http_client.request_response import RequestBuilder, RequestResult
+from lxml import etree
+import pytest
+import pytest_asyncio
+from tornado.escape import utf8
+from tornado.httpserver import HTTPServer
+from tornado.log import app_log
+from tornado.testing import AsyncHTTPTestCase, bind_unused_port
+from tornado_mock.httpclient import patch_http_client, set_stub
+from yarl import URL
+
+from frontik.app import FrontikApplication
+# noinspection PyUnresolvedReferences
+from frontik.loggers import bootstrap_logger
+from frontik.media_types import APPLICATION_JSON, APPLICATION_XML, APPLICATION_PROTOBUF, TEXT_PLAIN
+from frontik.options import options
+from frontik.util import make_url, safe_template
 
 
 class FrontikTestCase(AsyncHTTPTestCase):
-    """Adds several convenient methods to `tornado.testing.AsyncHTTPTestCase`."""
+    """Deprecated, use FrontikTestBase instead"""
 
     def get_http_client(self):
         """Overrides `AsyncHTTPTestCase.get_http_client` to separate unit test HTTPClient
@@ -73,3 +84,127 @@ class FrontikTestCase(AsyncHTTPTestCase):
             setattr(self._app.config, name, val)
 
         return self
+
+
+class FrontikTestBase:
+    @pytest.fixture(scope="function", autouse=True)
+    def setup_mock_client(self, mock_client):
+        self.mock_client: MockClient = mock_client
+
+    @pytest_asyncio.fixture(scope='function', autouse=True)
+    async def wrap_test_method(self):
+        """
+        code before and after yield point are similar to setUp and tearDown methods
+        """
+        self._app = self.create_app()
+        await self._app.init()
+        self.http_client = AIOHttpClientWrapper()
+
+        sock, port = bind_unused_port()
+        self._port = port
+        self._http_server = HTTPServer(self._app)
+        self._http_server.add_sockets([sock])
+
+        options.stderr_log = True
+        bootstrap_logger(app_log.name, logging.INFO)
+
+        yield
+
+        self._http_server.stop()
+        await self._http_server.close_all_connections()
+        await self.http_client.client_session.close()
+
+    def create_app(self) -> FrontikApplication:
+        raise NotImplementedError()
+
+    def get_app(self) -> FrontikApplication:
+        return self._app
+
+    def get_http_port(self) -> int:
+        return self._port
+
+    async def fetch(self, path: str, query=None, **kwargs) -> RequestResult:
+        query = {} if query is None else query
+        path = make_url(path, **query)
+        host = f'http://127.0.0.1:{self.get_http_port()}'
+
+        request = RequestBuilder(host, 'test', path, 'test_request', request_timeout=2, **kwargs)
+        return await self.http_client.fetch(request)
+
+    async def fetch_xml(self, path, query=None, **kwargs):
+        resp = await self.fetch(path, query, **kwargs)
+        return etree.fromstring(utf8(resp.raw_body))
+
+    async def fetch_json(self, path, query=None, **kwargs):
+        resp = await self.fetch(path, query, **kwargs)
+        return json.loads(resp.raw_body)
+
+    def set_stub(self, url: URL | str | re.Pattern, request_method='GET',
+                 response_file=None, response_body='',
+                 response_code=200, response_headers=None,
+                 response_body_processor=safe_template, **kwargs):
+        """
+        url and request_method are related to mocked resource
+        other params are related to mocked response
+        """
+        self.mock_client.mock(
+            url, request_method=request_method,
+            response_file=response_file, response_body=response_body,
+            response_code=response_code, response_headers=response_headers,
+            response_body_processor=response_body_processor,
+            **kwargs
+        )
+
+    def configure_app(self, **kwargs):
+        for name, val in kwargs.items():
+            setattr(self.get_app().config, name, val)
+
+
+class MockClient:
+    def __init__(self, mock_client_impl):
+        self.mock_client_impl: aioresponses = mock_client_impl
+
+    def mock(self, url: URL | str | re.Pattern, request_method='GET',
+             response_file=None, response_body='', response_code=200, response_headers=None,
+             response_body_processor=safe_template, repeat=True, **kwargs):
+        """
+        url and request_method are related to mocked resource
+        other params are related to mocked response
+        """
+        if isinstance(url, str):
+            url = safe_template(url, **kwargs)
+
+        if response_file is not None:
+            headers = self.guess_content_type_headers(response_file)
+            with open(response_file, 'rb') as f:
+                content = f.read()
+        else:
+            headers = {}
+            content = response_body
+
+        if callable(response_body_processor):
+            content = response_body_processor(content, **kwargs)
+
+        if response_headers is not None:
+            headers.update(response_headers)
+
+        self.mock_client_impl.add(url, method=request_method,
+                                  status=response_code, headers=headers, body=content, repeat=repeat)
+
+    @staticmethod
+    def guess_content_type_headers(file_name):
+        if file_name.endswith('.json'):
+            return {'Content-Type': APPLICATION_JSON}
+        if file_name.endswith('.xml'):
+            return {'Content-Type': APPLICATION_XML}
+        if file_name.endswith('.txt'):
+            return {'Content-Type': TEXT_PLAIN}
+        if file_name.endswith('.proto'):
+            return {'Content-Type': APPLICATION_PROTOBUF}
+        return {}
+
+
+@pytest.fixture
+def mock_client():
+    with aioresponses(passthrough=['http://127.0.0.1']) as m:
+        yield MockClient(m)

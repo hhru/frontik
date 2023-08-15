@@ -1,4 +1,6 @@
 import pytest
+# noinspection PyUnresolvedReferences
+from frontik.testing import mock_client
 
 
 @pytest.fixture(scope='session', autouse=True)
