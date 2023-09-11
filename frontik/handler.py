@@ -140,8 +140,14 @@ class PageHandler(RequestHandler):
         self.xml_producer = self.application.xml.get_producer(self)
         self.doc = self.xml_producer.doc
 
+        if self.application.settings_client:
+            adaptive_nodes = self.application.settings_client.get_str('adaptive.nodes')
+            node_in_adaptive = options.node_name in adaptive_nodes.split(',') if adaptive_nodes else False
+        else:
+            node_in_adaptive = False
+
         self._http_client = self.application.http_client_factory.get_http_client(
-            self.modify_http_client_request, self.debug_mode.enabled
+            self.modify_http_client_request, self.debug_mode.enabled, node_in_adaptive
         )  # type: HttpClient
 
         self._handler_finished_notification = self.finish_group.add_notification()
