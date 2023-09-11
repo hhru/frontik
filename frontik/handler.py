@@ -119,7 +119,7 @@ class PageHandler(RequestHandler):
         self._validation_model = BaseValidationModel
 
         self.timeout_checker = None
-
+        self.use_adaptive_strategy = False
         outer_timeout = request.headers.get(OUTER_TIMEOUT_MS_HEADER)
         if outer_timeout:
             self.timeout_checker = get_timeout_checker(request.headers.get(USER_AGENT_HEADER),
@@ -141,7 +141,7 @@ class PageHandler(RequestHandler):
         self.doc = self.xml_producer.doc
 
         self._http_client = self.application.http_client_factory.get_http_client(
-            self.modify_http_client_request, self.debug_mode.enabled
+            self.modify_http_client_request, self.debug_mode.enabled, self.use_adaptive_strategy
         )  # type: HttpClient
 
         self._handler_finished_notification = self.finish_group.add_notification()
