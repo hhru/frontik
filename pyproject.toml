@@ -40,6 +40,7 @@ tornado-httpclient-mock = '0.2.3'
 sentry-sdk = '1.26.0'
 aiokafka = '0.8.1'
 aioresponses = '0.7.4'
+mypy = '1.5.1'
 
 [tool.pytest.ini_options]
 addopts = '''
@@ -47,3 +48,98 @@ addopts = '''
   --asyncio-mode=auto
   -p no:warnings
 '''
+
+[tool.black]
+# black --diff z_cases.py > z_black_default
+# black --diff z_cases.py > z_black_strings_off
+# black z_cases.py
+line-length = 120
+skip-string-normalization = true
+
+
+[tool.yapf]
+# yapf --diff z_cases.py > z_yapf
+# yapf -i z_cases.py
+use_tabs = false
+column_limit = 120
+indent_closing_brackets = false  # мастхэв, это как раз про неотступ последней строчки
+dedent_closing_brackets = true  # хз что этого но без этого пиздец
+allow_split_before_default_or_named_assigns = false
+blank_line_before_class_docstring = false
+blank_line_before_module_docstring = false
+blank_line_before_nested_class_or_def = true
+force_multiline_dict = false
+indent_dictionary_value = true
+space_between_ending_comma_and_closing_bracket = false
+spaces_around_default_or_named_assign = false
+space_inside_brackets = false
+spaces_around_list_delimiters = false
+spaces_around_dict_delimiters = false
+spaces_around_power_operator = false
+spaces_around_subscript_colon = false
+spaces_around_tuple_delimiters = false
+each_dict_entry_on_separate_line = false
+
+allow_multiline_dictionary_keys = false
+allow_multiline_lambdas = false
+align_closing_bracket_with_visual_indent = false
+allow_split_before_dict_value = false
+arithmetic_precedence_indication = false
+coalesce_brackets = false
+disable_ending_comma_heuristic = false
+indent_blank_lines = false
+join_multiple_lines = false
+split_all_comma_separated_values = false
+split_all_top_level_comma_separated_values = false
+split_arguments_when_comma_terminated = false
+split_before_arithmetic_operator = false
+split_before_bitwise_operator = false
+split_before_closing_bracket = false
+split_before_dict_set_generator = false
+split_before_dot = false
+split_before_expression_after_opening_paren = false
+split_before_first_argument = false
+split_before_logical_operator = false
+split_before_named_assigns = false
+split_complex_comprehension = false
+#no_spaces_around_selected_binary_operators=_stringsetconverter,
+#i18n_comment=str,
+#i18n_function_call=_stringlistconverter,
+#continuation_align_style=_continuationalignstylestringconverter,
+#blank_lines_around_top_level_definition=int,
+#blank_lines_between_top_level_imports_and_variables=int,
+#continuation_indent_width=int,
+#indent_width=int,
+#spaces_before_comment=_intorintlistconverter,
+#split_penalty_after_opening_bracket=int,
+#split_penalty_after_unary_operator=int,
+#split_penalty_arithmetic_operator=int,
+#split_penalty_before_if_expr=int,
+#split_penalty_bitwise_operator=int,
+#split_penalty_comprehension=int,
+#split_penalty_excess_character=int,
+#split_penalty_for_added_line_split=int,
+#split_penalty_import_names=int,
+#split_penalty_logical_operator=int,
+
+
+
+[tool.mypy]
+ignore_missing_imports = true
+disallow_untyped_calls = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+strict = false
+
+
+[tool.ruff]
+line-length = 120
+#ignore = ['E', 'F']
+
+
+[tool.pyright]
+#strict = ['./**']
+reportUnknownVariableType = 'error'
+reportMissingParameterType = 'error'
+reportUnknownParameterType = 'error'
+
