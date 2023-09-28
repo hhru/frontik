@@ -57,11 +57,11 @@ class TestSentryIntegration(unittest.TestCase):
         self.assertEqual(200, frontik_re_app.get_page('sentry_not_configured').status_code)
 
     @staticmethod
-    def _get_sentry_messages():
+    def _get_sentry_messages() -> list:
         sentry_json = frontik_test_app.get_page_json('api/2/store')
         return sentry_json['exceptions']
 
     @staticmethod
-    def _get_sentry_exceptions(name):
+    def _get_sentry_exceptions(name: str) -> list:
         sentry_json = frontik_test_app.get_page_json('api/2/store')
         return list(filter(lambda e: e['exception']['values'][0]['value'] == name, sentry_json['exceptions']))

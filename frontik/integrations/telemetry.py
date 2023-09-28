@@ -1,8 +1,10 @@
+from __future__ import annotations
 import logging
 import random
 from asyncio import Future
 from typing import Optional
 from urllib.parse import urlparse
+from typing import TYPE_CHECKING
 
 import aiohttp
 from http_client import client_request_context
@@ -26,6 +28,9 @@ from frontik import request_context
 from frontik.integrations import Integration, integrations_logger
 from frontik.options import options
 
+if TYPE_CHECKING:
+    from frontik.app import FrontikApplication
+
 log = logging.getLogger('telemetry')
 # change log-level, because mainly detach context produce exception on Tornado 5. Will be deleted, when up Tornado to 6
 logging.getLogger('opentelemetry.context').setLevel(logging.CRITICAL)
@@ -36,47 +41,52 @@ tornado._excluded_urls = ExcludeList(list(tornado._excluded_urls._excluded_urls)
 
 class TelemetryIntegration(Integration):
     def __init__(self):
-        self.aiohttp_instrumentor = None
-        self.tornado_instrumentor = None
+        self.aiohttp_instrumentor = aiohttp_client.AioHttpClientInstrumentor()
+        self.tornado_instrumentor = tornado.TornadoInstrumentor()
 
-    def initialize_app(self, app) -> Optional[Future]:
+    def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
         if not options.opentelemetry_enabled:
-            return
+            return None
 
         integrations_logger.info('start telemetry')
 
-        resource = Resource(attributes={
-            ResourceAttributes.SERVICE_NAME: options.app,
-            ResourceAttributes.SERVICE_VERSION: app.application_version(),
-            ResourceAttributes.HOST_NAME: options.node_name,
-            ResourceAttributes.CLOUD_REGION: http_client_options.datacenter,
-        })
+        resource = Resource(
+            attributes={
+                ResourceAttributes.SERVICE_NAME: options.app,  # type: ignore
+                ResourceAttributes.SERVICE_VERSION: app.application_version(),  # type: ignore
+                ResourceAttributes.HOST_NAME: options.node_name,
+                ResourceAttributes.CLOUD_REGION: http_client_options.datacenter,
+            }
+        )
         otlp_exporter = OTLPSpanExporter(endpoint=options.opentelemetry_collector_url, insecure=True)
 
-        provider = TracerProvider(resource=resource,
-                                  id_generator=FrontikIdGenerator(),
-                                  sampler=ParentBased(TraceIdRatioBased(options.opentelemetry_sampler_ratio)))
+        provider = TracerProvider(
+            resource=resource,
+            id_generator=FrontikIdGenerator(),
+            sampler=ParentBased(TraceIdRatioBased(options.opentelemetry_sampler_ratio)),
+        )
 
         provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
         trace.set_tracer_provider(provider)
 
-        self.aiohttp_instrumentor = aiohttp_client.AioHttpClientInstrumentor()
         self.aiohttp_instrumentor.instrument(
             request_hook=_client_request_hook,
         )
 
-        self.tornado_instrumentor = tornado.TornadoInstrumentor()
         self.tornado_instrumentor.instrument(
             server_request_hook=_server_request_hook,
         )
 
-    def deinitialize_app(self, app) -> Optional[Future]:
+        return None
+
+    def deinitialize_app(self, app: FrontikApplication) -> Optional[Future]:
         if not options.opentelemetry_enabled:
-            return
+            return None
 
         integrations_logger.info('stop telemetry')
         self.aiohttp_instrumentor.uninstrument()
         self.tornado_instrumentor.uninstrument()
+        return None
 
     def initialize_handler(self, handler):
         pass
@@ -87,7 +97,7 @@ def _server_request_hook(span, handler):
     span.set_attribute(SpanAttributes.HTTP_TARGET, handler.request.uri)
 
 
-def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams):
+def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams) -> None:
     if not span or not span.is_recording():
         return
 
@@ -105,8 +115,10 @@ def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams):
     if upstream_datacenter is not None:
         span.set_attribute('http.request.cloud.region', upstream_datacenter)
 
+    return
 
-def get_netloc(url):
+
+def get_netloc(url: str) -> str:
     parts = urlparse(url)
     if parts.scheme not in ('http', 'https', ''):
         parts = urlparse('//' + url)
@@ -115,19 +127,20 @@ def get_netloc(url):
 
 
 class FrontikIdGenerator(IdGenerator):
-
     def generate_span_id(self) -> int:
         return random.getrandbits(64)
 
     def generate_trace_id(self) -> int:
         request_id = request_context.get_request_id()
         try:
+            if request_id is None:
+                raise Exception('bad request_id')
+
             if len(request_id) < 32:
                 log.debug(f'request_id = {request_id} is less than 32 characters. Generating random trace_id ')
                 return random.getrandbits(128)
 
-            request_id = int(request_id[:32], 16)
-            return request_id
+            return int(request_id[:32], 16)
         except Exception:
             log.debug(f'request_id = {request_id} is not valid hex-format. Generating random trace_id')
         return random.getrandbits(128)

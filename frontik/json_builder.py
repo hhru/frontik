@@ -1,13 +1,18 @@
+from __future__ import annotations
 import json
+from typing import TYPE_CHECKING
 
 from tornado.concurrent import Future
 
+if TYPE_CHECKING:
+    from typing import Any, Iterable
 
-def _encode_value(value):
-    def _encode_iterable(values):
+
+def _encode_value(value: Any) -> Any:
+    def _encode_iterable(values: Iterable) -> list:
         return [_encode_value(v) for v in values]
 
-    def _encode_dict(d):
+    def _encode_dict(d: dict) -> dict:
         return {k: _encode_value(v) for k, v in d.items()}
 
     if isinstance(value, dict):
@@ -37,6 +42,7 @@ class FrontikJsonEncoder(json.JSONEncoder):
     * objects with `to_json_value()` method
     * `Future` objects (only if the future is resolved)
     """
+
     def default(self, obj):
         return _encode_value(obj)
 
@@ -44,35 +50,35 @@ class FrontikJsonEncoder(json.JSONEncoder):
 class JsonBuilder:
     __slots__ = ('_data', '_encoder', 'root_node')
 
-    def __init__(self, root_node=None, json_encoder=None):
+    def __init__(self, root_node:str|None=None, json_encoder:Any=None) -> None:
         if root_node is not None and not isinstance(root_node, str):
             raise TypeError(f'Cannot set {root_node} as root node')
 
-        self._data = []
+        self._data: list = []
         self._encoder = json_encoder
         self.root_node = root_node
 
-    def put(self, *args, **kwargs):
+    def put(self, *args: Any, **kwargs: Any) -> None:
         """Append a chunk of data to JsonBuilder."""
         self._data.extend(args)
         if kwargs:
             self._data.append(kwargs)
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         return len(self._data) == 0
 
-    def clear(self):
+    def clear(self) -> None:
         self._data = []
 
-    def replace(self, *args, **kwargs):
+    def replace(self, *args: Any, **kwargs: Any) -> None:
         self.clear()
         self.put(*args, **kwargs)
 
-    def to_dict(self):
-        """ Return plain dict from all data appended to JsonBuilder """
+    def to_dict(self) -> dict:
+        """Return plain dict from all data appended to JsonBuilder"""
         return _encode_value(self._concat_chunks())
 
-    def _concat_chunks(self):
+    def _concat_chunks(self) -> dict:
         result = {}
         for chunk in self._data:
             if isinstance(chunk, Future) or hasattr(chunk, 'to_dict'):
@@ -86,7 +92,7 @@ class JsonBuilder:
 
         return result
 
-    def to_string(self):
+    def to_string(self) -> str:
         if self._encoder is None:
             return json.dumps(self._concat_chunks(), cls=FrontikJsonEncoder, ensure_ascii=False)
 

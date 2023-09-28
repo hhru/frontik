@@ -12,26 +12,17 @@ class TestPreprocessors(unittest.TestCase):
         self.assertEqual(
             response_json,
             {
-                'run': [
-                    'pp01', 'pp02', 'pp1-before', 'pp1-between', 'pp1-after', 'pp2', 'pp3', 'get_page'
-                ],
+                'run': ['pp01', 'pp02', 'pp1-before', 'pp1-between', 'pp1-after', 'pp2', 'pp3', 'get_page'],
                 'put_request_finished': True,
                 'put_request_preprocessors': ['pp01', 'pp02'],
-                'postprocessor': True
-            }
+                'postprocessor': True,
+            },
         )
 
     def test_preprocessor_futures(self):
         response_json = frontik_test_app.get_page_json('preprocessors/preprocessor_futures')
         self.assertEqual(
-            response_json,
-            {
-                'preprocessors': [
-                    'should_finish_first',
-                    'should_finish_second',
-                    'should_finish_third'
-                ]
-            }
+            response_json, {'preprocessors': ['should_finish_first', 'should_finish_second', 'should_finish_third']}
         )
 
     def test_was_preprocessor_called(self):
@@ -43,7 +34,7 @@ class TestPreprocessors(unittest.TestCase):
                 'pp1': True,
                 'pp2': True,
                 'pp3': False,
-            }
+            },
         )
 
     def test_was_async_preprocessor_called(self):
@@ -55,19 +46,14 @@ class TestPreprocessors(unittest.TestCase):
                 'pp1': True,
                 'pp2': True,
                 'pp3': False,
-            }
+            },
         )
 
     def test_priority_preprocessors(self):
         response_json = frontik_test_app.get_page_json('preprocessors/priority_preprocessors')
-        self.assertEqual(
-            response_json,
-            {
-                'order': ['pp0', 'pp2', 'pp1', 'pp3']
-            }
-        )
+        self.assertEqual(response_json, {'order': ['pp0', 'pp2', 'pp1', 'pp3']})
 
-    def test_add_preprocessor_future_after_preprocessors(self):
+    def test_add_preprocessor_future_after_preprocessors(self) -> None:
         response = frontik_test_app.get_page('preprocessors/preprocessor_futures', method=requests.post)
         self.assertEqual(response.status_code, 500)
 
@@ -77,15 +63,11 @@ class TestPreprocessors(unittest.TestCase):
 
     def test_preprocessors_abort(self):
         response_json = frontik_test_app.get_page_json('preprocessors/aborted?abort_preprocessors=true')
-        self.assertEqual(
-            response_json, {'run': ['before', 'pp'], 'put_request_finished': True, 'postprocessor': True}
-        )
+        self.assertEqual(response_json, {'run': ['before', 'pp'], 'put_request_finished': True, 'postprocessor': True})
 
     def test_preprocessors_abort_nowait(self):
         response_json = frontik_test_app.get_page_json('preprocessors/aborted?abort_preprocessors_nowait=true')
-        self.assertEqual(
-            response_json, {'run': ['before', 'pp'], 'postprocessor': True}
-        )
+        self.assertEqual(response_json, {'run': ['before', 'pp'], 'postprocessor': True})
 
     def test_preprocessors_raise_error(self):
         response = frontik_test_app.get_page('preprocessors/aborted?raise_error=true')
@@ -104,7 +86,10 @@ class TestPreprocessors(unittest.TestCase):
     def test_preprocessors_redirect(self):
         response = frontik_test_app.get_page('preprocessors/aborted?redirect=true', allow_redirects=False)
         self.assertEqual(response.status_code, 302)
-        self.assertIn('redirected', response.headers.get('Location'))
+        location = response.headers.get('Location')
+        self.assertTrue(isinstance(location, str))
+        if isinstance(location, str):
+            self.assertIn('redirected', location)
 
     def test_finish_in_nonblocking_group_preprocessor(self):
         response = frontik_test_app.get_page('preprocessors/aborted_nonblocking_group?finish=true')

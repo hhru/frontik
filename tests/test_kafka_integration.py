@@ -2,6 +2,7 @@ import unittest
 
 try:
     import aiokafka
+
     has_kafka = True
 except Exception:
     has_kafka = False

@@ -1,3 +1,4 @@
+import logging
 import os
 import unittest
 from functools import partial
@@ -54,9 +55,12 @@ class TestFileCache(unittest.TestCase):
 
     CACHE_DIR = os.path.join(os.path.dirname(__file__), 'projects', 'test_app', 'xsl')
 
-    class MockLog:
-        def __init__(self):
-            self.message = None
+    class MockLog(logging.Logger):
+        def __init__(self) -> None:
+            self.message: str = None  # type: ignore
+            self.level = 0
+            self.parent = None
+            self.name = 'mock_logger'
 
         def debug(self, message, *args):
             self.message = message % args

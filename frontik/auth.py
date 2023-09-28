@@ -1,8 +1,13 @@
+from __future__ import annotations
 import base64
 import http.client
+from typing import TYPE_CHECKING
 
 from tornado.escape import to_unicode
 from tornado.web import Finish
+
+if TYPE_CHECKING:
+    from frontik.handler import PageHandler
 
 DEBUG_AUTH_HEADER_NAME = 'Frontik-Debug-Auth'
 
@@ -11,7 +16,7 @@ class DebugUnauthorizedError(Finish):
     pass
 
 
-def passed_basic_auth(handler, login, passwd):
+def passed_basic_auth(handler: PageHandler, login: str|None, passwd: str|None) -> bool:
     auth_header = handler.request.headers.get('Authorization')
     if auth_header and auth_header.startswith('Basic '):
         method, auth_b64 = auth_header.split(' ')
@@ -24,7 +29,7 @@ def passed_basic_auth(handler, login, passwd):
     return False
 
 
-def check_debug_auth(handler, login, password):
+def check_debug_auth(handler: PageHandler, login: str|None, password: str|None) -> None:
     """
     :type handler: tornado.web.RequestHandler
     :return: None or tuple(http_code, headers)
@@ -32,7 +37,7 @@ def check_debug_auth(handler, login, password):
     header_name = DEBUG_AUTH_HEADER_NAME
     debug_auth_header = handler.request.headers.get(header_name)
     if debug_auth_header is not None:
-        debug_access = (debug_auth_header == f'{login}:{password}')
+        debug_access = debug_auth_header == f'{login}:{password}'
         if not debug_access:
             handler.set_header('WWW-Authenticate', f'{header_name}-Header realm="Secure Area"')
             handler.set_status(http.client.UNAUTHORIZED)

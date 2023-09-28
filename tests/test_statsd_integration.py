@@ -4,6 +4,10 @@ import unittest
 from tornado.escape import to_unicode
 
 from tests.instances import FrontikTestInstance
+from tests import FRONTIK_ROOT
+
+FRONTIK_RUN = f'{FRONTIK_ROOT}/frontik-test'
+TEST_PROJECTS = f'{FRONTIK_ROOT}/tests/projects'
 
 
 class TestStatsdIntegration(unittest.TestCase):
@@ -15,7 +19,7 @@ class TestStatsdIntegration(unittest.TestCase):
         port = statsd_socket.getsockname()[1]
 
         test_app = FrontikTestInstance(
-            './frontik-test --app=tests.projects.test_app --config=tests/projects/frontik_debug.cfg '
+            f'{FRONTIK_RUN} --app=tests.projects.test_app --config={TEST_PROJECTS}/frontik_debug.cfg '
             f'--statsd_host=127.0.0.1 --consul_enabled=False --statsd_port={port}'
         )
 

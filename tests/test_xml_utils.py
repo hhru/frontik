@@ -1,3 +1,4 @@
+import logging
 import os.path
 import unittest
 
@@ -6,7 +7,8 @@ from lxml_asserts.testcase import LxmlTestCaseMixin
 
 from frontik.xml_util import dict_to_xml, xml_from_file, xml_to_dict
 
-XML = etree.XML('''
+XML = etree.XML(
+    '''
     <root>
         <key1>value</key1>
         <key2></key2>
@@ -23,40 +25,21 @@ XML = etree.XML('''
             <bool>True</bool>
         </complexNested>
     </root>
-    ''')
+    '''
+)
 
 DICT_BEFORE = {
     'key1': 'value',
     'key2': '',
-    'nested': {
-        'key1': 'русский текст в utf-8',
-        'key2': 'русский текст в unicode'
-    },
-    'complexNested': {
-        'nested': {
-            'key': 'value',
-            'otherKey': 'otherValue'
-        },
-        'int': 123,
-        'bool': True
-    }
+    'nested': {'key1': 'русский текст в utf-8', 'key2': 'русский текст в unicode'},
+    'complexNested': {'nested': {'key': 'value', 'otherKey': 'otherValue'}, 'int': 123, 'bool': True},
 }
 
 DICT_AFTER = {
     'key1': 'value',
     'key2': '',
-    'nested': {
-        'key1': 'русский текст в utf-8',
-        'key2': 'русский текст в unicode'
-    },
-    'complexNested': {
-        'nested': {
-            'key': 'value',
-            'otherKey': 'otherValue'
-        },
-        'int': '123',
-        'bool': 'True'
-    }
+    'nested': {'key1': 'русский текст в utf-8', 'key2': 'русский текст в unicode'},
+    'complexNested': {'nested': {'key': 'value', 'otherKey': 'otherValue'}, 'int': '123', 'bool': 'True'},
 }
 
 
@@ -72,9 +55,9 @@ class TestXmlUtils(unittest.TestCase, LxmlTestCaseMixin):
     XML_MISSING_FILE = os.path.join(os.path.dirname(__file__), 'bbb.xml')
     XML_SYNTAX_ERROR_FILE = os.path.join(os.path.dirname(__file__), 'projects', 'test_app', 'xsl', 'syntax_error.xsl')
 
-    class MockLog:
-        def __init__(self):
-            self.message = None
+    class MockLog(logging.Logger):
+        def __init__(self) -> None:
+            self.message: str = None  # type: ignore
 
         def error(self, message, *args):
             self.message = message % args

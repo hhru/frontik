@@ -11,10 +11,11 @@ class Page(PageHandler):
         upstream_config = {
             Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=0),
             "profile_without_retry": UpstreamConfig(max_tries=1),
-            "profile_with_retry": UpstreamConfig(max_tries=2)
+            "profile_with_retry": UpstreamConfig(max_tries=2),
         }
-        self.application.upstream_manager.upstreams['profile_without_retry'] = Upstream('profile_without_retry',
-                                                                                        upstream_config, servers)
+        self.application.upstream_manager.upstreams['profile_without_retry'] = Upstream(
+            'profile_without_retry', upstream_config, servers
+        )
         result = await self.put_url('profile_without_retry', self.request.path, profile="profile_without_retry")
 
         if result.failed or result.response.code == 500:

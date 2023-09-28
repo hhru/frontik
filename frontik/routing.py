@@ -1,8 +1,10 @@
+from __future__ import annotations
 import importlib
 import logging
 import os
 import re
 from inspect import isclass
+from typing import TYPE_CHECKING
 
 from tornado.routing import ReversibleRouter, Router
 from tornado.web import RequestHandler
@@ -10,16 +12,21 @@ from tornado.web import RequestHandler
 from frontik.handler import ErrorHandler
 from frontik.util import reverse_regex_named_groups
 
+if TYPE_CHECKING:
+    from frontik.app import FrontikApplication
+    from typing import Any
+    from tornado.httputil import HTTPServerRequest, HTTPMessageDelegate
+
 routing_logger = logging.getLogger('frontik.routing')
 
 MAX_MODULE_NAME_LENGTH = os.pathconf('/', 'PC_PATH_MAX') - 1
 
 
 class FileMappingRouter(Router):
-    def __init__(self, module):
+    def __init__(self, module: Any) -> None:
         self.name = module.__name__
 
-    def find_handler(self, request, **kwargs):
+    def find_handler(self, request: HTTPServerRequest, **kwargs: Any) -> HTTPMessageDelegate|None:
         url_parts = request.path.strip('/').split('/')
         application = kwargs['application']
 
@@ -35,7 +42,7 @@ class FileMappingRouter(Router):
             routing_logger.info('page module name exceeds PATH_MAX (%s), using 404 page', MAX_MODULE_NAME_LENGTH)
             return _get_application_404_handler_delegate(application, request)
 
-        def _handle_general_module_import_exception():
+        def _handle_general_module_import_exception() -> HTTPMessageDelegate:
             routing_logger.exception('error while importing %s module', page_module_name)
             return _get_application_500_handler_delegate(application, request)
 
@@ -43,8 +50,10 @@ class FileMappingRouter(Router):
             page_module = importlib.import_module(page_module_name)
             routing_logger.debug('using %s from %s', page_module_name, page_module.__file__)
         except ModuleNotFoundError as module_not_found_error:
-            if not (page_module_name == module_not_found_error.name or
-                    page_module_name.startswith(module_not_found_error.name + '.')):
+            if not (
+                page_module_name == module_not_found_error.name
+                or page_module_name.startswith(module_not_found_error.name + '.')  # type: ignore
+            ):
                 return _handle_general_module_import_exception()
             routing_logger.warning('%s module not found', (self.name, page_module_name))
             return _get_application_404_handler_delegate(application, request)
@@ -59,10 +68,10 @@ class FileMappingRouter(Router):
 
 
 class FrontikRouter(ReversibleRouter):
-    def __init__(self, application):
+    def __init__(self, application: FrontikApplication) -> None:
         self.application = application
         self.handlers = []
-        self.handler_names = {}
+        self.handler_names: dict[str, Any] = {}
 
         for handler_spec in application.application_urls():
             if len(handler_spec) > 2:
@@ -76,7 +85,7 @@ class FrontikRouter(ReversibleRouter):
             if handler_name is not None:
                 self.handler_names[handler_name] = pattern
 
-    def find_handler(self, request, **kwargs):
+    def find_handler(self, request: HTTPServerRequest, **kwargs: Any) -> HTTPMessageDelegate:
         routing_logger.info('requested url: %s', request.uri)
 
         for pattern, handler in self.handlers:
@@ -100,23 +109,23 @@ class FrontikRouter(ReversibleRouter):
         routing_logger.error('match for request url "%s" not found', request.uri)
         return _get_application_404_handler_delegate(self.application, request)
 
-    def reverse_url(self, name, *args, **kwargs):
+    def reverse_url(self, name: str, *args: Any, **kwargs: Any) -> str:
         if name not in self.handler_names:
             raise KeyError('%s not found in named urls' % name)
 
         return reverse_regex_named_groups(self.handler_names[name], *args, **kwargs)
 
 
-def _get_application_404_handler_delegate(application, request):
+def _get_application_404_handler_delegate(application: FrontikApplication, request: HTTPServerRequest) -> HTTPMessageDelegate:
     handler_class, handler_kwargs = application.application_404_handler(request)
     return application.get_handler_delegate(request, handler_class, handler_kwargs)
 
 
-def _get_application_500_handler_delegate(application, request):
+def _get_application_500_handler_delegate(application: FrontikApplication, request: HTTPServerRequest) -> HTTPMessageDelegate:
     return application.get_handler_delegate(request, ErrorHandler, {'status_code': 500})
 
 
-def _add_request_arguments_from_path(request, match):
+def _add_request_arguments_from_path(request: HTTPServerRequest, match: re.Match) -> None:
     arguments = match.groupdict()
     for name, value in arguments.items():
         if value:

@@ -1,8 +1,8 @@
 import pytest
-
+from typing import Iterator
 
 @pytest.fixture(scope='session', autouse=True)
-def teardown_module():
+def teardown_module() -> Iterator[None]:
     yield
 
     from tests.instances import (
@@ -20,3 +20,12 @@ def teardown_module():
     frontik_balancer_app.stop()
     frontik_broken_balancer_app.stop()
     frontik_consul_mock_app.stop()
+
+
+def pytest_addoption(parser):
+    parser.addoption('--files_for_lint', action='store', default='')
+
+
+@pytest.fixture(scope='session')
+def files_for_lint(pytestconfig):
+    return pytestconfig.getoption('files_for_lint')

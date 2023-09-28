@@ -12,11 +12,12 @@ from tests.projects.balancer_app.pages import check_all_requests_done, check_all
 
 class Page(PageHandler):
     async def get_page(self):
-        self.application.upstream_manager.update_upstream(Upstream('retry_connect_timeout', {},
-                                                                   [get_server(self, 'normal')]))
+        self.application.upstream_manager.update_upstream(
+            Upstream('retry_connect_timeout', {}, [get_server(self, 'normal')])
+        )
         self.text = ''
 
-        async def make_request():
+        async def make_request() -> None:
             result = await self.post_url('retry_connect_timeout', self.request.path)
 
             if result.failed or result.data is None:

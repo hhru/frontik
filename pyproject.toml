@@ -40,6 +40,9 @@ tornado-httpclient-mock = '0.2.3'
 sentry-sdk = '1.26.0'
 aiokafka = '0.8.1'
 aioresponses = '0.7.4'
+mypy = '1.5.1'
+black = '23.9.1'
+ruff = '0.0.291'
 
 [tool.pytest.ini_options]
 addopts = '''
@@ -47,3 +50,71 @@ addopts = '''
   --asyncio-mode=auto
   -p no:warnings
 '''
+
+[tool.black]
+line-length = 120
+skip-string-normalization = true
+
+[tool.mypy]
+ignore_missing_imports = true
+disallow_untyped_calls = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+strict = false
+exclude = [
+    '.*/api/2.*',
+]
+
+
+[tool.ruff]
+line-length = 120
+select = [
+    'F',
+    'E',
+    'W',
+    'C90',
+    'I',
+    'N',
+    'UP',
+#    'ANN',  # ебать, неужели это мупи заменяет, с этой хуйни ошибок столько же сколько со всего вместе взятого
+    'ASYNC',
+    'S',
+    'BLE',
+    'FBT',
+    'B',
+    'A',
+    'COM',
+    'C4',
+    'DTZ',
+    'T10',
+    'EM',
+    'FA',
+    'ISC',
+    'ICN',
+    'G',
+    'T20',
+    'PT',
+#    'Q',  # ну у нас не в почете дабл квоты
+    'RSE',
+    'RET',
+    'SLF',
+    'SLOT',
+    'SIM',
+    'TID',
+    'TCH',
+    'INT',
+    'ARG',
+    'PTH',
+    'TD',
+    'FIX',
+    'ERA',
+    'PGH',
+    'PL',
+    'TRY',
+    'FLY',
+    'PERF',
+    'FURB',
+    'LOG',
+    'RUF',
+]
+#ignore = ['E', 'F']

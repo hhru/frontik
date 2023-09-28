@@ -5,9 +5,7 @@ from frontik.util import gather_dict
 
 @preprocessor
 def get_page_preprocessor(handler):
-    handler.json.put({
-        'preprocessor': True
-    })
+    handler.json.put({'preprocessor': True})
 
 
 class Page(PageHandler):
@@ -18,14 +16,16 @@ class Page(PageHandler):
         if self.get_argument('return_none', 'false') == 'true':
             return
 
-        results = await gather_dict({
-            'get': self.get_url(self.request.host, self.request.path, data={'return_none': 'true'}, fail_fast=True),
-            'post': self.post_url(self.request.host, self.request.path, data={'param': 'post'}),
-            'put': self.put_url(
-                self.request.host, self.request.path + '?code=401', fail_fast=fail_fast, parse_on_error=True
-            ),
-            'delete': self.delete_url(self.request.host, self.request.path, data={'invalid_dict_value': 'true'}),
-        })
+        results = await gather_dict(
+            {
+                'get': self.get_url(self.request.host, self.request.path, data={'return_none': 'true'}, fail_fast=True),
+                'post': self.post_url(self.request.host, self.request.path, data={'param': 'post'}),
+                'put': self.put_url(
+                    self.request.host, self.request.path + '?code=401', fail_fast=fail_fast, parse_on_error=True
+                ),
+                'delete': self.delete_url(self.request.host, self.request.path, data={'invalid_dict_value': 'true'}),
+            }
+        )
 
         assert results['post'].status_code == 200
         assert results['put'].status_code == 401
@@ -43,18 +43,19 @@ class Page(PageHandler):
 
     async def post_page(self):
         if self.get_argument('fail_fast_default', 'false') == 'true':
-            results = await gather_dict({
-                'e': self.put_url(
-                    self.request.host, '{}?code={}'.format(self.request.path, self.get_argument('code')),
-                    fail_fast=True
-                )
-            })
+            results = await gather_dict(
+                {
+                    'e': self.put_url(
+                        self.request.host,
+                        '{}?code={}'.format(self.request.path, self.get_argument('code')),
+                        fail_fast=True,
+                    )
+                }
+            )
 
             self.json.put(results)
         else:
-            self.json.put({
-                'POST': self.get_argument('param')
-            })
+            self.json.put({'POST': self.get_argument('param')})
 
     async def put_page(self):
         # Testing parse_on_error=True

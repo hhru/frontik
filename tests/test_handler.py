@@ -57,10 +57,7 @@ class TestHandler(unittest.TestCase):
     def test_json_decode_exception(self):
         for method in (requests.post, requests.put):
             response = frontik_test_app.get_page(
-                'handler/json',
-                method=method,
-                headers={'Content-Type': media_types.APPLICATION_JSON},
-                data=b''
+                'handler/json', method=method, headers={'Content-Type': media_types.APPLICATION_JSON}, data=b''
             )
             self.assertEqual(response.status_code, 400)
 

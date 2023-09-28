@@ -1,3 +1,4 @@
+from __future__ import annotations
 import base64
 import http.client
 import unittest
@@ -5,6 +6,10 @@ import unittest
 from tornado.escape import to_unicode
 
 from tests.instances import create_basic_auth_header, frontik_test_app, frontik_no_debug_app
+from typing import TYPE_CHECKING, Dict, Optional
+
+if TYPE_CHECKING:
+    from requests.models import Response
 
 
 class TestDebug(unittest.TestCase):
@@ -77,7 +82,7 @@ class TestDebug(unittest.TestCase):
         for msg in assert_not_found:
             self.assertNotIn(msg, response_content)
 
-    def assertDebugResponseCode(self, page, expected_code, headers=None):
+    def assertDebugResponseCode(self, page: str, expected_code: int, headers: Optional[Dict[str, str]]=None) -> Response:
         response = frontik_no_debug_app.get_page(page, headers=headers)
         self.assertEqual(response.status_code, expected_code)
         return response
@@ -93,7 +98,7 @@ class TestDebug(unittest.TestCase):
                     f'{url}?{param}', http.client.OK, headers={'Authorization': self.DEBUG_BASIC_AUTH}
                 )
 
-    def test_debug_by_basic_auth_with_invalid_header(self):
+    def test_debug_by_basic_auth_with_invalid_header(self) -> None:
         for url in ('simple', 'simple_async'):
             invalid_headers = (
                 'Token user:god',
@@ -104,7 +109,7 @@ class TestDebug(unittest.TestCase):
                 create_basic_auth_header(':'),
                 create_basic_auth_header(''),
                 create_basic_auth_header('not:pass'),
-                'BASIC {}'.format(to_unicode(base64.b64encode(b'user:god')))
+                'BASIC {}'.format(to_unicode(base64.b64encode(b'user:god'))),
             )
 
             for h in invalid_headers:
@@ -123,11 +128,12 @@ class TestDebug(unittest.TestCase):
                 )
 
                 self.assertDebugResponseCode(
-                    f'{url}?{param}', http.client.OK,
-                    headers={'Frontik-Debug-Auth': 'user:god', 'Authorization': 'Basic bad'}
+                    f'{url}?{param}',
+                    http.client.OK,
+                    headers={'Frontik-Debug-Auth': 'user:god', 'Authorization': 'Basic bad'},
                 )
 
-    def test_debug_by_header_with_wrong_header(self):
+    def test_debug_by_header_with_wrong_header(self) -> None:
         for url in ('simple', 'simple_async'):
             for value in ('', 'not:pass', 'user: god', self.DEBUG_BASIC_AUTH):
                 response = self.assertDebugResponseCode(
@@ -140,11 +146,8 @@ class TestDebug(unittest.TestCase):
     def test_debug_by_cookie(self):
         for url in ('simple', 'simple_async'):
             for param in ('debug', 'noxsl', 'notpl'):
-                self.assertDebugResponseCode(
-                    url, http.client.UNAUTHORIZED, headers={'Cookie': f'{param}=true'}
-                )
+                self.assertDebugResponseCode(url, http.client.UNAUTHORIZED, headers={'Cookie': f'{param}=true'})
 
                 self.assertDebugResponseCode(
-                    url, http.client.OK,
-                    headers={'Cookie': f'{param}=true;', 'Authorization': self.DEBUG_BASIC_AUTH}
+                    url, http.client.OK, headers={'Cookie': f'{param}=true;', 'Authorization': self.DEBUG_BASIC_AUTH}
                 )

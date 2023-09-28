@@ -4,7 +4,7 @@ from frontik.handler import AbortAsyncGroup, PageHandler
 
 
 class Page(PageHandler):
-    data = {}
+    data: dict = {}
 
     async def get_page(self):
         if not self.data:
@@ -21,9 +21,9 @@ class Page(PageHandler):
         super(Page, self).finish(chunk)
         if self.request.method == 'GET':
             # HTTP requests with waited=False can be made after handler is finished
-            asyncio.create_task(self.put_url(self.request.host, self.request.path, waited=False))
+            asyncio.create_task(self.put_url(self.request.host, self.request.path, waited=False))  # type: ignore
 
-    async def coro(self):
+    async def coro(self) -> None:
         await self.post_url(self.request.host, self.request.path, waited=False)
 
         # HTTP requests with waited=True are aborted after handler is finished
@@ -41,6 +41,6 @@ class Page(PageHandler):
     async def delete_page(self):
         self.record_request({'delete_made': True})
 
-    def record_request(self, data):
+    def record_request(self, data: dict) -> None:
         self.json.put(data)
         Page.data.update(data)

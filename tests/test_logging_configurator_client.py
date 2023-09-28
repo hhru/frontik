@@ -15,13 +15,11 @@ MOCK_LOG_OVERRIDE_DTO = [
 
 
 class TestLogLevelOverrideExtension(LogLevelOverrideExtension):
-
     async def load_log_level_overrides(self) -> List[LogLevelOverride]:
         return MOCK_LOG_OVERRIDE_DTO
 
 
 class TestLoggingConfiguratorClient(unittest.TestCase):
-
     def setUp(self) -> None:
         self.logging_configurator_client = LoggingConfiguratorClient(TestLogLevelOverrideExtension())
         self.logging_configurator_client.stop_logging_configurator()

@@ -1,6 +1,8 @@
+from __future__ import annotations
 import asyncio
 import time
 import weakref
+from typing import TYPE_CHECKING
 
 import jinja2
 from jinja2.utils import concat
@@ -11,36 +13,19 @@ from frontik.util import get_abs_path, get_cookie_or_url_param_value
 from frontik.options import options
 from frontik.producers import ProducerFactory
 
-
-class JsonProducerFactory(ProducerFactory):
-    def __init__(self, application):
-        if hasattr(application, 'get_jinja_environment'):
-            self.environment = application.get_jinja_environment()
-        elif options.jinja_template_root is not None:
-            self.environment = jinja2.Environment(
-                auto_reload=options.debug,
-                cache_size=options.jinja_template_cache_limit,
-                loader=jinja2.FileSystemLoader(get_abs_path(application.app_root, options.jinja_template_root)),
-            )
-        else:
-            self.environment = None
-
-    def get_producer(self, handler):
-        return JsonProducer(
-            handler,
-            environment=self.environment,
-            json_encoder=getattr(handler, 'json_encoder', None),
-            jinja_context_provider=getattr(handler, 'jinja_context_provider', None),
-        )
+if TYPE_CHECKING:
+    from frontik.handler import PageHandler
+    from frontik.app import FrontikApplication
+    from typing import Any
 
 
 class JsonProducer:
-    def __init__(self, handler, environment=None, json_encoder=None, jinja_context_provider=None):
+    def __init__(self, handler: PageHandler, environment: Any=None, json_encoder:Any=None, jinja_context_provider:Any=None) -> None:
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
 
         self.json = json_builder.JsonBuilder(json_encoder=json_encoder)
-        self.template_filename = None
+        self.template_filename: str = None  # type: ignore
         self.environment = environment
         self.jinja_context_provider = jinja_context_provider
 
@@ -55,16 +40,16 @@ class JsonProducer:
 
         return self._finish_with_json()
 
-    def set_template(self, filename):
+    def set_template(self, filename: str) -> None:
         self.template_filename = filename
 
-    def get_jinja_context(self):
+    def get_jinja_context(self) -> Any:
         if callable(self.jinja_context_provider):
             return self.jinja_context_provider(self.handler)
         else:
             return self.json.to_dict()
 
-    async def _render_template_stream_on_ioloop(self, batch_render_timeout_ms):
+    async def _render_template_stream_on_ioloop(self, batch_render_timeout_ms: int) -> tuple[float, Any]:
         template_render_start_time = time.time()
         template = self.environment.get_template(self.template_filename)
 
@@ -107,7 +92,7 @@ class JsonProducer:
 
             await asyncio.sleep(0)
 
-    async def _finish_with_template(self):
+    async def _finish_with_template(self) -> tuple[Any, None]:
         if not self.environment:
             raise Exception('Cannot apply template, no Jinja2 environment configured')
 
@@ -132,14 +117,17 @@ class JsonProducer:
             if isinstance(e, jinja2.TemplateSyntaxError):
                 self.log.error(
                     '%s in file "%s", line %d\n\t%s',
-                    e.__class__.__name__, to_unicode(e.filename), e.lineno, to_unicode(e.message)
+                    e.__class__.__name__,
+                    to_unicode(e.filename),
+                    e.lineno,
+                    to_unicode(e.message),
                 )
             elif isinstance(e, jinja2.TemplateError):
                 self.log.error('%s error\n\t%s', e.__class__.__name__, to_unicode(e.message))
 
             raise e
 
-    async def _finish_with_json(self):
+    async def _finish_with_json(self) -> tuple[str,None]:
         self.log.debug('finishing without templating')
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.APPLICATION_JSON)
@@ -148,3 +136,25 @@ class JsonProducer:
 
     def __repr__(self):
         return '{}.{}'.format(__package__, self.__class__.__name__)
+
+
+class JsonProducerFactory(ProducerFactory):
+    def __init__(self, application: FrontikApplication) -> None:
+        if hasattr(application, 'get_jinja_environment'):
+            self.environment = application.get_jinja_environment()
+        elif options.jinja_template_root is not None:
+            self.environment = jinja2.Environment(
+                auto_reload=options.debug,
+                cache_size=options.jinja_template_cache_limit,
+                loader=jinja2.FileSystemLoader(get_abs_path(application.app_root, options.jinja_template_root)),  # type: ignore
+            )
+        else:
+            self.environment = None
+
+    def get_producer(self, handler: PageHandler) -> JsonProducer:
+        return JsonProducer(
+            handler,
+            environment=self.environment,
+            json_encoder=getattr(handler, 'json_encoder', None),
+            jinja_context_provider=getattr(handler, 'jinja_context_provider', None),
+        )

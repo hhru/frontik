@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import logging
 import os
@@ -14,6 +15,7 @@ from frontik.options import options
 
 if TYPE_CHECKING:
     from typing import List, Optional
+    from logging import LogRecord
 
 ROOT_LOGGER = logging.root
 JSON_REQUESTS_LOGGER = logging.getLogger('requests')
@@ -22,12 +24,11 @@ CUSTOM_JSON_EXTRA = 'custom_json'
 
 
 class Mdc:
+    def __init__(self) -> None:
+        self.pid: int = None  # type: ignore
+        self.role: str = None  # type: ignore
 
-    def __init__(self):
-        self.pid = None
-        self.role = None
-
-    def init(self, role):
+    def init(self, role: str) -> None:
         self.pid = os.getpid()
         self.role = role
 
@@ -47,11 +48,11 @@ _CONTEXT_FILTER = ContextFilter()
 
 
 class BufferedHandler(Handler):
-    def __init__(self, level=logging.NOTSET):
+    def __init__(self, level:int=logging.NOTSET) -> None:
         super().__init__(level)
-        self.records = []
+        self.records: list[LogRecord] = []
 
-    def handle(self, record):
+    def handle(self, record: logging.LogRecord) -> None:  # type: ignore
         self.records.append(record)
 
     def produce_all(self):
@@ -60,8 +61,9 @@ class BufferedHandler(Handler):
 
 class GlobalLogHandler(Handler):
     def handle(self, record):
-        if request_context.get_log_handler():
-            request_context.get_log_handler().handle(record)
+        handler = request_context.get_log_handler()
+        if handler is not None:
+            handler.handle(record)
 
 
 class JSONFormatter(Formatter):
@@ -73,20 +75,20 @@ class JSONFormatter(Formatter):
         stack_trace = self.format_stack_trace(record)
         mdc = JSONFormatter.get_mdc()
 
-        json_message = {
-            'ts': timestamp
-        }
+        json_message = {'ts': timestamp}
 
         custom_json = getattr(record, CUSTOM_JSON_EXTRA, None)
         if custom_json:
             json_message.update(custom_json)
         else:
-            json_message.update({
-                'lvl': record.levelname,
-                'logger': record.name,
-                'mdc': mdc,
-                'msg': message,
-            })
+            json_message.update(
+                {
+                    'lvl': record.levelname,
+                    'logger': record.name,
+                    'mdc': mdc,
+                    'msg': message,
+                }
+            )
 
             if stack_trace:
                 json_message['exception'] = stack_trace
@@ -94,11 +96,8 @@ class JSONFormatter(Formatter):
         return json.dumps(json_message)
 
     @staticmethod
-    def get_mdc():
-        mdc = {
-            'thread': MDC.pid,
-            'role': MDC.role
-        }
+    def get_mdc() -> dict:
+        mdc = {'thread': MDC.pid, 'role': MDC.role}
 
         handler_name = request_context.get_handler_name()
         if handler_name:
@@ -110,7 +109,7 @@ class JSONFormatter(Formatter):
 
         return mdc
 
-    def format_stack_trace(self, record):
+    def format_stack_trace(self, record: logging.LogRecord) -> str:
         # Copypaste from super.format
         stack_trace = ''
         if record.exc_info and not record.exc_text:
@@ -146,7 +145,7 @@ _STDERR_FORMATTER = None
 _TEXT_FORMATTER = None
 
 
-def get_stderr_formatter():
+def get_stderr_formatter() -> StderrFormatter:
     global _STDERR_FORMATTER
 
     if _STDERR_FORMATTER is None:
@@ -155,7 +154,7 @@ def get_stderr_formatter():
     return _STDERR_FORMATTER
 
 
-def get_text_formatter():
+def get_text_formatter() -> Formatter:
     global _TEXT_FORMATTER
 
     if _TEXT_FORMATTER is None:
@@ -164,7 +163,7 @@ def get_text_formatter():
     return _TEXT_FORMATTER
 
 
-def bootstrap_logger(logger_info, logger_level, use_json_formatter=True, *, formatter=None):
+def bootstrap_logger(logger_info: str|tuple, logger_level: int, use_json_formatter:bool=True, *, formatter:Formatter|None=None) -> logging.Logger:
     if isinstance(logger_info, tuple):
         logger, logger_name = logger_info
     else:
@@ -191,10 +190,11 @@ def bootstrap_logger(logger_info, logger_level, use_json_formatter=True, *, form
     return logger
 
 
-def _configure_file(logger_name: str,
-                    use_json_formatter: bool = True, formatter: 'Optional[Formatter]' = None) -> 'List[Handler]':
+def _configure_file(
+    logger_name: str, use_json_formatter: bool = True, formatter: Formatter|None = None
+) -> list[Handler]:
     log_extension = '.slog' if use_json_formatter else '.log'
-    file_handler = logging.handlers.WatchedFileHandler(os.path.join(options.log_dir, f'{logger_name}{log_extension}'))
+    file_handler = logging.handlers.WatchedFileHandler(os.path.join(options.log_dir, f'{logger_name}{log_extension}'))  # type: ignore
 
     if formatter is not None:
         file_handler.setFormatter(formatter)
@@ -207,7 +207,7 @@ def _configure_file(logger_name: str,
     return [file_handler]
 
 
-def _configure_stderr(formatter: 'Optional[Formatter]' = None):
+def _configure_stderr(formatter: Formatter|None = None) -> list[logging.StreamHandler]:
     stderr_handler = logging.StreamHandler()
     if formatter is not None:
         stderr_handler.setFormatter(formatter)
@@ -218,13 +218,14 @@ def _configure_stderr(formatter: 'Optional[Formatter]' = None):
     return [stderr_handler]
 
 
-def _configure_syslog(logger_name: str,
-                      use_json_formatter: bool = True, formatter: 'Optional[Formatter]' = None) -> 'List[Handler]':
+def _configure_syslog(
+    logger_name: str, use_json_formatter: bool = True, formatter: 'Optional[Formatter]' = None
+) -> 'List[Handler]':
     try:
         syslog_handler = SysLogHandler(
             address=(options.syslog_host, options.syslog_port),
             facility=SysLogHandler.facility_names[options.syslog_facility],
-            socktype=socket.SOCK_DGRAM
+            socktype=socket.SOCK_DGRAM,
         )
         log_extension = '.slog' if use_json_formatter else '.log'
         syslog_handler.ident = f'{options.syslog_tag}/{logger_name}{log_extension}/: '
@@ -243,7 +244,7 @@ def _configure_syslog(logger_name: str,
         return []
 
 
-def bootstrap_core_logging(log_level, use_json, suppressed_loggers):
+def bootstrap_core_logging(log_level: str, use_json: bool, suppressed_loggers: list[str]) -> None:
     """This is a replacement for standard Tornado logging configuration."""
 
     level = getattr(logging, log_level.upper())

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import base64
 import json
 import socket
@@ -12,9 +13,16 @@ from tornado.escape import to_unicode, utf8
 
 from frontik import options
 from tests import FRONTIK_ROOT
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Callable, Any
+    from requests.models import Response
+    from builtins import function
 
 try:
     import coverage
+
     USE_COVERAGE = '--with-coverage' in sys.argv
 except ImportError:
     USE_COVERAGE = False
@@ -24,7 +32,7 @@ FRONTIK_RUN = f'{FRONTIK_ROOT}/frontik-test'
 TEST_PROJECTS = f'{FRONTIK_ROOT}/tests/projects'
 
 
-def _run_command(command, port):
+def _run_command(command: str, port: int) -> subprocess.Popen:
     python = sys.executable
 
     if USE_COVERAGE:
@@ -36,7 +44,7 @@ def _run_command(command, port):
     return subprocess.Popen(executable.split())
 
 
-def find_free_port(from_port=9000, to_port=10000):
+def find_free_port(from_port: int=9000, to_port: int=10000) -> int:
     for port in range(from_port, to_port):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
@@ -52,19 +60,19 @@ def find_free_port(from_port=9000, to_port=10000):
     return port
 
 
-def create_basic_auth_header(credentials):
+def create_basic_auth_header(credentials: str) -> str:
     return 'Basic {}'.format(to_unicode(base64.b64encode(utf8(credentials))))
 
 
 class FrontikTestInstance:
-    def __init__(self, command: str, *, allow_to_create_log_files: bool = False):
+    def __init__(self, command: str, *, allow_to_create_log_files: bool = False) -> None:
         if not allow_to_create_log_files and options.LOG_DIR_OPTION_NAME in command:
             raise Exception('Log to file is prohibited it tests by default. use allow_to_create_log_files if needed')
         self.command = command
-        self.popen = None
-        self.port = None
+        self.popen: subprocess.Popen = None  # type: ignore
+        self.port: int = None  # type: ignore
 
-    def start(self):
+    def start(self) -> None:
         if self.port:
             return
         self.port = find_free_port()
@@ -81,51 +89,52 @@ class FrontikTestInstance:
 
         assert False, 'Failed to start Frontik instance'
 
-    def start_with_check(self, check_function):
+    def start_with_check(self, check_function: Callable) -> None:
         self.port = find_free_port()
         self.popen = _run_command(self.command, self.port)
         check_function(self)
 
-    def stop(self):
+    def stop(self) -> None:
         if not self.port:
             return
 
         self.popen.terminate()
         self.popen.wait(300)
-        self.port = None
+        self.port = None  # type: ignore
 
-    def is_alive(self):
+    def is_alive(self) -> bool:
         return self.popen.poll() is None
 
-    def get_page(self, page, notpl=False, method=requests.get, **kwargs):
+    def get_page(self, page: str, notpl: bool=False, method: Callable|function=requests.get, **kwargs: Any) -> Response:
         if not self.port:
             self.start()
 
         url = 'http://127.0.0.1:{port}/{page}{notpl}'.format(
             port=self.port,
             page=page.format(port=self.port),
-            notpl=('?' if '?' not in page else '&') + 'notpl' if notpl else ''
+            notpl=('?' if '?' not in page else '&') + 'notpl' if notpl else '',
         )
 
         # workaround for different versions of requests library
         if 'auth' in kwargs and requests.__version__ > '1.0':
             from requests.auth import HTTPBasicAuth
+
             auth = kwargs['auth']
             kwargs['auth'] = HTTPBasicAuth(auth[1], auth[2])
 
         kwargs['timeout'] = 4
 
-        return method(url, **kwargs)
+        return method(url, **kwargs)  # type: ignore
 
-    def get_page_xml(self, page, notpl=False, method=requests.get, **kwargs):
+    def get_page_xml(self, page: str, notpl: bool=False, method: Callable=requests.get, **kwargs: Any) -> etree.Element:
         content = utf8(self.get_page(page, notpl=notpl, method=method, **kwargs).content)
 
         try:
             return etree.fromstring(content)
         except Exception as e:
-            raise Exception(f'failed to parse xml ({e}): "{content}"')
+            raise Exception(f'failed to parse xml ({e}): "{str(content)}"')
 
-    def get_page_json(self, page, notpl=False, method=requests.get, **kwargs):
+    def get_page_json(self, page: str, notpl: bool=False, method: Callable=requests.get, **kwargs: Any) -> Any:
         content = self.get_page_text(page, notpl=notpl, method=method, **kwargs)
 
         try:
@@ -133,7 +142,7 @@ class FrontikTestInstance:
         except Exception as e:
             raise Exception(f'failed to parse json ({e}): "{content}"')
 
-    def get_page_text(self, page, notpl=False, method=requests.get, **kwargs):
+    def get_page_text(self, page: str, notpl: bool=False, method: Callable=requests.get, **kwargs: Any) -> str:
         return to_unicode(self.get_page(page, notpl=notpl, method=method, **kwargs).content)
 
 

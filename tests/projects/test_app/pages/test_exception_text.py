@@ -4,12 +4,12 @@ from frontik.util import gather_list
 
 class Page(PageHandler):
     async def get_page(self):
-        async def bad_post_requests():
+        async def bad_post_requests() -> None:
             results = await gather_list(
                 self.post_url(self.request.host, self.request.path),
                 self.post_url(self.request.host, self.request.path),
                 self.post_url(self.request.host, self.request.path),
-                self.post_url(self.request.host, self.request.path)
+                self.post_url(self.request.host, self.request.path),
             )
             for _ in results:
                 assert False

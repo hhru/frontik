@@ -21,8 +21,7 @@ class Page(PageHandler):
         server_slow_start = Server('127.0.0.1:12345', weight=5, dc='Test')
 
         upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=0.1)}
-        self.application.upstream_manager.update_upstream(
-            Upstream('slow_start', upstream_config, [server]))
+        self.application.upstream_manager.update_upstream(Upstream('slow_start', upstream_config, [server]))
         self.text = ''
 
         requests = []
@@ -31,7 +30,8 @@ class Page(PageHandler):
         time.sleep(0.2)
         upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=1)}
         self.application.upstream_manager.update_upstream(
-            Upstream('slow_start', upstream_config, [same_server, server_slow_start]))
+            Upstream('slow_start', upstream_config, [same_server, server_slow_start])
+        )
         requests.append(self.post_url('slow_start', self.request.path))
         time.sleep(1)
         requests.append(self.post_url('slow_start', self.request.path))

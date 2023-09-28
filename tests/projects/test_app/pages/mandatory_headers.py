@@ -5,7 +5,6 @@ from frontik.handler import PageHandler
 
 class Page(PageHandler):
     async def get_page(self):
-
         if self.get_argument('test_mandatory_headers', None) is not None:
             self.set_mandatory_header('TEST_HEADER', 'TEST_HEADER_VALUE')
             self.set_mandatory_cookie('TEST_COOKIE', 'TEST_HEADER_COOKIE')

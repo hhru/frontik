@@ -15,9 +15,7 @@ async def pp1(handler):
 @preprocessor
 async def pp2(handler):
     await handler.future
-    handler.json.put({
-        'test': handler.future_result
-    })
+    handler.json.put({'test': handler.future_result})
 
 
 class Page(PageHandler):

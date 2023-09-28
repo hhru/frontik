@@ -14,8 +14,8 @@ class TestAsyncGroup(unittest.TestCase):
                 '2': {'2': 'yay'},
                 '3': {'3': 'yay'},
                 'final_callback_called': True,
-                'future_callback_result': 'yay'
-            }
+                'future_callback_result': 'yay',
+            },
         )
 
     def test_group_async(self):
@@ -27,8 +27,8 @@ class TestAsyncGroup(unittest.TestCase):
                 '2': {'2': 'yay'},
                 '3': {'3': 'yay'},
                 'final_callback_called': True,
-                'future_callback_result': 'yay'
-            }
+                'future_callback_result': 'yay',
+            },
         )
 
     def test_group_request_fail(self):
@@ -40,8 +40,8 @@ class TestAsyncGroup(unittest.TestCase):
                 '2': {'2': 'yay'},
                 '3': {'error': {'reason': 'Bad Request', 'code': 400}},
                 'final_callback_called': True,
-                'future_callback_result': 'yay'
-            }
+                'future_callback_result': 'yay',
+            },
         )
 
     def test_group_request_fail_async(self):
@@ -53,15 +53,15 @@ class TestAsyncGroup(unittest.TestCase):
                 '2': {'2': 'yay'},
                 '3': {'error': {'reason': 'Bad Request', 'code': 400}},
                 'final_callback_called': True,
-                'future_callback_result': 'yay'
-            }
+                'future_callback_result': 'yay',
+            },
         )
 
-    def test_group_callback_fail(self):
+    def test_group_callback_fail(self) -> None:
         response = frontik_test_app.get_page('async_group/group?fail_callback=true')
         self.assertEqual(response.status_code, 500)
 
-    def test_group_callback_fail_async(self):
+    def test_group_callback_fail_async(self) -> None:
         response = frontik_test_app.get_page('async_group/group_async?fail_callback=true')
         self.assertEqual(response.status_code, 500)
 
@@ -73,11 +73,11 @@ class TestAsyncGroup(unittest.TestCase):
         json = frontik_test_app.get_page_json('async_group/group_with_futures_async')
         self.assertEqual(json, {'1': {'1': 'yay'}, '2': {'2': 'yay'}})
 
-    def test_group_with_failing_future(self):
+    def test_group_with_failing_future(self) -> None:
         response = frontik_test_app.get_page('async_group/group_with_futures?failed_future=true')
         self.assertEqual(response.status_code, 500)
 
-    def test_group_with_failing_future_async(self):
+    def test_group_with_failing_future_async(self) -> None:
         response = frontik_test_app.get_page('async_group/group_with_futures_async?failed_future=true')
         self.assertEqual(response.status_code, 500)
 

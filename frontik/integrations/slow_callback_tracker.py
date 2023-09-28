@@ -18,12 +18,12 @@ long_gc_log = None
 
 
 class SlowCallbackTrackerIntegration(Integration):
-    def initialize_app(self, app) -> Optional[Future]:
+    def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
         if options.asyncio_task_threshold_sec is None:
             integrations_logger.info(
                 'slow callback tracker integration is disabled: asyncio_task_threshold_sec option is None'
             )
-            return
+            return None
         slow_tasks_logger = bootstrap_logger('slow_tasks', logging.WARNING)
         import reprlib
 
@@ -35,14 +35,16 @@ class SlowCallbackTrackerIntegration(Integration):
             global long_gc_log
             long_gc_log = bootstrap_logger('gc_stat', logging.WARNING)
 
+        return None
+
     def initialize_handler(self, handler):
         pass
 
 
-def wrap_handle_with_time_logging(app: FrontikApplication, slow_tasks_logger):
+def wrap_handle_with_time_logging(app: FrontikApplication, slow_tasks_logger: logging.Logger) -> None:
     old_run = asyncio.Handle._run
 
-    def _log_slow_tasks(handle: asyncio.Handle, delta: float):
+    def _log_slow_tasks(handle: asyncio.Handle, delta: float) -> None:
         delta_ms = delta * 1000
         app.statsd_client.time('long_task.time', int(delta_ms))
         slow_tasks_logger.warning('%s took %.2fms', handle, delta_ms)
@@ -67,16 +69,16 @@ def wrap_handle_with_time_logging(app: FrontikApplication, slow_tasks_logger):
         if delta >= options.asyncio_task_threshold_sec:
             self._context.run(partial(_log_slow_tasks, self, delta))
 
-    asyncio.Handle._run = run
+    asyncio.Handle._run = run  # type: ignore
 
 
 class GCStats:
     __slots__ = ('callback_start', 'gc_start', 'sum_duration')
 
-    def __init__(self):
-        self.callback_start = None
-        self.gc_start = None
-        self.sum_duration = 0
+    def __init__(self) -> None:
+        self.callback_start: float | None = None
+        self.gc_start: float | None = None
+        self.sum_duration: float = 0
 
 
 GC_STATS = GCStats()

@@ -38,17 +38,15 @@ class TestApplication(FrontikApplication):
 
 
 class TestKafkaProducer:
-    def __init__(self):
-        self.data = []
+    def __init__(self) -> None:
+        self.data: list[dict] = []
         self.request_id = None
 
     async def send(self, topic, value=None):
         json_data = json.loads(value)
 
         if json_data['requestId'] == self.request_id:
-            self.data.append({
-                topic: json_data
-            })
+            self.data.append({topic: json_data})
 
     def enable_for_request_id(self, request_id):
         self.request_id = request_id

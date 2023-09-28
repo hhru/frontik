@@ -1,14 +1,16 @@
 import copy
+import logging
 import os
+from typing import Any, Callable
 
 from frontik.options import options
 
 
 # This implementation is broken in so many ways
 class LimitedDict(dict):
-    def __init__(self, max_len=None, step=None, deepcopy=False):
+    def __init__(self, max_len:int|None=None, step:int|None=None, deepcopy:bool=False) -> None:
         dict.__init__(self)
-        self._order = []
+        self._order: list = []
         self.max_len = max_len
         self.step = step
         self.deepcopy = deepcopy
@@ -40,7 +42,8 @@ class FileCache:
     """
     load_fn :: filename -> (status, result)
     """
-    def __init__(self, cache_name, root_dir, load_fn, max_len=None, step=None, deepcopy=False):
+
+    def __init__(self, cache_name:str, root_dir:str, load_fn:Callable, max_len:int|None=None, step:int|None=None, deepcopy:bool=False) -> None:
         self.cache_name = cache_name
         self.root_dir = root_dir
         self.load_fn = load_fn
@@ -48,7 +51,7 @@ class FileCache:
         self.max_len = max_len
         self.cache = LimitedDict(max_len, step, deepcopy)
 
-    def populate(self, filenames, log, freeze=False):
+    def populate(self, filenames: list, log: logging.Logger, freeze:bool=False) -> None:
         if self.max_len == 0:
             return
 
@@ -57,7 +60,7 @@ class FileCache:
 
         self.frozen = freeze and self.max_len is None
 
-    def load(self, filename, log):
+    def load(self, filename: str, log: logging.Logger) -> Any:
         if filename in self.cache:
             log.debug('got %s file from cache (%s cache size: %s)', filename, self.cache_name, len(self.cache))
             return self.cache[filename]
@@ -67,7 +70,7 @@ class FileCache:
 
         return self._load(filename, log)
 
-    def _load(self, filename, log):
+    def _load(self, filename: str, log: logging.Logger) -> Any:
         real_filename = os.path.normpath(os.path.join(self.root_dir, filename))
         log.info('reading file "%s"', real_filename)
         result = self.load_fn(real_filename, log)
@@ -77,14 +80,14 @@ class FileCache:
 
 
 class InvalidOptionCache:
-    def __init__(self, option):
+    def __init__(self, option: str) -> None:
         self.option = option
 
     def load(self, filename, *args, **kwargs):
         raise Exception(f'{self.option} option is undefined')
 
 
-def make_file_cache(cache_name, option_name, root_dir, fun, max_len=None, step=None, deepcopy=False):
+def make_file_cache(cache_name: str, option_name: str, root_dir: str|None, fun:Callable, max_len:int|None=None, step:int|None=None, deepcopy:bool=False) -> FileCache|InvalidOptionCache:
     if root_dir:
         # disable cache in development environment
         max_len = 0 if options.debug else max_len

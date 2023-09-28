@@ -3,7 +3,7 @@ from functools import partial
 
 from frontik import request_context
 from frontik.handler import PageHandler
-
+from typing import Callable
 
 def _callback(name, handler, *args):
     handler.json.put({name: request_context.get_handler_name()})
@@ -11,7 +11,7 @@ def _callback(name, handler, *args):
 
 class Page(PageHandler):
     async def get_page(self):
-        def _waited_callback(name):
+        def _waited_callback(name: str) -> Callable:
             return self.finish_group.add(partial(_callback, name, self))
 
         self.json.put({'page': request_context.get_handler_name()})
@@ -22,13 +22,13 @@ class Page(PageHandler):
 
         self.run_task(self.run_coroutine())
 
-        future = self.post_url(self.request.host, self.request.uri)
+        future = self.post_url(self.request.host, self.request.uri)  # type: ignore
         self.add_future(future, _waited_callback('future'))
 
-    async def run_coroutine(self):
+    async def run_coroutine(self) -> None:
         self.json.put({'coroutine_before_yield': request_context.get_handler_name()})
 
-        await self.post_url(self.request.host, self.request.uri)
+        await self.post_url(self.request.host, self.request.uri)  # type: ignore
 
         self.json.put({'coroutine_after_yield': request_context.get_handler_name()})
 

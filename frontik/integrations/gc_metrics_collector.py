@@ -1,27 +1,32 @@
+from __future__ import annotations
 import gc
 import time
 from asyncio import Future
 from functools import partial
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from tornado.ioloop import PeriodicCallback
 
 from frontik.integrations import Integration, integrations_logger
 from frontik.options import options
 
+if TYPE_CHECKING:
+    from frontik.app import FrontikApplication
+
 
 class GCMetricsCollectorIntegration(Integration):
-    def initialize_app(self, app) -> Optional[Future]:
+    def initialize_app(self, app: FrontikApplication) -> Future|None:
         if options.gc_metrics_send_interval_ms is None or options.gc_metrics_send_interval_ms <= 0:
             integrations_logger.info(
                 'GC metrics collector integration is disabled: gc_metrics_send_interval_ms option is not configured'
             )
-            return
+            return None
 
         gc.callbacks.append(gc_metrics_collector)
 
         periodic_callback = PeriodicCallback(partial(send_metrics, app), options.gc_metrics_send_interval_ms)
         periodic_callback.start()
+        return None
 
     def initialize_handler(self, handler):
         pass
@@ -30,22 +35,22 @@ class GCMetricsCollectorIntegration(Integration):
 class GCStats:
     __slots__ = ('start', 'duration', 'count', 'max_stw')
 
-    def __init__(self):
-        self.start = None
-        self.duration = 0
+    def __init__(self) -> None:
+        self.start: float = None  # type: ignore
+        self.duration: float = 0
         self.count = 0
-        self.max_stw = 0
+        self.max_stw: float = 0
 
-    def on_gc_start(self):
+    def on_gc_start(self) -> None:
         self.start = time.perf_counter()
 
-    def on_gc_stop(self):
+    def on_gc_stop(self) -> None:
         gc_duration = time.perf_counter() - self.start
         self.duration += gc_duration
         self.count += 1
         self.max_stw = max(self.max_stw, gc_duration)
 
-    def clear(self):
+    def clear(self) -> None:
         self.duration = 0
         self.count = 0
         self.max_stw = 0

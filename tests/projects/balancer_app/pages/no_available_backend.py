@@ -10,7 +10,7 @@ class Page(handler.PageHandler):
     async def get_page(self):
         self.application.upstream_manager.update_upstream(Upstream('no_available_backend', {}, []))
 
-        async def request_with_processing():
+        async def request_with_processing() -> None:
             result = await self.post_url('no_available_backend', self.request.path)
             if result.exc is not None and isinstance(result.exc, NoAvailableServerException):
                 self.text = 'no backend available'

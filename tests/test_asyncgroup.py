@@ -41,8 +41,8 @@ class TestAsyncGroup(unittest.TestCase):
         self.assertEqual(ag._finished, True)
         self.assertEqual(data, [1, 2, 3])
 
-    def test_notifications(self):
-        f = Future()
+    def test_notifications(self) -> None:
+        f: Future = Future()
         ag = AsyncGroup(partial(f.set_result, True))
         not1 = ag.add_notification()
         not2 = ag.add_notification()
@@ -61,8 +61,8 @@ class TestAsyncGroup(unittest.TestCase):
         with ExpectLog(async_logger, r'.*trying to finish already finished AsyncGroup\(name=None, finished=True\)'):
             ag.finish()
 
-    def test_finish(self):
-        f = Future()
+    def test_finish(self) -> None:
+        f: Future = Future()
         ag = AsyncGroup(partial(f.set_result, True))
 
         self.assertEqual(ag._finished, False)
@@ -73,7 +73,7 @@ class TestAsyncGroup(unittest.TestCase):
         self.assertEqual(ag._finished, True)
         self.assertEqual(f.result(), True)
 
-    def test_exception_in_first(self):
+    def test_exception_in_first(self) -> None:
         def callback1():
             raise Exception('callback1 error')
 
@@ -95,7 +95,7 @@ class TestAsyncGroup(unittest.TestCase):
 
         self.assertEqual(ag._finished, True)
 
-    def test_exception_in_last(self):
+    def test_exception_in_last(self) -> None:
         def callback2():
             raise Exception('callback1 error')
 
@@ -113,7 +113,7 @@ class TestAsyncGroup(unittest.TestCase):
 
         self.assertEqual(ag._finished, True)
 
-    def test_exception_in_final(self):
+    def test_exception_in_final(self) -> None:
         def finish_callback():
             raise Exception('callback1 error')
 

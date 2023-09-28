@@ -1,7 +1,14 @@
+from __future__ import annotations
 from frontik.handler import PageHandler
-
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from tests.projects.consul_mock_app import TestApplication
 
 class Page(PageHandler):
+    def __init__(self, *args, **kwargs):
+        self.application: TestApplication
+        super().__init__(*args, **kwargs)
+
     async def get_page(self):
         self.set_status(200)
         self.application.deregistration_call_counter['get_page'] += 1

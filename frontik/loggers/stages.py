@@ -1,8 +1,14 @@
+from __future__ import annotations
 import logging
 import time
 from collections import namedtuple
+from typing import TYPE_CHECKING
 
 from frontik import request_context
+
+if TYPE_CHECKING:
+    from tornado.httputil import HTTPServerRequest
+    from frontik.integrations.statsd import StatsDClient, StatsDClientStub
 
 stages_logger = logging.getLogger('stages')
 
@@ -10,12 +16,12 @@ stages_logger = logging.getLogger('stages')
 class StagesLogger:
     Stage = namedtuple('Stage', ('name', 'delta', 'start_delta'))
 
-    def __init__(self, request, statsd_client):
+    def __init__(self, request: HTTPServerRequest, statsd_client: StatsDClient|StatsDClientStub) -> None:
         self._last_stage_time = self._start_time = request._start_time
-        self._stages = []
+        self._stages: list[StagesLogger.Stage] = []
         self._statsd_client = statsd_client
 
-    def commit_stage(self, stage_name):
+    def commit_stage(self, stage_name: str) -> None:
         stage_end_time = time.time()
         stage_start_time = self._last_stage_time
         self._last_stage_time = stage_end_time
@@ -27,7 +33,7 @@ class StagesLogger:
         self._stages.append(stage)
         stages_logger.debug('stage "%s" completed in %.2fms', stage.name, stage.delta, extra={'_stage': stage})
 
-    def flush_stages(self, status_code):
+    def flush_stages(self, status_code: int) -> None:
         """Writes available stages, total value and status code"""
         handler_name = request_context.get_handler_name()
 
@@ -43,8 +49,5 @@ class StagesLogger:
 
         stages_logger.info(
             'timings for %(page)s : %(stages)s',
-            {
-                'page': handler_name,
-                'stages': '{0} total={1:.2f} code={2}'.format(stages_str, total, status_code)
-            },
+            {'page': handler_name, 'stages': '{0} total={1:.2f} code={2}'.format(stages_str, total, status_code)},
         )

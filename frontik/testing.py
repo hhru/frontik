@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import re
+from typing import Any, Callable
 
 from aioresponses import aioresponses
 from http_client import AIOHttpClientWrapper
@@ -16,6 +17,7 @@ from tornado_mock.httpclient import patch_http_client, set_stub
 from yarl import URL
 
 from frontik.app import FrontikApplication
+
 # noinspection PyUnresolvedReferences
 from frontik.loggers import bootstrap_logger
 from frontik.media_types import APPLICATION_JSON, APPLICATION_XML, APPLICATION_PROTOBUF, TEXT_PLAIN
@@ -25,6 +27,9 @@ from frontik.util import make_url, safe_template
 
 class FrontikTestCase(AsyncHTTPTestCase):
     """Deprecated, use FrontikTestBase instead"""
+    def __init__(self, *args, **kwargs):
+        self._app: FrontikApplication = None  # type: ignore
+        super().__init__(*args, **kwargs)
 
     def get_http_client(self):
         """Overrides `AsyncHTTPTestCase.get_http_client` to separate unit test HTTPClient
@@ -35,7 +40,7 @@ class FrontikTestCase(AsyncHTTPTestCase):
         self.forced_client = AIOHttpClientWrapper()
         return self.forced_client
 
-    def fetch(self, path, query=None, **kwargs) -> RequestResult:
+    def fetch(self, path: str, query: dict|None=None, **kwargs:Any) -> RequestResult:  # type: ignore
         """Extends `AsyncHTTPTestCase.fetch` method with `query` kwarg.
         This argument accepts a `dict` of request query parameters that will be encoded
         and added to request path.
@@ -44,46 +49,54 @@ class FrontikTestCase(AsyncHTTPTestCase):
         query = {} if query is None else query
         return super().fetch(make_url(path, **query), **kwargs)
 
-    def fetch_xml(self, path, query=None, **kwargs):
+    def fetch_xml(self, path: str, query: dict|None=None, **kwargs:Any) -> etree.Element:
         """Fetch the request and parse xml document from response body."""
         return etree.fromstring(utf8(self.fetch(path, query, **kwargs).raw_body))
 
-    def fetch_json(self, path, query=None, **kwargs):
+    def fetch_json(self, path: str, query: dict|None=None, **kwargs:Any) -> Any:
         """Fetch the request and parse JSON tree from response body."""
         return json.loads(self.fetch(path, query, **kwargs).raw_body)
 
-    def patch_app_http_client(self, app):
+    def patch_app_http_client(self, app: FrontikApplication) -> None:
         """Patches application HTTPClient to enable requests stubbing."""
-        patch_http_client(app.tornado_http_client)
+        patch_http_client(app.tornado_http_client)  # type: ignore
 
-    def set_stub(self, url, request_method='GET',
-                 response_function=None, response_file=None, response_body='',
-                 response_code=200, response_headers=None,
-                 response_body_processor=safe_template, **kwargs):
-
+    def set_stub(
+        self,
+        url: str,
+        request_method: str='GET',
+        response_function:Callable|None=None,
+        response_file:str|None=None,
+        response_body:Any='',
+        response_code:int=200,
+        response_headers:Any=None,
+        response_body_processor:Callable=safe_template,
+        **kwargs:Any,
+    ) -> None:
         set_stub(
-            self._app.tornado_http_client, url, request_method,
-            response_function, response_file, response_body, response_code, response_headers,
-            response_body_processor, **kwargs
+            self._app.tornado_http_client,
+            url,
+            request_method,
+            response_function,
+            response_file,
+            response_body,
+            response_code,
+            response_headers,
+            response_body_processor,
+            **kwargs,
         )
 
     def tearDown(self) -> None:
         if self._app.tornado_http_client is not None:
-            self.io_loop.run_sync(
-                self._app.tornado_http_client.client_session.close
-            )
+            self.io_loop.run_sync(self._app.tornado_http_client.client_session.close)
         if self.forced_client is not None:
-            self.io_loop.run_sync(
-                self.forced_client.client_session.close
-            )
+            self.io_loop.run_sync(self.forced_client.client_session.close)
         super().tearDown()
 
-    def configure_app(self, **kwargs):
+    def configure_app(self, **kwargs: Any) -> None:
         """Updates or adds options to application config."""
         for name, val in kwargs.items():
             setattr(self._app.config, name, val)
-
-        return self
 
 
 class FrontikTestBase:
@@ -124,8 +137,9 @@ class FrontikTestBase:
         await asyncio.wait_for(http_client.client_session.close(), timeout=5)
 
     @pytest.fixture(scope='function', autouse=True)
-    def setup_client_server(self, inited_test_app: FrontikApplication, test_server_port: int,
-                            app_client: AIOHttpClientWrapper):
+    def setup_client_server(
+        self, inited_test_app: FrontikApplication, test_server_port: int, app_client: AIOHttpClientWrapper
+    ) -> None:
         self.app = inited_test_app
         self.port = test_server_port
         self.http_client = app_client
@@ -136,27 +150,36 @@ class FrontikTestBase:
             self.mock_client = mock_client
             yield self.mock_client
 
-    async def fetch(self, path: str, query=None, method='GET', request_timeout=2, **kwargs) -> RequestResult:
+    async def fetch(self, path: str, query:dict|None=None, method:str='GET', request_timeout:float=2, **kwargs:Any) -> RequestResult:
         query = {} if query is None else query
         path = make_url(path, **query)
         host = f'http://127.0.0.1:{self.port}'
 
-        request = RequestBuilder(host, 'test', path, 'test_request', method=method, request_timeout=request_timeout,
-                                 **kwargs)
+        request = RequestBuilder(
+            host, 'test', path, 'test_request', method=method, request_timeout=request_timeout, **kwargs
+        )
         return await self.http_client.fetch(request)
 
-    async def fetch_xml(self, path, query=None, method='GET', **kwargs):
+    async def fetch_xml(self, path:str, query:dict|None=None, method:str='GET', **kwargs: Any) -> etree.Element:
         resp = await self.fetch(path, query, method, **kwargs)
         return etree.fromstring(utf8(resp.raw_body))
 
-    async def fetch_json(self, path, query=None, method='GET', **kwargs):
+    async def fetch_json(self, path: str, query:dict|None=None, method:str='GET', **kwargs: Any) -> Any:
         resp = await self.fetch(path, query, method, **kwargs)
         return json.loads(resp.raw_body)
 
-    def set_stub(self, url: URL | str | re.Pattern, request_method='GET',
-                 response_file=None, response_body='',
-                 response_code=200, response_headers=None,
-                 response_body_processor=safe_template, repeat=True, **kwargs):
+    def set_stub(
+        self,
+        url: URL | str | re.Pattern,
+        request_method:str='GET',
+        response_file:str|None=None,
+        response_body:Any='',
+        response_code:int=200,
+        response_headers:dict|None=None,
+        response_body_processor: Callable|None=safe_template,
+        repeat:bool=True,
+        **kwargs:Any,
+    ) -> None:
         """
         url and request_method are related to mocked resource
         other params are related to mocked response
@@ -178,15 +201,16 @@ class FrontikTestBase:
         if response_headers is not None:
             headers.update(response_headers)
 
-        self.mock_client.add(url, method=request_method, status=response_code, headers=headers, body=content,
-                             repeat=repeat)
+        self.mock_client.add(
+            url, method=request_method, status=response_code, headers=headers, body=content, repeat=repeat
+        )
 
-    def configure_app(self, **kwargs):
+    def configure_app(self, **kwargs: Any) -> None:
         for name, val in kwargs.items():
             setattr(self.app.config, name, val)
 
     @staticmethod
-    def guess_content_type_headers(file_name):
+    def guess_content_type_headers(file_name: str) -> dict[str, str]:
         if file_name.endswith('.json'):
             return {'Content-Type': APPLICATION_JSON}
         if file_name.endswith('.xml'):

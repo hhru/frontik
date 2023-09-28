@@ -11,7 +11,7 @@ def pp_before(handler):
 
 @preprocessor
 async def pp(handler):
-    async def post_request():
+    async def post_request() -> None:
         await handler.put_url(handler.request.host, handler.request.path)
         handler.json.put({'put_request_finished': True})
 
@@ -44,10 +44,8 @@ class Page(PageHandler):
     def prepare(self):
         super().prepare()
 
-        self.run = []
-        self.json.put({
-            'run': self.run
-        })
+        self.run: list = []
+        self.json.put({'run': self.run})
 
         self.add_postprocessor(lambda handler: handler.json.put({'postprocessor': True}))
 

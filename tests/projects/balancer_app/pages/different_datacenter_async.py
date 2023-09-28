@@ -16,7 +16,8 @@ class Page(PageHandler):
         normal_server.datacenter = 'dc2'
 
         self.application.upstream_manager.update_upstream(
-            Upstream('different_datacenter', {}, [free_server, normal_server]))
+            Upstream('different_datacenter', {}, [free_server, normal_server])
+        )
 
         result = await self.post_url('different_datacenter', self.request.path)
 
