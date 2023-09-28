@@ -13,9 +13,7 @@ class Page(frontik.handler.PageHandler):
         Page.exceptions.append(sentry_event)
 
     async def get_page(self):
-        self.json.put({
-            'exceptions': Page.exceptions
-        })
+        self.json.put({'exceptions': Page.exceptions})
 
     async def delete_page(self):
         Page.exceptions = []

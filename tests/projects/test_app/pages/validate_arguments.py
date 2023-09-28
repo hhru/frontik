@@ -1,12 +1,11 @@
-from typing import Optional
+from pydantic import validator
 
 from frontik.handler import PageHandler
 from frontik.validator import BaseValidationModel, Validators
-from pydantic import validator
 
 
 class CustomModel(BaseValidationModel):
-    string: Optional[str]
+    string: str | None
 
     @validator('string')
     @classmethod
@@ -30,23 +29,27 @@ class Page(PageHandler):
         list_int = self.get_validated_argument('list', Validators.LIST_INT, array=True)
         string = self.get_str_argument('string', path_safe=not is_custom_model)
 
-        self.json.put({
-            'list': list_int,
-            'string': string,
-            'str_arg_with_default': empty_default_str,
-            'int_arg_with_default': empty_default_int,
-            'str_arg': empty_str,
-            'none_float': none_float is None
-        })
+        self.json.put(
+            {
+                'list': list_int,
+                'string': string,
+                'str_arg_with_default': empty_default_str,
+                'int_arg_with_default': empty_default_int,
+                'str_arg': empty_str,
+                'none_float': none_float is None,
+            },
+        )
 
     async def post_page(self):
         str_body_arg = self.get_str_argument('str_argument', 'default', from_body=True)
         int_body_arg = self.get_int_argument('int_argument', 0, from_body=True)
 
-        self.json.put({
-            'str_body_arg': str_body_arg,
-            'int_body_arg': int_body_arg,
-        })
+        self.json.put(
+            {
+                'str_body_arg': str_body_arg,
+                'int_body_arg': int_body_arg,
+            },
+        )
 
     async def put_page(self):
-        self.get_str_argument('str_arg', 3)
+        self.get_str_argument('str_arg', 3)  # type: ignore

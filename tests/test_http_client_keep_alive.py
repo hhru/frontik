@@ -1,22 +1,27 @@
 import socket
 import unittest
 from contextlib import closing
+from typing import Any
+
+import pytest
 
 from tests.instances import find_free_port, frontik_test_app
-import pytest
 
 
 @pytest.mark.skip(reason="doesn't work with native coroutines")
 class TestHTTPClientKeepAlive(unittest.TestCase):
-    """ Tests use frontik_client to send http request to frontik_keep_alive_app.
-        Frontik_keep_alive_app proxies the request to backend.
-        Backend is just a simple server socket.
-        We write http response to accepted socket and check whether it is closed or not.
+    """Tests use frontik_client to send http request to frontik_keep_alive_app.
+    Frontik_keep_alive_app proxies the request to backend.
+    Backend is just a simple server socket.
+    We write http response to accepted socket and check whether it is closed or not.
     """
 
     def setUp(self):
         self.backend = Backend()
         frontik_test_app.start()
+        if frontik_test_app.port is None:
+            msg = 'app port can not be None'
+            raise Exception(msg)
         self.client = Client(frontik_test_app.port)
 
     def tearDown(self):
@@ -65,42 +70,42 @@ class TestHTTPClientKeepAlive(unittest.TestCase):
 
 
 class Client:
-    def __init__(self, port):
+    def __init__(self, port: int) -> None:
         self.port = port
         self.socket = socket.socket()
         self.socket.connect(('127.0.0.1', port))
         self.socket.settimeout(5)
 
-    def send_request(self, backend_port, request_id=None):
+    def send_request(self, backend_port: int, request_id: str | None = None) -> None:
         self.socket.send(b'GET /http_client/proxy_code?port=' + str(backend_port).encode() + b' HTTP/1.1\r\n')
         self.socket.send(b'Host: 127.0.0.1:' + str(self.port).encode() + b'\r\n')
         if request_id:
             self.socket.send(b'X-Request-Id: ' + request_id.encode() + b'\r\n')
         self.socket.send(b'\r\n')
 
-    def get_response(self):
+    def get_response(self) -> Any:
         return self.socket.recv(1024).decode()
 
-    def close(self):
+    def close(self) -> None:
         self.socket.close()
 
 
 class Backend:
-    def __init__(self):
+    def __init__(self) -> None:
         self.port = find_free_port()
         self.socket = socket.socket()
         self.socket.bind(('127.0.0.1', self.port))
         self.socket.listen(1)
 
-    def accept(self):
+    def accept(self) -> closing:
         socket, _ = self.socket.accept()
         return closing(socket)
 
-    def close(self):
+    def close(self) -> None:
         self.socket.close()
 
 
-def handle_request_to_backend(backend_socket, code, reason, headers=None):
+def handle_request_to_backend(backend_socket: socket.socket, code: str, reason: str, headers: Any = None) -> None:
     backend_socket.recv(1024)
     backend_socket.send(b'HTTP/1.1 ' + code.encode() + b' ' + reason.encode() + b'\r\n')
     if headers is not None:

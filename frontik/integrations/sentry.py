@@ -1,5 +1,6 @@
-from asyncio import Future
-from typing import Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import sentry_sdk
 from http_client.request_response import FailFastError
@@ -9,12 +10,17 @@ from tornado.web import HTTPError
 from frontik.integrations import Integration, integrations_logger
 from frontik.options import options
 
+if TYPE_CHECKING:
+    from asyncio import Future
+
+    from frontik.app import FrontikApplication
+
 
 class SentryIntegration(Integration):
-    def initialize_app(self, app) -> Optional[Future]:
+    def initialize_app(self, app: FrontikApplication) -> Future | None:
         if not options.sentry_dsn:
             integrations_logger.info('sentry integration is disabled: sentry_dsn option is not configured')
-            return
+            return None
 
         sentry_sdk.init(
             dsn=options.sentry_dsn,
@@ -25,7 +31,7 @@ class SentryIntegration(Integration):
             integrations=[
                 TornadoIntegration(),
             ],
-            ignore_errors=[HTTPError, FailFastError]
+            ignore_errors=[HTTPError, FailFastError],
         )
 
         return None

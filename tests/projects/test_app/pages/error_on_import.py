@@ -1,1 +1,2 @@
-raise ValueError('error on import')
+msg = 'error on import'
+raise ValueError(msg)

@@ -2,14 +2,12 @@ import unittest
 
 import requests
 
-from tests.instances import frontik_test_app
 from frontik import media_types
+from tests.instances import frontik_test_app
 
 
 class TestHttpError(unittest.TestCase):
-    _CODES_MAPPING = {
-        200: 200, 401: 401, 599: 503
-    }
+    _CODES_MAPPING = {200: 200, 401: 401, 599: 503}
 
     def test_raise_200(self):
         response = frontik_test_app.get_page('http_error?code=200')
@@ -23,7 +21,7 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.headers['content-type'], media_types.TEXT_HTML)
         self.assertEqual(
             response.content,
-            b'<html><title>401: Unauthorized</title><body>401: Unauthorized</body></html>'
+            b'<html><title>401: Unauthorized</title><body>401: Unauthorized</body></html>',
         )
 
     def test_raise_unknown_code(self):
@@ -64,12 +62,12 @@ class TestHttpError(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.content, b'{"reason": "bad argument"}')
 
-    def test_write_error(self):
+    def test_write_error(self) -> None:
         response = frontik_test_app.get_page('write_error')
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.content, b'{"write_error": true}')
 
-    def test_write_error_exception(self):
+    def test_write_error_exception(self) -> None:
         response = frontik_test_app.get_page('write_error?fail_write_error=true')
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.content, b'')

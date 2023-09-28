@@ -5,14 +5,14 @@ import frontik.handler
 
 class Page(frontik.handler.PageHandler):
     async def get_page(self):
-        future = Future()
+        future: Future = Future()
 
         if self.get_argument('failed_future', 'false') == 'true':
             future.set_exception(Exception('failed future exception'))
         else:
             future.set_result({'1': 'yay'})
 
-        another_future = Future()
+        another_future: Future = Future()
         another_future.set_result({'2': 'yay'})
 
         self.json.put(
@@ -20,6 +20,6 @@ class Page(frontik.handler.PageHandler):
                 {
                     '1': future,
                     '2': another_future,
-                }
-            )
+                },
+            ),
         )

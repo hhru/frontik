@@ -2,7 +2,7 @@ import frontik.handler
 
 
 class Page(frontik.handler.PageHandler):
-    def _page_handler(self):
+    def _page_handler(self) -> None:
         self.text = self.get_body_argument('foo')
 
     async def post_page(self):

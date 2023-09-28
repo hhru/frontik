@@ -6,11 +6,16 @@ from collections import defaultdict
 
 from tornado.escape import to_unicode
 
+from tests import FRONTIK_ROOT
 from tests.instances import FrontikTestInstance
+
+FRONTIK_RUN = f'{FRONTIK_ROOT}/frontik-test'
+TEST_PROJECTS = f'{FRONTIK_ROOT}/tests/projects'
 
 
 class TestSyslog(unittest.TestCase):
-    test_app = None
+    test_app: FrontikTestInstance
+    s: socket.socket
 
     @classmethod
     def setUpClass(cls):
@@ -21,9 +26,9 @@ class TestSyslog(unittest.TestCase):
         port = cls.s.getsockname()[1]
 
         cls.test_app = FrontikTestInstance(
-            './frontik-test --app=tests.projects.test_app --config=tests/projects/frontik_debug.cfg '
+            f'{FRONTIK_RUN} --app=tests.projects.test_app --config={TEST_PROJECTS}/frontik_debug.cfg '
             f'--syslog=true --consul_enabled=False --syslog_host=127.0.0.1 --syslog_tag=test'
-            f' --log_level=debug --syslog_port={port}'
+            f' --log_level=debug --syslog_port={port}',
         )
 
     @classmethod
@@ -51,57 +56,41 @@ class TestSyslog(unittest.TestCase):
             self.assertRegex(log, syslog_line_regexp)
 
             match = re.match(syslog_line_regexp, log)
-            priority, tag, message = match.groups()
-
-            parsed_logs[tag].append({
-                'priority': priority,
-                'message': message
-            })
+            if match is not None:
+                priority, tag, message = match.groups()
+                parsed_logs[tag].append({'priority': priority, 'message': message})
 
         expected_service_logs = [
             {
                 'priority': '14',
                 'message': {
-                    'lvl': 'INFO', 'logger': r'server', 'msg': r'starting application tests\.projects\.test_app'
-                }
+                    'lvl': 'INFO',
+                    'logger': r'server',
+                    'msg': r'starting application tests\.projects\.test_app',
+                },
             },
+            {'priority': '14', 'message': {'lvl': 'INFO', 'logger': r'frontik\.routing', 'msg': 'requested url: /log'}},
+            {'priority': '15', 'message': {'lvl': 'DEBUG', 'logger': r'handler', 'msg': 'debug'}},
+            {'priority': '14', 'message': {'lvl': 'INFO', 'logger': r'handler', 'msg': 'info'}},
             {
-                'priority': '14',
+                'priority': '11',
                 'message': {
-                    'lvl': 'INFO', 'logger': r'frontik\.routing', 'msg': 'requested url: /log'
-                }
-            },
-            {
-                'priority': '15',
-                'message': {
-                    'lvl': 'DEBUG', 'logger': r'handler', 'msg': 'debug'
-                }
-            },
-            {
-                'priority': '14',
-                'message': {
-                    'lvl': 'INFO', 'logger': r'handler', 'msg': 'info'
-                }
+                    'lvl': 'ERROR',
+                    'logger': r'handler',
+                    'msg': 'exception',
+                    'exception': '.*raise Exception.*',
+                },
             },
             {
                 'priority': '11',
                 'message': {
-                    'lvl': 'ERROR', 'logger': r'handler', 'msg': 'exception', 'exception': '.*raise Exception.*'
-                }
+                    'lvl': 'ERROR',
+                    'logger': r'handler',
+                    'msg': 'error',
+                    'exception': r".*self\.log\.error\('error', stack_info=True\)",
+                },
             },
-            {
-                'priority': '11',
-                'message': {
-                    'lvl': 'ERROR', 'logger': r'handler', 'msg': 'error',
-                    'exception': r".*self\.log\.error\('error', stack_info=True\)"
-                }
-            },
-            {
-                'priority': '10',
-                'message': {
-                    'lvl': 'CRITICAL', 'logger': r'handler', 'msg': 'critical'
-                }
-            },
+            {'priority': '10', 'message': {'lvl': 'CRITICAL', 'logger': r'handler', 'msg': 'critical'}},
         ]
 
         self.assert_json_logs_match(expected_service_logs, parsed_logs['test/service.slog/'])
@@ -109,9 +98,7 @@ class TestSyslog(unittest.TestCase):
         expected_requests_logs = [
             {
                 'priority': '14',
-                'message': {
-                    'ip': '.+', 'rid': '.+', 'status': '200', 'time': '.+', 'method': 'GET', 'uri': '/log'
-                }
+                'message': {'ip': '.+', 'rid': '.+', 'status': '200', 'time': '.+', 'method': 'GET', 'uri': '/log'},
             },
         ]
 
@@ -121,27 +108,26 @@ class TestSyslog(unittest.TestCase):
             {
                 'priority': '10',
                 'message': r'\[\d+\] [\d-]+ [\d:,]+ CRITICAL '
-                           r'custom_logger\.tests\.projects\.test_app\.pages\.log\.Page\.\w+: fatal'
+                r'custom_logger\.tests\.projects\.test_app\.pages\.log\.Page\.\w+: fatal',
             },
         ]
 
         self.assert_text_logs_match(expected_custom_logs, parsed_logs['test/custom_logger.log/'])
 
-    def assert_json_logs_match(self, expected_logs, parsed_logs):
+    def assert_json_logs_match(self, expected_logs: list, parsed_logs: list) -> None:
         for expected_log in expected_logs:
             for actual_log in parsed_logs:
                 priority = actual_log['priority']
                 message = json.loads(actual_log['message'])
 
-                if (
-                    priority == expected_log['priority'] and
-                    all(re.match(v, str(message[k]), re.DOTALL) for k, v in expected_log['message'].items())
+                if priority == expected_log['priority'] and all(
+                    re.match(v, str(message[k]), re.DOTALL) for k, v in expected_log['message'].items()
                 ):
                     break
             else:
                 self.fail(f'Log message not found: {expected_log}')
 
-    def assert_text_logs_match(self, expected_logs, parsed_logs):
+    def assert_text_logs_match(self, expected_logs: list, parsed_logs: list) -> None:
         for expected_log in expected_logs:
             for actual_log in parsed_logs:
                 priority = actual_log['priority']

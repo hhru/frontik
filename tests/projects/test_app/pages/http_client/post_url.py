@@ -2,8 +2,9 @@ import re
 
 import frontik.handler
 from frontik.util import any_to_bytes, any_to_unicode
+from typing import Any
 
-FIELDS = {
+FIELDS: dict[str, Any] = {
     'fielda': 'hello',
     'fieldb': '',
     'field3': 'None',
@@ -13,7 +14,7 @@ FIELDS = {
     'field7': ['1', '3', 'jiji', bytes([1, 2, 3])]
 }
 
-FILES = {
+FILES: dict[str, list] = {
     'field9': [{'filename': 'file0', 'body': b'\x10\x20\x30'}],
     'field10': [
         {'filename': 'file1', 'body': b'\x01\x02\x03'},

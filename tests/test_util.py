@@ -1,89 +1,88 @@
 import unittest
 from collections import OrderedDict
 
+from http_client.util import make_mfd
 from tornado.escape import to_unicode
 from tornado.httputil import HTTPFile, parse_body_arguments
 
 from frontik import media_types
-from frontik.util import any_to_bytes, any_to_unicode, make_qs, make_url, reverse_regex_named_groups, \
-    generate_uniq_timestamp_request_id, check_request_id
-
-from http_client.util import make_mfd
+from frontik.util import (
+    any_to_bytes,
+    any_to_unicode,
+    check_request_id,
+    generate_uniq_timestamp_request_id,
+    make_qs,
+    make_url,
+    reverse_regex_named_groups,
+)
 
 
 class TestUtil(unittest.TestCase):
-    def test_make_qs_simple(self):
+    def test_make_qs_simple(self) -> None:
         query_args = {'a': '1', 'b': '2'}
-        self.assertQueriesEqual(make_qs(query_args), 'a=1&b=2')
+        self.assert_queries_equal(make_qs(query_args), 'a=1&b=2')
 
-    def test_make_qs_not_str(self):
+    def test_make_qs_not_str(self) -> None:
         query_args = {'a': 1, 'b': 2.0, 'c': True, 'd': None}
-        self.assertQueriesEqual(make_qs(query_args), 'a=1&b=2.0&c=True')
+        self.assert_queries_equal(make_qs(query_args), 'a=1&b=2.0&c=True')
 
-    def test_make_qs_iterables(self):
+    def test_make_qs_iterables(self) -> None:
         query_args = {'a': [1, 2], 'b': {1, 2}, 'c': (1, 2), 'd': frozenset((1, 2))}
-        self.assertQueriesEqual(make_qs(query_args), 'a=1&a=2&b=1&b=2&c=1&c=2&d=1&d=2')
+        self.assert_queries_equal(make_qs(query_args), 'a=1&a=2&b=1&b=2&c=1&c=2&d=1&d=2')
 
-    def test_make_qs_none(self):
+    def test_make_qs_none(self) -> None:
         query_args = {'a': None, 'b': None}
-        self.assertQueriesEqual(make_qs(query_args), '')
+        self.assert_queries_equal(make_qs(query_args), '')
 
-    def test_make_qs_encode(self):
+    def test_make_qs_encode(self) -> None:
         query_args = {'a': 'тест', 'b': 'тест'}
         qs = make_qs(query_args)
         self.assertIsInstance(qs, str)
-        self.assertQueriesEqual(qs, 'a=%D1%82%D0%B5%D1%81%D1%82&b=%D1%82%D0%B5%D1%81%D1%82')
+        self.assert_queries_equal(qs, 'a=%D1%82%D0%B5%D1%81%D1%82&b=%D1%82%D0%B5%D1%81%D1%82')
 
-    def test_make_qs_from_ordered_dict(self):
+    def test_make_qs_from_ordered_dict(self) -> None:
         qs = make_qs(OrderedDict([('z', 'я'), ('г', 'd'), ('b', ['2', '1'])]))
         self.assertIsInstance(qs, str)
         self.assertEqual(qs, 'z=%D1%8F&%D0%B3=d&b=2&b=1')
 
-    def test_make_qs_unicode_params(self):
-        self.assertQueriesEqual(
+    def test_make_qs_unicode_params(self) -> None:
+        self.assert_queries_equal(
             make_qs({'при': 'вет', 'по': 'ка'}),
-            '%D0%BF%D1%80%D0%B8=%D0%B2%D0%B5%D1%82&%D0%BF%D0%BE=%D0%BA%D0%B0'
+            '%D0%BF%D1%80%D0%B8=%D0%B2%D0%B5%D1%82&%D0%BF%D0%BE=%D0%BA%D0%B0',
         )
 
     def test_make_url(self):
-        self.assertEqual(
-            make_url('http://test.com/path', param='value'),
-            'http://test.com/path?param=value'
-        )
+        self.assertEqual(make_url('http://test.com/path', param='value'), 'http://test.com/path?param=value')
 
-        self.assertEqual(
-            make_url('http://test.com/path?k=v', param='value'),
-            'http://test.com/path?k=v&param=value'
-        )
+        self.assertEqual(make_url('http://test.com/path?k=v', param='value'), 'http://test.com/path?k=v&param=value')
 
         self.assertEqual(
             make_url('http://тест.рф/path?k=v', param='тест'),
-            'http://тест.рф/path?k=v&param=%D1%82%D0%B5%D1%81%D1%82'
+            'http://тест.рф/path?k=v&param=%D1%82%D0%B5%D1%81%D1%82',
         )
 
-    def assertQueriesEqual(self, qs1, qs2):
+    def assert_queries_equal(self, qs1: str, qs2: str) -> None:
         qs1_list = sorted(qs1.split('&'))
         qs2_list = sorted(qs2.split('&'))
         self.assertEqual(qs1_list, qs2_list)
 
-    def test_any_to_unicode(self):
+    def test_any_to_unicode(self) -> None:
         self.assertEqual(any_to_unicode(5), '5')
         self.assertEqual(any_to_unicode(None), 'None')
         self.assertEqual(any_to_unicode('тест'), 'тест')
-        self.assertEqual(any_to_unicode('тест'.encode('utf-8')), 'тест')
+        self.assertEqual(any_to_unicode('тест'.encode()), 'тест')
 
-    def test_any_to_bytes(self):
+    def test_any_to_bytes(self) -> None:
         self.assertEqual(any_to_bytes(5), b'5')
         self.assertEqual(any_to_bytes(None), b'None')
-        self.assertEqual(any_to_bytes('тест'), 'тест'.encode('utf-8'))
-        self.assertEqual(any_to_bytes('тест'.encode('utf-8')), 'тест'.encode('utf-8'))
+        self.assertEqual(any_to_bytes('тест'), 'тест'.encode())
+        self.assertEqual(any_to_bytes('тест'.encode()), 'тест'.encode())
 
-    def test_make_mfd(self):
-        args, files = {}, {}
+    def test_make_mfd(self) -> None:
+        args: dict = {}
+        files: dict = {}
         body, content_type = make_mfd(
-            {
-                'arg1': 'value1'
-            },
+            {'arg1': 'value1'},
             {
                 'file0': [HTTPFile(filename='file0.rar', body='ARCHIVE', content_type='some/type\r\n\r\nBAD DATA')],
                 'file1': [HTTPFile(filename='file1.png', body='CAT PICTURE', content_type=media_types.IMAGE_PNG)],
@@ -92,7 +91,7 @@ class TestUtil(unittest.TestCase):
                     HTTPFile(filename=r'file3-"part1".unknown', body='BODY1'),
                     HTTPFile(filename=r'file3-\part2\.unknown', body='BODY2'),
                 ],
-            }
+            },
         )
 
         parse_body_arguments(to_unicode(content_type), body, args, files)
@@ -136,7 +135,7 @@ class TestUtil(unittest.TestCase):
         self.assertRaises(ValueError, reverse_regex_named_groups, two_ids, 1)
         self.assertRaises(ValueError, reverse_regex_named_groups, two_ids, id1=1)
 
-    def test_generate_request_id(self):
+    def test_generate_request_id(self) -> None:
         first = generate_uniq_timestamp_request_id()
         second = generate_uniq_timestamp_request_id()
 
@@ -146,6 +145,6 @@ class TestUtil(unittest.TestCase):
         int(first, 16)
         int(second, 16)
 
-    def test_check_request_id(self):
+    def test_check_request_id(self) -> None:
         self.assertTrue(check_request_id('12345678910abcdef'))
         self.assertFalse(check_request_id('not_hex_format_123'))

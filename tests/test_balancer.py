@@ -1,18 +1,20 @@
 import unittest
 
-from tests.instances import find_free_port, frontik_balancer_app, frontik_broken_balancer_app
 import pytest
 
+from tests.instances import find_free_port, frontik_balancer_app, frontik_broken_balancer_app
 
-# TODO unmark skipped
+
 class TestHttpError(unittest.TestCase):
+    free_port = None
+
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         frontik_balancer_app.start()
         frontik_broken_balancer_app.start()
         cls.free_port = find_free_port(from_port=10000, to_port=20000)
 
-    def make_url(self, url):
+    def make_url(self, url: str) -> str:
         return (
             f'{url}?normal={frontik_balancer_app.port}&broken={frontik_broken_balancer_app.port}&free={self.free_port}'
         )

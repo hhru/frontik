@@ -3,7 +3,6 @@ import unittest
 from tornado.escape import to_unicode
 
 from frontik.util import make_url
-
 from tests.instances import frontik_test_app
 
 
@@ -33,14 +32,14 @@ class TestUnicode(unittest.TestCase):
         self.assertEqual(to_unicode(response.content), '{"тест": "тест"}')
 
     def test_argument_with_invalid_chars(self):
-        arg_with_invalid_chars = '≤'.encode('koi8_r') + 'тест'.encode('utf-8')
+        arg_with_invalid_chars = '≤'.encode('koi8_r') + 'тест'.encode()
         response = frontik_test_app.get_page(make_url('arguments', param=arg_with_invalid_chars))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(to_unicode(response.content), '{"тест": "тест"}')
 
     def test_argument_with_invalid_chars_async(self):
-        arg_with_invalid_chars = '≤'.encode('koi8_r') + 'тест'.encode('utf-8')
+        arg_with_invalid_chars = '≤'.encode('koi8_r') + 'тест'.encode()
         response = frontik_test_app.get_page(make_url('arguments_async', param=arg_with_invalid_chars))
 
         self.assertEqual(response.status_code, 200)

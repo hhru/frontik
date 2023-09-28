@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field, fields
 import logging.handlers
+from dataclasses import dataclass, field, fields
 
 LOG_DIR_OPTION_NAME = 'log_dir'
 STDERR_LOG_OPTION_NAME = 'stderr_log'
@@ -7,17 +7,17 @@ STDERR_LOG_OPTION_NAME = 'stderr_log'
 
 @dataclass
 class Options:
-    app: str = None
-    app_class: str = None
+    app: str | None = None
+    app_class: str | None = None
     workers: int = 1
     init_workers_timeout_sec: int = 60
-    tornado_settings: dict = None
+    tornado_settings: dict | None = None
     max_active_handlers: int = 100
     reuse_port: bool = True
     xheaders: bool = False
     validate_request_id: bool = False
 
-    config: str = None
+    config: str | None = None
     host: str = '0.0.0.0'
     port: int = 8080
     node_name: str = ''
@@ -25,18 +25,19 @@ class Options:
 
     autoreload: bool = False
     stop_timeout: int = 3
-    asyncio_task_threshold_sec: float = None
-    asyncio_task_critical_threshold_sec: float = None
+    asyncio_task_threshold_sec: float | None = None
+    asyncio_task_critical_threshold_sec: float | None = None
 
-    log_dir: str = None
+    log_dir: str | None = None
     log_level: str = 'info'
     update_log_level_interval_in_seconds: int = 300
     log_json: bool = True
     log_text_format: str = '[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s'
 
     stderr_log: bool = False
-    stderr_format: str = '%(color)s[%(levelname)1.1s %(asctime)s %(name)s ' \
-                         '%(module)s:%(lineno)d]%(end_color)s %(message)s'
+    stderr_format: str = (
+        '%(color)s[%(levelname)1.1s %(asctime)s %(name)s %(module)s:%(lineno)d]%(end_color)s %(message)s'
+    )
     stderr_dateformat: str = '%H:%M:%S'
 
     syslog: bool = False
@@ -48,32 +49,32 @@ class Options:
     suppressed_loggers: list = field(default_factory=lambda: [])
 
     debug: bool = False
-    debug_login: str = None
-    debug_password: str = None
+    debug_login: str | None = None
+    debug_password: str | None = None
 
-    http_client_metrics_kafka_cluster: str = None
+    http_client_metrics_kafka_cluster: str | None = None
 
     kafka_clusters: dict = field(default_factory=lambda: {})
 
-    statsd_host: str = None
-    statsd_port: int = None
+    statsd_host: str | None = None
+    statsd_port: int | None = None
     statsd_default_periodic_send_interval_sec: int = 60
-    gc_metrics_send_interval_ms: int = None
+    gc_metrics_send_interval_ms: int | None = None
     long_gc_log_enabled: bool = True
     long_gc_log_threshold_sec: float = 0.01
 
-    xml_root: str = None
-    xml_cache_limit: int = None
-    xml_cache_step: int = None
-    xsl_root: str = None
-    xsl_cache_limit: int = None
-    xsl_cache_step: int = None
+    xml_root: str | None = None
+    xml_cache_limit: int | None = None
+    xml_cache_step: int | None = None
+    xsl_root: str | None = None
+    xsl_cache_limit: int | None = None
+    xsl_cache_step: int | None = None
     xsl_executor_pool_size: int = 1
-    jinja_template_root: str = None
+    jinja_template_root: str | None = None
     jinja_template_cache_limit: int = 50
     jinja_streaming_render_timeout_ms: int = 50
 
-    sentry_dsn: str = None
+    sentry_dsn: str | None = None
     sentry_max_breadcrumbs: int = 0
 
     send_timeout_stats_interval_ms: int = 60000
@@ -81,9 +82,9 @@ class Options:
     # consul options
     consul_enabled: bool = True
     consul_host: str = '127.0.0.1'
-    consul_port: int = None
-    consul_service_address: str = None
-    consul_check_host: str = None
+    consul_port: int | None = None
+    consul_service_address: str | None = None
+    consul_check_host: str | None = None
     consul_http_check_interval_sec: int = 10
     consul_http_check_timeout_sec: float = 1
     consul_tags: list = field(default_factory=lambda: [])
@@ -108,8 +109,8 @@ class Options:
 options = Options()
 
 
-def parse_config_file(path):
-    config = {}
+def parse_config_file(path: str) -> None:
+    config: dict = {}
     with open(path, 'rb') as config_file:
         exec(config_file.read(), config, config)
 
