@@ -1,3 +1,4 @@
+from typing import Any
 from urllib.parse import urlencode
 
 import requests
@@ -6,9 +7,8 @@ from tests.instances import frontik_test_app
 
 
 class TestJsonResponse:
-
-    def setup_method(self):
-        self.query_args = {
+    def setup_method(self) -> None:
+        self.query_args: dict[str, Any] = {
             'list': [1, 2],
             'string': 'safestring',
             'str_arg': '',
@@ -17,11 +17,10 @@ class TestJsonResponse:
         }
 
     def test_validation(self):
-
         self.query_args.update(int_arg=0)
         get_data = frontik_test_app.get_page_json(
             f'validate_arguments?{urlencode(self.query_args, doseq=True)}',
-            notpl=True
+            notpl=True,
         )
 
         assert get_data['list'] == [1, 2]
@@ -51,7 +50,7 @@ class TestJsonResponse:
 
         assert response.status_code == 400
 
-    def test_arg_validation_raises_for_default_of_incorrect_type(self):
+    def test_arg_validation_raises_for_default_of_incorrect_type(self) -> None:
         response = frontik_test_app.get_page('validate_arguments?str_arg=test', method=requests.put, notpl=True)
 
         assert response.status_code == 500
@@ -62,7 +61,7 @@ class TestJsonResponse:
 
         data = frontik_test_app.get_page_json(
             f'validate_arguments?{urlencode(self.query_args, doseq=True)}',
-            notpl=True
+            notpl=True,
         )
 
         assert data['list'] == [1, 2]

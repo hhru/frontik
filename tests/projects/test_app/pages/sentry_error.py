@@ -15,7 +15,8 @@ class Page(PageHandler):
             sentry_sdk.set_user({'real_ip': ip})
             sentry_sdk.set_extra('extra_key', extra)
 
-        raise Exception('My_sentry_exception')
+        msg = 'My_sentry_exception'
+        raise Exception(msg)
 
     async def post_page(self):
         raise HTTPError(500, 'my_HTTPError')

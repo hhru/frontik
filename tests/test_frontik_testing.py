@@ -1,24 +1,24 @@
-from lxml import etree
+from __future__ import annotations
+
 import pytest
+from lxml import etree
 from tornado.ioloop import IOLoop
 
 from frontik.app import FrontikApplication
 from frontik.handler import PageHandler
 from frontik.options import options
-from frontik.testing import FrontikTestCase, FrontikTestBase
+from frontik.testing import FrontikTestBase, FrontikTestCase
 from frontik.util import gather_list
-from tests.projects.test_app.pages.handler import delete
 from tests import FRONTIK_ROOT
+from tests.projects.test_app.pages.handler import delete
 
 
 class AsyncHandler(PageHandler):
     async def get_page(self):
         self.result = 0
+        service_host = self.config.serviceHost  # type: ignore
 
-        res1, res2 = await gather_list(
-            self.get_url(self.config.serviceHost, '/val1/1'),
-            self.get_url(self.config.serviceHost, '/val2/2')
-        )
+        res1, res2 = await gather_list(self.get_url(service_host, '/val1/1'), self.get_url(service_host, '/val2/2'))
         self.result += int(res1.data.findtext('val'))
         self.result += int(res2.data.findtext('val'))
 
@@ -30,11 +30,11 @@ class AsyncHandler(PageHandler):
 
 class CheckConfigHandler(PageHandler):
     async def get_page(self):
-        self.text = self.config.config_param
+        self.text = self.config.config_param  # type: ignore
 
 
 class TestApplication(FrontikApplication):
-    def application_urls(self):
+    def application_urls(self) -> list[tuple]:
         return [
             ('/config', CheckConfigHandler),
             ('/sum_values', AsyncHandler),
@@ -43,13 +43,13 @@ class TestApplication(FrontikApplication):
 
 
 class TestFrontikTestingOld(FrontikTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         options.consul_enabled = False
         super().setUp()
         self.configure_app(serviceHost='http://service.host')
 
-    def get_app(self):
-        app = TestApplication(app='test_app')
+    def get_app(self) -> TestApplication:
+        app = TestApplication(app='test_app', app_root=FRONTIK_ROOT)
 
         IOLoop.current().run_sync(app.init)
 
@@ -74,8 +74,10 @@ class TestFrontikTestingOld(FrontikTestCase):
 
     def test_json_stub(self):
         self.set_stub(
-            f'http://127.0.0.1:{self.get_http_port()}/delete', request_method='DELETE',
-            response_file=f'{FRONTIK_ROOT}/tests/stub.json', param='param'
+            f'http://127.0.0.1:{self.get_http_port()}/delete',
+            request_method='DELETE',
+            response_file=f'{FRONTIK_ROOT}/tests/stub.json',
+            param='param',
         )
 
         json = self.fetch_json('/delete')
@@ -84,8 +86,8 @@ class TestFrontikTestingOld(FrontikTestCase):
 
 class TestFrontikTesting(FrontikTestBase):
     @pytest.fixture(scope='class')
-    def test_app(self):
-        yield TestApplication(app='test_app')
+    def test_app(self) -> TestApplication:
+        return TestApplication(app='test_app', app_root=FRONTIK_ROOT)
 
     async def test_config(self):
         self.configure_app(config_param='param_value')
@@ -97,8 +99,10 @@ class TestFrontikTesting(FrontikTestBase):
     async def test_json_stub(self):
         self.configure_app(serviceHost='http://service.host')
         self.set_stub(
-            f'http://backend/delete', request_method='DELETE',
-            response_file=f'{FRONTIK_ROOT}/tests/stub.json', param='param'
+            'http://backend/delete',
+            request_method='DELETE',
+            response_file=f'{FRONTIK_ROOT}/tests/stub.json',
+            param='param',
         )
 
         json = await self.fetch_json('/delete', method='POST')

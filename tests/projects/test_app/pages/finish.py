@@ -12,6 +12,7 @@ class Page(PageHandler):
         self.set_status(code)
 
         if throw:
-            raise Finish('success')
+            msg = 'success'
+            raise Finish(msg)
         else:
             self.finish('success')

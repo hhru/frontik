@@ -1,22 +1,22 @@
 import asyncio
+
 from http_client.balancing import Upstream
 from tornado.web import HTTPError
 
 from frontik import media_types
 from frontik.handler import PageHandler
-
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_occupied
 
 
 class Page(PageHandler):
     async def get_page(self):
-        self.application.upstream_manager.update_upstream(Upstream('retry_connect_async', {},
-                                                                   [get_server(self, 'free'),
-                                                                    get_server(self, 'normal')]))
+        self.application.upstream_manager.update_upstream(
+            Upstream('retry_connect_async', {}, [get_server(self, 'free'), get_server(self, 'normal')]),
+        )
         self.text = ''
 
-        async def make_request():
+        async def make_request() -> None:
             result = await self.post_url('retry_connect_async', self.request.path)
 
             if result.failed or result.data is None:

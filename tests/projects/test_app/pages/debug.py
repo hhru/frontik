@@ -7,9 +7,11 @@ class Page(handler.PageHandler):
     async def get_page(self):
         self.log.debug('debug: starting debug page')
 
-        def _exception_trace():
-            def _inner():
-                raise ValueError('Testing an exception юникод')
+        def _exception_trace() -> None:
+            def _inner() -> None:
+                msg = 'Testing an exception юникод'
+                raise ValueError(msg)
+
             _inner()
 
         try:
@@ -44,11 +46,7 @@ class Page(handler.PageHandler):
     async def post_page(self):
         self.log.debug('this page returns json')
 
-        self.json.put({
-            'param1': 'value',
-            'param2': 'тест',
-            'тест': 'value'
-        })
+        self.json.put({'param1': 'value', 'param2': 'тест', 'тест': 'value'})
 
     async def put_page(self):
         content_type = self.get_argument('type')
@@ -66,4 +64,4 @@ class Page(handler.PageHandler):
             self.text = 'document.body.write("Привет")'
         elif content_type == 'text':
             self.set_header('Content-Type', media_types.TEXT_PLAIN)
-            self.text = 'привет charset'.encode('utf-8')
+            self.text = 'привет charset'.encode()

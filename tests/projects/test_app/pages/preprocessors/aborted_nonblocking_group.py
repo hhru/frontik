@@ -9,7 +9,7 @@ def pp1(handler):
 
 @preprocessor
 def pp2(handler):
-    async def pp2_coro():
+    async def pp2_coro() -> None:
         await handler.post_url(handler.request.host, handler.request.uri + '&from=pp')
 
         if handler.get_argument('finish', None):
