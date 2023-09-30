@@ -3,7 +3,6 @@ from tornado.web import HTTPError
 
 from frontik import media_types
 from frontik.handler import PageHandler
-
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
@@ -11,11 +10,15 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 class Page(PageHandler):
     async def get_page(self):
         self.application.upstream_manager.update_upstream(
-            Upstream('retry_on_timeout_async', {}, [get_server(self, 'broken'), get_server(self, 'normal')])
+            Upstream('retry_on_timeout_async', {}, [get_server(self, 'broken'), get_server(self, 'normal')]),
         )
 
         result = await self.delete_url(
-            'retry_on_timeout_async', self.request.path, connect_timeout=0.1, request_timeout=0.3, max_timeout_tries=2
+            'retry_on_timeout_async',
+            self.request.path,
+            connect_timeout=0.1,
+            request_timeout=0.3,
+            max_timeout_tries=2,
         )
 
         if result.failed or result.data is None:

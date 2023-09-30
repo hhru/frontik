@@ -1,5 +1,7 @@
-import frontik.handler
 from typing import Any
+
+import frontik.handler
+
 
 class Page(frontik.handler.PageHandler):
     async def get_page(self):
@@ -9,7 +11,8 @@ class Page(frontik.handler.PageHandler):
         async def task() -> Any:
             request_result = await self.post_url(self.request.host, self.request.path + '?data=2')
             if fail_callback:
-                raise Exception("I'm dying!")
+                msg = "I'm dying!"
+                raise Exception(msg)
             return request_result.data
 
         self.json.put(
@@ -23,8 +26,8 @@ class Page(frontik.handler.PageHandler):
                         data={'data': '3' if not fail_request else None},
                         parse_on_error=False,
                     ),
-                }
-            )
+                },
+            ),
         )
 
         result = await self.group({'4': self.post_url(self.request.host, self.request.path + '?data=4')})

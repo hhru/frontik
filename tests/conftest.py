@@ -1,15 +1,21 @@
+from collections.abc import Iterator
+
 import pytest
-from typing import Iterator
+
 
 @pytest.fixture(scope='session', autouse=True)
-def teardown_module() -> Iterator[None]:
+def _teardown_module() -> Iterator[None]:
     yield
 
     from tests.instances import (
+        frontik_balancer_app,
+        frontik_broken_balancer_app,
+        frontik_broken_config_app,
+        frontik_broken_init_async_app,
         frontik_consul_mock_app,
-        frontik_broken_config_app, frontik_broken_init_async_app,
-        frontik_no_debug_app, frontik_re_app, frontik_test_app,
-        frontik_balancer_app, frontik_broken_balancer_app,
+        frontik_no_debug_app,
+        frontik_re_app,
+        frontik_test_app,
     )
 
     frontik_broken_config_app.stop()

@@ -1,19 +1,16 @@
 from __future__ import annotations
-from lxml import etree
+
 import pytest
+from lxml import etree
 from tornado.ioloop import IOLoop
 
 from frontik.app import FrontikApplication
 from frontik.handler import PageHandler
 from frontik.options import options
-from frontik.testing import FrontikTestCase, FrontikTestBase
+from frontik.testing import FrontikTestBase, FrontikTestCase
 from frontik.util import gather_list
-from tests.projects.test_app.pages.handler import delete
 from tests import FRONTIK_ROOT
-from typing import TYPE_CHECKING, Iterator, List, Tuple, Type, Union
-
-if TYPE_CHECKING:
-    from typing import Any
+from tests.projects.test_app.pages.handler import delete
 
 
 class AsyncHandler(PageHandler):
@@ -21,9 +18,7 @@ class AsyncHandler(PageHandler):
         self.result = 0
         service_host = self.config.serviceHost  # type: ignore
 
-        res1, res2 = await gather_list(
-            self.get_url(service_host, '/val1/1'), self.get_url(service_host, '/val2/2')
-        )
+        res1, res2 = await gather_list(self.get_url(service_host, '/val1/1'), self.get_url(service_host, '/val2/2'))
         self.result += int(res1.data.findtext('val'))
         self.result += int(res2.data.findtext('val'))
 
@@ -91,8 +86,8 @@ class TestFrontikTestingOld(FrontikTestCase):
 
 class TestFrontikTesting(FrontikTestBase):
     @pytest.fixture(scope='class')
-    def test_app(self) -> Iterator[TestApplication]:
-        yield TestApplication(app='test_app')
+    def test_app(self) -> TestApplication:
+        return TestApplication(app='test_app')
 
     async def test_config(self):
         self.configure_app(config_param='param_value')
@@ -104,7 +99,7 @@ class TestFrontikTesting(FrontikTestBase):
     async def test_json_stub(self):
         self.configure_app(serviceHost='http://service.host')
         self.set_stub(
-            f'http://backend/delete',
+            'http://backend/delete',
             request_method='DELETE',
             response_file=f'{FRONTIK_ROOT}/tests/stub.json',
             param='param',

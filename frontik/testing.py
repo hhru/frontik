@@ -2,13 +2,14 @@ import asyncio
 import json
 import logging
 import re
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
+import pytest
 from aioresponses import aioresponses
 from http_client import AIOHttpClientWrapper
 from http_client.request_response import RequestBuilder, RequestResult
 from lxml import etree
-import pytest
 from tornado.escape import utf8
 from tornado.httpserver import HTTPServer
 from tornado.log import app_log
@@ -20,13 +21,14 @@ from frontik.app import FrontikApplication
 
 # noinspection PyUnresolvedReferences
 from frontik.loggers import bootstrap_logger
-from frontik.media_types import APPLICATION_JSON, APPLICATION_XML, APPLICATION_PROTOBUF, TEXT_PLAIN
+from frontik.media_types import APPLICATION_JSON, APPLICATION_PROTOBUF, APPLICATION_XML, TEXT_PLAIN
 from frontik.options import options
 from frontik.util import make_url, safe_template
 
 
 class FrontikTestCase(AsyncHTTPTestCase):
     """Deprecated, use FrontikTestBase instead"""
+
     def __init__(self, *args, **kwargs):
         self._app: FrontikApplication = None  # type: ignore
         super().__init__(*args, **kwargs)
@@ -40,7 +42,7 @@ class FrontikTestCase(AsyncHTTPTestCase):
         self.forced_client = AIOHttpClientWrapper()
         return self.forced_client
 
-    def fetch(self, path: str, query: dict|None=None, **kwargs:Any) -> RequestResult:  # type: ignore
+    def fetch(self, path: str, query: dict | None = None, **kwargs: Any) -> RequestResult:  # type: ignore
         """Extends `AsyncHTTPTestCase.fetch` method with `query` kwarg.
         This argument accepts a `dict` of request query parameters that will be encoded
         and added to request path.
@@ -49,11 +51,11 @@ class FrontikTestCase(AsyncHTTPTestCase):
         query = {} if query is None else query
         return super().fetch(make_url(path, **query), **kwargs)
 
-    def fetch_xml(self, path: str, query: dict|None=None, **kwargs:Any) -> etree.Element:
+    def fetch_xml(self, path: str, query: dict | None = None, **kwargs: Any) -> etree.Element:
         """Fetch the request and parse xml document from response body."""
         return etree.fromstring(utf8(self.fetch(path, query, **kwargs).raw_body))
 
-    def fetch_json(self, path: str, query: dict|None=None, **kwargs:Any) -> Any:
+    def fetch_json(self, path: str, query: dict | None = None, **kwargs: Any) -> Any:
         """Fetch the request and parse JSON tree from response body."""
         return json.loads(self.fetch(path, query, **kwargs).raw_body)
 
@@ -64,14 +66,14 @@ class FrontikTestCase(AsyncHTTPTestCase):
     def set_stub(
         self,
         url: str,
-        request_method: str='GET',
-        response_function:Callable|None=None,
-        response_file:str|None=None,
-        response_body:Any='',
-        response_code:int=200,
-        response_headers:Any=None,
-        response_body_processor:Callable=safe_template,
-        **kwargs:Any,
+        request_method: str = 'GET',
+        response_function: Callable | None = None,
+        response_file: str | None = None,
+        response_body: Any = '',
+        response_code: int = 200,
+        response_headers: Any = None,
+        response_body_processor: Callable = safe_template,
+        **kwargs: Any,
     ) -> None:
         set_stub(
             self._app.tornado_http_client,
@@ -108,13 +110,13 @@ class FrontikTestBase:
         loop.close()
 
     @pytest.fixture(scope='class', autouse=True)
-    def enable_consul(self):
+    def _enable_consul(self):
         options.consul_enabled = False
 
     @pytest.fixture(scope='class', autouse=True)
-    async def inited_test_app(self, test_app, enable_consul):
+    async def inited_test_app(self, test_app, _enable_consul):
         await test_app.init()
-        yield test_app
+        return test_app
 
     @pytest.fixture(scope='class', autouse=True)
     async def test_server_port(self, test_app):
@@ -136,49 +138,71 @@ class FrontikTestBase:
         yield http_client
         await asyncio.wait_for(http_client.client_session.close(), timeout=5)
 
-    @pytest.fixture(scope='function', autouse=True)
-    def setup_client_server(
-        self, inited_test_app: FrontikApplication, test_server_port: int, app_client: AIOHttpClientWrapper
+    @pytest.fixture(autouse=True)
+    def _setup_client_server(
+        self,
+        inited_test_app: FrontikApplication,
+        test_server_port: int,
+        app_client: AIOHttpClientWrapper,
     ) -> None:
         self.app = inited_test_app
         self.port = test_server_port
         self.http_client = app_client
 
-    @pytest.fixture(scope='function', autouse=True)
+    @pytest.fixture(autouse=True)
     def setup_mock_client(self):
         with aioresponses(passthrough=['http://127.0.0.1']) as mock_client:
             self.mock_client = mock_client
             yield self.mock_client
 
-    async def fetch(self, path: str, query:dict|None=None, method:str='GET', request_timeout:float=2, **kwargs:Any) -> RequestResult:
+    async def fetch(
+        self,
+        path: str,
+        query: dict | None = None,
+        method: str = 'GET',
+        request_timeout: float = 2,
+        **kwargs: Any,
+    ) -> RequestResult:
         query = {} if query is None else query
         path = make_url(path, **query)
         host = f'http://127.0.0.1:{self.port}'
 
         request = RequestBuilder(
-            host, 'test', path, 'test_request', method=method, request_timeout=request_timeout, **kwargs
+            host,
+            'test',
+            path,
+            'test_request',
+            method=method,
+            request_timeout=request_timeout,
+            **kwargs,
         )
         return await self.http_client.fetch(request)
 
-    async def fetch_xml(self, path:str, query:dict|None=None, method:str='GET', **kwargs: Any) -> etree.Element:
+    async def fetch_xml(
+        self,
+        path: str,
+        query: dict | None = None,
+        method: str = 'GET',
+        **kwargs: Any,
+    ) -> etree.Element:
         resp = await self.fetch(path, query, method, **kwargs)
         return etree.fromstring(utf8(resp.raw_body))
 
-    async def fetch_json(self, path: str, query:dict|None=None, method:str='GET', **kwargs: Any) -> Any:
+    async def fetch_json(self, path: str, query: dict | None = None, method: str = 'GET', **kwargs: Any) -> Any:
         resp = await self.fetch(path, query, method, **kwargs)
         return json.loads(resp.raw_body)
 
     def set_stub(
         self,
         url: URL | str | re.Pattern,
-        request_method:str='GET',
-        response_file:str|None=None,
-        response_body:Any='',
-        response_code:int=200,
-        response_headers:dict|None=None,
-        response_body_processor: Callable|None=safe_template,
-        repeat:bool=True,
-        **kwargs:Any,
+        request_method: str = 'GET',
+        response_file: str | None = None,
+        response_body: Any = '',
+        response_code: int = 200,
+        response_headers: dict | None = None,
+        response_body_processor: Callable | None = safe_template,
+        repeat: bool = True,
+        **kwargs: Any,
     ) -> None:
         """
         url and request_method are related to mocked resource
@@ -202,7 +226,12 @@ class FrontikTestBase:
             headers.update(response_headers)
 
         self.mock_client.add(
-            url, method=request_method, status=response_code, headers=headers, body=content, repeat=repeat
+            url,
+            method=request_method,
+            status=response_code,
+            headers=headers,
+            body=content,
+            repeat=repeat,
         )
 
     def configure_app(self, **kwargs: Any) -> None:

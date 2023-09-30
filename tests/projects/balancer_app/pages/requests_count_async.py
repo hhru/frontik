@@ -4,7 +4,6 @@ from http_client.balancing import Upstream
 
 from frontik import media_types
 from frontik.handler import PageHandler
-
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_occupied
 
@@ -12,14 +11,14 @@ from tests.projects.balancer_app.pages import check_all_requests_done, check_all
 class Page(PageHandler):
     async def get_page(self):
         self.application.upstream_manager.update_upstream(
-            Upstream('requests_count_async', {}, [get_server(self, 'normal')])
+            Upstream('requests_count_async', {}, [get_server(self, 'normal')]),
         )
         self.text = ''
 
         result1 = self.post_url('requests_count_async', self.request.path)
         result2 = self.post_url('requests_count_async', self.request.path)
         self.application.upstream_manager.update_upstream(
-            Upstream('requests_count_async', {}, [get_server(self, 'normal')])
+            Upstream('requests_count_async', {}, [get_server(self, 'normal')]),
         )
         result3 = self.post_url('requests_count_async', self.request.path)
 

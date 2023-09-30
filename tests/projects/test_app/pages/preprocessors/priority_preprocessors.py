@@ -1,5 +1,5 @@
 from frontik.handler import PageHandler
-from frontik.preprocessors import preprocessor, make_preprocessors_names_list
+from frontik.preprocessors import make_preprocessors_names_list, preprocessor
 
 
 @preprocessor
@@ -33,5 +33,5 @@ class Page(PageHandler):
         self.json.put(
             {
                 'order': self.called_preprocessors,  # type: ignore
-            }
+            },
         )

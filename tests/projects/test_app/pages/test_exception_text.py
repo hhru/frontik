@@ -12,7 +12,7 @@ class Page(PageHandler):
                 self.post_url(self.request.host, self.request.path),
             )
             for _ in results:
-                assert False
+                raise AssertionError
 
         self.run_task(bad_post_requests())
 

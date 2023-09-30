@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import json
 from typing import TYPE_CHECKING
+
 from frontik.handler import PageHandler
 
 if TYPE_CHECKING:

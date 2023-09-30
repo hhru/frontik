@@ -1,24 +1,26 @@
 from __future__ import annotations
+
 import logging
 import sys
 from dataclasses import asdict, fields
-from typing import TYPE_CHECKING
-from typing import get_args
+from typing import TYPE_CHECKING, get_args
 
 import tornado.autoreload
-from http_client.options import parse_config_file as http_client_parse_config_file, options as http_client_options
+from http_client.options import options as http_client_options
+from http_client.options import parse_config_file as http_client_parse_config_file
 
-from frontik.loggers import bootstrap_core_logging, MDC
+from frontik.loggers import MDC, bootstrap_core_logging
 from frontik.options import options, parse_config_file
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from frontik.options import Options
-    from typing import Iterable
 
 log = logging.getLogger('config_parser')
 
 
-def parse_configs(config_files: str|None) -> None:
+def parse_configs(config_files: str | None) -> None:
     """Reads command line options / config file and bootstraps logging."""
     allowed_options = {**asdict(options), **asdict(http_client_options)}.keys()
     parse_command_line(options, allowed_options)
@@ -27,11 +29,13 @@ def parse_configs(config_files: str|None) -> None:
         configs_to_read = options.config
     else:
         if config_files is None:
-            raise Exception('Configs can not be None')
+            msg = 'Configs can not be None'
+            raise Exception(msg)
         configs_to_read = config_files
 
     configs_to_read_filter = filter(
-        None, [configs_to_read] if not isinstance(configs_to_read, (list, tuple)) else configs_to_read
+        None,
+        [configs_to_read] if not isinstance(configs_to_read, list | tuple) else configs_to_read,
     )
 
     for config in configs_to_read_filter:
@@ -60,7 +64,7 @@ def parse_command_line(options: Options, allowed_options: Iterable) -> None:
         arg = args[i].lstrip("-")
         name, equals, value = arg.partition("=")
         if name not in allowed_options:
-            log.error(f'Unrecognized command line option: {name}, skipped')
+            log.error('Unrecognized command line option: %s, skipped', name)
             continue
 
         option = next(filter(lambda x: x.name == name, fields(options)), None)
@@ -82,4 +86,5 @@ def parse_command_line(options: Options, allowed_options: Iterable) -> None:
         elif option.type == str or get_args(option.type) == (str, type(None)):
             setattr(options, name, value)
         else:
-            raise Exception('Complex types are not implemented %r: %r (%s)' % (name, value, option.type))
+            msg = f'Complex types are not implemented {name!r}: {value!r} ({option.type})'
+            raise Exception(msg)

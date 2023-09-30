@@ -1,15 +1,16 @@
 import unittest
-from typing import Sequence, Any
+from collections.abc import Sequence
+from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExporter, SpanExportResult, ReadableSpan
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ReadableSpan, SpanExporter, SpanExportResult
 from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 from opentelemetry.semconv.resource import ResourceAttributes
+from tornado.httputil import HTTPServerRequest
 from tornado.ioloop import IOLoop
 from tornado.testing import gen_test
-from tornado.httputil import HTTPServerRequest
 
 from frontik import request_context
 from frontik.app import FrontikApplication
@@ -85,7 +86,7 @@ def make_otel_provider() -> TracerProvider:
             ResourceAttributes.SERVICE_VERSION: '1.2.3',
             ResourceAttributes.HOST_NAME: options.node_name,
             ResourceAttributes.CLOUD_REGION: 'test',
-        }
+        },
     )
     provider = TracerProvider(
         resource=resource,
@@ -98,7 +99,7 @@ def make_otel_provider() -> TracerProvider:
 SPAN_STORAGE: list[ReadableSpan] = []
 
 
-def find_span(attr: str, value: Any) -> ReadableSpan|None:
+def find_span(attr: str, value: Any) -> ReadableSpan | None:
     return next(filter(lambda item: item.attributes.get(attr, None) == value, SPAN_STORAGE), None)  # type: ignore
 
 
@@ -150,5 +151,7 @@ class TestFrontikTesting(FrontikTestCase):
         server_b_span = find_span('http.target', '/page_b')
         SPAN_STORAGE.clear()
 
-        assert client_a_span is not None and client_a_span.parent is not None
-        assert server_b_span is not None and server_b_span.parent is not None
+        assert client_a_span is not None
+        assert client_a_span.parent is not None
+        assert server_b_span is not None
+        assert server_b_span.parent is not None

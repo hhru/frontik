@@ -1,11 +1,11 @@
 import asyncio
 import time
+from collections.abc import Callable
 
 from tornado.concurrent import Future
 
 from frontik.handler import PageHandler
 from frontik.preprocessors import preprocessor
-from typing import Callable
 
 
 def pp0(name: str) -> Callable:

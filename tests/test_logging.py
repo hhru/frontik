@@ -6,11 +6,12 @@ from collections import defaultdict
 
 from tornado.escape import to_unicode
 
-from tests.instances import FrontikTestInstance
 from tests import FRONTIK_ROOT
+from tests.instances import FrontikTestInstance
 
 FRONTIK_RUN = f'{FRONTIK_ROOT}/frontik-test'
 TEST_PROJECTS = f'{FRONTIK_ROOT}/tests/projects'
+
 
 class TestSyslog(unittest.TestCase):
     test_app: FrontikTestInstance = None  # type: ignore
@@ -27,7 +28,7 @@ class TestSyslog(unittest.TestCase):
         cls.test_app = FrontikTestInstance(
             f'{FRONTIK_RUN} --app=tests.projects.test_app --config={TEST_PROJECTS}/frontik_debug.cfg '
             f'--syslog=true --consul_enabled=False --syslog_host=127.0.0.1 --syslog_tag=test'
-            f' --log_level=debug --syslog_port={port}'
+            f' --log_level=debug --syslog_port={port}',
         )
 
     @classmethod

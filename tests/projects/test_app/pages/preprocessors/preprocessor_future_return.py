@@ -1,7 +1,7 @@
+from tornado.concurrent import Future
+
 from frontik.handler import PageHandler
 from frontik.preprocessors import preprocessor
-
-from tornado.concurrent import Future
 
 
 @preprocessor

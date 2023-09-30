@@ -1,11 +1,10 @@
 import asyncio
 import time
 
-from http_client.balancing import Upstream, Server, UpstreamConfig
+from http_client.balancing import Server, Upstream, UpstreamConfig
 
 from frontik import media_types
 from frontik.handler import PageHandler
-
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_occupied
 
@@ -27,15 +26,16 @@ class Page(PageHandler):
         requests = []
 
         requests.append(self.post_url('slow_start', self.request.path))
-        time.sleep(0.2)
+        time.sleep(0.2)  # noqa: ASYNC101
         upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=1)}
         self.application.upstream_manager.update_upstream(
-            Upstream('slow_start', upstream_config, [same_server, server_slow_start])
+            Upstream('slow_start', upstream_config, [same_server, server_slow_start]),
         )
         requests.append(self.post_url('slow_start', self.request.path))
-        time.sleep(1)
-        requests.append(self.post_url('slow_start', self.request.path))
-        requests.append(self.post_url('slow_start', self.request.path))
+        time.sleep(1)  # noqa: ASYNC101
+        requests.extend(
+            (self.post_url('slow_start', self.request.path), self.post_url('slow_start', self.request.path)),
+        )
 
         check_all_servers_occupied(self, 'slow_start')
 

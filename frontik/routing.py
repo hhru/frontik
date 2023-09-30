@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import importlib
 import logging
 import os
@@ -13,9 +14,11 @@ from frontik.handler import ErrorHandler
 from frontik.util import reverse_regex_named_groups
 
 if TYPE_CHECKING:
-    from frontik.app import FrontikApplication
     from typing import Any
-    from tornado.httputil import HTTPServerRequest, HTTPMessageDelegate
+
+    from tornado.httputil import HTTPMessageDelegate, HTTPServerRequest
+
+    from frontik.app import FrontikApplication
 
 routing_logger = logging.getLogger('frontik.routing')
 
@@ -26,7 +29,7 @@ class FileMappingRouter(Router):
     def __init__(self, module: Any) -> None:
         self.name = module.__name__
 
-    def find_handler(self, request: HTTPServerRequest, **kwargs: Any) -> HTTPMessageDelegate|None:
+    def find_handler(self, request: HTTPServerRequest, **kwargs: Any) -> HTTPMessageDelegate | None:
         url_parts = request.path.strip('/').split('/')
         application = kwargs['application']
 
@@ -116,12 +119,18 @@ class FrontikRouter(ReversibleRouter):
         return reverse_regex_named_groups(self.handler_names[name], *args, **kwargs)
 
 
-def _get_application_404_handler_delegate(application: FrontikApplication, request: HTTPServerRequest) -> HTTPMessageDelegate:
+def _get_application_404_handler_delegate(
+    application: FrontikApplication,
+    request: HTTPServerRequest,
+) -> HTTPMessageDelegate:
     handler_class, handler_kwargs = application.application_404_handler(request)
     return application.get_handler_delegate(request, handler_class, handler_kwargs)
 
 
-def _get_application_500_handler_delegate(application: FrontikApplication, request: HTTPServerRequest) -> HTTPMessageDelegate:
+def _get_application_500_handler_delegate(
+    application: FrontikApplication,
+    request: HTTPServerRequest,
+) -> HTTPMessageDelegate:
     return application.get_handler_delegate(request, ErrorHandler, {'status_code': 500})
 
 

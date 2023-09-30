@@ -1,12 +1,13 @@
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from http_client.balancing import Server
 
 from frontik.app import FrontikApplication
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from frontik.handler import PageHandler
-
 
 
 def get_server(handler: PageHandler, type: str) -> Server:

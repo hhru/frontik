@@ -1,9 +1,9 @@
 import unittest
 
+from http_client.request_response import DataParseError, RequestResult
 from lxml import etree
 from lxml_asserts.testcase import LxmlTestCaseMixin
 from tornado.concurrent import Future
-from http_client.request_response import DataParseError, RequestResult
 
 from frontik.doc import Doc
 
@@ -64,7 +64,8 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
         d.put(f)
 
         self.assertXmlEqual(
-            d.to_etree_element(), """<?xml version='1.0'?>\n<a><error reason="error" code="code"/></a>"""
+            d.to_etree_element(),
+            """<?xml version='1.0'?>\n<a><error reason="error" code="code"/></a>""",
         )
 
     async def test_future_string_value(self):
@@ -100,7 +101,8 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
         a.put(Serializable('testNode', 'vally'))
 
         self.assertEqual(
-            a.to_string(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a><testNode>vally</testNode></a>"""
+            a.to_string(),
+            b"""<?xml version='1.0' encoding='utf-8'?>\n<a><testNode>vally</testNode></a>""",
         )
 
     def test_other_types(self) -> None:
@@ -123,7 +125,8 @@ class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
         d2.put(etree.Comment('2'))
 
         self.assertXmlEqual(
-            d2.to_etree_element(), b"""<?xml version='1.0' encoding='utf-8'?>\n<a><!--1--><!--2--></a>"""
+            d2.to_etree_element(),
+            b"""<?xml version='1.0' encoding='utf-8'?>\n<a><!--1--><!--2--></a>""",
         )
 
     def test_string_as_root_node(self) -> None:

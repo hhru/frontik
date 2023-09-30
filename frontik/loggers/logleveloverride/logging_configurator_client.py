@@ -1,21 +1,23 @@
 from __future__ import annotations
+
 import copy
 import logging
 from typing import TYPE_CHECKING
 
 from tornado.ioloop import PeriodicCallback
+
 from frontik.options import options
 
-from frontik.loggers.logleveloverride.log_level_override_extension import LogLevelOverrideExtension
-
 if TYPE_CHECKING:
-    from typing import Iterable
+    from collections.abc import Iterable
+
+    from frontik.loggers.logleveloverride.log_level_override_extension import LogLevelOverrideExtension
 
 LOG_LEVEL_MAPPING = {
     'TRACE': logging.DEBUG,
     'DEBUG': logging.DEBUG,
     'INFO': logging.INFO,
-    'WARN': logging.WARN,
+    'WARN': logging.WARNING,
     'ERROR': logging.ERROR,
 }
 
@@ -25,7 +27,8 @@ class LoggingConfiguratorClient:
         self.log_level_override_extension = log_level_override_extension
         self._loggers_store: dict[str, int] = {}
         self._update_task_handle = PeriodicCallback(
-            callback=self._update_log_level, callback_time=options.update_log_level_interval_in_seconds * 1000
+            callback=self._update_log_level,
+            callback_time=options.update_log_level_interval_in_seconds * 1000,
         )
 
         self._update_task_handle.start()
@@ -51,12 +54,12 @@ class LoggingConfiguratorClient:
 
             self._loggers_store[logger.name] = logger.level
 
-    def _rollback_overrides(self, overrides: Iterable=())-> None:
-        for logger_name in self._loggers_store.keys() - set(map(lambda x: x.logger_name, overrides)):
+    def _rollback_overrides(self, overrides: Iterable = ()) -> None:
+        for logger_name in self._loggers_store.keys() - {x.logger_name for x in overrides}:
             del self._loggers_store[logger_name]
             self._reset_log_level(logger_name)
 
-    def _reset_log_level(self, logger_name:str)-> None:
+    def _reset_log_level(self, logger_name: str) -> None:
         logger = logging.getLogger(logger_name)
         logger.setLevel(options.log_level.upper())
         for handler in logger.handlers:

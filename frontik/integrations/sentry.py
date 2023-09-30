@@ -1,5 +1,5 @@
 from __future__ import annotations
-from asyncio import Future
+
 from typing import TYPE_CHECKING
 
 import sentry_sdk
@@ -11,6 +11,8 @@ from frontik.integrations import Integration, integrations_logger
 from frontik.options import options
 
 if TYPE_CHECKING:
+    from asyncio import Future
+
     from frontik.app import FrontikApplication
 
 

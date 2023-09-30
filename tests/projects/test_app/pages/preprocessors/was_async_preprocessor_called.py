@@ -34,5 +34,5 @@ class Page(PageHandler):
                 'pp1': self.was_preprocessor_called(pp1),
                 'pp2': self.was_preprocessor_called(pp2),
                 'pp3': self.was_preprocessor_called(pp3),
-            }
+            },
         )

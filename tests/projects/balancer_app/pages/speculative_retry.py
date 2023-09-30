@@ -10,7 +10,7 @@ class Page(PageHandler):
     async def get_page(self):
         self.application.upstream_manager.upstreams['speculative_retry'] = Upstream('speculative_no_retry', {}, [])
         self.application.upstream_manager.update_upstream(
-            Upstream('speculative_retry', {}, [get_server(self, 'broken'), get_server(self, 'normal')])
+            Upstream('speculative_retry', {}, [get_server(self, 'broken'), get_server(self, 'normal')]),
         )
 
         result = await self.put_url(

@@ -1,6 +1,6 @@
 from tornado.web import HTTPError
 
-from frontik.handler import PageHandler, HTTPErrorWithPostprocessors
+from frontik.handler import HTTPErrorWithPostprocessors, PageHandler
 
 
 class Page(PageHandler):
@@ -10,7 +10,7 @@ class Page(PageHandler):
 
     def get_page_fail_fast(self, failed_future):
         self.json.put({'error': 'some_error'})
-        raise HTTPErrorWithPostprocessors()
+        raise HTTPErrorWithPostprocessors
 
     async def post_page(self):
         raise HTTPError(403)

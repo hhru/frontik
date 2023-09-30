@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import asyncio
 import time
 import weakref
@@ -9,18 +10,25 @@ from jinja2.utils import concat
 from tornado.escape import to_unicode
 
 from frontik import json_builder, media_types
-from frontik.util import get_abs_path, get_cookie_or_url_param_value
 from frontik.options import options
 from frontik.producers import ProducerFactory
+from frontik.util import get_abs_path, get_cookie_or_url_param_value
 
 if TYPE_CHECKING:
-    from frontik.handler import PageHandler
-    from frontik.app import FrontikApplication
     from typing import Any
+
+    from frontik.app import FrontikApplication
+    from frontik.handler import PageHandler
 
 
 class JsonProducer:
-    def __init__(self, handler: PageHandler, environment: Any=None, json_encoder:Any=None, jinja_context_provider:Any=None) -> None:
+    def __init__(
+        self,
+        handler: PageHandler,
+        environment: Any = None,
+        json_encoder: Any = None,
+        jinja_context_provider: Any = None,
+    ) -> None:
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
 
@@ -82,7 +90,10 @@ class JsonProducer:
 
             taken_time_ms = (time.time() - part_render_start_time) * 1000
             self.log.info(
-                'render template part %s with %s statements in %.2fms', part_index, statements_processed, taken_time_ms
+                'render template part %s with %s statements in %.2fms',
+                part_index,
+                statements_processed,
+                taken_time_ms,
             )
 
             part_index += 1
@@ -94,7 +105,8 @@ class JsonProducer:
 
     async def _finish_with_template(self) -> tuple[Any, None]:
         if not self.environment:
-            raise Exception('Cannot apply template, no Jinja2 environment configured')
+            msg = 'Cannot apply template, no Jinja2 environment configured'
+            raise Exception(msg)
 
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.TEXT_HTML)
@@ -127,7 +139,7 @@ class JsonProducer:
 
             raise e
 
-    async def _finish_with_json(self) -> tuple[str,None]:
+    async def _finish_with_json(self) -> tuple[str, None]:
         self.log.debug('finishing without templating')
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.APPLICATION_JSON)
@@ -135,7 +147,7 @@ class JsonProducer:
         return self.json.to_string(), None
 
     def __repr__(self):
-        return '{}.{}'.format(__package__, self.__class__.__name__)
+        return f'{__package__}.{self.__class__.__name__}'
 
 
 class JsonProducerFactory(ProducerFactory):
@@ -146,7 +158,9 @@ class JsonProducerFactory(ProducerFactory):
             self.environment = jinja2.Environment(
                 auto_reload=options.debug,
                 cache_size=options.jinja_template_cache_limit,
-                loader=jinja2.FileSystemLoader(get_abs_path(application.app_root, options.jinja_template_root)),  # type: ignore
+                loader=jinja2.FileSystemLoader(
+                    get_abs_path(application.app_root, options.jinja_template_root),  # type: ignore
+                ),
             )
         else:
             self.environment = None

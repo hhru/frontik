@@ -1,14 +1,15 @@
 import copy
 import logging
 import os
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from frontik.options import options
 
 
 # This implementation is broken in so many ways
 class LimitedDict(dict):
-    def __init__(self, max_len:int|None=None, step:int|None=None, deepcopy:bool=False) -> None:
+    def __init__(self, max_len: int | None = None, step: int | None = None, deepcopy: bool = False) -> None:
         dict.__init__(self)
         self._order: list = []
         self.max_len = max_len
@@ -43,7 +44,15 @@ class FileCache:
     load_fn :: filename -> (status, result)
     """
 
-    def __init__(self, cache_name:str, root_dir:str, load_fn:Callable, max_len:int|None=None, step:int|None=None, deepcopy:bool=False) -> None:
+    def __init__(
+        self,
+        cache_name: str,
+        root_dir: str,
+        load_fn: Callable,
+        max_len: int | None = None,
+        step: int | None = None,
+        deepcopy: bool = False,
+    ) -> None:
         self.cache_name = cache_name
         self.root_dir = root_dir
         self.load_fn = load_fn
@@ -51,7 +60,7 @@ class FileCache:
         self.max_len = max_len
         self.cache = LimitedDict(max_len, step, deepcopy)
 
-    def populate(self, filenames: list, log: logging.Logger, freeze:bool=False) -> None:
+    def populate(self, filenames: list, log: logging.Logger, freeze: bool = False) -> None:
         if self.max_len == 0:
             return
 
@@ -66,7 +75,8 @@ class FileCache:
             return self.cache[filename]
 
         if self.frozen:
-            raise Exception(f'encounter file {filename} not in cache while cache is frozen')
+            msg = f'encounter file {filename} not in cache while cache is frozen'
+            raise Exception(msg)
 
         return self._load(filename, log)
 
@@ -84,10 +94,19 @@ class InvalidOptionCache:
         self.option = option
 
     def load(self, filename, *args, **kwargs):
-        raise Exception(f'{self.option} option is undefined')
+        msg = f'{self.option} option is undefined'
+        raise Exception(msg)
 
 
-def make_file_cache(cache_name: str, option_name: str, root_dir: str|None, fun:Callable, max_len:int|None=None, step:int|None=None, deepcopy:bool=False) -> FileCache|InvalidOptionCache:
+def make_file_cache(
+    cache_name: str,
+    option_name: str,
+    root_dir: str | None,
+    fun: Callable,
+    max_len: int | None = None,
+    step: int | None = None,
+    deepcopy: bool = False,
+) -> FileCache | InvalidOptionCache:
     if root_dir:
         # disable cache in development environment
         max_len = 0 if options.debug else max_len

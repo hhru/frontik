@@ -1,15 +1,12 @@
 from __future__ import annotations
+
 import logging
 import random
-from asyncio import Future
-from typing import Optional
-from urllib.parse import urlparse
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 
-import aiohttp
 from http_client import client_request_context
 from http_client.options import options as http_client_options
-from http_client.request_response import RequestBuilder
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation import aiohttp_client, tornado
@@ -20,7 +17,6 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.util.http import ExcludeList
 
@@ -29,6 +25,12 @@ from frontik.integrations import Integration, integrations_logger
 from frontik.options import options
 
 if TYPE_CHECKING:
+    from asyncio import Future
+
+    import aiohttp
+    from http_client.request_response import RequestBuilder
+    from opentelemetry.trace import Span
+
     from frontik.app import FrontikApplication
 
 log = logging.getLogger('telemetry')
@@ -36,7 +38,7 @@ log = logging.getLogger('telemetry')
 logging.getLogger('opentelemetry.context').setLevel(logging.CRITICAL)
 set_global_textmap(TraceContextTextMapPropagator())
 
-tornado._excluded_urls = ExcludeList(list(tornado._excluded_urls._excluded_urls) + ['/status'])
+tornado._excluded_urls = ExcludeList([*list(tornado._excluded_urls._excluded_urls), '/status'])
 
 
 class TelemetryIntegration(Integration):
@@ -44,7 +46,7 @@ class TelemetryIntegration(Integration):
         self.aiohttp_instrumentor = aiohttp_client.AioHttpClientInstrumentor()
         self.tornado_instrumentor = tornado.TornadoInstrumentor()
 
-    def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
+    def initialize_app(self, app: FrontikApplication) -> Future | None:
         if not options.opentelemetry_enabled:
             return None
 
@@ -56,7 +58,7 @@ class TelemetryIntegration(Integration):
                 ResourceAttributes.SERVICE_VERSION: app.application_version(),  # type: ignore
                 ResourceAttributes.HOST_NAME: options.node_name,
                 ResourceAttributes.CLOUD_REGION: http_client_options.datacenter,
-            }
+            },
         )
         otlp_exporter = OTLPSpanExporter(endpoint=options.opentelemetry_collector_url, insecure=True)
 
@@ -79,7 +81,7 @@ class TelemetryIntegration(Integration):
 
         return None
 
-    def deinitialize_app(self, app: FrontikApplication) -> Optional[Future]:
+    def deinitialize_app(self, app: FrontikApplication) -> Future | None:
         if not options.opentelemetry_enabled:
             return None
 
@@ -110,7 +112,7 @@ def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams) ->
     if upstream_name is None:
         upstream_name = get_netloc(request.url)
 
-    span.update_name(' '.join((el for el in [request.method, upstream_name] if el)))
+    span.update_name(' '.join(el for el in [request.method, upstream_name] if el))
     span.set_attribute('http.request.timeout', request.request_timeout * 1000)
     if upstream_datacenter is not None:
         span.set_attribute('http.request.cloud.region', upstream_datacenter)
@@ -134,13 +136,14 @@ class FrontikIdGenerator(IdGenerator):
         request_id = request_context.get_request_id()
         try:
             if request_id is None:
-                raise Exception('bad request_id')
+                msg = 'bad request_id'
+                raise Exception(msg)
 
             if len(request_id) < 32:
-                log.debug(f'request_id = {request_id} is less than 32 characters. Generating random trace_id ')
+                log.debug('request_id = %s is less than 32 characters. Generating random trace_id', request_id)
                 return random.getrandbits(128)
 
             return int(request_id[:32], 16)
         except Exception:
-            log.debug(f'request_id = {request_id} is not valid hex-format. Generating random trace_id')
+            log.debug('request_id = %s is not valid hex-format. Generating random trace_id', request_id)
         return random.getrandbits(128)

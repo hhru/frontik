@@ -14,5 +14,5 @@ class Page(PageHandler):
                 'args': self.reverse_url('two_ids', 1, 2),
                 'args_and_kwargs': self.reverse_url('two_ids', 2, id1=1),
                 'kwargs': self.reverse_url('two_ids', id1=1, id2=2),
-            }
+            },
         )

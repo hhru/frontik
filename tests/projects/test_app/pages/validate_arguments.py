@@ -1,12 +1,11 @@
-from typing import Optional
+from pydantic import validator
 
 from frontik.handler import PageHandler
 from frontik.validator import BaseValidationModel, Validators
-from pydantic import validator
 
 
 class CustomModel(BaseValidationModel):
-    string: Optional[str]
+    string: str | None
 
     @validator('string')
     @classmethod
@@ -38,7 +37,7 @@ class Page(PageHandler):
                 'int_arg_with_default': empty_default_int,
                 'str_arg': empty_str,
                 'none_float': none_float is None,
-            }
+            },
         )
 
     async def post_page(self):
@@ -49,7 +48,7 @@ class Page(PageHandler):
             {
                 'str_body_arg': str_body_arg,
                 'int_body_arg': int_body_arg,
-            }
+            },
         )
 
     async def put_page(self):

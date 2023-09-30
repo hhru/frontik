@@ -1,15 +1,17 @@
 from __future__ import annotations
+
 import asyncio
-import time
 import logging
-from functools import wraps, partial
+import time
+from functools import partial, wraps
 from typing import TYPE_CHECKING
 
-from tornado.ioloop import IOLoop
 from tornado.concurrent import Future
+from tornado.ioloop import IOLoop
 
 if TYPE_CHECKING:
-    from typing import Callable, Any, Coroutine
+    from collections.abc import Callable
+    from typing import Any
 
 async_logger = logging.getLogger('frontik.futures')
 
@@ -29,7 +31,7 @@ class AsyncGroup:
     would not be automatically called.
     """
 
-    def __init__(self, finish_cb: Callable, name:str|None=None) -> None:
+    def __init__(self, finish_cb: Callable, name: str | None = None) -> None:
         self._counter = 0
         self._finish_cb = finish_cb
         self._finished = False
@@ -75,14 +77,14 @@ class AsyncGroup:
     def _inc(self) -> None:
         if self._finished:
             async_logger.info('ignoring adding callback in %s', self)
-            raise AbortAsyncGroup()
+            raise AbortAsyncGroup
 
         self._counter += 1
 
     def _dec(self) -> None:
         self._counter -= 1
 
-    def add(self, intermediate_cb: Callable, exception_handler:Callable|None=None) -> Callable:
+    def add(self, intermediate_cb: Callable, exception_handler: Callable | None = None) -> Callable:
         self._inc()
 
         @wraps(intermediate_cb)
@@ -134,7 +136,11 @@ class AsyncGroup:
         return f'AsyncGroup(name={self._name}, finished={self._finished})'
 
 
-def future_fold(future: Future, result_mapper:Callable|None=None, exception_mapper:Callable|None=None) -> Future:
+def future_fold(
+    future: Future,
+    result_mapper: Callable | None = None,
+    exception_mapper: Callable | None = None,
+) -> Future:
     """
     Creates a new future with result or exception processed by result_mapper and exception_mapper.
 
@@ -144,7 +150,7 @@ def future_fold(future: Future, result_mapper:Callable|None=None, exception_mapp
 
     res_future: Future = Future()
 
-    def _process(func:Callable|None, value: Any) -> None:
+    def _process(func: Callable | None, value: Any) -> None:
         try:
             processed = func(value) if func is not None else value
         except Exception as e:

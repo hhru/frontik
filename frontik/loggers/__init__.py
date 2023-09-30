@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import json
 import logging
 import os
@@ -14,7 +15,6 @@ from frontik import request_context
 from frontik.options import options
 
 if TYPE_CHECKING:
-    from typing import List, Optional
     from logging import LogRecord
 
 ROOT_LOGGER = logging.root
@@ -48,7 +48,7 @@ _CONTEXT_FILTER = ContextFilter()
 
 
 class BufferedHandler(Handler):
-    def __init__(self, level:int=logging.NOTSET) -> None:
+    def __init__(self, level: int = logging.NOTSET) -> None:
         super().__init__(level)
         self.records: list[LogRecord] = []
 
@@ -56,7 +56,7 @@ class BufferedHandler(Handler):
         self.records.append(record)
 
     def produce_all(self):
-        raise NotImplementedError()  # pragma: no cover
+        raise NotImplementedError  # pragma: no cover
 
 
 class GlobalLogHandler(Handler):
@@ -87,7 +87,7 @@ class JSONFormatter(Formatter):
                     'logger': record.name,
                     'mdc': mdc,
                     'msg': message,
-                }
+                },
             )
 
             if stack_trace:
@@ -163,7 +163,13 @@ def get_text_formatter() -> Formatter:
     return _TEXT_FORMATTER
 
 
-def bootstrap_logger(logger_info: str|tuple, logger_level: int, use_json_formatter:bool=True, *, formatter:Formatter|None=None) -> logging.Logger:
+def bootstrap_logger(
+    logger_info: str | tuple,
+    logger_level: int,
+    use_json_formatter: bool = True,
+    *,
+    formatter: Formatter | None = None,
+) -> logging.Logger:
     if isinstance(logger_info, tuple):
         logger, logger_name = logger_info
     else:
@@ -191,10 +197,14 @@ def bootstrap_logger(logger_info: str|tuple, logger_level: int, use_json_formatt
 
 
 def _configure_file(
-    logger_name: str, use_json_formatter: bool = True, formatter: Formatter|None = None
+    logger_name: str,
+    use_json_formatter: bool = True,
+    formatter: Formatter | None = None,
 ) -> list[Handler]:
     log_extension = '.slog' if use_json_formatter else '.log'
-    file_handler = logging.handlers.WatchedFileHandler(os.path.join(options.log_dir, f'{logger_name}{log_extension}'))  # type: ignore
+    file_handler = logging.handlers.WatchedFileHandler(
+        os.path.join(options.log_dir, f'{logger_name}{log_extension}'),  # type: ignore
+    )
 
     if formatter is not None:
         file_handler.setFormatter(formatter)
@@ -207,7 +217,7 @@ def _configure_file(
     return [file_handler]
 
 
-def _configure_stderr(formatter: Formatter|None = None) -> list[logging.StreamHandler]:
+def _configure_stderr(formatter: Formatter | None = None) -> list[logging.StreamHandler]:
     stderr_handler = logging.StreamHandler()
     if formatter is not None:
         stderr_handler.setFormatter(formatter)
@@ -219,8 +229,10 @@ def _configure_stderr(formatter: Formatter|None = None) -> list[logging.StreamHa
 
 
 def _configure_syslog(
-    logger_name: str, use_json_formatter: bool = True, formatter: 'Optional[Formatter]' = None
-) -> 'List[Handler]':
+    logger_name: str,
+    use_json_formatter: bool = True,
+    formatter: Formatter | None = None,
+) -> list[Handler]:
     try:
         syslog_handler = SysLogHandler(
             address=(options.syslog_host, options.syslog_port),
@@ -239,7 +251,7 @@ def _configure_syslog(
 
         return [syslog_handler]
 
-    except socket.error:
+    except OSError:
         logging.getLogger('frontik.logging').exception('cannot initialize syslog')
         return []
 
@@ -256,6 +268,6 @@ def bootstrap_core_logging(log_level: str, use_json: bool, suppressed_loggers: l
         bootstrap_logger((JSON_REQUESTS_LOGGER, 'requests'), level, use_json_formatter=True)
 
     for logger_name in suppressed_loggers:
-        logging.getLogger(logger_name).setLevel(logging.WARN)
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
 
     logging.captureWarnings(True)

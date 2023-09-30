@@ -1,6 +1,7 @@
 import logging
 import time
 from typing import Any
+
 from lxml import etree
 
 from frontik.util import any_to_unicode
@@ -11,7 +12,7 @@ parser = etree.XMLParser()
 def xml_from_file(filename: str, log: logging.Logger) -> Any:
     try:
         return etree.parse(filename).getroot()
-    except IOError:
+    except OSError:
         log.error('failed to read xml file %s', filename)
         raise
     except Exception:

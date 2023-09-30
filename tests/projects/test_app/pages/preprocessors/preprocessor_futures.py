@@ -1,10 +1,10 @@
 import time
+from collections.abc import Callable
 
 from tornado.concurrent import Future
 
 from frontik.handler import PageHandler
 from frontik.preprocessors import preprocessor
-from typing import Callable
 
 
 def waiting_preprocessor(sleep_time_sec: float, preprocessor_name: str, add_preprocessor_future: bool) -> Callable:
@@ -31,7 +31,8 @@ async def pp_1(handler):
 
     def _done(_):
         handler.add_timeout(
-            time.time() + 0.2, handler.finish_group.add(add_preprocessor, handler._handle_request_exception)
+            time.time() + 0.2,
+            handler.finish_group.add(add_preprocessor, handler._handle_request_exception),
         )
 
     future: Future = Future()

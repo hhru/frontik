@@ -2,6 +2,7 @@ import logging
 import os.path
 import unittest
 
+import pytest
 from lxml import etree
 from lxml_asserts.testcase import LxmlTestCaseMixin
 
@@ -25,7 +26,7 @@ XML = etree.XML(
             <bool>True</bool>
         </complexNested>
     </root>
-    '''
+    ''',
 )
 
 DICT_BEFORE = {
@@ -69,7 +70,7 @@ class TestXmlUtils(unittest.TestCase, LxmlTestCaseMixin):
     def test_xml_from_file_does_not_exist(self):
         log = TestXmlUtils.MockLog()
 
-        with self.assertRaises(IOError):
+        with pytest.raises(IOError):  # noqa: PT011
             xml_from_file(self.XML_MISSING_FILE, log)
 
         self.assertIn('failed to read xml file', log.message)
@@ -77,7 +78,7 @@ class TestXmlUtils(unittest.TestCase, LxmlTestCaseMixin):
     def test_xml_from_file_syntax_error(self):
         log = TestXmlUtils.MockLog()
 
-        with self.assertRaises(etree.XMLSyntaxError):
+        with pytest.raises(etree.XMLSyntaxError):
             xml_from_file(self.XML_SYNTAX_ERROR_FILE, log)
 
         self.assertIn('failed to parse xml file', log.message)

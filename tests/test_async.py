@@ -1,16 +1,18 @@
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from tornado.concurrent import Future
 from tornado.testing import AsyncTestCase
-from typing import TYPE_CHECKING
+
 from frontik.futures import future_fold
 
 if TYPE_CHECKING:
-    from asyncio import Future
-    from typing import Callable, Optional, Tuple, Type, Union
+    from collections.abc import Callable
 
 
 class MyException(Exception):
-    def __init__(self, result_was: Optional[object]=None) -> None:
+    def __init__(self, result_was: object | None = None) -> None:
         self.result_was = result_was
 
 
@@ -84,7 +86,7 @@ class TestFutureFold(AsyncTestCase):
 
         def _exception_mapper(exception):
             if isinstance(exception, MyException):
-                raise MyOtherException()
+                raise MyOtherException
             else:
                 return None
 
@@ -127,7 +129,7 @@ class TestFutureFold(AsyncTestCase):
 class FutureProbe:
     _DEFAULT = object
 
-    def __init__(self, future_to_check: Future, stop_cb: Optional[Callable]=None) -> None:
+    def __init__(self, future_to_check: Future, stop_cb: Callable | None = None) -> None:
         self._calls: list = []
         self._stop_cb = stop_cb
         future_to_check.add_done_callback(self.build_callback())
@@ -141,18 +143,27 @@ class FutureProbe:
             self._calls.append((result, exception))
             if callable(self._stop_cb):
                 self._stop_cb()
+
         return _cb
 
-    def assert_single_result_call(self, test: TestFutureFold, expected_result: Union[Tuple[object, object], object]) -> None:
+    def assert_single_result_call(
+        self,
+        test: TestFutureFold,
+        expected_result: tuple[object, object] | object,
+    ) -> None:
         test.assertEqual(len(self._calls), 1, msg='should be only one future resolve')
         test.assertEqual(self._calls[0][0], expected_result, msg='expected future result not matched')
 
-    def assert_single_exception_call(self, test: TestFutureFold, expected_exception_class: Union[Type[MyException], Type[MyOtherException]], result_was: Union[Type[object], object]=_DEFAULT) -> None:
+    def assert_single_exception_call(
+        self,
+        test: TestFutureFold,
+        expected_exception_class: type[MyException] | type[MyOtherException],
+        result_was: type[object] | object = _DEFAULT,
+    ) -> None:
         assert issubclass(expected_exception_class, MyException)
 
         test.assertEqual(len(self._calls), 1, msg='should be only one future resolve with exception')
         exception = self._calls[0][1]
-        test.assertIsInstance(exception, expected_exception_class,
-                              msg='exception should have expected type')
+        test.assertIsInstance(exception, expected_exception_class, msg='exception should have expected type')
         if result_was is not self._DEFAULT:
             test.assertEqual(exception.result_was, result_was)

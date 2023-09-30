@@ -35,4 +35,5 @@ class Page(PageHandler):
 
     def _record_failed_request(self, data: dict) -> None:
         Page.data.update(data)
-        raise ValueError('Some error')
+        msg = 'Some error'
+        raise ValueError(msg)

@@ -1,18 +1,21 @@
 from __future__ import annotations
-import socket
+
 import collections
+import socket
 import threading
 import time
 from functools import partial
-from asyncio import Future
 from typing import TYPE_CHECKING
 
 from frontik.integrations import Integration, integrations_logger
 
 if TYPE_CHECKING:
-    from frontik.options import Options
+    from asyncio import Future
+    from collections.abc import Callable, ItemsView
+    from typing import Any
+
     from frontik.app import FrontikApplication
-    from typing import Callable, Any, ItemsView
+    from frontik.options import Options
 
 
 class StatsdIntegration(Integration):
@@ -38,8 +41,8 @@ def _convert_tags(tags: dict[str, Any]) -> str:
     return '.' + '.'.join(_convert_tag(name, value) for name, value in tags.items() if value is not None)
 
 
-def _encode_str(some: str|bytes) -> bytes:
-    return some if isinstance(some, (bytes, bytearray)) else some.encode('utf-8')
+def _encode_str(some: str | bytes) -> bytes:
+    return some if isinstance(some, bytes | bytearray) else some.encode('utf-8')
 
 
 class Counters:
@@ -84,8 +87,15 @@ class StatsDClientStub:
 
 
 class StatsDClient:
-    def __init__(self, host: str, port:int, default_periodic_send_interval_sec:int, app:str|None=None,
-                 max_udp_size:int=508, reconnect_timeout:int=2) -> None:
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        default_periodic_send_interval_sec: int,
+        app: str | None = None,
+        max_udp_size: int = 508,
+        reconnect_timeout: int = 2,
+    ) -> None:
         self.host = host
         self.port = port
         self.default_periodic_send_interval_sec = default_periodic_send_interval_sec
@@ -105,7 +115,7 @@ class StatsDClient:
 
         try:
             self.socket.connect((self.host, self.port))
-        except socket.error as e:
+        except OSError as e:
             integrations_logger.warning('statsd: connect error: %s', e)
             self._close()
 
@@ -124,14 +134,14 @@ class StatsDClient:
 
         self._write(message)
 
-    def _write(self, data: bytes|str) -> None:
+    def _write(self, data: bytes | str) -> None:
         if self.socket is None:
             integrations_logger.debug('statsd: trying to write to closed socket, dropping')
             return
 
         try:
             self.socket.send(_encode_str(data))
-        except (socket.error, IOError, OSError) as e:
+        except OSError as e:
             integrations_logger.warning('statsd: writing error: %s', e)
             self._close()
 
@@ -160,19 +170,19 @@ class StatsDClient:
         self._write(data)
 
     def count(self, aspect: str, delta: int, **kwargs: Any) -> None:
-        self._send('{}{}:{}|c'.format(aspect, _convert_tags(dict(kwargs, app=self.app)), delta))
+        self._send(f'{aspect}{_convert_tags(dict(kwargs, app=self.app))}:{delta}|c')
 
     def counters(self, aspect: str, counters: Counters) -> None:
         for tags, count in counters.get_snapshot_and_reset():
             self.count(aspect, count, **dict(tags))
 
     def time(self, aspect: str, value: float, **kwargs: Any) -> None:
-        self._send('{}{}:{}|ms'.format(aspect, _convert_tags(dict(kwargs, app=self.app)), value))
+        self._send(f'{aspect}{_convert_tags(dict(kwargs, app=self.app))}:{value}|ms')
 
     def gauge(self, aspect: str, value: float, **kwargs: Any) -> None:
-        self._send('{}{}:{}|g'.format(aspect, _convert_tags(dict(kwargs, app=self.app)), value))
+        self._send(f'{aspect}{_convert_tags(dict(kwargs, app=self.app))}:{value}|g')
 
-    def send_periodically(self, callback: Callable, send_interval_sec:float|None=None) -> None:
+    def send_periodically(self, callback: Callable, send_interval_sec: float | None = None) -> None:
         if send_interval_sec is None:
             send_interval_sec = self.default_periodic_send_interval_sec
         threading.Thread(target=partial(self._send_periodically, callback, send_interval_sec), daemon=True).start()
@@ -187,13 +197,16 @@ class StatsDClient:
                 integrations_logger.warning('statsd: writing error: %s', e)
 
 
-def create_statsd_client(options: Options, app: FrontikApplication) -> StatsDClient|StatsDClientStub:
-    statsd_client: StatsDClient|StatsDClientStub
+def create_statsd_client(options: Options, app: FrontikApplication) -> StatsDClient | StatsDClientStub:
+    statsd_client: StatsDClient | StatsDClientStub
     if options.statsd_host is None or options.statsd_port is None:
         statsd_client = StatsDClientStub()
         integrations_logger.info('statsd integration is disabled: statsd_host / statsd_port options are not configured')
     else:
         statsd_client = StatsDClient(
-            options.statsd_host, options.statsd_port, options.statsd_default_periodic_send_interval_sec, app=app.app
+            options.statsd_host,
+            options.statsd_port,
+            options.statsd_default_periodic_send_interval_sec,
+            app=app.app,
         )
     return statsd_client

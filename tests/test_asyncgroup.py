@@ -5,8 +5,7 @@ from functools import partial
 from tornado.concurrent import Future
 from tornado.testing import ExpectLog
 
-from frontik.futures import async_logger, AsyncGroup
-
+from frontik.futures import AsyncGroup, async_logger
 
 logging.root.setLevel(logging.NOTSET)
 
@@ -75,7 +74,8 @@ class TestAsyncGroup(unittest.TestCase):
 
     def test_exception_in_first(self) -> None:
         def callback1():
-            raise Exception('callback1 error')
+            msg = 'callback1 error'
+            raise Exception(msg)
 
         def callback2():
             self.fail('callback2 should not be called')
@@ -97,7 +97,8 @@ class TestAsyncGroup(unittest.TestCase):
 
     def test_exception_in_last(self) -> None:
         def callback2():
-            raise Exception('callback1 error')
+            msg = 'callback1 error'
+            raise Exception(msg)
 
         def finish_callback():
             self.fail('finish_callback should not be called')
@@ -115,7 +116,8 @@ class TestAsyncGroup(unittest.TestCase):
 
     def test_exception_in_final(self) -> None:
         def finish_callback():
-            raise Exception('callback1 error')
+            msg = 'callback1 error'
+            raise Exception(msg)
 
         ag = AsyncGroup(finish_callback)
 

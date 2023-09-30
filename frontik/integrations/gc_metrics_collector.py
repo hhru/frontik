@@ -1,7 +1,7 @@
 from __future__ import annotations
+
 import gc
 import time
-from asyncio import Future
 from functools import partial
 from typing import TYPE_CHECKING
 
@@ -11,14 +11,16 @@ from frontik.integrations import Integration, integrations_logger
 from frontik.options import options
 
 if TYPE_CHECKING:
+    from asyncio import Future
+
     from frontik.app import FrontikApplication
 
 
 class GCMetricsCollectorIntegration(Integration):
-    def initialize_app(self, app: FrontikApplication) -> Future|None:
+    def initialize_app(self, app: FrontikApplication) -> Future | None:
         if options.gc_metrics_send_interval_ms is None or options.gc_metrics_send_interval_ms <= 0:
             integrations_logger.info(
-                'GC metrics collector integration is disabled: gc_metrics_send_interval_ms option is not configured'
+                'GC metrics collector integration is disabled: gc_metrics_send_interval_ms option is not configured',
             )
             return None
 

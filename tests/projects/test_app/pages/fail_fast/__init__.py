@@ -21,10 +21,13 @@ class Page(PageHandler):
                 'get': self.get_url(self.request.host, self.request.path, data={'return_none': 'true'}, fail_fast=True),
                 'post': self.post_url(self.request.host, self.request.path, data={'param': 'post'}),
                 'put': self.put_url(
-                    self.request.host, self.request.path + '?code=401', fail_fast=fail_fast, parse_on_error=True
+                    self.request.host,
+                    self.request.path + '?code=401',
+                    fail_fast=fail_fast,
+                    parse_on_error=True,
                 ),
                 'delete': self.delete_url(self.request.host, self.request.path, data={'invalid_dict_value': 'true'}),
-            }
+            },
         )
 
         assert results['post'].status_code == 200
@@ -35,7 +38,8 @@ class Page(PageHandler):
 
     def get_page_fail_fast(self, failed_future):
         if self.get_argument('exception_in_fail_fast', 'false') == 'true':
-            raise Exception('Exception in fail_fast')
+            msg = 'Exception in fail_fast'
+            raise Exception(msg)
 
         self.json.replace({'fail_fast': True})
         self.set_status(403)
@@ -49,8 +53,8 @@ class Page(PageHandler):
                         self.request.host,
                         '{}?code={}'.format(self.request.path, self.get_argument('code')),
                         fail_fast=True,
-                    )
-                }
+                    ),
+                },
             )
 
             self.json.put(results)

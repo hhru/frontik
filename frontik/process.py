@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 import errno
+import fcntl
 import gc
 import logging
 import os
 import signal
 import sys
 import time
-import fcntl
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -15,9 +16,10 @@ from tornado.util import errno_from_exception
 from frontik.options import options
 
 if TYPE_CHECKING:
-    from frontik.app import FrontikApplication
-    from typing import Callable
+    from collections.abc import Callable
     from multiprocessing.sharedctypes import Synchronized
+
+    from frontik.app import FrontikApplication
 
 log = logging.getLogger('fork')
 
@@ -71,9 +73,12 @@ def fork_workers(
     timeout = time.time() + options.init_workers_timeout_sec
     while init_workers_count_down.value > 0:
         if time.time() > timeout:
+            msg = (
+                f'workers did not started after {options.init_workers_timeout_sec} seconds, '
+                f'do not started {init_workers_count_down.value} workers'
+            )
             raise Exception(
-                f'workers did not started after {options.init_workers_timeout_sec} seconds,'
-                f' do not started {init_workers_count_down.value} workers'
+                msg,
             )
         time.sleep(0.1)
     after_workers_up_action()

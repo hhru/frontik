@@ -2,7 +2,6 @@ from http_client.balancing import Upstream
 from http_client.request_response import NoAvailableServerException
 
 from frontik import handler, media_types
-
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 

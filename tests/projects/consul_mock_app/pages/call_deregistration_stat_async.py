@@ -1,10 +1,13 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 import json
+from typing import TYPE_CHECKING
 
 from frontik.handler import PageHandler
+
 if TYPE_CHECKING:
     from tests.projects.consul_mock_app import TestApplication
+
 
 class Page(PageHandler):
     async def get_page(self):

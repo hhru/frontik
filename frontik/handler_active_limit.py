@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING
 
@@ -16,7 +17,7 @@ class ActiveHandlersLimit:
     count = 0
     high_watermark_ratio = 0.75
 
-    def __init__(self, statsd_client: StatsDClient|StatsDClientStub) -> None:
+    def __init__(self, statsd_client: StatsDClient | StatsDClientStub) -> None:
         self._acquired = False
         self._statsd_client = statsd_client
         self._high_watermark = int(options.max_active_handlers * self.high_watermark_ratio)

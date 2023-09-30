@@ -1,16 +1,17 @@
 import asyncio
 import os
+import sys
 import time
 import unittest
 from queue import Queue
 from threading import Thread
 
+import pytest
+from http_client import options as http_client_options
+from http_client.balancing import Server, Upstream, UpstreamConfig
+
 from frontik.options import options
 from frontik.service_discovery import UpstreamCaches, UpstreamUpdateListener
-from http_client import options as http_client_options
-from http_client.balancing import Upstream, Server, UpstreamConfig
-import pytest
-import sys
 
 
 class TestUpstreamCaches(unittest.TestCase):
@@ -32,7 +33,7 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Port': 9999,
                     'Weights': {'Passing': 100, 'Warning': 0},
                 },
-            }
+            },
         ]
 
         value_another_dc = [
@@ -50,7 +51,7 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Port': 9999,
                     'Weights': {'Passing': 100, 'Warning': 0},
                 },
-            }
+            },
         ]
 
         upstream_cache = UpstreamCaches({}, {})
@@ -78,7 +79,7 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Port': 9999,
                     'Weights': {'Passing': 100, 'Warning': 0},
                 },
-            }
+            },
         ]
 
         upstream_cache = UpstreamCaches({}, {})
@@ -106,7 +107,7 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Port': 9999,
                     'Weights': {'Passing': 100, 'Warning': 0},
                 },
-            }
+            },
         ]
 
         value_another_dc = [
@@ -124,7 +125,7 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Port': 9999,
                     'Weights': {'Passing': 100, 'Warning': 0},
                 },
-            }
+            },
         ]
 
         upstream_cache = UpstreamCaches({}, {})
@@ -154,7 +155,7 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Port': 9999,
                     'Weights': {'Passing': 100, 'Warning': 0},
                 },
-            }
+            },
         ]
 
         value_another_dc = [
@@ -205,7 +206,7 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Port': 9999,
                     'Weights': {'Passing': 100, 'Warning': 0},
                 },
-            }
+            },
         ]
 
         upstream_cache = UpstreamCaches({}, {})
@@ -231,13 +232,14 @@ class TestUpstreamCaches(unittest.TestCase):
         read_fd, write_fd = os.pipe2(os.O_NONBLOCK)  # type: ignore
         upstream_config = {
             Upstream.DEFAULT_PROFILE: UpstreamConfig(
-                max_timeout_tries=10, retry_policy={'403': {'idempotent': 'false'}, '500': {'idempotent': 'true'}}
-            )
+                max_timeout_tries=10,
+                retry_policy={'403': {'idempotent': 'false'}, '500': {'idempotent': 'true'}},
+            ),
         }
         upstreams = {'upstream': Upstream('upstream', upstream_config, [Server('12.2.3.5'), Server('12.22.3.5')])}
         upstream_cache = UpstreamCaches({0: os.fdopen(write_fd, 'wb')}, upstreams)
 
-        for i in range(200):
+        for _i in range(200):
             upstream_cache.send_updates()
 
         self.assertTrue(upstream_cache._resend_dict, 'resend dict should not be empty')

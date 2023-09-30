@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 import base64
 import http.client
 import unittest
+from typing import TYPE_CHECKING
 
 from tornado.escape import to_unicode
 
-from tests.instances import create_basic_auth_header, frontik_test_app, frontik_no_debug_app
-from typing import TYPE_CHECKING, Dict, Optional
+from tests.instances import create_basic_auth_header, frontik_no_debug_app, frontik_test_app
 
 if TYPE_CHECKING:
     from requests.models import Response
@@ -82,7 +83,12 @@ class TestDebug(unittest.TestCase):
         for msg in assert_not_found:
             self.assertNotIn(msg, response_content)
 
-    def assertDebugResponseCode(self, page: str, expected_code: int, headers: Optional[Dict[str, str]]=None) -> Response:
+    def assert_debug_response_code(
+        self,
+        page: str,
+        expected_code: int,
+        headers: dict[str, str] | None = None,
+    ) -> Response:
         response = frontik_no_debug_app.get_page(page, headers=headers)
         self.assertEqual(response.status_code, expected_code)
         return response
@@ -90,12 +96,14 @@ class TestDebug(unittest.TestCase):
     def test_debug_by_basic_auth(self):
         for url in ('simple', 'simple_async'):
             for param in ('debug', 'noxsl', 'notpl'):
-                response = self.assertDebugResponseCode(f'simple?{param}', http.client.UNAUTHORIZED)
+                response = self.assert_debug_response_code(f'simple?{param}', http.client.UNAUTHORIZED)
                 self.assertIn('Www-Authenticate', response.headers)
                 self.assertRegex(response.headers['Www-Authenticate'], 'Basic realm="[^"]+"')
 
-                self.assertDebugResponseCode(
-                    f'{url}?{param}', http.client.OK, headers={'Authorization': self.DEBUG_BASIC_AUTH}
+                self.assert_debug_response_code(
+                    f'{url}?{param}',
+                    http.client.OK,
+                    headers={'Authorization': self.DEBUG_BASIC_AUTH},
                 )
 
     def test_debug_by_basic_auth_with_invalid_header(self) -> None:
@@ -113,21 +121,23 @@ class TestDebug(unittest.TestCase):
             )
 
             for h in invalid_headers:
-                self.assertDebugResponseCode(f'{url}?debug', http.client.UNAUTHORIZED, headers={'Authorization': h})
+                self.assert_debug_response_code(f'{url}?debug', http.client.UNAUTHORIZED, headers={'Authorization': h})
 
     def test_debug_by_header(self):
         for url in ('simple', 'simple_async'):
             for param in ('debug', 'noxsl', 'notpl'):
-                response = self.assertDebugResponseCode(f'simple?{param}', http.client.UNAUTHORIZED)
+                response = self.assert_debug_response_code(f'simple?{param}', http.client.UNAUTHORIZED)
 
                 self.assertIn('Www-Authenticate', response.headers)
                 self.assertEqual('Basic realm="Secure Area"', response.headers['Www-Authenticate'])
 
-                self.assertDebugResponseCode(
-                    f'simple?{param}', http.client.OK, headers={'Frontik-Debug-Auth': 'user:god'}
+                self.assert_debug_response_code(
+                    f'simple?{param}',
+                    http.client.OK,
+                    headers={'Frontik-Debug-Auth': 'user:god'},
                 )
 
-                self.assertDebugResponseCode(
+                self.assert_debug_response_code(
                     f'{url}?{param}',
                     http.client.OK,
                     headers={'Frontik-Debug-Auth': 'user:god', 'Authorization': 'Basic bad'},
@@ -136,8 +146,10 @@ class TestDebug(unittest.TestCase):
     def test_debug_by_header_with_wrong_header(self) -> None:
         for url in ('simple', 'simple_async'):
             for value in ('', 'not:pass', 'user: god', self.DEBUG_BASIC_AUTH):
-                response = self.assertDebugResponseCode(
-                    f'{url}?debug', http.client.UNAUTHORIZED, headers={'Frontik-Debug-Auth': value}
+                response = self.assert_debug_response_code(
+                    f'{url}?debug',
+                    http.client.UNAUTHORIZED,
+                    headers={'Frontik-Debug-Auth': value},
                 )
 
                 self.assertIn('Www-Authenticate', response.headers)
@@ -146,8 +158,10 @@ class TestDebug(unittest.TestCase):
     def test_debug_by_cookie(self):
         for url in ('simple', 'simple_async'):
             for param in ('debug', 'noxsl', 'notpl'):
-                self.assertDebugResponseCode(url, http.client.UNAUTHORIZED, headers={'Cookie': f'{param}=true'})
+                self.assert_debug_response_code(url, http.client.UNAUTHORIZED, headers={'Cookie': f'{param}=true'})
 
-                self.assertDebugResponseCode(
-                    url, http.client.OK, headers={'Cookie': f'{param}=true;', 'Authorization': self.DEBUG_BASIC_AUTH}
+                self.assert_debug_response_code(
+                    url,
+                    http.client.OK,
+                    headers={'Cookie': f'{param}=true;', 'Authorization': self.DEBUG_BASIC_AUTH},
                 )

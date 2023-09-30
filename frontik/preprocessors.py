@@ -1,17 +1,19 @@
 from __future__ import annotations
+
 import asyncio
 from functools import wraps
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Reversible
+    from collections.abc import Callable, Reversible
+    from typing import Any
 
 
 def _get_preprocessor_name(preprocessor_function: Any) -> str:
     return f'{preprocessor_function.__module__}.{preprocessor_function.__name__}'
 
 
-def preprocessor(function_or_list: Callable|Reversible[Callable]) -> Callable:
+def preprocessor(function_or_list: Callable | Reversible[Callable]) -> Callable:
     """Creates a preprocessor decorator for `PageHandler.get_page`, `PageHandler.post_page` etc.
 
     Preprocessor is a function that accepts handler instance as its only parameter.
@@ -73,11 +75,11 @@ def _unwrap_preprocessors(preprocessors: Reversible) -> list:
 
 
 def _register_preprocessors(func: Callable, preprocessors: list[Callable]) -> None:
-    setattr(func, '_preprocessors', preprocessors + _get_preprocessors(func))
+    func._preprocessors = preprocessors + _get_preprocessors(func)  # type: ignore
 
 
 def make_preprocessors_names_list(preprocessors_list: list) -> list[str]:
-    return list(map(lambda p: p.preprocessor_name, preprocessors_list))
+    return [p.preprocessor_name for p in preprocessors_list]
 
 
 def _wrap_async_func_to_tornado_coroutine(func):

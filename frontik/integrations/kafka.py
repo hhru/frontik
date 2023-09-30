@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import asyncio
 from typing import TYPE_CHECKING
 
@@ -10,6 +11,7 @@ from frontik.options import options
 
 if TYPE_CHECKING:
     from asyncio import Future
+
     from frontik.app import FrontikApplication
 
 
@@ -17,8 +19,8 @@ class KafkaIntegration(Integration):
     def __init__(self):
         self.kafka_producers = {}
 
-    def initialize_app(self, app: FrontikApplication) -> Future|None:
-        def get_kafka_producer(producer_name: str) -> AIOKafkaProducer|None:
+    def initialize_app(self, app: FrontikApplication) -> Future | None:
+        def get_kafka_producer(producer_name: str) -> AIOKafkaProducer | None:
             return self.kafka_producers.get(producer_name)
 
         app.get_kafka_producer = get_kafka_producer  # type: ignore

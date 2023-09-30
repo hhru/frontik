@@ -22,7 +22,8 @@ class TestPreprocessors(unittest.TestCase):
     def test_preprocessor_futures(self):
         response_json = frontik_test_app.get_page_json('preprocessors/preprocessor_futures')
         self.assertEqual(
-            response_json, {'preprocessors': ['should_finish_first', 'should_finish_second', 'should_finish_third']}
+            response_json,
+            {'preprocessors': ['should_finish_first', 'should_finish_second', 'should_finish_third']},
         )
 
     def test_was_preprocessor_called(self):

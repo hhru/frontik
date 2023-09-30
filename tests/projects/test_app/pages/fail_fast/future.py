@@ -13,7 +13,7 @@ class Page(PageHandler):
 
         self.json.put(results)
 
-    def get_future(self, result: str, exception: bool=False) -> Future:
+    def get_future(self, result: str, exception: bool = False) -> Future:
         future: Future = Future()
 
         def _finish_future():

@@ -4,7 +4,6 @@ import logging
 import time
 from asyncio import Future
 from functools import partial
-from typing import Optional
 
 import sentry_sdk
 
@@ -18,10 +17,10 @@ long_gc_log = None
 
 
 class SlowCallbackTrackerIntegration(Integration):
-    def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
+    def initialize_app(self, app: FrontikApplication) -> Future | None:
         if options.asyncio_task_threshold_sec is None:
             integrations_logger.info(
-                'slow callback tracker integration is disabled: asyncio_task_threshold_sec option is None'
+                'slow callback tracker integration is disabled: asyncio_task_threshold_sec option is None',
             )
             return None
         slow_tasks_logger = bootstrap_logger('slow_tasks', logging.WARNING)
@@ -49,9 +48,12 @@ def wrap_handle_with_time_logging(app: FrontikApplication, slow_tasks_logger: lo
         app.statsd_client.time('long_task.time', int(delta_ms))
         slow_tasks_logger.warning('%s took %.2fms', handle, delta_ms)
 
-        if options.asyncio_task_critical_threshold_sec and delta >= options.asyncio_task_critical_threshold_sec:
-            if options.sentry_dsn:
-                sentry_sdk.capture_message(f'{handle} took {delta_ms:.2f} ms', level='error')
+        if (
+            options.asyncio_task_critical_threshold_sec
+            and delta >= options.asyncio_task_critical_threshold_sec
+            and options.sentry_dsn
+        ):
+            sentry_sdk.capture_message(f'{handle} took {delta_ms:.2f} ms', level='error')
 
     def run(self):
         global current_callback_start

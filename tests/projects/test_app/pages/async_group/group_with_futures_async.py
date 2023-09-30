@@ -20,6 +20,6 @@ class Page(frontik.handler.PageHandler):
                 {
                     '1': future,
                     '2': another_future,
-                }
-            )
+                },
+            ),
         )

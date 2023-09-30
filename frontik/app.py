@@ -1,42 +1,44 @@
 from __future__ import annotations
+
 import asyncio
 import importlib
+import logging
 import multiprocessing
-from multiprocessing.sharedctypes import Synchronized
 import sys
 import time
 import traceback
 from functools import partial
 from typing import TYPE_CHECKING
-import logging
 
-import aiohttp
-import tornado
+from http_client import AIOHttpClientWrapper, HttpClientFactory
+from http_client import options as http_client_options
+from http_client.balancing import RequestBalancerBuilder, Upstream, UpstreamManager
 from lxml import etree
-from tornado import httputil
-from tornado.web import Application, RequestHandler, HTTPError
-from http_client import HttpClientFactory, options as http_client_options, AIOHttpClientWrapper
-from http_client.balancing import RequestBalancerBuilder, UpstreamManager, Upstream
+from tornado.web import Application, HTTPError, RequestHandler
 
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
 from frontik import integrations, media_types, request_context
-from frontik.integrations.statsd import create_statsd_client
-from frontik.debug import DebugTransform
+from frontik.debug import DebugTransform, get_frontik_and_apps_versions
 from frontik.handler import ErrorHandler
+from frontik.integrations.statsd import create_statsd_client
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.options import options
 from frontik.routing import FileMappingRouter, FrontikRouter
-from frontik.service_discovery import get_sync_service_discovery, get_async_service_discovery, UpstreamCaches
-from frontik.util import generate_uniq_timestamp_request_id, check_request_id
-from frontik.version import version as frontik_version
+from frontik.service_discovery import UpstreamCaches, get_async_service_discovery, get_sync_service_discovery
+from frontik.util import check_request_id, generate_uniq_timestamp_request_id
 
 app_logger = logging.getLogger('http_client')
 
 if TYPE_CHECKING:
-    from typing import Optional, Callable, Any
-    from tornado.httputil import HTTPServerRequest
+    from collections.abc import Callable
+    from multiprocessing.sharedctypes import Synchronized
+    from typing import Any
+
     from aiokafka import AIOKafkaProducer
+    from tornado import httputil
+    from tornado.httputil import HTTPServerRequest
+
     from frontik.integrations.statsd import StatsDClient, StatsDClientStub
     from frontik.service_discovery import UpstreamUpdateListener
 
@@ -46,7 +48,7 @@ class VersionHandler(RequestHandler):
         self.application: FrontikApplication
         self.set_header('Content-Type', 'text/xml')
         self.write(
-            etree.tostring(get_frontik_and_apps_versions(self.application), encoding='utf-8', xml_declaration=True)
+            etree.tostring(get_frontik_and_apps_versions(self.application), encoding='utf-8', xml_declaration=True),
         )
 
 
@@ -112,7 +114,7 @@ class FrontikApplication(Application):
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
         self.available_integrations: list[integrations.Integration] = []
-        self.tornado_http_client: Optional[AIOHttpClientWrapper] = None
+        self.tornado_http_client: AIOHttpClientWrapper | None = None
         self.http_client_factory: HttpClientFactory = None  # type: ignore
         self.upstream_manager: UpstreamManager = None
         self.upstreams: dict[str, Upstream] = {}
@@ -130,7 +132,7 @@ class FrontikApplication(Application):
         if options.debug:
             core_handlers.insert(0, (r'/pydevd/?', PydevdHandler))
 
-        self.statsd_client: StatsDClient|StatsDClientStub = create_statsd_client(options, self)
+        self.statsd_client: StatsDClient | StatsDClientStub = create_statsd_client(options, self)
         sync_service_discovery = get_sync_service_discovery(options, self.statsd_client)
         self.service_discovery_client = (
             get_async_service_discovery(options, self.statsd_client) if options.workers == 1 else sync_service_discovery
@@ -163,11 +165,15 @@ class FrontikApplication(Application):
         else:
             app_logger.info('kafka metrics are %s', 'enabled' if send_metrics_to_kafka else 'disabled')
 
-        kafka_producer = self.get_kafka_producer(kafka_cluster) if send_metrics_to_kafka and kafka_cluster is not None else None
+        kafka_producer = (
+            self.get_kafka_producer(kafka_cluster) if send_metrics_to_kafka and kafka_cluster is not None else None
+        )
 
         self.upstream_manager = UpstreamManager(self.upstreams)
         request_balancer_builder = RequestBalancerBuilder(
-            self.upstream_manager, statsd_client=self.statsd_client, kafka_producer=kafka_producer
+            self.upstream_manager,
+            statsd_client=self.statsd_client,
+            kafka_producer=kafka_producer,
         )
         self.http_client_factory = HttpClientFactory(self.app, self.tornado_http_client, request_balancer_builder)
 
@@ -214,7 +220,7 @@ class FrontikApplication(Application):
         version.text = 'unknown'
         return [version]
 
-    def application_version(self) -> str|None:
+    def application_version(self) -> str | None:
         return None
 
     @staticmethod
@@ -225,16 +231,17 @@ class FrontikApplication(Application):
     def get_current_status(self) -> dict[str, str]:
         if self.init_workers_count_down.value > 0:
             raise HTTPError(
-                500, f'some workers are not started ' f'init_workers_count_down={self.init_workers_count_down.value}'
+                500,
+                f'some workers are not started init_workers_count_down={self.init_workers_count_down.value}',
             )
 
         cur_uptime = time.time() - self.start_time
         if cur_uptime < 60:
-            uptime_value = '{:.2f} seconds'.format(cur_uptime)
+            uptime_value = f'{cur_uptime:.2f} seconds'
         elif cur_uptime < 3600:
-            uptime_value = '{:.2f} minutes'.format(cur_uptime / 60)
+            uptime_value = f'{cur_uptime / 60:.2f} minutes'
         else:
-            uptime_value = '{:.2f} hours and {:.2f} minutes'.format(cur_uptime / 3600, (cur_uptime % 3600) / 60)
+            uptime_value = f'{cur_uptime / 3600:.2f} hours and {(cur_uptime % 3600) / 60:.2f} minutes'
 
         return {
             'uptime': uptime_value,
@@ -262,21 +269,5 @@ class FrontikApplication(Application):
 
         JSON_REQUESTS_LOGGER.info('', extra={CUSTOM_JSON_EXTRA: extra})
 
-    def get_kafka_producer(self, producer_name: str) -> 'Optional[AIOKafkaProducer]':  # pragma: no cover
+    def get_kafka_producer(self, producer_name: str) -> AIOKafkaProducer | None:  # pragma: no cover
         pass
-
-
-def get_frontik_and_apps_versions(application: FrontikApplication) -> etree.Element:
-    versions = etree.Element('versions')
-
-    etree.SubElement(versions, 'frontik').text = frontik_version
-    etree.SubElement(versions, 'tornado').text = tornado.version
-    etree.SubElement(versions, 'lxml.etree.LXML').text = '.'.join(str(x) for x in etree.LXML_VERSION)
-    etree.SubElement(versions, 'lxml.etree.LIBXML').text = '.'.join(str(x) for x in etree.LIBXML_VERSION)
-    etree.SubElement(versions, 'lxml.etree.LIBXSLT').text = '.'.join(str(x) for x in etree.LIBXSLT_VERSION)
-    etree.SubElement(versions, 'aiohttp').text = aiohttp.__version__
-    etree.SubElement(versions, 'python').text = sys.version.replace('\n', '')
-    etree.SubElement(versions, 'event_loop').text = str(type(asyncio.get_event_loop())).split("'")[1]
-    etree.SubElement(versions, 'application', name=options.app).extend(application.application_version_xml())
-
-    return versions

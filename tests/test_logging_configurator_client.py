@@ -1,10 +1,9 @@
 import logging
 import unittest
-from typing import List
 
 import pytest as pytest
 
-from frontik.loggers.logleveloverride.log_level_override_extension import LogLevelOverrideExtension, LogLevelOverride
+from frontik.loggers.logleveloverride.log_level_override_extension import LogLevelOverride, LogLevelOverrideExtension
 from frontik.loggers.logleveloverride.logging_configurator_client import LoggingConfiguratorClient
 
 MOCK_LOG_OVERRIDE_DTO = [
@@ -15,7 +14,7 @@ MOCK_LOG_OVERRIDE_DTO = [
 
 
 class TestLogLevelOverrideExtension(LogLevelOverrideExtension):
-    async def load_log_level_overrides(self) -> List[LogLevelOverride]:
+    async def load_log_level_overrides(self) -> list[LogLevelOverride]:
         return MOCK_LOG_OVERRIDE_DTO
 
 
@@ -33,12 +32,12 @@ class TestLoggingConfiguratorClient(unittest.TestCase):
         MOCK_LOG_OVERRIDE_DTO.append(LogLevelOverride('b', 'INFO'))
         MOCK_LOG_OVERRIDE_DTO.append(LogLevelOverride('c', 'WARN'))
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_simple_override(self):
         await self.logging_configurator_client._update_log_level()
         self.assertEqual(len(self.logging_configurator_client._loggers_store), 3)
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_override_and_remove(self):
         await self.logging_configurator_client._update_log_level()
         self.assertEqual(len(self.logging_configurator_client._loggers_store), 3)
@@ -48,7 +47,7 @@ class TestLoggingConfiguratorClient(unittest.TestCase):
         await self.logging_configurator_client._update_log_level()
         self.assertEqual(len(self.logging_configurator_client._loggers_store), 0)
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_override_and_after_change_level(self):
         await self.logging_configurator_client._update_log_level()
         self.assertEqual(logging.getLogger('a').level, logging.DEBUG)
@@ -59,14 +58,14 @@ class TestLoggingConfiguratorClient(unittest.TestCase):
         await self.logging_configurator_client._update_log_level()
         self.assertEqual(logging.getLogger('a').level, logging.INFO)
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_level_with_handlers(self):
         logging.getLogger().handlers.append(logging.Handler())
         await self.logging_configurator_client._update_log_level()
         self.assertEqual(logging.getLogger('a').level, logging.DEBUG)
         self.assertEqual(logging.getLogger('a').handlers[0].level, logging.DEBUG)
         self.assertEqual(logging.getLogger('b').handlers[0].level, logging.INFO)
-        self.assertEqual(logging.getLogger('c').handlers[0].level, logging.WARN)
+        self.assertEqual(logging.getLogger('c').handlers[0].level, logging.WARNING)
 
         MOCK_LOG_OVERRIDE_DTO.clear()
 
@@ -78,7 +77,7 @@ class TestLoggingConfiguratorClient(unittest.TestCase):
         self.assertEqual(logging.getLogger('b').handlers[0].level, logging.INFO)
         self.assertEqual(logging.getLogger('c').handlers[0].level, logging.INFO)
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_not_add_root_handlers_if_exist_on_specific_logger(self):
         logging.getLogger().handlers.append(logging.Handler())
         logging.getLogger().handlers.append(logging.Handler())

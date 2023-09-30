@@ -1,7 +1,6 @@
 from http_client.balancing import Upstream
 
 from frontik import handler, media_types
-
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 

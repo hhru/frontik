@@ -1,10 +1,10 @@
 import unittest
 
-from tests.instances import find_free_port, frontik_balancer_app, frontik_broken_balancer_app
 import pytest
 
+from tests.instances import find_free_port, frontik_balancer_app, frontik_broken_balancer_app
 
-# TODO unmark skipped
+
 class TestHttpError(unittest.TestCase):
     free_port = None
 

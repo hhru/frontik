@@ -1,9 +1,6 @@
 from frontik.routing import FileMappingRouter
-
 from tests.projects.re_app import pages
-from tests.projects.re_app.pages import handler_404
-from tests.projects.re_app.pages import id_param
-from tests.projects.re_app.pages import simple
+from tests.projects.re_app.pages import handler_404, id_param, simple
 
 urls = [
     ('/id/(?P<id>[^/]+)', id_param.Page),

@@ -17,7 +17,7 @@ def pp2(handler):
             handler.finish('DONE_IN_PP')
 
         elif handler.get_argument('abort', None):
-            raise FinishWithPostprocessors()
+            raise FinishWithPostprocessors
 
     handler.add_preprocessor_future(pp2_coro())
 

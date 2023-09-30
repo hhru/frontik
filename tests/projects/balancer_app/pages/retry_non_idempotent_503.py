@@ -4,7 +4,6 @@ from tornado.web import HTTPError
 from frontik import media_types
 from frontik.handler import PageHandler
 from frontik.util import gather_list
-
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
@@ -13,10 +12,10 @@ class Page(PageHandler):
     async def get_page(self):
         upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(retry_policy={503: {"idempotent": "true"}})}
         self.application.upstream_manager.update_upstream(
-            Upstream('retry_non_idempotent_503', upstream_config, [get_server(self, 'normal')])
+            Upstream('retry_non_idempotent_503', upstream_config, [get_server(self, 'normal')]),
         )
         self.application.upstream_manager.update_upstream(
-            Upstream('do_not_retry_non_idempotent_503', {}, [get_server(self, 'broken')])
+            Upstream('do_not_retry_non_idempotent_503', {}, [get_server(self, 'broken')]),
         )
 
         res1, res2 = await gather_list(

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import asyncio
 import gc
 import importlib
@@ -9,14 +10,14 @@ import re
 import signal
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from functools import partial
 from dataclasses import asdict
+from functools import partial
 from typing import TYPE_CHECKING
 
-from http_client.options import options as http_client_options
 import tornado.autoreload
 import tornado.httpserver
 import tornado.ioloop
+from http_client.options import options as http_client_options
 
 from frontik.app import FrontikApplication
 from frontik.config_parser import parse_configs
@@ -26,15 +27,16 @@ from frontik.process import fork_workers
 from frontik.service_discovery import UpstreamUpdateListener
 
 if TYPE_CHECKING:
-    from typing import Coroutine
-    from multiprocessing.synchronize import Lock as LockBase
     from asyncio import Future
+    from collections.abc import Coroutine
+    from multiprocessing.synchronize import Lock as LockBase
+
     from tornado.platform.asyncio import BaseAsyncIOLoop
 
 log = logging.getLogger('server')
 
 
-def main(config_file:str|None=None) -> None:
+def main(config_file: str | None = None) -> None:
     parse_configs(config_files=config_file)
 
     if options.app is None:
@@ -43,7 +45,7 @@ def main(config_file:str|None=None) -> None:
 
     log.info('starting application %s', options.app)
 
-    app_class_name: str|None
+    app_class_name: str | None
     try:
         if options.app_class is not None and re.match(r'^\w+\.', options.app_class):
             app_module_name, app_class_name = options.app_class.rsplit('.', 1)
@@ -110,7 +112,7 @@ def _run_worker(app: FrontikApplication, count_down_lock: LockBase, need_to_init
     executor = ThreadPoolExecutor(options.common_executor_pool_size)
     ioloop.asyncio_loop.set_default_executor(executor)
     initialize_application_task = ioloop.asyncio_loop.create_task(
-        _init_app(app, ioloop, count_down_lock, need_to_init, pipe)
+        _init_app(app, ioloop, count_down_lock, need_to_init, pipe),
     )
 
     def initialize_application_task_result_handler(future):
@@ -123,7 +125,11 @@ def _run_worker(app: FrontikApplication, count_down_lock: LockBase, need_to_init
     initialize_application_task.result()
 
 
-async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_register_in_service_discovery: bool) -> None:
+async def run_server(
+    app: FrontikApplication,
+    ioloop: BaseAsyncIOLoop,
+    need_to_register_in_service_discovery: bool,
+) -> None:
     """Starts Frontik server for an application"""
 
     log.info('starting server on %s:%s', options.host, options.port)
@@ -161,18 +167,20 @@ async def run_server(app: FrontikApplication, ioloop: BaseAsyncIOLoop, need_to_r
 
 
 async def _init_app(
-    app: FrontikApplication, ioloop: BaseAsyncIOLoop, count_down_lock: LockBase,
-        need_to_register_in_service_discovery: bool,
-        pipe: int | None
+    app: FrontikApplication,
+    ioloop: BaseAsyncIOLoop,
+    count_down_lock: LockBase,
+    need_to_register_in_service_discovery: bool,
+    pipe: int | None,
 ) -> None:
     await app.init()
     if not need_to_register_in_service_discovery and pipe is not None:
         app.upstream_update_listener = UpstreamUpdateListener(app.upstream_manager, pipe)
     await run_server(app, ioloop, need_to_register_in_service_discovery)
-    log.info(f'Successfully inited application {app.app}')
+    log.info('Successfully inited application %s', app.app)
     with count_down_lock:
         app.init_workers_count_down.value -= 1
-        log.info(f'worker is up, remaining workers = {app.init_workers_count_down.value}')
+        log.info('worker is up, remaining workers = %s', app.init_workers_count_down.value)
     if need_to_register_in_service_discovery:
         register_task = ioloop.asyncio_loop.create_task(app.service_discovery_client.register_service())
 

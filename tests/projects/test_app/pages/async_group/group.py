@@ -23,10 +23,11 @@ class Page(frontik.handler.PageHandler):
                         data={'data': '3' if not fail_request else None},
                         parse_on_error=False,
                     ),
-                }
+                },
             )
             if fail_callback:
-                raise Exception("I'm dying!")
+                msg = "I'm dying!"
+                raise Exception(msg)
 
             self.json.put({'final_callback_called': True})
             self.json.put(result)

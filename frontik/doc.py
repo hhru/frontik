@@ -1,9 +1,13 @@
 from __future__ import annotations
-import lxml.etree as etree
+
 from typing import TYPE_CHECKING
+
+import lxml.etree as etree
 from tornado.concurrent import Future
+
 if TYPE_CHECKING:
-    from typing import Any, Generator
+    from collections.abc import Generator
+    from typing import Any
 
 
 def _is_valid_element(node: Any) -> bool:
@@ -19,12 +23,13 @@ def _is_valid_element(node: Any) -> bool:
 class Doc:
     __slots__ = ('root_node', 'data')
 
-    def __init__(self, root_node:Any='doc') -> None:
+    def __init__(self, root_node: Any = 'doc') -> None:
         if isinstance(root_node, str):
             root_node = etree.Element(root_node)
 
         if not (_is_valid_element(root_node) or isinstance(root_node, Doc)):
-            raise TypeError(f'Cannot set {root_node} as root node')
+            msg = f'Cannot set {root_node} as root node'
+            raise TypeError(msg)
 
         self.root_node = root_node
         self.data: list = []
@@ -46,7 +51,7 @@ class Doc:
     def to_etree_element(self) -> etree.Element:
         res = self.root_node.to_etree_element() if isinstance(self.root_node, Doc) else self.root_node
 
-        def chunk_to_element(chunk:Any) -> Generator:
+        def chunk_to_element(chunk: Any) -> Generator:
             if isinstance(chunk, list):
                 for chunk_i in chunk:
                     for i in chunk_to_element(chunk_i):
@@ -66,7 +71,8 @@ class Doc:
                 yield chunk
 
             elif chunk is not None:
-                raise ValueError(f'Unexpected value of type {type(chunk)} in doc')
+                msg = f'Unexpected value of type {type(chunk)} in doc'
+                raise ValueError(msg)
 
         for chunk_element in chunk_to_element(self.data):
             res.append(chunk_element)

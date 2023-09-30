@@ -9,7 +9,8 @@ class Page(handler.PageHandler):
 
         def _exception_trace() -> None:
             def _inner() -> None:
-                raise ValueError('Testing an exception юникод')
+                msg = 'Testing an exception юникод'
+                raise ValueError(msg)
 
             _inner()
 
@@ -63,4 +64,4 @@ class Page(handler.PageHandler):
             self.text = 'document.body.write("Привет")'
         elif content_type == 'text':
             self.set_header('Content-Type', media_types.TEXT_PLAIN)
-            self.text = 'привет charset'.encode('utf-8')
+            self.text = 'привет charset'.encode()

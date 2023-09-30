@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 from collections import namedtuple
 from functools import partial
@@ -10,13 +11,15 @@ from frontik.options import options
 from frontik.request_context import get_handler_name
 
 if TYPE_CHECKING:
-    from typing import Callable
+    from collections.abc import Callable
+
     from http_client.request_response import RequestBuilder
 
 
 timeout_tracking_logger = logging.getLogger('timeout_tracking')
 LoggingData = namedtuple(
-    'LoggingData', ('outer_caller', 'outer_timeout_ms', 'upstream', 'handler_name', 'request_timeout_ms')
+    'LoggingData',
+    ('outer_caller', 'outer_timeout_ms', 'upstream', 'handler_name', 'request_timeout_ms'),
 )
 
 
@@ -32,7 +35,7 @@ class TimeoutCounter(dict):
 class Sender:
     def __init__(self) -> None:
         self._timeout_counters = TimeoutCounter()
-        self._send_stats_callback: PeriodicCallback|None = None
+        self._send_stats_callback: PeriodicCallback | None = None
 
     def send_data(self, data: LoggingData, already_spent_ms: float) -> None:
         self._timeout_counters.increment(data, already_spent_ms)
@@ -78,7 +81,12 @@ _sender = Sender()
 
 class TimeoutChecker:
     def __init__(
-        self, outer_caller: str|None, outer_timeout_ms: float, time_since_outer_request_start_sec_supplier: Callable, *, threshold_ms: float=100
+        self,
+        outer_caller: str | None,
+        outer_timeout_ms: float,
+        time_since_outer_request_start_sec_supplier: Callable,
+        *,
+        threshold_ms: float = 100,
     ) -> None:
         self.outer_caller = outer_caller
         self.outer_timeout_ms = outer_timeout_ms
@@ -103,9 +111,16 @@ class TimeoutChecker:
 
 
 def get_timeout_checker(
-        outer_caller: str|None, outer_timeout_ms: float, time_since_outer_request_start_ms_supplier: Callable, *, threshold_ms: float=100
+    outer_caller: str | None,
+    outer_timeout_ms: float,
+    time_since_outer_request_start_ms_supplier: Callable,
+    *,
+    threshold_ms: float = 100,
 ) -> TimeoutChecker:
     _sender.start_sending_if_needed()
     return TimeoutChecker(
-        outer_caller, outer_timeout_ms, time_since_outer_request_start_ms_supplier, threshold_ms=threshold_ms
+        outer_caller,
+        outer_timeout_ms,
+        time_since_outer_request_start_ms_supplier,
+        threshold_ms=threshold_ms,
     )

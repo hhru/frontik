@@ -32,7 +32,7 @@ class Page(PageHandler):
             self.doc.put(etree.Element('ok'))
             self.set_xsl('simple.xsl')
 
-        raise FinishWithPostprocessors()
+        raise FinishWithPostprocessors
 
     async def post_page(self):
         pass

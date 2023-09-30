@@ -20,7 +20,7 @@ class Page(frontik.handler.PageHandler):
             {
                 '1': future,
                 '2': another_future,
-            }
+            },
         )
         self.json.put({'final_callback_called': True})
         self.json.put(result)

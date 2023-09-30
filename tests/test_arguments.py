@@ -1,9 +1,9 @@
+from typing import Any
 from urllib.parse import urlencode
 
 import requests
 
 from tests.instances import frontik_test_app
-from typing import Any
 
 
 class TestJsonResponse:
@@ -19,7 +19,8 @@ class TestJsonResponse:
     def test_validation(self):
         self.query_args.update(int_arg=0)
         get_data = frontik_test_app.get_page_json(
-            f'validate_arguments?{urlencode(self.query_args, doseq=True)}', notpl=True
+            f'validate_arguments?{urlencode(self.query_args, doseq=True)}',
+            notpl=True,
         )
 
         assert get_data['list'] == [1, 2]
@@ -59,7 +60,8 @@ class TestJsonResponse:
         self.query_args.update(model=True)
 
         data = frontik_test_app.get_page_json(
-            f'validate_arguments?{urlencode(self.query_args, doseq=True)}', notpl=True
+            f'validate_arguments?{urlencode(self.query_args, doseq=True)}',
+            notpl=True,
         )
 
         assert data['list'] == [1, 2]

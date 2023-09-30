@@ -1,8 +1,12 @@
 from __future__ import annotations
-from frontik.handler import PageHandler
+
 from typing import TYPE_CHECKING
+
+from frontik.handler import PageHandler
+
 if TYPE_CHECKING:
     from tests.projects.consul_mock_app import TestApplication
+
 
 class Page(PageHandler):
     def __init__(self, *args, **kwargs):

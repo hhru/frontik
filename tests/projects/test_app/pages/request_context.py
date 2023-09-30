@@ -1,9 +1,10 @@
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
 from frontik import request_context
 from frontik.handler import PageHandler
-from typing import Callable
+
 
 def _callback(name, handler, *args):
     handler.json.put({name: request_context.get_handler_name()})

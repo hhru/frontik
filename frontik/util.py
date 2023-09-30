@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import asyncio
 import datetime
 import logging
@@ -6,15 +7,16 @@ import os.path
 import random
 import re
 from string import Template
+from typing import TYPE_CHECKING
 from urllib.parse import urlencode
 from uuid import uuid4
-from typing import TYPE_CHECKING
 
+from http_client.util import any_to_bytes, any_to_unicode, to_unicode
 from tornado.escape import utf8
-from http_client.util import to_unicode, any_to_unicode, any_to_bytes
 
 if TYPE_CHECKING:
     from typing import Any
+
     from frontik.handler import PageHandler
 
 logger = logging.getLogger('util')
@@ -52,7 +54,7 @@ def make_url(base: str, **query_args: Any) -> str:
         return to_unicode(base)
 
 
-def decode_string_from_charset(value:bytes, charsets: tuple=('cp1251',)) -> str:
+def decode_string_from_charset(value: bytes, charsets: tuple = ('cp1251',)) -> str:
     if isinstance(value, str):
         return value
 
@@ -65,7 +67,8 @@ def decode_string_from_charset(value:bytes, charsets: tuple=('cp1251',)) -> str:
             continue
 
     if decoded_body is None:
-        raise UnicodeError('Could not decode string (tried: {})'.format(', '.join(charsets)))
+        msg = 'Could not decode string (tried: {})'.format(', '.join(charsets))
+        raise UnicodeError(msg)
 
     return decoded_body
 
@@ -78,13 +81,13 @@ def choose_boundary():
     return utf8(uuid4().hex)
 
 
-def get_cookie_or_url_param_value(handler: PageHandler, param_name: str) -> str|None:
+def get_cookie_or_url_param_value(handler: PageHandler, param_name: str) -> str | None:
     return handler.get_argument(param_name, handler.get_cookie(param_name, None))
 
 
 def reverse_regex_named_groups(pattern: str, *args: Any, **kwargs: Any) -> str:
     class GroupReplacer:
-        def __init__(self, args:Any, kwargs:Any) -> None:
+        def __init__(self, args: Any, kwargs: Any) -> None:
             self.args, self.kwargs = args, kwargs
             self.current_arg = 0
 
@@ -100,7 +103,8 @@ def reverse_regex_named_groups(pattern: str, *args: Any, **kwargs: Any) -> str:
                     value = self.args[self.current_arg]
                     self.current_arg += 1
                 else:
-                    raise ValueError('Cannot reverse regex: required number of arguments not found')
+                    msg = 'Cannot reverse regex: required number of arguments not found'
+                    raise ValueError(msg)
 
             return any_to_unicode(value)
 
@@ -108,7 +112,7 @@ def reverse_regex_named_groups(pattern: str, *args: Any, **kwargs: Any) -> str:
     return result.replace('^', '').replace('$', '')
 
 
-def get_abs_path(root_path: str, relative_path: str|None) -> str:
+def get_abs_path(root_path: str, relative_path: str | None) -> str:
     if relative_path is None or os.path.isabs(relative_path):
         return relative_path  # type: ignore
 
@@ -126,7 +130,7 @@ def check_request_id(request_id: str) -> bool:
         int(request_id, 16)
         return True
     except ValueError:
-        logger.error(f'request_id = {request_id} is not valid hex-format')
+        logger.error('request_id = %s is not valid hex-format', request_id)
         return False
 
 
@@ -142,4 +146,4 @@ async def gather_dict(coro_dict: dict) -> dict:
     None can be used in coros, see :func:`gather_list`
     """
     results = await gather_list(*coro_dict.values())
-    return dict(zip(coro_dict.keys(), results))
+    return dict(zip(coro_dict.keys(), results, strict=True))

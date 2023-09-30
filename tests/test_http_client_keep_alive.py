@@ -1,10 +1,11 @@
 import socket
 import unittest
 from contextlib import closing
+from typing import Any
+
+import pytest
 
 from tests.instances import find_free_port, frontik_test_app
-import pytest
-from typing import Any
 
 
 @pytest.mark.skip(reason="doesn't work with native coroutines")
@@ -72,7 +73,7 @@ class Client:
         self.socket.connect(('127.0.0.1', port))
         self.socket.settimeout(5)
 
-    def send_request(self, backend_port: int, request_id: str|None=None) -> None:
+    def send_request(self, backend_port: int, request_id: str | None = None) -> None:
         self.socket.send(b'GET /http_client/proxy_code?port=' + str(backend_port).encode() + b' HTTP/1.1\r\n')
         self.socket.send(b'Host: 127.0.0.1:' + str(self.port).encode() + b'\r\n')
         if request_id:
@@ -101,7 +102,7 @@ class Backend:
         self.socket.close()
 
 
-def handle_request_to_backend(backend_socket: socket.socket, code:str, reason:str, headers:Any=None) -> None:
+def handle_request_to_backend(backend_socket: socket.socket, code: str, reason: str, headers: Any = None) -> None:
     backend_socket.recv(1024)
     backend_socket.send(b'HTTP/1.1 ' + code.encode() + b' ' + reason.encode() + b'\r\n')
     if headers is not None:

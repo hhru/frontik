@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 import contextvars
 import copy
+import re
 import time
 import weakref
-import re
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
@@ -20,13 +21,21 @@ from frontik.xml_util import xml_from_file, xsl_from_file
 
 if TYPE_CHECKING:
     from typing import Any
+
     from frontik.app import FrontikApplication
     from frontik.handler import PageHandler
+
 
 class XmlProducer:
     METAINFO_PREFIX = 'hhmeta_'
 
-    def __init__(self, handler: PageHandler, xml_cache:Any=None, xsl_cache:Any=None, executor:Any=None) -> None:
+    def __init__(
+        self,
+        handler: PageHandler,
+        xml_cache: Any = None,
+        xsl_cache: Any = None,
+        executor: Any = None,
+    ) -> None:
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
         self.executor = executor
@@ -36,7 +45,7 @@ class XmlProducer:
 
         self.doc = frontik.doc.Doc()
         self.transform: Any = None  # type: ignore
-        self.transform_filename: str|None = None
+        self.transform_filename: str | None = None
 
     def __call__(self):
         if any(frontik.util.get_cookie_or_url_param_value(self.handler, p) is not None for p in ('noxsl', 'notpl')):
@@ -64,7 +73,7 @@ class XmlProducer:
     def set_xsl(self, filename: str) -> None:
         self.transform_filename = filename
 
-    async def _finish_with_xslt(self) -> tuple[str|None, list[Any]|None]:
+    async def _finish_with_xslt(self) -> tuple[str | None, list[Any] | None]:
         self.log.debug('finishing with XSLT')
 
         if self.handler._headers.get('Content-Type') is None:
@@ -73,7 +82,8 @@ class XmlProducer:
         def job():
             start_time = time.time()
             result = self.transform(
-                copy.deepcopy(self.doc.to_etree_element()), profile_run=self.handler.debug_mode.profile_xslt
+                copy.deepcopy(self.doc.to_etree_element()),
+                profile_run=self.handler.debug_mode.profile_xslt,
             )
             meta_info = [
                 entry.message.replace(self.METAINFO_PREFIX, '')
@@ -116,7 +126,7 @@ class XmlProducer:
             self.log.error(get_xsl_log())
             raise e
 
-    async def _finish_with_xml(self, escape_xmlns:bool=False) -> tuple[bytes,None]:
+    async def _finish_with_xml(self, escape_xmlns: bool = False) -> tuple[bytes, None]:
         self.log.debug('finishing without XSLT')
         if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.APPLICATION_XML)
@@ -139,7 +149,7 @@ class XmlProducer:
         return self.xml_cache.load(filename, self.log)
 
     def __repr__(self):
-        return '{}.{}'.format(__package__, self.__class__.__name__)
+        return f'{__package__}.{self.__class__.__name__}'
 
 
 class XMLProducerFactory(ProducerFactory):
@@ -165,5 +175,5 @@ class XMLProducerFactory(ProducerFactory):
 
         self.executor = ThreadPoolExecutor(options.xsl_executor_pool_size)
 
-    def get_producer(self, handler:PageHandler) -> XmlProducer:
+    def get_producer(self, handler: PageHandler) -> XmlProducer:
         return XmlProducer(handler, xml_cache=self.xml_cache, xsl_cache=self.xsl_cache, executor=self.executor)

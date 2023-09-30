@@ -18,7 +18,7 @@ class Page(PageHandler):
             self.data = {}
 
     def finish(self, chunk=None):
-        super(Page, self).finish(chunk)
+        super().finish(chunk)
         if self.request.method == 'GET':
             # HTTP requests with waited=False can be made after handler is finished
             asyncio.create_task(self.put_url(self.request.host, self.request.path, waited=False))  # type: ignore
