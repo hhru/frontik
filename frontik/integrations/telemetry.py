@@ -101,6 +101,7 @@ def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams):
         upstream_name = get_netloc(request.url)
 
     span.update_name(' '.join((el for el in [request.method, upstream_name] if el)))
+    span.set_attribute(SpanAttributes.PEER_SERVICE, upstream_name)
     span.set_attribute('http.request.timeout', request.request_timeout * 1000)
     if upstream_datacenter is not None:
         span.set_attribute('http.request.cloud.region', upstream_datacenter)
