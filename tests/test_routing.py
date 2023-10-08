@@ -1,7 +1,6 @@
 import unittest
 
 from frontik.routing import MAX_MODULE_NAME_LENGTH
-
 from tests.instances import frontik_re_app, frontik_test_app
 
 
@@ -34,16 +33,16 @@ class TestRouting(unittest.TestCase):
         html = frontik_re_app.get_page_text('id/some')
         self.assertIn('some', html)
 
-    def test_rewrite_multiple(self):
+    def test_rewrite_multiple(self) -> None:
         values = ('some', 'another')
         html = frontik_re_app.get_page_text('id/{}'.format(','.join(values)))
         self.assertTrue(all(map(html.find, values)))
 
-    def test_error_on_import(self):
+    def test_error_on_import(self) -> None:
         response = frontik_test_app.get_page('error_on_import')
         self.assertEqual(response.status_code, 500)
 
-    def test_error_on_import_of_module_having_module_not_found_error(self):
+    def test_error_on_import_of_module_having_module_not_found_error(self) -> None:
         response = frontik_test_app.get_page('module_not_found_error_on_import')
         self.assertEqual(response.status_code, 500)
 
@@ -75,13 +74,16 @@ class TestRouting(unittest.TestCase):
 
     def test_reverse_url(self):
         json = frontik_re_app.get_page_json('reverse_url')
-        self.assertEqual(json, {
-            'args': '/id/1/2',
-            'args_and_kwargs': '/id/1/2',
-            'kwargs': '/id/1/2',
-        })
+        self.assertEqual(
+            json,
+            {
+                'args': '/id/1/2',
+                'args_and_kwargs': '/id/1/2',
+                'kwargs': '/id/1/2',
+            },
+        )
 
-    def test_reverse_url_fail(self):
+    def test_reverse_url_fail(self) -> None:
         response = frontik_re_app.get_page('reverse_url?fail_args=true')
         self.assertEqual(response.status_code, 500)
 

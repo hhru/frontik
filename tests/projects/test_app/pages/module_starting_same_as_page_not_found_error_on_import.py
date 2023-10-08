@@ -1,1 +1,1 @@
-import non.existing.module
+import non.existing.module  # noqa

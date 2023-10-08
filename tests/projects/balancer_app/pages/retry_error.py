@@ -4,7 +4,6 @@ from tornado.web import HTTPError
 from frontik import media_types
 from frontik.handler import PageHandler
 from frontik.util import gather_list
-
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_occupied
 
@@ -12,13 +11,14 @@ from tests.projects.balancer_app.pages import check_all_requests_done, check_all
 class Page(PageHandler):
     async def get_page(self):
         self.application.upstream_manager.update_upstream(
-            Upstream('retry_error', {}, [get_server(self, 'broken'), get_server(self, 'normal')]))
+            Upstream('retry_error', {}, [get_server(self, 'broken'), get_server(self, 'normal')]),
+        )
         self.text = ''
 
         requests = [
             self.put_url('retry_error', self.request.path),
             self.put_url('retry_error', self.request.path),
-            self.put_url('retry_error', self.request.path)
+            self.put_url('retry_error', self.request.path),
         ]
         check_all_servers_occupied(self, 'retry_error')
 

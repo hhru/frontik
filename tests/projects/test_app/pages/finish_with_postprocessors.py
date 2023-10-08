@@ -16,7 +16,7 @@ class Page(PageHandler):
     async def get_page(self):
         content_type = self.get_argument('type')
 
-        async def fail_request():
+        async def fail_request() -> None:
             await self.post_url(self.request.host, self.request.path)
             raise HTTPError(500)
 

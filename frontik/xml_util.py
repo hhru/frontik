@@ -1,4 +1,6 @@
+import logging
 import time
+from typing import Any
 
 from lxml import etree
 
@@ -7,10 +9,10 @@ from frontik.util import any_to_unicode
 parser = etree.XMLParser()
 
 
-def xml_from_file(filename, log):
+def xml_from_file(filename: str, log: logging.Logger) -> Any:
     try:
         return etree.parse(filename).getroot()
-    except IOError:
+    except OSError:
         log.error('failed to read xml file %s', filename)
         raise
     except Exception:
@@ -25,7 +27,7 @@ def xsl_from_file(filename, log):
     return result
 
 
-def dict_to_xml(dict_value, element_name):
+def dict_to_xml(dict_value: dict, element_name: str) -> etree.Element:
     element = etree.Element(element_name)
     if not isinstance(dict_value, dict):
         element.text = any_to_unicode(dict_value)
@@ -36,7 +38,7 @@ def dict_to_xml(dict_value, element_name):
     return element
 
 
-def xml_to_dict(xml):
+def xml_to_dict(xml: etree.Element) -> dict:
     if len(xml) == 0:
         return xml.text if xml.text is not None else ''
 

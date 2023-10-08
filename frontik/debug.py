@@ -1,4 +1,8 @@
+from __future__ import annotations
+
+import asyncio
 import base64
+import contextlib
 import copy
 import inspect
 import json
@@ -6,37 +10,48 @@ import logging
 import os
 import pprint
 import re
+import sys
 import time
 import traceback
 from binascii import crc32
 from datetime import datetime
 from http.cookies import SimpleCookie
+from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlparse
 
+import aiohttp
+import tornado
 from lxml import etree
 from lxml.builder import E
 from tornado.escape import to_unicode, utf8
-from tornado.httputil import HTTPHeaders
+from tornado.httputil import HTTPHeaders, HTTPServerRequest
 from tornado.web import OutputTransform
-from http_client.request_response import RequestResult, RequestBuilder
 
 import frontik.util
 import frontik.xml_util
 from frontik import media_types, request_context
 from frontik.loggers import BufferedHandler
+from frontik.options import options
+from frontik.version import version as frontik_version
+from frontik.xml_util import dict_to_xml
+
+if TYPE_CHECKING:
+    from typing import Any
+
+    from http_client.request_response import RequestBuilder, RequestResult
+
+    from frontik.app import FrontikApplication
+    from frontik.handler import PageHandler
 
 debug_log = logging.getLogger('frontik.debug')
 
 
-def response_to_xml(result: RequestResult):
+def response_to_xml(result: RequestResult) -> etree.Element:
     time_info = etree.Element('time_info')
     content_type = result.headers.get('Content-Type', '')
     mode = ''
 
-    if 'charset' in content_type:
-        charset = content_type.partition('=')[-1]
-    else:
-        charset = 'utf-8'
+    charset = content_type.partition('=')[-1] if 'charset' in content_type else 'utf-8'
 
     try_charsets = (charset, 'cp1251')
 
@@ -82,7 +97,7 @@ def response_to_xml(result: RequestResult):
     return response
 
 
-def request_to_xml(request: RequestBuilder):
+def request_to_xml(request: RequestBuilder) -> etree.Element:
     content_type = request.headers.get('Content-Type', '')
     body = etree.Element('body', content_type=content_type)
 
@@ -110,9 +125,7 @@ def request_to_xml(request: RequestBuilder):
             _params_to_xml(request.url),
             _headers_to_xml(request.headers),
             _cookies_to_xml(request.headers),
-            E.curl(
-                request_to_curl_string(request)
-            )
+            E.curl(request_to_curl_string(request)),
         )
     except Exception:
         debug_log.exception('cannot parse request body')
@@ -122,7 +135,7 @@ def request_to_xml(request: RequestBuilder):
     return request
 
 
-def balanced_request_to_xml(balanced_request, retry, datacenter):
+def balanced_request_to_xml(balanced_request: RequestBuilder, retry: int, datacenter: str) -> etree.Element:
     info = etree.Element('meta-info')
 
     if balanced_request.upstream_name != balanced_request.host:
@@ -136,8 +149,8 @@ def balanced_request_to_xml(balanced_request, retry, datacenter):
     return info
 
 
-def request_to_curl_string(request: RequestBuilder):
-    def _escape_apos(string):
+def request_to_curl_string(request: RequestBuilder) -> str:
+    def _escape_apos(string: str) -> str:
         return string.replace("'", "'\"'\"'")
 
     try:
@@ -149,7 +162,7 @@ def request_to_curl_string(request: RequestBuilder):
 
     curl_headers = HTTPHeaders(request.headers)
     if request.body and 'Content-Length' not in curl_headers:
-        curl_headers['Content-Length'] = len(request.body)
+        curl_headers['Content-Length'] = str(len(request.body))
 
     if is_binary_body:
         curl_echo_data = f'echo -e {request_body} |'
@@ -158,7 +171,7 @@ def request_to_curl_string(request: RequestBuilder):
         curl_echo_data = ''
         curl_data_string = f"--data '{request_body}'" if request_body else ''
 
-    def _format_header(key):
+    def _format_header(key: str) -> str:
         header_value = frontik.util.any_to_unicode(curl_headers[key])
         return f"-H '{key}: {_escape_apos(header_value)}'"
 
@@ -167,16 +180,16 @@ def request_to_curl_string(request: RequestBuilder):
         method=request.method,
         url=to_unicode(request.url),
         headers=' '.join(_format_header(k) for k in sorted(curl_headers.keys())),
-        data=curl_data_string
+        data=curl_data_string,
     ).strip()
 
 
-def _get_query_parameters(url):
+def _get_query_parameters(url: str) -> dict:
     url = 'http://' + url if not re.match(r'[a-z]+://.+\??.*', url, re.IGNORECASE) else url
     return parse_qs(urlparse(url).query, True)
 
 
-def _params_to_xml(url):
+def _params_to_xml(url: str) -> etree.Element:
     params = etree.Element('params')
     query = _get_query_parameters(url)
     for name, values in query.items():
@@ -189,7 +202,7 @@ def _params_to_xml(url):
     return params
 
 
-def _headers_to_xml(request_or_response_headers):
+def _headers_to_xml(request_or_response_headers: dict | HTTPHeaders) -> etree.Element:
     headers = etree.Element('headers')
     for name, value in request_or_response_headers.items():
         if name != 'Cookie':
@@ -198,16 +211,16 @@ def _headers_to_xml(request_or_response_headers):
     return headers
 
 
-def _cookies_to_xml(request_or_response_headers):
+def _cookies_to_xml(request_or_response_headers: dict) -> etree.Element:
     cookies = etree.Element('cookies')
     if 'Cookie' in request_or_response_headers:
-        _cookies = SimpleCookie(request_or_response_headers['Cookie'])
+        _cookies: SimpleCookie = SimpleCookie(request_or_response_headers['Cookie'])
         for cookie in _cookies:
             cookies.append(E.cookie(_cookies[cookie].value, name=cookie))
     return cookies
 
 
-def _exception_to_xml(exc_info, log=debug_log):
+def _exception_to_xml(exc_info: tuple, log: logging.Logger = debug_log) -> etree.Element:
     exc_node = etree.Element('exception')
 
     try:
@@ -220,12 +233,12 @@ def _exception_to_xml(exc_info, log=debug_log):
 
             try:
                 lines, starting_line = inspect.getsourcelines(frame)
-            except IOError:
-                lines, starting_line = [], None
+            except OSError:
+                lines, starting_line = [], 0
 
-            for i, l in enumerate(lines):
+            for i, line in enumerate(lines):
                 line_node = etree.Element('line')
-                line_node.append(E.text(to_unicode(l)))
+                line_node.append(E.text(to_unicode(line)))
                 line_node.append(E.number(str(starting_line + i)))
                 if starting_line + i == frame.f_lineno:
                     line_node.set('selected', 'true')
@@ -247,27 +260,41 @@ def _exception_to_xml(exc_info, log=debug_log):
 _format_number = '{:.4f}'.format
 
 
-def _pretty_print_xml(node):
+def _pretty_print_xml(node: etree.Element) -> str:
     return etree.tostring(node, pretty_print=True, encoding='unicode')
 
 
-def _pretty_print_json(node):
+def _pretty_print_json(node: Any) -> str:
     return json.dumps(node, sort_keys=True, indent=2, ensure_ascii=False)
 
 
-def _string_to_color(value):
-    value_hash = crc32(utf8(value)) % 0xffffffff
+def _string_to_color(value: None | str | bytes) -> tuple[str, str]:
+    value_hash = crc32(utf8(value)) % 0xFFFFFFFF  # type: ignore
     r = (value_hash & 0xFF0000) >> 16
     g = (value_hash & 0x00FF00) >> 8
     b = value_hash & 0x0000FF
-    bgcolor = '#%02x%02x%02x' % (r, g, b)
-    fgcolor = 'black' if 0.2126 * r + 0.7152 * g + 0.0722 * b > 0xff / 2 else 'white'
+    bgcolor = f'#{r:02x}{g:02x}{b:02x}'
+    fgcolor = 'black' if 0.2126 * r + 0.7152 * g + 0.0722 * b > 0xFF / 2 else 'white'
     return bgcolor, fgcolor
 
 
 class DebugBufferedHandler(BufferedHandler):
-    FIELDS = ('created', 'filename', 'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs',
-              'name', 'pathname', 'process', 'processName', 'relativeCreated', 'threadName')
+    FIELDS = (
+        'created',
+        'filename',
+        'funcName',
+        'levelname',
+        'levelno',
+        'lineno',
+        'module',
+        'msecs',
+        'name',
+        'pathname',
+        'process',
+        'processName',
+        'relativeCreated',
+        'threadName',
+    )
 
     def produce_all(self):
         log_data = etree.Element('log')
@@ -277,7 +304,7 @@ class DebugBufferedHandler(BufferedHandler):
 
         return copy.deepcopy(log_data)
 
-    def _produce_one(self, record):
+    def _produce_one(self, record: logging.LogRecord) -> etree.Element:
         entry_attrs = {}
         for field in self.FIELDS:
             val = getattr(record, field)
@@ -297,35 +324,38 @@ class DebugBufferedHandler(BufferedHandler):
         if record.exc_info is not None:
             entry.append(_exception_to_xml(record.exc_info))
 
-        if getattr(record, '_response', None) is not None:
+        if hasattr(record, '_response') and getattr(record, '_response', None) is not None:
             entry.append(response_to_xml(record._response))
 
-        if getattr(record, '_request', None) is not None:
+        if hasattr(record, '_request') and getattr(record, '_request', None) is not None:
             entry.append(request_to_xml(record._request))
-            entry.append(balanced_request_to_xml(record._request, record._request_retry,
-                                                 record._datacenter))
+            entry.append(
+                balanced_request_to_xml(record._request, record._request_retry, record._datacenter),  # type: ignore
+            )
 
-        if getattr(record, '_debug_response', None) is not None:
+        if hasattr(record, '_debug_response') and getattr(record, '_debug_response', None) is not None:
             entry.append(E.debug(record._debug_response))
 
-        if getattr(record, '_xslt_profile', None) is not None:
+        if hasattr(record, '_xslt_profile') and getattr(record, '_xslt_profile', None) is not None:
             entry.append(record._xslt_profile)
 
-        if getattr(record, '_xml', None) is not None:
+        if hasattr(record, '_xml') and getattr(record, '_xml', None) is not None:
             entry.append(E.text(etree.tostring(record._xml, encoding='unicode')))
 
-        if getattr(record, '_protobuf', None) is not None:
+        if hasattr(record, '_protobuf') and getattr(record, '_protobuf', None) is not None:
             entry.append(E.text(str(record._protobuf)))
 
-        if getattr(record, '_text', None) is not None:
+        if hasattr(record, '_text') and getattr(record, '_text', None) is not None:
             entry.append(E.text(to_unicode(record._text)))
 
-        if getattr(record, '_stage', None) is not None:
-            entry.append(E.stage(
-                E.name(record._stage.name),
-                E.delta(_format_number(record._stage.delta)),
-                E.start_delta(_format_number(record._stage.start_delta))
-            ))
+        if hasattr(record, '_stage') and getattr(record, '_stage', None) is not None:
+            entry.append(
+                E.stage(
+                    E.name(record._stage.name),
+                    E.delta(_format_number(record._stage.delta)),
+                    E.start_delta(_format_number(record._stage.start_delta)),
+                ),
+            )
 
         return entry
 
@@ -335,14 +365,14 @@ DEBUG_XSL = os.path.join(os.path.dirname(__file__), 'debug/debug.xsl')
 
 
 class DebugTransform(OutputTransform):
-    def __init__(self, application, request):
+    def __init__(self, application: FrontikApplication, request: HTTPServerRequest) -> None:
         self.application = application
         self.request = request
 
-    def is_enabled(self):
+    def is_enabled(self) -> bool:
         return getattr(self.request, '_debug_enabled', False)
 
-    def is_inherited(self):
+    def is_inherited(self) -> bool:
         return getattr(self.request, '_debug_inherited', False)
 
     def transform_first_chunk(self, status_code, headers, chunk, finishing):
@@ -356,14 +386,11 @@ class DebugTransform(OutputTransform):
         if not self.is_inherited():
             headers = HTTPHeaders({'Content-Type': media_types.TEXT_HTML})
         else:
-            headers = HTTPHeaders({
-                'Content-Type': media_types.APPLICATION_XML,
-                DEBUG_HEADER_NAME: 'true'
-            })
+            headers = HTTPHeaders({'Content-Type': media_types.APPLICATION_XML, DEBUG_HEADER_NAME: 'true'})
 
         return 200, headers, self.produce_debug_body(finishing)
 
-    def transform_chunk(self, chunk, finishing):
+    def transform_chunk(self, chunk: bytes, finishing: bool) -> bytes:
         if not self.is_enabled():
             return chunk
 
@@ -371,57 +398,50 @@ class DebugTransform(OutputTransform):
 
         return self.produce_debug_body(finishing)
 
-    def produce_debug_body(self, finishing):
+    def produce_debug_body(self, finishing: bool) -> bytes:
         if not finishing:
             return b''
 
         start_time = time.time()
 
-        debug_log_data = request_context.get_log_handler().produce_all()
+        debug_log_data = request_context.get_log_handler().produce_all()  # type: ignore
         debug_log_data.set('code', str(int(self.status_code)))
         debug_log_data.set('handler-name', request_context.get_handler_name())
         debug_log_data.set('started', _format_number(self.request._start_time))
-        debug_log_data.set('request-id', str(self.request.request_id))
+        debug_log_data.set('request-id', str(self.request.request_id))  # type: ignore
         debug_log_data.set('stages-total', _format_number((time.time() - self.request._start_time) * 1000))
 
         try:
-            debug_log_data.append(E.versions(
-                _pretty_print_xml(
-                    frontik.app.get_frontik_and_apps_versions(self.application)
-                )
-            ))
+            debug_log_data.append(E.versions(_pretty_print_xml(get_frontik_and_apps_versions(self.application))))
         except Exception:
             debug_log.exception('cannot add version information')
             debug_log_data.append(E.versions('failed to get version information'))
 
         try:
-            debug_log_data.append(E.status(
-                _pretty_print_json(self.application.get_current_status())
-            ))
+            debug_log_data.append(E.status(_pretty_print_json(self.application.get_current_status())))
         except Exception:
             debug_log.exception('cannot add status information')
             debug_log_data.append(E.status('failed to get status information'))
 
-        debug_log_data.append(E.request(
-            E.method(self.request.method),
-            _params_to_xml(self.request.uri),
-            _headers_to_xml(self.request.headers),
-            _cookies_to_xml(self.request.headers)
-        ))
+        debug_log_data.append(
+            E.request(
+                E.method(self.request.method),
+                _params_to_xml(self.request.uri),  # type: ignore
+                _headers_to_xml(self.request.headers),
+                _cookies_to_xml(self.request.headers),  # type: ignore
+            ),
+        )
 
-        debug_log_data.append(E.response(
-            _headers_to_xml(self.headers),
-            _cookies_to_xml(self.headers)
-        ))
+        debug_log_data.append(E.response(_headers_to_xml(self.headers), _cookies_to_xml(self.headers)))
 
         response_buffer = b''.join(self.chunks)
         original_response = {
             'buffer': base64.b64encode(response_buffer),
             'headers': dict(self.headers),
-            'code': int(self.status_code)
+            'code': int(self.status_code),
         }
 
-        debug_log_data.append(frontik.xml_util.dict_to_xml(original_response, 'original-response'))
+        debug_log_data.append(dict_to_xml(original_response, 'original-response'))
         debug_log_data.set('response-size', str(len(response_buffer)))
         debug_log_data.set('generate-time', _format_number((time.time() - start_time) * 1000))
 
@@ -437,12 +457,11 @@ class DebugTransform(OutputTransform):
             except Exception:
                 debug_log.exception('XSLT debug file error')
 
-                try:
-                    debug_log.error('XSL error log entries:\n' + '\n'.join(
-                        '{0.filename}:{0.line}:{0.column}\n\t{0.message}'.format(m) for m in transform.error_log
-                    ))
-                except Exception:
-                    pass
+                with contextlib.suppress(Exception):
+                    debug_log.error(
+                        'XSL error log entries:\n'
+                        + '\n'.join(f'{m.filename}:{m.line}:{m.column}\n\t{m.message}' for m in transform.error_log),
+                    )
 
                 log_document = etree.tostring(debug_log_data, encoding='UTF-8', xml_declaration=True)
         else:
@@ -452,7 +471,7 @@ class DebugTransform(OutputTransform):
 
 
 class DebugMode:
-    def __init__(self, handler):
+    def __init__(self, handler: PageHandler) -> None:
         debug_value = frontik.util.get_cookie_or_url_param_value(handler, 'debug')
 
         self.mode_values = debug_value.split(',') if debug_value is not None else ''
@@ -460,12 +479,12 @@ class DebugMode:
 
         if self.inherited:
             debug_log.debug('debug mode is inherited due to %s request header', DEBUG_HEADER_NAME)
-            handler.request._debug_inherited = True
+            handler.request._debug_inherited = True  # type: ignore
 
         if debug_value is not None or self.inherited:
             handler.require_debug_access()
 
-            self.enabled = handler.request._debug_enabled = True
+            self.enabled = handler.request._debug_enabled = True  # type: ignore
             self.pass_debug = 'nopass' not in self.mode_values or self.inherited
             self.profile_xslt = 'xslt' in self.mode_values
 
@@ -477,3 +496,19 @@ class DebugMode:
             self.enabled = False
             self.pass_debug = False
             self.profile_xslt = False
+
+
+def get_frontik_and_apps_versions(application: FrontikApplication) -> etree.Element:
+    versions = etree.Element('versions')
+
+    etree.SubElement(versions, 'frontik').text = frontik_version
+    etree.SubElement(versions, 'tornado').text = tornado.version
+    etree.SubElement(versions, 'lxml.etree.LXML').text = '.'.join(str(x) for x in etree.LXML_VERSION)
+    etree.SubElement(versions, 'lxml.etree.LIBXML').text = '.'.join(str(x) for x in etree.LIBXML_VERSION)
+    etree.SubElement(versions, 'lxml.etree.LIBXSLT').text = '.'.join(str(x) for x in etree.LIBXSLT_VERSION)
+    etree.SubElement(versions, 'aiohttp').text = aiohttp.__version__
+    etree.SubElement(versions, 'python').text = sys.version.replace('\n', '')
+    etree.SubElement(versions, 'event_loop').text = str(type(asyncio.get_event_loop())).split("'")[1]
+    etree.SubElement(versions, 'application', name=options.app).extend(application.application_version_xml())
+
+    return versions

@@ -18,11 +18,11 @@ class TestJinja(unittest.TestCase):
         response = frontik_re_app.get_page('jinja_custom_environment')
         self.assertEqual(response.content, b'<html><body>custom_env_function_value</body></html>')
 
-    def test_jinja_no_environment(self):
+    def test_jinja_no_environment(self) -> None:
         response = frontik_no_debug_app.get_page('jinja_no_environment')
         self.assertEqual(response.status_code, 500)
 
-    def test_jinja_no_environment_async(self):
+    def test_jinja_no_environment_async(self) -> None:
         response = frontik_no_debug_app.get_page('jinja_no_environment_async')
         self.assertEqual(response.status_code, 500)
 

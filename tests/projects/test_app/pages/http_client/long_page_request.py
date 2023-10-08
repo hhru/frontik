@@ -8,7 +8,7 @@ class Page(frontik.handler.PageHandler):
         result = await self.post_url(self.request.host, self.request.path, request_timeout=0.5)
         self.request_callback(result.data, result.failed)
 
-    def request_callback(self, xml, error):
+    def request_callback(self, xml: str, error: bool) -> None:
         self.json.put({'error_received': bool(error)})
 
     async def post_page(self):

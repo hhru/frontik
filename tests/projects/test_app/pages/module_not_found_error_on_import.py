@@ -1,1 +1,1 @@
-import tests.non.existing.module
+import tests.non.existing.module  # noqa

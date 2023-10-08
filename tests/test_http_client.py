@@ -34,15 +34,13 @@ class TestHttpClient(unittest.TestCase):
         self.assertEqual(json, {'error_received': True})
 
     def test_parse_error(self):
-        """ If json or xml parsing error occurs, we must send None into callback. """
+        """If json or xml parsing error occurs, we must send None into callback."""
         text = frontik_test_app.get_page_text('http_client/parse_error')
         self.assertEqual(text, 'Parse error occured')
 
     def test_parse_response(self):
         json = frontik_test_app.get_page_json('http_client/parse_response')
-        self.assertEqual(
-            json, {'post': True, 'delete': 'deleted', 'error': {'reason': 'Bad Request', 'code': 400}}
-        )
+        self.assertEqual(json, {'post': True, 'delete': 'deleted', 'error': {'reason': 'Bad Request', 'code': 400}})
 
     def test_custom_headers(self):
         json = frontik_test_app.get_page_json('http_client/custom_headers')

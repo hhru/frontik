@@ -1,15 +1,15 @@
 import json
 import unittest
 
-from tornado.concurrent import Future
 from http_client.request_response import DataParseError
+from tornado.concurrent import Future
 
 from frontik.json_builder import JsonBuilder
 from tests.test_doc import TestDoc
 
 
 class TestJsonBuilder(unittest.TestCase):
-    def test_simple(self):
+    def test_simple(self) -> None:
         j = JsonBuilder()
 
         self.assertTrue(j.is_empty())
@@ -24,7 +24,7 @@ class TestJsonBuilder(unittest.TestCase):
         self.assertFalse(j.is_empty())
         self.assertEqual(j.to_string(), """{"a": "b"}""")
 
-    def test_clear(self):
+    def test_clear(self) -> None:
         j = JsonBuilder()
         j.put({'a': 'b'})
         j.clear()
@@ -32,41 +32,41 @@ class TestJsonBuilder(unittest.TestCase):
         self.assertTrue(j.is_empty())
         self.assertEqual(j.to_string(), '{}')
 
-    def test_replace(self):
+    def test_replace(self) -> None:
         j = JsonBuilder()
         j.put({'a': 'b'})
         j.replace({'c': 'd'})
 
         self.assertEqual(j.to_string(), '{"c": "d"}')
 
-    def test_root_node_name(self):
+    def test_root_node_name(self) -> None:
         j = JsonBuilder(root_node='root')
         j.put({'a': 'b'})
 
         self.assertEqual(j.to_string(), """{"root": {"a": "b"}}""")
 
-    def test_invalid_root_node_name(self):
+    def test_invalid_root_node_name(self) -> None:
         self.assertRaises(TypeError, JsonBuilder, root_node=10)
 
-    def test_list(self):
+    def test_list(self) -> None:
         j = JsonBuilder()
         j.put({'a': {'b': [1, 2, 3]}})
 
         self.assertEqual(j.to_string(), """{"a": {"b": [1, 2, 3]}}""")
 
-    def test_set(self):
+    def test_set(self) -> None:
         j = JsonBuilder()
         j.put({'a': {'b': {1, 2, 3}}})
 
         self.assertSetEqual(set(j.to_dict()['a']['b']), {1, 2, 3})
 
-    def test_frozenset(self):
+    def test_frozenset(self) -> None:
         j = JsonBuilder()
         j.put({'a': {'b': frozenset([1, 2, 3])}})
 
         self.assertSetEqual(set(j.to_dict()['a']['b']), {1, 2, 3})
 
-    def test_encoder(self):
+    def test_encoder(self) -> None:
         class CustomValue:
             def __iter__(self):
                 return iter((1, 2, 3))
@@ -85,7 +85,7 @@ class TestJsonBuilder(unittest.TestCase):
 
         self.assertEqual(j.to_string(), """{"a": "1.2.3"}""")
 
-    def test_multiple_items(self):
+    def test_multiple_items(self) -> None:
         j = JsonBuilder()
         j.put({'a': 'b'})
         j.put({'c': 'd'})
@@ -100,9 +100,9 @@ class TestJsonBuilder(unittest.TestCase):
 
         self.assertEqual(j.to_dict(), {'a': 'x', 'c': 'd', 'e': 'x'})
 
-    def test_future(self):
+    def test_future(self) -> None:
         j = JsonBuilder()
-        f = Future()
+        f: Future = Future()
         j.put(f)
 
         self.assertFalse(j.is_empty())
@@ -115,7 +115,7 @@ class TestJsonBuilder(unittest.TestCase):
 
     async def test_future_string_value(self):
         j = JsonBuilder()
-        f = Future()
+        f: Future = Future()
         result = TestDoc.get_test_request_result()
         result._content_type = 'xml'
         result._data = '<test>test</test>'
@@ -126,7 +126,7 @@ class TestJsonBuilder(unittest.TestCase):
 
     async def test_failed_future(self):
         j = JsonBuilder()
-        f = Future()
+        f: Future = Future()
         result = TestDoc.get_test_request_result()
         result._data_parse_error = DataParseError(reason='error', code='code')
         f.set_result(result)
@@ -134,11 +134,11 @@ class TestJsonBuilder(unittest.TestCase):
 
         self.assertEqual(j.to_dict(), {'error': {'reason': 'error', 'code': 'code'}})
 
-    def test_nested_future(self):
+    def test_nested_future(self) -> None:
         j = JsonBuilder()
-        f1 = Future()
-        f2 = Future()
-        f3 = Future()
+        f1: Future = Future()
+        f2: Future = Future()
+        f3: Future = Future()
 
         f1.set_result({'nested': f2})
         j.put(f1)
@@ -152,8 +152,8 @@ class TestJsonBuilder(unittest.TestCase):
 
     async def test_nested_future_error_node(self):
         j = JsonBuilder()
-        f1 = Future()
-        f2 = Future()
+        f1: Future = Future()
+        f2: Future = Future()
 
         f1.set_result({'nested': f2})
         j.put(f1)
@@ -162,15 +162,11 @@ class TestJsonBuilder(unittest.TestCase):
         result = TestDoc.get_test_request_result()
         result._data_parse_error = DataParseError(reason='error', code='code')
 
-        f2.set_result(
-            {'a': result}
-        )
+        f2.set_result({'a': result})
 
-        self.assertEqual(
-            j.to_dict(), {'nested': {'a': {'error': {'reason': 'error', 'code': 'code'}}}}
-        )
+        self.assertEqual(j.to_dict(), {'nested': {'a': {'error': {'reason': 'error', 'code': 'code'}}}})
 
-    def test_nested_json_builder(self):
+    def test_nested_json_builder(self) -> None:
         j1 = JsonBuilder()
         j1.put(k1='v1')
 
@@ -179,20 +175,18 @@ class TestJsonBuilder(unittest.TestCase):
 
         j1.put(j2)
 
-        self.assertEqual(
-            j1.to_dict(), {'k2': 'v2', 'k1': 'v1'}
-        )
+        self.assertEqual(j1.to_dict(), {'k2': 'v2', 'k1': 'v1'})
 
-    def test_dict_put_invalid(self):
+    def test_dict_put_invalid(self) -> None:
         j = JsonBuilder()
         j.put({'a': 'b'})
         j.put(['c'])
 
         self.assertRaises(ValueError, j.to_dict)
 
-    def test_to_dict(self):
+    def test_to_dict(self) -> None:
         class Serializable:
-            def __init__(self, name, values):
+            def __init__(self, name: str, values: list[str]) -> None:
                 self.name = name
                 self.values = values
 
@@ -202,6 +196,4 @@ class TestJsonBuilder(unittest.TestCase):
         j = JsonBuilder()
         j.put(Serializable('some', ['test1', 'test2', 'test3']))
 
-        self.assertEqual(
-            j.to_dict(), {'some': ['test1', 'test2', 'test3']}
-        )
+        self.assertEqual(j.to_dict(), {'some': ['test1', 'test2', 'test3']})

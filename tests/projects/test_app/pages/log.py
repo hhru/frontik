@@ -11,7 +11,8 @@ class Page(frontik.handler.PageHandler):
         self.log.info('info')
 
         try:
-            raise Exception('test')
+            msg = 'test'
+            raise Exception(msg)
         except Exception:
             self.log.exception('exception')
             self.log.error('error', stack_info=True)

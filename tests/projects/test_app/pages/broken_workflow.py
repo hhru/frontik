@@ -15,7 +15,7 @@ class Page(PageHandler):
         results = await gather_list(
             self.get_url(f'http://localhost:{port}', '/page/simple/'),
             self.get_url(f'http://localhost:{port}', '/page/simple/'),
-            self.get_url(f'http://localhost:{port}', '/page/simple/')
+            self.get_url(f'http://localhost:{port}', '/page/simple/'),
         )
         for res in results:
             cb(res)

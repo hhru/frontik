@@ -1,5 +1,6 @@
-import requests
 import unittest
+
+import requests
 
 from frontik import media_types
 from tests.instances import frontik_no_debug_app, frontik_test_app
@@ -60,7 +61,7 @@ class TestHandler(unittest.TestCase):
                 'handler/json',
                 method=method,
                 headers={'Content-Type': media_types.APPLICATION_JSON},
-                data=b''
+                data=b'',
             )
             self.assertEqual(response.status_code, 400)
 

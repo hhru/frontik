@@ -1,14 +1,32 @@
+from __future__ import annotations
+
 import importlib
 import logging
 import pkgutil
-from asyncio import Future
-from typing import List, Optional, Tuple
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from asyncio import Future
+
+    from frontik.app import FrontikApplication
+    from frontik.handler import PageHandler
 
 integrations_logger = logging.getLogger('integrations')
 
 
-def load_integrations(app) -> Tuple[List['Integration'], List[Future]]:
-    for importer, module_name, is_package in pkgutil.iter_modules(__path__):
+class Integration:
+    def initialize_app(self, app: FrontikApplication) -> Future | None:
+        raise NotImplementedError()  # pragma: no cover
+
+    def deinitialize_app(self, app: FrontikApplication) -> Future | None:
+        pass  # pragma: no cover
+
+    def initialize_handler(self, handler: PageHandler) -> None:
+        raise NotImplementedError()  # pragma: no cover
+
+
+def load_integrations(app: FrontikApplication) -> tuple[list[Integration], list[Future]]:
+    for _importer, module_name, _is_package in pkgutil.iter_modules(__path__):
         try:
             importlib.import_module(f'frontik.integrations.{module_name}')
         except Exception as e:
@@ -26,14 +44,3 @@ def load_integrations(app) -> Tuple[List['Integration'], List[Future]]:
         available_integrations.append(integration)
 
     return available_integrations, init_futures
-
-
-class Integration:
-    def initialize_app(self, app) -> Optional[Future]:
-        raise NotImplementedError()  # pragma: no cover
-
-    def deinitialize_app(self, app) -> Optional[Future]:
-        pass  # pragma: no cover
-
-    def initialize_handler(self, handler):
-        raise NotImplementedError()  # pragma: no cover

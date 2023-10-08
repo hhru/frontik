@@ -1,6 +1,6 @@
 from tornado.web import HTTPError
 
-from frontik.handler import PageHandler, HTTPErrorWithPostprocessors
+from frontik.handler import HTTPErrorWithPostprocessors, PageHandler
 
 
 class Page(PageHandler):

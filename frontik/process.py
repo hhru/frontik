@@ -1,16 +1,25 @@
+from __future__ import annotations
+
 import errno
+import fcntl
 import gc
 import logging
 import os
 import signal
 import sys
 import time
-import fcntl
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from tornado.util import errno_from_exception
 
 from frontik.options import options
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from multiprocessing.sharedctypes import Synchronized
+
+    from frontik.app import FrontikApplication
 
 log = logging.getLogger('fork')
 
@@ -28,8 +37,16 @@ class State:
     terminating: bool
 
 
-def fork_workers(worker_function, *, app, init_workers_count_down, num_workers, after_workers_up_action,
-                 before_workers_shutdown_action, children_pipes):
+def fork_workers(
+    worker_function: Callable,
+    *,
+    app: FrontikApplication,
+    init_workers_count_down: Synchronized,
+    num_workers: int,
+    after_workers_up_action: Callable,
+    before_workers_shutdown_action: Callable,
+    children_pipes: dict,
+) -> None:
     log.info("starting %d processes", num_workers)
     state = State(server=True, children={}, read_pipe=0, write_pipes=children_pipes, terminating=False)
 
@@ -56,16 +73,19 @@ def fork_workers(worker_function, *, app, init_workers_count_down, num_workers, 
     timeout = time.time() + options.init_workers_timeout_sec
     while init_workers_count_down.value > 0:
         if time.time() > timeout:
+            msg = (
+                f'workers did not started after {options.init_workers_timeout_sec} seconds, '
+                f'do not started {init_workers_count_down.value} workers'
+            )
             raise Exception(
-                f'workers did not started after {options.init_workers_timeout_sec} seconds,'
-                f' do not started {init_workers_count_down.value} workers'
+                msg,
             )
         time.sleep(0.1)
     after_workers_up_action()
     _supervise_workers(state, worker_function)
 
 
-def _supervise_workers(state, worker_function):
+def _supervise_workers(state: State, worker_function: Callable) -> None:
     while state.children:
         try:
             pid, status = os.wait()
@@ -105,8 +125,8 @@ def _supervise_workers(state, worker_function):
 
 
 # returns True inside child process, otherwise False
-def _start_child(i, state):
-    read_fd, write_fd = os.pipe2(os.O_NONBLOCK)
+def _start_child(i: int, state: State) -> bool:
+    read_fd, write_fd = os.pipe2(os.O_NONBLOCK)  # type: ignore
     pid = os.fork()
     if pid == 0:
         os.close(write_fd)
@@ -125,7 +145,7 @@ def _start_child(i, state):
         return False
 
 
-def _set_pipe_size(fd, i):
+def _set_pipe_size(fd: int, i: int) -> None:
     try:
         fcntl.fcntl(fd, F_SETPIPE_SZ, PIPE_BUFFER_SIZE)
     except OSError:

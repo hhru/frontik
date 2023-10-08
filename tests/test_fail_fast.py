@@ -41,11 +41,11 @@ class TestFailFast(unittest.TestCase):
         future_result = json['future']
         self.assertEqual(future_result, 'future_result')
 
-    def test_future_fail(self):
+    def test_future_fail(self) -> None:
         response = frontik_test_app.get_page('fail_fast/future?fail_future=true')
         self.assertEqual(response.status_code, 500)
 
-    def test_exception_in_fail_fast(self):
+    def test_exception_in_fail_fast(self) -> None:
         response = frontik_test_app.get_page('fail_fast?fail_fast=true&exception_in_fail_fast=true')
         self.assertEqual(response.status_code, 500)
 

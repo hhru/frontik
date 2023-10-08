@@ -22,21 +22,24 @@ class TestNonDebugMode(unittest.TestCase):
 
     def test_basic_auth_fail_on_wrong_pass(self):
         response = frontik_no_debug_app.get_page(
-            'basic_auth', headers={'Authorization': create_basic_auth_header('user:bad')}
+            'basic_auth',
+            headers={'Authorization': create_basic_auth_header('user:bad')},
         )
 
         self.assertEqual(response.status_code, 401)
 
     def test_basic_auth_fail_on_wrong_pass_async(self):
         response = frontik_no_debug_app.get_page(
-            'basic_auth_async', headers={'Authorization': create_basic_auth_header('user:bad')}
+            'basic_auth_async',
+            headers={'Authorization': create_basic_auth_header('user:bad')},
         )
 
         self.assertEqual(response.status_code, 401)
 
     def test_basic_auth_pass(self):
         response = frontik_no_debug_app.get_page(
-            'basic_auth', headers={'Authorization': create_basic_auth_header('user:god')}
+            'basic_auth',
+            headers={'Authorization': create_basic_auth_header('user:god')},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -44,7 +47,8 @@ class TestNonDebugMode(unittest.TestCase):
 
     def test_basic_auth_pass_async(self):
         response = frontik_no_debug_app.get_page(
-            'basic_auth_async', headers={'Authorization': create_basic_auth_header('user:god')}
+            'basic_auth_async',
+            headers={'Authorization': create_basic_auth_header('user:god')},
         )
 
         self.assertEqual(response.status_code, 200)

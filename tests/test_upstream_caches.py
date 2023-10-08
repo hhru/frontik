@@ -1,21 +1,21 @@
 import asyncio
 import os
+import sys
 import time
 import unittest
 from queue import Queue
 from threading import Thread
 
+import pytest
+from http_client import options as http_client_options
+from http_client.balancing import Server, Upstream, UpstreamConfig
+
 from frontik.options import options
 from frontik.service_discovery import UpstreamCaches, UpstreamUpdateListener
-from http_client import options as http_client_options
-from http_client.balancing import Upstream, Server, UpstreamConfig
-import pytest
-import sys
 
 
 class TestUpstreamCaches(unittest.TestCase):
-
-    def test_update_upstreams_servers_different_dc(self):
+    def test_update_upstreams_servers_different_dc(self) -> None:
         options.upstreams = ['app']
         http_client_options.datacenters = ['Test', 'AnoTher']
         value_one_dc = [
@@ -31,12 +31,9 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Service': 'app',
                     'Address': '',
                     'Port': 9999,
-                    'Weights': {
-                        'Passing': 100,
-                        'Warning': 0
-                    }
-                }
-            }
+                    'Weights': {'Passing': 100, 'Warning': 0},
+                },
+            },
         ]
 
         value_another_dc = [
@@ -52,12 +49,9 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Service': 'app',
                     'Address': '',
                     'Port': 9999,
-                    'Weights': {
-                        'Passing': 100,
-                        'Warning': 0
-                    }
-                }
-            }
+                    'Weights': {'Passing': 100, 'Warning': 0},
+                },
+            },
         ]
 
         upstream_cache = UpstreamCaches({}, {})
@@ -67,7 +61,7 @@ class TestUpstreamCaches(unittest.TestCase):
         self.assertEqual(len(upstream_cache._upstreams_servers), 2)
         self.assertEqual(len(upstream_cache._upstreams['app'].servers), 2)
 
-    def test_update_upstreams_servers_same_dc(self):
+    def test_update_upstreams_servers_same_dc(self) -> None:
         options.upstreams = ['app']
         http_client_options.datacenters = ['test', 'another']
         value_one_dc = [
@@ -83,12 +77,9 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Service': 'app',
                     'Address': '',
                     'Port': 9999,
-                    'Weights': {
-                        'Passing': 100,
-                        'Warning': 0
-                    }
-                }
-            }
+                    'Weights': {'Passing': 100, 'Warning': 0},
+                },
+            },
         ]
 
         upstream_cache = UpstreamCaches({}, {})
@@ -98,7 +89,7 @@ class TestUpstreamCaches(unittest.TestCase):
         self.assertEqual(len(upstream_cache._upstreams_servers), 1)
         self.assertEqual(len(upstream_cache._upstreams['app'].servers), 1)
 
-    def test_multiple_update_upstreams_servers_different_dc(self):
+    def test_multiple_update_upstreams_servers_different_dc(self) -> None:
         options.upstreams = ['app']
         http_client_options.datacenters = ['test', 'another']
         value_one_dc = [
@@ -114,12 +105,9 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Service': 'app',
                     'Address': '',
                     'Port': 9999,
-                    'Weights': {
-                        'Passing': 100,
-                        'Warning': 0
-                    }
-                }
-            }
+                    'Weights': {'Passing': 100, 'Warning': 0},
+                },
+            },
         ]
 
         value_another_dc = [
@@ -135,12 +123,9 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Service': 'app',
                     'Address': '',
                     'Port': 9999,
-                    'Weights': {
-                        'Passing': 100,
-                        'Warning': 0
-                    }
-                }
-            }
+                    'Weights': {'Passing': 100, 'Warning': 0},
+                },
+            },
         ]
 
         upstream_cache = UpstreamCaches({}, {})
@@ -152,7 +137,7 @@ class TestUpstreamCaches(unittest.TestCase):
         self.assertEqual(len(upstream_cache._upstreams_servers), 2)
         self.assertEqual(len(upstream_cache._upstreams['app'].servers), 2)
 
-    def test_remove_upstreams_servers_different_dc(self):
+    def test_remove_upstreams_servers_different_dc(self) -> None:
         options.upstreams = ['app']
         http_client_options.datacenters = ['test', 'another']
         value_test_dc = [
@@ -168,12 +153,9 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Service': 'app',
                     'Address': '',
                     'Port': 9999,
-                    'Weights': {
-                        'Passing': 100,
-                        'Warning': 0
-                    }
-                }
-            }
+                    'Weights': {'Passing': 100, 'Warning': 0},
+                },
+            },
         ]
 
         value_another_dc = [
@@ -189,11 +171,8 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Service': 'app',
                     'Address': '',
                     'Port': 9999,
-                    'Weights': {
-                        'Passing': 100,
-                        'Warning': 0
-                    }
-                }
+                    'Weights': {'Passing': 100, 'Warning': 0},
+                },
             },
             {
                 'Node': {
@@ -207,12 +186,9 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Service': 'app',
                     'Address': '',
                     'Port': 999,
-                    'Weights': {
-                        'Passing': 100,
-                        'Warning': 0
-                    }
-                }
-            }
+                    'Weights': {'Passing': 100, 'Warning': 0},
+                },
+            },
         ]
 
         value_another_remove_service_dc = [
@@ -228,12 +204,9 @@ class TestUpstreamCaches(unittest.TestCase):
                     'Service': 'app',
                     'Address': '',
                     'Port': 9999,
-                    'Weights': {
-                        'Passing': 100,
-                        'Warning': 0
-                    }
-                }
-            }
+                    'Weights': {'Passing': 100, 'Warning': 0},
+                },
+            },
         ]
 
         upstream_cache = UpstreamCaches({}, {})
@@ -256,25 +229,23 @@ class TestUpstreamCaches(unittest.TestCase):
         options.upstreams = ['app']
         http_client_options.datacenters = ['Test']
 
-        read_fd, write_fd = os.pipe2(os.O_NONBLOCK)
-        upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(
-            max_timeout_tries=10,
-            retry_policy={
-                '403': {'idempotent': 'false'},
-                '500': {'idempotent': 'true'}
-            })}
-        upstreams = {
-            'upstream': Upstream('upstream', upstream_config, [Server('12.2.3.5'), Server('12.22.3.5')])
+        read_fd, write_fd = os.pipe2(os.O_NONBLOCK)  # type: ignore
+        upstream_config = {
+            Upstream.DEFAULT_PROFILE: UpstreamConfig(
+                max_timeout_tries=10,
+                retry_policy={'403': {'idempotent': 'false'}, '500': {'idempotent': 'true'}},
+            ),
         }
+        upstreams = {'upstream': Upstream('upstream', upstream_config, [Server('12.2.3.5'), Server('12.22.3.5')])}
         upstream_cache = UpstreamCaches({0: os.fdopen(write_fd, 'wb')}, upstreams)
 
-        for i in range(200):
+        for _i in range(200):
             upstream_cache.send_updates()
 
         self.assertTrue(upstream_cache._resend_dict, 'resend dict should not be empty')
 
         listener_upstreams = {}
-        notification_queue = Queue()
+        notification_queue: Queue = Queue()
 
         class ListenerCallback:
             def update_upstreams(self, upstreams):
@@ -282,7 +253,7 @@ class TestUpstreamCaches(unittest.TestCase):
                     listener_upstreams[upstream.name] = upstream
                     notification_queue.put(True)
 
-        async def _listener():
+        async def _listener() -> None:
             UpstreamUpdateListener(ListenerCallback(), read_fd)
 
         def _run_loop(io_loop):

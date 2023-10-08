@@ -13,6 +13,4 @@ class Page(frontik.handler.PageHandler):
             self.json.put(result.data)
 
     async def delete_page(self):
-        self.json.put({
-            'delete': self.get_argument('data')
-        })
+        self.json.put({'delete': self.get_argument('data')})

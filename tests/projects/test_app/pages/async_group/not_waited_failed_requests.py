@@ -2,7 +2,7 @@ from frontik.handler import PageHandler
 
 
 class Page(PageHandler):
-    data = {}
+    data: dict = {}
 
     async def get_page(self):
         if self.request.method == 'HEAD':
@@ -21,7 +21,7 @@ class Page(PageHandler):
             self.json.put(self.data)
             self.data = {}
 
-    async def head_page(self):
+    async def head_page(self) -> None:
         self._record_failed_request({'head_failed': True})
 
     async def post_page(self):
@@ -33,6 +33,7 @@ class Page(PageHandler):
     async def delete_page(self):
         self._record_failed_request({'delete_failed': True})
 
-    def _record_failed_request(self, data):
+    def _record_failed_request(self, data: dict) -> None:
         Page.data.update(data)
-        raise ValueError('Some error')
+        msg = 'Some error'
+        raise ValueError(msg)
