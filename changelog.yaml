@@ -1,3 +1,9 @@
+-   name: 7.1.6
+    date: '2023-10-08T14:07:19.272286+03:00'
+    description: ''
+    instructions: ''
+    compatible: true
+
 -   name: 7.1.4
     date: '2023-10-04T16:11:30.854676+03:00'
     description: В спаны проставляется тег peer.service
