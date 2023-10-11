@@ -5,7 +5,7 @@ import random
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
-from http_client import client_request_context
+from http_client import client_request_context, response_status_code_context
 from http_client.options import options as http_client_options
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -71,9 +71,7 @@ class TelemetryIntegration(Integration):
         provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
         trace.set_tracer_provider(provider)
 
-        self.aiohttp_instrumentor.instrument(
-            request_hook=_client_request_hook,
-        )
+        self.aiohttp_instrumentor.instrument(request_hook=_client_request_hook, response_hook=_client_response_hook)
 
         self.tornado_instrumentor.instrument(
             server_request_hook=_server_request_hook,
@@ -119,6 +117,18 @@ def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams) ->
         span.set_attribute('http.request.cloud.region', upstream_datacenter)
 
     return
+
+
+def _client_response_hook(
+    span: Span,
+    params: aiohttp.TraceRequestEndParams | aiohttp.TraceRequestExceptionParams,
+) -> None:
+    if not span or not span.is_recording():
+        return
+    response_status_code: int = response_status_code_context.get(None)
+    if response_status_code is None:
+        return
+    span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, response_status_code)
 
 
 def get_netloc(url: str) -> str:
