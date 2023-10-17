@@ -109,37 +109,45 @@ class _AsyncServiceDiscovery:
         self.consul_weight_total_timeout_sec = options.consul_weight_total_timeout_sec
         self.consul_weight_consistency_mode = ConsistencyMode(options.consul_weight_consistency_mode.lower())
         self.consul_cache_initial_warmup_timeout_sec = options.consul_cache_initial_warmup_timeout_sec
+        self.weight: int | None = None
 
     async def register_service(self) -> None:
         address = _get_service_address(self.options)
         http_check = _create_http_check(self.options, address)
-        index = None
-        old_weight = None
+        await self._async_register(address, http_check)
         while True:
-            index, value = await self.consul.kv.get(
-                f'host/{self.hostname}/weight',
-                index=index,
-                wait=self.consul_weight_watch_seconds,
-                total_timeout=self.consul_weight_total_timeout_sec,
-                consistency=self.consul_weight_consistency_mode,
-            )
-            weight = _get_weight_or_default(value)
-            if old_weight != weight:
-                old_weight = weight
-                register_params = {
-                    'service_id': self.service_id,
-                    'address': address,
-                    'port': self.options.port,
-                    'check': http_check,
-                    'tags': self.options.consul_tags,
-                    'weights': Weight.weights(weight, 0),
-                    'caller': self.service_name,
-                }
-                if await self.consul.agent.service.register(self.service_name, **register_params):
-                    log.info('Successfully registered service %s', register_params)
-                else:
-                    msg = f'Failed to register {self.service_id}'
-                    raise Exception(msg)
+            try:
+                await asyncio.sleep(options.consul_cache_backoff_delay_seconds)
+                await self._async_register(address, http_check)
+            except Exception as exc:
+                log.exception('Failed to register %s: %s', self.service_id, exc)
+
+    async def _async_register(self, address: str | None, http_check: dict) -> None:
+        index, value = await self.consul.kv.get(
+            f'host/{self.hostname}/weight',
+            wait=self.consul_weight_watch_seconds,
+            total_timeout=self.consul_weight_total_timeout_sec,
+            consistency=self.consul_weight_consistency_mode,
+        )
+        weight = _get_weight_or_default(value)
+        if self.weight == weight:
+            return
+
+        self.weight = weight
+        register_params = {
+            'service_id': self.service_id,
+            'address': address,
+            'port': self.options.port,
+            'check': http_check,
+            'tags': self.options.consul_tags,
+            'weights': Weight.weights(weight, 0),
+            'caller': self.service_name,
+        }
+        if await self.consul.agent.service.register(self.service_name, **register_params):
+            log.info('Successfully registered service %s', register_params)
+        else:
+            msg = f'Failed to register {self.service_id}'
+            raise Exception(msg)
 
     async def deregister_service_and_close(self) -> None:
         if await self.consul.agent.service.deregister(self.service_id, self.service_name):
