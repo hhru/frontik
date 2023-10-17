@@ -23,11 +23,11 @@ class Page(PageHandler):
             self.post_url('do_not_retry_non_idempotent_503', self.request.path),
         )
 
-        if res1.response.error or res1.data is None:
+        if res1.error or res1.data is None:
             raise HTTPError(500)
         self.text = res1.data
 
-        if res2.response.code != 503:
+        if res2.status_code != 503:
             raise HTTPError(500)
 
         check_all_requests_done(self, 'retry_non_idempotent_503')

@@ -35,4 +35,4 @@ class Page(PageHandler):
     async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         servers = self.application.upstream_manager.upstreams['requests_count_async'].servers
-        self.text = str(servers[0].current_requests)
+        self.text = str(servers[0].stat_requests)

@@ -21,7 +21,7 @@ class Page(PageHandler):
             max_timeout_tries=2,
         )
 
-        if result.response.error or result.data is None:
+        if result.error or result.data is None:
             raise HTTPError(500)
 
         self.text = result.data
