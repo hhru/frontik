@@ -1,7 +1,4 @@
-import sys
 import unittest
-
-import pytest
 
 from tests import FRONTIK_ROOT
 from tests.instances import FrontikTestInstance, common_frontik_start_options
@@ -51,7 +48,6 @@ class TestServiceDiscovery(unittest.TestCase):
         deregistration_call_count = self.consul_mock.get_page_json('call_deregistration_stat_async')['put_page']
         self.assertEqual(deregistration_call_count, 1, 'Application should deregister only once')
 
-    @pytest.mark.skipif(sys.platform == 'darwin', reason="can't os.pipe2 on macos")
     def test_multiple_worker_de_registration(self):
         self.frontik_multiple_worker_app.start()
         self.frontik_multiple_worker_app.stop()
@@ -60,7 +56,6 @@ class TestServiceDiscovery(unittest.TestCase):
         deregistration_call_count = self.consul_mock.get_page_json('call_deregistration_stat')['put_page']
         self.assertEqual(deregistration_call_count, 1, 'Application should deregister only once')
 
-    @pytest.mark.skipif(sys.platform == 'darwin', reason="can't os.pipe2 on macos")
     def test_multiple_worker_de_registration_async(self):
         self.frontik_multiple_worker_app.start()
         self.frontik_multiple_worker_app.stop()

@@ -1,8 +1,6 @@
-import sys
 import time
 import unittest
 
-import pytest
 import requests
 
 from tests import FRONTIK_ROOT
@@ -22,7 +20,6 @@ class TestIntegrations(unittest.TestCase):
     def tearDown(self):
         self.frontik_multiple_worker_app.stop()
 
-    @pytest.mark.skipif(sys.platform == 'darwin', reason="can't os.pipe2 on macos")
     def test_server_not_bound_before_integrations(self):
         def assert_app_start(instance):
             # keep in relevance to tests.projects.broken_integration.target_app

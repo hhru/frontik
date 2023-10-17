@@ -31,7 +31,7 @@ class Page(PageHandler):
         async def post_without_retry() -> None:
             result = await self.post_url('do_not_retry_non_idempotent_503_async', self.request.path)
 
-            if result.response.code != 503:
+            if result.status_code != 503:
                 raise HTTPError(500)
 
         await asyncio.gather(

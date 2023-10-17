@@ -1,12 +1,11 @@
 import asyncio
-import time
 
 from http_client.balancing import Server, Upstream, UpstreamConfig
 
 from frontik import media_types
 from frontik.handler import PageHandler
 from tests.projects.balancer_app import get_server
-from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_occupied
+from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_were_occupied
 
 
 class Page(PageHandler):
@@ -23,26 +22,29 @@ class Page(PageHandler):
         self.application.upstream_manager.update_upstream(Upstream('slow_start', upstream_config, [server]))
         self.text = ''
 
-        requests = []
+        await self.post_url('slow_start', self.request.path)
 
-        requests.append(self.post_url('slow_start', self.request.path))
-        time.sleep(0.2)  # noqa: ASYNC101
+        await asyncio.sleep(0.2)
         upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=1)}
         self.application.upstream_manager.update_upstream(
             Upstream('slow_start', upstream_config, [same_server, server_slow_start]),
         )
-        requests.append(self.post_url('slow_start', self.request.path))
-        time.sleep(1)  # noqa: ASYNC101
-        requests.extend(
-            (self.post_url('slow_start', self.request.path), self.post_url('slow_start', self.request.path)),
-        )
 
-        check_all_servers_occupied(self, 'slow_start')
+        await self.post_url('slow_start', self.request.path)
 
-        res = await asyncio.gather(*requests)
-        self.text = res[-1].data
+        await asyncio.sleep(1)
+
+        requests = [
+            self.post_url('slow_start', self.request.path),
+            self.post_url('slow_start', self.request.path),
+        ]
+        await asyncio.gather(*requests)
+
+        check_all_servers_were_occupied(self, 'slow_start')
+
+        self.text = str(server.stat_requests + server_slow_start.stat_requests)
         check_all_requests_done(self, 'slow_start')
 
     async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
-        self.text = str(self.application.upstream_manager.upstreams['slow_start'].servers[1].stat_requests)
+        self.text = str(self.application.upstream_manager.upstreams['slow_start'].servers[0].stat_requests)

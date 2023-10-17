@@ -5,7 +5,7 @@ from frontik import media_types
 from frontik.handler import PageHandler
 from frontik.util import gather_list
 from tests.projects.balancer_app import get_server
-from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_occupied
+from tests.projects.balancer_app.pages import check_all_servers_were_occupied
 
 
 class Page(PageHandler):
@@ -20,16 +20,15 @@ class Page(PageHandler):
             self.put_url('retry_error', self.request.path),
             self.put_url('retry_error', self.request.path),
         ]
-        check_all_servers_occupied(self, 'retry_error')
-
         results = await gather_list(*requests)
+
+        check_all_servers_were_occupied(self, 'retry_error')
+
         for result in results:
-            if result.response.error or result.data is None:
+            if result.error or result.data is None:
                 raise HTTPError(500)
 
             self.text = self.text + result.data
-
-        check_all_requests_done(self, 'retry_error')
 
     async def put_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)

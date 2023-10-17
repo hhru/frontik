@@ -248,9 +248,9 @@ class ConsulMetricsTracker(ClientEventCallback):
 
 
 class UpstreamUpdateListener:
-    def __init__(self, upstream_manager: UpstreamManager, pipe: int) -> None:
+    def __init__(self, upstream_manager: UpstreamManager, read_pipe_fd: int) -> None:
         self.upstream_manager = upstream_manager
-        self.stream = PipeIOStream(pipe)
+        self.stream = PipeIOStream(read_pipe_fd)
 
         self.task = asyncio.create_task(self._process())
 

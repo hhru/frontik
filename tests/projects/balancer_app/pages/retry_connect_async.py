@@ -6,7 +6,7 @@ from tornado.web import HTTPError
 from frontik import media_types
 from frontik.handler import PageHandler
 from tests.projects.balancer_app import get_server
-from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_occupied
+from tests.projects.balancer_app.pages import check_all_servers_were_occupied
 
 
 class Page(PageHandler):
@@ -28,13 +28,13 @@ class Page(PageHandler):
         request2 = self.run_task(make_request())
         request3 = self.run_task(make_request())
 
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.1)
 
-        check_all_servers_occupied(self, 'retry_connect_async')
+        check_all_servers_were_occupied(self, 'retry_connect_async')
 
         await asyncio.gather(request1, request2, request3)
 
-        check_all_requests_done(self, 'retry_connect_async')
+        check_all_servers_were_occupied(self, 'retry_connect_async')
 
     async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
