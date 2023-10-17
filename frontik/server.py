@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import gc
 import importlib
 import logging
@@ -15,9 +16,8 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 import tornado.autoreload
-import tornado.httpserver
-import tornado.ioloop
 from http_client.options import options as http_client_options
+from tornado.httpserver import HTTPServer
 
 from frontik.app import FrontikApplication
 from frontik.config_parser import parse_configs
@@ -30,8 +30,6 @@ if TYPE_CHECKING:
     from asyncio import Future
     from collections.abc import Coroutine
     from multiprocessing.synchronize import Lock as LockBase
-
-    from tornado.platform.asyncio import BaseAsyncIOLoop
 
 log = logging.getLogger('server')
 
@@ -79,7 +77,6 @@ def main(config_file: str | None = None) -> None:
         if options.workers != 1:
             fork_workers(
                 partial(_run_worker, app, count_down_lock, False),
-                app=app,
                 init_workers_count_down=app.init_workers_count_down,
                 num_workers=options.workers,
                 after_workers_up_action=lambda: {
@@ -97,7 +94,12 @@ def main(config_file: str | None = None) -> None:
         sys.exit(1)
 
 
-def _run_worker(app: FrontikApplication, count_down_lock: LockBase, need_to_init: bool, pipe: int | None) -> None:
+def _run_worker(
+    app: FrontikApplication,
+    count_down_lock: LockBase,
+    need_to_register_in_service_discovery: bool,
+    read_pipe_fd: int | None,
+) -> None:
     gc.enable()
     MDC.init('worker')
 
@@ -108,32 +110,31 @@ def _run_worker(app: FrontikApplication, count_down_lock: LockBase, need_to_init
     else:
         uvloop.install()
 
-    ioloop: BaseAsyncIOLoop = tornado.ioloop.IOLoop.current()  # type: ignore
+    loop = asyncio.get_event_loop()
     executor = ThreadPoolExecutor(options.common_executor_pool_size)
-    ioloop.asyncio_loop.set_default_executor(executor)
-    initialize_application_task = ioloop.asyncio_loop.create_task(
-        _init_app(app, ioloop, count_down_lock, need_to_init, pipe),
+    loop.set_default_executor(executor)
+    initialize_application_task = loop.create_task(
+        _init_app(app, count_down_lock, need_to_register_in_service_discovery, read_pipe_fd),
     )
 
     def initialize_application_task_result_handler(future):
         if future.exception():
-            ioloop.stop()
+            loop.stop()
 
     initialize_application_task.add_done_callback(initialize_application_task_result_handler)
-    ioloop.start()
+    loop.run_forever()
     # to raise init exception if any
     initialize_application_task.result()
 
 
 async def run_server(
     app: FrontikApplication,
-    ioloop: BaseAsyncIOLoop,
     need_to_register_in_service_discovery: bool,
 ) -> None:
     """Starts Frontik server for an application"""
-
+    loop = asyncio.get_event_loop()
     log.info('starting server on %s:%s', options.host, options.port)
-    http_server = tornado.httpserver.HTTPServer(app, xheaders=options.xheaders)
+    http_server = HTTPServer(app, xheaders=options.xheaders)
     http_server.bind(options.port, options.host, reuse_port=options.reuse_port)
     http_server.start()
 
@@ -142,25 +143,23 @@ async def run_server(
 
     def sigterm_handler(signum, frame):
         log.info('requested shutdown, shutting down server on %s:%d', options.host, options.port)
-        ioloop.add_callback_from_signal(server_stop)
-
-    def ioloop_is_running() -> bool:
-        return ioloop.asyncio_loop.is_running()
+        with contextlib.suppress(RuntimeError):
+            loop.call_soon_threadsafe(server_stop)
 
     def server_stop():
-        ioloop.asyncio_loop.create_task(_deinit_app(app, need_to_register_in_service_discovery))
+        loop.create_task(_deinit_app(app, need_to_register_in_service_discovery))
         http_server.stop()
 
-        if ioloop_is_running():
+        if loop.is_running():
             log.info('going down in %s seconds', options.stop_timeout)
 
             def ioloop_stop():
-                if ioloop_is_running():
+                if loop.is_running():
                     log.info('stopping IOLoop')
-                    ioloop.stop()
+                    loop.stop()
                     log.info('stopped')
 
-            ioloop.asyncio_loop.call_later(options.stop_timeout, ioloop_stop)
+            loop.call_later(options.stop_timeout, ioloop_stop)
 
     signal.signal(signal.SIGTERM, sigterm_handler)
     signal.signal(signal.SIGINT, sigterm_handler)
@@ -168,25 +167,25 @@ async def run_server(
 
 async def _init_app(
     app: FrontikApplication,
-    ioloop: BaseAsyncIOLoop,
     count_down_lock: LockBase,
     need_to_register_in_service_discovery: bool,
-    pipe: int | None,
+    read_pipe_fd: int | None,
 ) -> None:
     await app.init()
-    if not need_to_register_in_service_discovery and pipe is not None:
-        app.upstream_update_listener = UpstreamUpdateListener(app.upstream_manager, pipe)
-    await run_server(app, ioloop, need_to_register_in_service_discovery)
+    if not need_to_register_in_service_discovery and read_pipe_fd is not None:
+        app.upstream_update_listener = UpstreamUpdateListener(app.upstream_manager, read_pipe_fd)
+    await run_server(app, need_to_register_in_service_discovery)
     log.info('Successfully inited application %s', app.app)
     with count_down_lock:
         app.init_workers_count_down.value -= 1
         log.info('worker is up, remaining workers = %s', app.init_workers_count_down.value)
     if need_to_register_in_service_discovery:
-        register_task = ioloop.asyncio_loop.create_task(app.service_discovery_client.register_service())
+        loop = asyncio.get_event_loop()
+        register_task = loop.create_task(app.service_discovery_client.register_service())
 
         def register_task_result_handler(future):
             if future.exception():
-                ioloop.stop()
+                loop.stop()
                 future.result()
 
         register_task.add_done_callback(register_task_result_handler)

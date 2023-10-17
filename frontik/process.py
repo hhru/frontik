@@ -11,15 +11,11 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from tornado.util import errno_from_exception
-
 from frontik.options import options
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from multiprocessing.sharedctypes import Synchronized
-
-    from frontik.app import FrontikApplication
 
 log = logging.getLogger('fork')
 
@@ -40,7 +36,6 @@ class State:
 def fork_workers(
     worker_function: Callable,
     *,
-    app: FrontikApplication,
     init_workers_count_down: Synchronized,
     num_workers: int,
     after_workers_up_action: Callable,
@@ -126,7 +121,10 @@ def _supervise_workers(state: State, worker_function: Callable) -> None:
 
 # returns True inside child process, otherwise False
 def _start_child(i: int, state: State) -> bool:
-    read_fd, write_fd = os.pipe2(os.O_NONBLOCK)  # type: ignore
+    read_fd, write_fd = os.pipe()
+    os.set_blocking(read_fd, False)
+    os.set_blocking(write_fd, False)
+
     pid = os.fork()
     if pid == 0:
         os.close(write_fd)
@@ -150,3 +148,12 @@ def _set_pipe_size(fd: int, i: int) -> None:
         fcntl.fcntl(fd, F_SETPIPE_SZ, PIPE_BUFFER_SIZE)
     except OSError:
         log.warning('failed to set pipe size for %d', i)
+
+
+def errno_from_exception(e: BaseException) -> int | None:
+    if hasattr(e, "errno"):
+        return e.errno  # type: ignore
+    elif e.args:
+        return e.args[0]
+    else:
+        return None

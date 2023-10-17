@@ -1,8 +1,5 @@
-import sys
 import time
 import unittest
-
-import pytest
 
 from tests import FRONTIK_ROOT
 from tests.instances import FrontikTestInstance, common_frontik_start_options
@@ -50,7 +47,6 @@ class TestConsulRegistration(unittest.TestCase):
         registration_call_count = self.consul_mock.get_page_json('call_registration_stat')['put_page']
         self.assertEqual(registration_call_count, 1, 'Application should register only once')
 
-    @pytest.mark.skipif(sys.platform == 'darwin', reason="can't os.pipe2 on macos")
     def test_multiple_worker_registration(self):
         self.frontik_multiple_worker_app.start()
         self.frontik_multiple_worker_app.stop()
