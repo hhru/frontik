@@ -28,7 +28,7 @@ from frontik import media_types, request_context
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.debug import DEBUG_HEADER_NAME, DebugMode
 from frontik.futures import AbortAsyncGroup, AsyncGroup
-from frontik.http_status import ALLOWED_STATUSES
+from frontik.http_status import ALLOWED_STATUSES, CLIENT_CLOSED_REQUEST
 from frontik.loggers.stages import StagesLogger
 from frontik.options import options
 from frontik.preprocessors import _get_preprocessor_name, _get_preprocessors, _unwrap_preprocessors
@@ -99,7 +99,8 @@ class PageHandler(RequestHandler):
 
     def __init__(self, application: FrontikApplication, request: HTTPServerRequest, **kwargs: Any) -> None:
         self.name = self.__class__.__name__
-        self.request_id = request.request_id = request_context.get_request_id()  # type: ignore
+        self.request_id: str = request_context.get_request_id()  # type: ignore
+        request.request_id = self.request_id  # type: ignore
         self.config = application.config
         self.log = handler_logger
         self.text: Any = None
@@ -494,12 +495,19 @@ class PageHandler(RequestHandler):
         return postprocessed_result
 
     def on_connection_close(self):
-        super().on_connection_close()
+        token = request_context.initialize(self.request, self.request_id)
+        try:
+            super().on_connection_close()
 
-        self.finish_group.abort()
-        self.stages_logger.commit_stage('page')
-        self.stages_logger.flush_stages(408)
-        self.cleanup()
+            self.finish_group.abort()
+            self.set_status(CLIENT_CLOSED_REQUEST, 'Client closed the connection: aborting request')
+
+            self.stages_logger.commit_stage('page')
+            self.stages_logger.flush_stages(self.get_status())
+
+            self.finish()
+        finally:
+            request_context.reset(token)
 
     def on_finish(self):
         self.stages_logger.commit_stage('flush')
