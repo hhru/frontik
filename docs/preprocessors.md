@@ -1,5 +1,7 @@
 ## Preprocessors
 
+Deprecated, see https://github.com/hhru/frontik/blob/master/docs/dependency_injection.md
+
 The first step of page generation is preprocessing. Preprocessors are simple functions, which run after
 `RequestHandler.prepare` and before handler code is executed. Preprocessors are great for running common actions
 before actual request processing takes place.

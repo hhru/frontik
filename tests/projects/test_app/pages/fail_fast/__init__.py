@@ -4,7 +4,7 @@ from frontik.util import gather_dict
 
 
 @preprocessor
-def get_page_preprocessor(handler):
+def get_page_preprocessor(handler: PageHandler) -> None:
     handler.json.put({'preprocessor': True})
 
 

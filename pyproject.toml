@@ -104,9 +104,9 @@ select = [
 ]
 preview = true
 ignore = [
-    'N818',
-    'B028',
-    'B904'
+    'N818', 'EM101', 'EM102',
+    'B028', 'B904',
+    'B008', 'B009', 'B010',
 ]
 
 [tool.ruff.per-file-ignores]
