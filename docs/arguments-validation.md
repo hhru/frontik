@@ -34,9 +34,9 @@ For example:
 ```python
 class CustomValidationModel(BaseModel):
     custom_int: int
-    custom_arg: Optional[int]
+    custom_arg: int | None = None
 
-    @validator('custom_arg')
+    @field_validator('custom_arg')
     @classmethod
     def validate_custom_arg(cls, value):
         assert value % 5 == 0

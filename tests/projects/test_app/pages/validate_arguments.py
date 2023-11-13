@@ -1,13 +1,13 @@
-from pydantic import validator
+from pydantic import field_validator
 
 from frontik.handler import PageHandler
 from frontik.validator import BaseValidationModel, Validators
 
 
 class CustomModel(BaseValidationModel):
-    string: str | None
+    string: str | None = None
 
-    @validator('string')
+    @field_validator('string')
     @classmethod
     def check_string(cls, value):
         assert 'someword' not in value

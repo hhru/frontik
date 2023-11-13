@@ -229,7 +229,7 @@ class PageHandler(RequestHandler):
         if default is not _ARG_DEFAULT and default is not None:
             try:
                 params = {validator: default}
-                validated_default = self._validation_model(**params).dict().get(validator)
+                validated_default = self._validation_model(**params).model_dump().get(validator)
             except ValidationError:
                 raise DefaultValueError()
         else:
@@ -247,7 +247,7 @@ class PageHandler(RequestHandler):
 
         try:
             params = {validator: value}
-            validated_value = self._validation_model(**params).dict().get(validator)
+            validated_value = self._validation_model(**params).model_dump().get(validator)
         except ValidationError:
             if default is _ARG_DEFAULT:
                 raise TypedArgumentError(http.client.BAD_REQUEST, f'"{name}" argument is invalid')
