@@ -3,9 +3,8 @@ from collections.abc import Callable
 
 import pytest
 
-from frontik.dependency_manager import build_and_run_sub_graph, dep, execute_page_method_with_dependencies
+from frontik.dependency_manager import async_deps, build_and_run_sub_graph, dep, execute_page_method_with_dependencies
 from frontik.handler import PageHandler
-from frontik.preprocessors import preprocessor
 
 
 class TestPageHandler(PageHandler):
@@ -22,62 +21,47 @@ class TestPageHandler(PageHandler):
 DEP_LOG = []
 
 
-@preprocessor
-async def get_session(handler: TestPageHandler) -> None:
+async def get_session(handler: TestPageHandler) -> str:
     DEP_LOG.append('get_session')
     await asyncio.sleep(0.1)
-    handler.session = 'session' + handler.x  # type: ignore
+    return 'session' + handler.x
 
 
-@preprocessor
-def check_session(handler: TestPageHandler, _session: None = dep(get_session)) -> None:
+def check_session(handler: TestPageHandler, _session: str = dep(get_session)) -> str:
     DEP_LOG.append('check_session')
-    handler.check = 'check' + handler.x  # type: ignore
+    return 'check' + handler.x
 
 
-@preprocessor
-async def get_some_data(handler: TestPageHandler) -> None:
+async def get_some_data(handler: TestPageHandler) -> str:
     DEP_LOG.append('get_some_data')
     await asyncio.sleep(0.1)
-    handler.data = 'data' + handler.x  # type: ignore
+    return 'data' + handler.x
 
 
 def dep_factory(closure_param: int) -> Callable:
-    @preprocessor
-    def internal_dep(handler: TestPageHandler) -> None:
+    def internal_dep() -> int:
         DEP_LOG.append(f'internal_dep_{closure_param}')
-        handler.closure_param = closure_param  # type: ignore
+        return closure_param
 
     return internal_dep
 
 
-def dep_group() -> Callable:
+def dep_group(data: int = dep(dep_factory(2)), _: str = dep(check_session), __: str = dep(get_some_data)) -> int:
     DEP_LOG.append('dep_group')
-    return preprocessor(
-        dep(
-            [
-                dep_factory(2),
-                check_session,
-                get_some_data,
-            ],
-        ),
-    )
+    return data
 
 
-@preprocessor
 async def exception_dep() -> None:
     DEP_LOG.append('exception_dep')
     msg = 'stub_error'
     raise ArithmeticError(msg)
 
 
-@preprocessor
 async def finisher_dep(handler: TestPageHandler) -> None:
     DEP_LOG.append('finisher_dep')
     handler.finished = True
 
 
-@preprocessor
 async def dep_with_subgraph(handler: TestPageHandler) -> None:
     await build_and_run_sub_graph(handler, [finisher_dep])
 
@@ -87,50 +71,42 @@ class SimpleHandler(TestPageHandler):
 
     async def get_page(self, session=dep(get_session), check=dep(check_session), data=dep(get_some_data)):
         DEP_LOG.append('get_page')
-        return f'{self.session}_{self.check}_{self.data}'  # type: ignore
+        return f'{session}_{check}_{data}'
 
-    @dep_factory(1)
-    @dep_group()
-    async def post_page(self):
+    async def post_page(self, group=dep(dep_group), data=dep(dep_factory(1))):
         DEP_LOG.append('post_page')
-        return f'{self.session}_{self.check}_{self.data}'  # type: ignore
+        return f'{group}_{data}'
 
-    @dep_factory(1)
-    async def put_page(self, _data=dep(dep_factory(2))):
+    async def put_page(self, data1=dep(dep_factory(1)), data2=dep(dep_factory(2))):
         DEP_LOG.append('put_page')
+        return f'{data1}_{data2}'
 
 
 class PriorityHandler(TestPageHandler):
     _priority_dependency_names: list[str] = [
-        'tests.test_preprocessors.internal_dep',
-        'tests.test_preprocessors.get_some_data',
-        'tests.test_preprocessors.finisher_dep',
+        'tests.test_dependencies.internal_dep',
+        'tests.test_dependencies.get_some_data',
+        'tests.test_dependencies.finisher_dep',
     ]
 
-    @get_session
-    @check_session
-    @get_some_data
-    async def get_page(self):
+    async def get_page(self, session=dep(get_session), check=dep(check_session), data=dep(get_some_data)):
         DEP_LOG.append('get_page')
-        return f'{self.session}_{self.check}_{self.data}'  # type: ignore
+        return f'{session}_{check}_{data}'
 
-    @exception_dep
-    async def post_page(self):
+    async def post_page(self, _=dep(exception_dep)):
         pass
 
-    @dep_group()
-    @dep_factory(1)
-    async def put_page(self, _=dep(finisher_dep)):
+    async def put_page(self, group=dep(dep_group), data=dep(dep_factory(1)), _=dep(finisher_dep)):
         DEP_LOG.append('put_page')
-        return f'{self.data}'  # type: ignore
+        return f'{group}_{data}'
 
 
 class SubGraphHandler(TestPageHandler):
     dependencies = [dep_factory(1)]
     _priority_dependency_names: list[str] = [
-        'tests.test_preprocessors.internal_dep',
-        'tests.test_preprocessors.get_some_data',
-        'tests.test_preprocessors.finisher_dep',
+        'tests.test_dependencies.internal_dep',
+        'tests.test_dependencies.get_some_data',
+        'tests.test_dependencies.finisher_dep',
     ]
 
     async def get_page(self, data=dep(get_some_data)):
@@ -141,7 +117,13 @@ class SubGraphHandler(TestPageHandler):
         return f'{data1}_{data2}'
 
 
-class TestPreprocessors:
+class AsyncDependencyHandler(TestPageHandler):
+    @async_deps([check_session])
+    async def get_page(self):
+        DEP_LOG.append('get_page')
+
+
+class TestDependencies:
     @staticmethod
     def setup_method():
         DEP_LOG.clear()
@@ -156,9 +138,9 @@ class TestPreprocessors:
     async def test_dep_group(self):
         handler = SimpleHandler()
         res = await asyncio.wait_for(execute_page_method_with_dependencies(handler, handler.post_page), timeout=0.15)
-        assert len(DEP_LOG) == 5
+        assert len(DEP_LOG) == 6
         assert DEP_LOG.index('check_session') > DEP_LOG.index('get_session')
-        assert res == 'session1_check1_data1'
+        assert res == '1_1'
 
     async def test_dep_conflict(self):
         handler = SimpleHandler()
@@ -183,17 +165,25 @@ class TestPreprocessors:
     async def test_dep_with_finisher(self):
         handler = PriorityHandler()
         res = await execute_page_method_with_dependencies(handler, handler.put_page)
-        assert ['internal_dep_1', 'get_some_data', 'finisher_dep'] == DEP_LOG
+        assert len(DEP_LOG) == 3
+        assert DEP_LOG[0] == 'internal_dep_1'
+        assert DEP_LOG[1] == 'get_some_data'
+        assert DEP_LOG[2] == 'finisher_dep'
         assert res is None
 
     async def test_subgraph_in_page(self):
         handler = SubGraphHandler()
         res = await execute_page_method_with_dependencies(handler, handler.get_page)
         assert ['internal_dep_1', 'get_some_data', 'get_session', 'check_session'] == DEP_LOG
-        assert res is None
+        assert res == 'data0'
 
     async def test_subgraph_in_dep(self):
         handler = SubGraphHandler()
         res = await execute_page_method_with_dependencies(handler, handler.post_page)
-        assert ['internal_dep_1', 'dep_group', 'finisher_dep'] == DEP_LOG
+        assert ['internal_dep_1', 'get_some_data', 'get_session', 'finisher_dep'] == DEP_LOG
         assert res is None
+
+    async def test_async_deps(self):
+        handler = AsyncDependencyHandler()
+        await execute_page_method_with_dependencies(handler, handler.get_page)
+        assert ['get_page', 'get_session', 'check_session'] == DEP_LOG

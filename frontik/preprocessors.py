@@ -1,93 +1,59 @@
-from __future__ import annotations
-
-import asyncio
-from functools import wraps
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, Reversible
-    from typing import Any
+from collections.abc import Callable, Generator
+from typing import Any
 
 
-def _get_preprocessor_name(preprocessor_function: Any) -> str:
-    return f'{preprocessor_function.__module__}.{preprocessor_function.__name__}'
+class DependencyGroupMarker:
+    __name__ = 'dep_group'
+
+    def __init__(self, deps: list[Callable]) -> None:
+        self.deps = deps
 
 
-def preprocessor(function_or_list: Callable | Reversible[Callable]) -> Callable:
-    """Creates a preprocessor decorator for `PageHandler.get_page`, `PageHandler.post_page` etc.
+class Preprocessor:
+    """Deprecated, use frontik.dependency_manager.Dependency"""
 
-    Preprocessor is a function that accepts handler instance as its only parameter.
-    Preprocessor can return a ``Future`` (any other value is ignored) and is considered
-    finished when this ``Future`` is resolved.
+    def __init__(self, preprocessor_function: Callable | DependencyGroupMarker) -> None:
+        self.preprocessor_function = preprocessor_function
 
-    Several ``@preprocessor`` decorators are executed sequentially.
+    @property
+    def preprocessor_name(self) -> str:
+        return make_full_name(self.preprocessor_function)
 
-    Usage::
-        @preprocessor
-        def get_a(handler):
-            future = Future()
-            # Do something asynchronously
-            yield future
-
-        @preprocessor
-        def get_b(handler):
-            # Do something
-            return None
-
-        class Page(PageHandler):
-            @get_a
-            @get_b
-            # Can also be rewritten as:
-            # @preprocessor([get_a, get_b])
-            def get_page(self):
-                pass
-
-    When the ``Future`` returned by ``get_a`` is resolved, ``get_b`` is called.
-    Finally, after ``get_b`` is executed, ``get_page`` will be called.
-    """
-
-    def preprocessor_decorator(func: Callable) -> Callable:
-        if callable(function_or_list):
-            _register_preprocessors(func, [function_or_list])
-        else:
-            for dep in reversed(function_or_list):
-                dep(func)
-
-        return func
-
-    if callable(function_or_list):
-        dep_name = function_or_list.__name__
-        preprocessor_decorator.preprocessor_name = _get_preprocessor_name(function_or_list)  # type: ignore
-        preprocessor_decorator.function = function_or_list  # type: ignore
-    else:
-        dep_name = str([f.__name__ for f in function_or_list])
-    preprocessor_decorator.func_name = f'preprocessor_decorator({dep_name})'  # type: ignore
-
-    return preprocessor_decorator
+    def __call__(self, page_func: Callable) -> Callable:
+        setattr(page_func, '_preprocessors', [*get_preprocessors(page_func), self.preprocessor_function])
+        return page_func
 
 
-def _get_preprocessors(func: Callable) -> list:
+def preprocessor(preprocessor_function: Callable | DependencyGroupMarker) -> Preprocessor:
+    """Deprecated, use frontik.dependency_manager.Dependency"""
+    return Preprocessor(preprocessor_function)
+
+
+def get_preprocessors(func: Callable) -> list:
     return getattr(func, '_preprocessors', [])
 
 
-def _unwrap_preprocessors(preprocessors: Reversible) -> list:
-    return _get_preprocessors(preprocessor(preprocessors)(lambda: None))
+def get_simple_preprocessors_functions(func: Callable) -> Generator:
+    for preproc in getattr(func, '_preprocessors', []):
+        if not isinstance(preproc, DependencyGroupMarker):
+            yield preproc
 
 
-def _register_preprocessors(func: Callable, preprocessors: list[Callable]) -> None:
-    func._preprocessors = preprocessors + _get_preprocessors(func)  # type: ignore
+def get_all_preprocessors_functions(func: Callable) -> Generator:
+    for preproc in getattr(func, '_preprocessors', []):
+        if isinstance(preproc, DependencyGroupMarker):
+            for func_or_preproc in preproc.deps:
+                if isinstance(func_or_preproc, Preprocessor):
+                    yield func_or_preproc.preprocessor_function
+                else:
+                    yield func_or_preproc
+        else:
+            yield preproc
 
 
 def make_preprocessors_names_list(preprocessors_list: list) -> list[str]:
-    return [p.preprocessor_name for p in preprocessors_list]
+    return [p.preprocessor_name if isinstance(p, Preprocessor) else make_full_name(p) for p in preprocessors_list]
 
 
-def _wrap_async_func_to_tornado_coroutine(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        return asyncio.create_task(func(*args, **kwargs))
-
-    wrapper.__wrapped__ = func  # type: ignore
-    wrapper.__tornado_coroutine__ = True  # type: ignore
-
-    return wrapper
+def make_full_name(func: Callable | Any) -> str:
+    return f'{func.__module__}.{func.__name__}'
