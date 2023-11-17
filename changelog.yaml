@@ -1,3 +1,9 @@
+-   name: 7.3.0
+    date: '2023-11-17T07:16:28.225833+03:00'
+    description: Preprocessors now deprecated, use dependencies
+    instructions: see https://github.com/hhru/frontik/blob/master/docs/dependency_injection.md
+    compatible: false
+
 -   name: 7.2.1
     date: '2023-11-13T23:04:13.562810+03:00'
     description: "Версия pydantic обновлена до ^2.4.0 (2.4.2 на момент релиза)\r\n\
