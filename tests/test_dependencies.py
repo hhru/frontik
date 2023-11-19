@@ -3,8 +3,12 @@ from collections.abc import Callable
 
 import pytest
 
+from frontik.app import FrontikApplication
 from frontik.dependency_manager import async_deps, build_and_run_sub_graph, dep, execute_page_method_with_dependencies
 from frontik.handler import PageHandler
+from frontik.request_context import current_handler
+from frontik.testing import FrontikTestBase
+from tests import FRONTIK_ROOT
 
 
 class TestPageHandler(PageHandler):
@@ -187,3 +191,29 @@ class TestDependencies:
         handler = AsyncDependencyHandler()
         await execute_page_method_with_dependencies(handler, handler.get_page)
         assert ['get_page', 'get_session', 'check_session'] == DEP_LOG
+
+
+def depends_on_current(handler: PageHandler = dep(current_handler)) -> None:
+    handler.json.put({"from_dep": 1})
+
+
+class HandlerWithDependencyWhichDependsOnCurrentHandler(PageHandler):
+    def get_page(self, handler=dep(depends_on_current)):
+        self.json.put({"from_handler": 2})
+
+
+class TestDepApplication(FrontikTestBase):
+    class TestApp(FrontikApplication):
+        def application_urls(self) -> list[tuple]:
+            return [
+                ('/inject_current', HandlerWithDependencyWhichDependsOnCurrentHandler),
+            ]
+
+    @pytest.fixture(scope='class')
+    def test_app(self):
+        return self.TestApp(app='test_app', app_root=FRONTIK_ROOT)
+
+    async def test_dependency_uses_current_handler(self):
+        response = await self.fetch('/inject_current')
+        assert response.data["from_dep"] == 1
+        assert response.data["from_handler"] == 2

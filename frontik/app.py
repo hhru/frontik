@@ -187,12 +187,8 @@ class FrontikApplication(Application):
 
         def wrapped_in_context(func: Callable) -> Callable:
             def wrapper(*args, **kwargs):
-                token = request_context.initialize(request, request_id)
-
-                try:
+                with request_context.request_context(request, request_id):
                     return func(*args, **kwargs)
-                finally:
-                    request_context.reset(token)
 
             return wrapper
 

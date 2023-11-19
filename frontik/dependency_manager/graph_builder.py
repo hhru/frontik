@@ -178,16 +178,8 @@ def _register_dependency_params(
             sub_dependency = _make_dependency_for_graph(graph, param.default.func, deep_scan)
             if deep_scan:
                 _register_sub_dependency(graph, dependency, sub_dependency, add_to_args)
-            continue
 
-        elif issubclass(graph.handler_cls, param.annotation):
-            sub_dependency = _make_dependency_for_graph(graph, get_handler, deep_scan)
-            graph.special_deps.add(sub_dependency)
-            if deep_scan:
-                _register_sub_dependency(graph, dependency, sub_dependency, add_to_args)
-            continue
-
-        elif param_name == 'self':
+        elif issubclass(graph.handler_cls, param.annotation) or param_name == 'self':
             sub_dependency = _make_dependency_for_graph(graph, get_handler, deep_scan)
             graph.special_deps.add(sub_dependency)
             if deep_scan:

@@ -340,7 +340,7 @@ class PageHandler(RequestHandler):
     # Requests handling
 
     async def _execute(self, transforms, *args, **kwargs):
-        request_context.set_handler_name(repr(self))
+        request_context.set_handler(self)
         try:
             return await super()._execute(transforms, *args, **kwargs)
         except Exception as ex:
@@ -476,8 +476,7 @@ class PageHandler(RequestHandler):
         return postprocessed_result
 
     def on_connection_close(self):
-        token = request_context.initialize(self.request, self.request_id)
-        try:
+        with request_context.request_context(self.request, self.request_id):
             super().on_connection_close()
 
             self.finish_group.abort()
@@ -487,8 +486,6 @@ class PageHandler(RequestHandler):
             self.stages_logger.flush_stages(self.get_status())
 
             self.finish()
-        finally:
-            request_context.reset(token)
 
     def on_finish(self):
         self.stages_logger.commit_stage('flush')
