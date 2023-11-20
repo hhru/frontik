@@ -1,3 +1,10 @@
+-   name: 7.3.1
+    date: '2023-11-20T11:03:52.216443+03:00'
+    description: "* Появилась функция `current_handler` возвращающая текущий хендлер\
+        \ через contextvar\r\n* Неомного оптимизировали код логгирования"
+    instructions: ''
+    compatible: true
+
 -   name: 7.3.0
     date: '2023-11-17T07:16:28.225833+03:00'
     description: Preprocessors now deprecated, use dependencies
