@@ -4,7 +4,7 @@ build-backend = 'poetry.core.masonry.api'
 
 [tool.poetry]
 name = 'frontik'
-version = '7.3.0'
+version = '7.3.1'
 description = 'Frontik is an asyncronous Tornado-based application server'
 authors = ['architecture <arch-team@hh.ru>']
 repository = 'https://github.com/hhru/frontik'
