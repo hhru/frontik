@@ -5,6 +5,7 @@ import logging
 import os
 import socket
 import time
+from functools import cache
 from logging import Filter, Formatter, Handler
 from logging.handlers import SysLogHandler
 from typing import TYPE_CHECKING
@@ -81,14 +82,10 @@ class JSONFormatter(Formatter):
         if custom_json:
             json_message.update(custom_json)
         else:
-            json_message.update(
-                {
-                    'lvl': record.levelname,
-                    'logger': record.name,
-                    'mdc': mdc,
-                    'msg': message,
-                },
-            )
+            json_message['lvl'] = record.levelname
+            json_message['logger'] = record.name
+            json_message['mdc'] = mdc
+            json_message['msg'] = message
 
             if stack_trace:
                 json_message['exception'] = stack_trace
@@ -141,26 +138,14 @@ class StderrFormatter(LogFormatter):
         return super().format(record)
 
 
-_STDERR_FORMATTER = None
-_TEXT_FORMATTER = None
-
-
+@cache
 def get_stderr_formatter() -> StderrFormatter:
-    global _STDERR_FORMATTER
-
-    if _STDERR_FORMATTER is None:
-        _STDERR_FORMATTER = StderrFormatter(fmt=options.stderr_format, datefmt=options.stderr_dateformat)
-
-    return _STDERR_FORMATTER
+    return StderrFormatter(fmt=options.stderr_format, datefmt=options.stderr_dateformat)
 
 
+@cache
 def get_text_formatter() -> Formatter:
-    global _TEXT_FORMATTER
-
-    if _TEXT_FORMATTER is None:
-        _TEXT_FORMATTER = Formatter(options.log_text_format)
-
-    return _TEXT_FORMATTER
+    return Formatter(options.log_text_format)
 
 
 def bootstrap_logger(

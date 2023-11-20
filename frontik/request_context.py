@@ -1,33 +1,38 @@
 from __future__ import annotations
 
 import contextvars
+from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from tornado.httputil import HTTPServerRequest
 
     from frontik.debug import DebugBufferedHandler
+    from frontik.handler import PageHandler
 
 
+@dataclass(slots=True)
 class _Context:
-    __slots__ = ('request', 'request_id', 'handler_name', 'log_handler')
-
-    def __init__(self, request: HTTPServerRequest | None, request_id: str | None) -> None:
-        self.request = request
-        self.request_id = request_id
-        self.handler_name: str | None = None
-        self.log_handler: DebugBufferedHandler | None = None
+    request: HTTPServerRequest | None
+    request_id: str | None
+    handler: PageHandler | None = None
+    handler_name: str | None = None
+    log_handler: DebugBufferedHandler | None = None
 
 
 _context = contextvars.ContextVar('context', default=_Context(None, None))
 
 
-def initialize(request: HTTPServerRequest, request_id: str) -> contextvars.Token:
-    return _context.set(_Context(request, request_id))
-
-
-def reset(token: contextvars.Token) -> None:
-    _context.reset(token)
+@contextmanager
+def request_context(request: HTTPServerRequest, request_id: str) -> Iterator:
+    token = _context.set(_Context(request, request_id))
+    try:
+        yield
+    finally:
+        _context.reset(token)
 
 
 def get_request():
@@ -44,6 +49,16 @@ def get_handler_name() -> str | None:
 
 def set_handler_name(handler_name: str) -> None:
     _context.get().handler_name = handler_name
+
+
+def set_handler(handler: PageHandler) -> None:
+    context = _context.get()
+    context.handler_name = repr(handler)
+    context.handler = handler
+
+
+def current_handler() -> PageHandler:
+    return _context.get().handler  # type: ignore[return-value]
 
 
 def get_log_handler() -> DebugBufferedHandler | None:
