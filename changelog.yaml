@@ -1,3 +1,9 @@
+-   name: 7.3.2
+    date: '2023-11-24T12:38:23.655923+03:00'
+    description: ''
+    instructions: ''
+    compatible: true
+
 -   name: 7.3.1
     date: '2023-11-20T11:03:52.216443+03:00'
     description: "* Появилась функция `current_handler` возвращающая текущий хендлер\
