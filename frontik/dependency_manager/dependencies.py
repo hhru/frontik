@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from frontik.preprocessors import make_full_name
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterable
 
     from frontik.handler import PageHandler
 
@@ -15,6 +15,13 @@ if TYPE_CHECKING:
 class DependencyMarker:
     def __init__(self, func: Callable) -> None:
         self.func = func
+
+
+class DependencyGroupMarker:
+    __name__ = 'dep_group'
+
+    def __init__(self, deps: Iterable[Callable]) -> None:
+        self.deps = deps
 
 
 class Dependency:

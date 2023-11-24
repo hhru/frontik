@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 import pytest
 
-from frontik.dependency_manager import build_and_run_sub_graph, dep, execute_page_method_with_dependencies
+from frontik.dependency_manager import build_and_run_sub_graph, dependency, execute_page_method_with_dependencies
 from frontik.handler import PageHandler
 from frontik.preprocessors import preprocessor
 
@@ -30,7 +30,7 @@ async def get_session(handler: TestPageHandler) -> None:
 
 
 @preprocessor
-def check_session(handler: TestPageHandler, _session: None = dep(get_session)) -> None:
+def check_session(handler: TestPageHandler, _session: None = dependency(get_session)) -> None:
     DEP_LOG.append('check_session')
     handler.check = 'check' + handler.x  # type: ignore
 
@@ -52,16 +52,10 @@ def dep_factory(closure_param: int) -> Callable:
 
 
 def dep_group() -> Callable:
-    DEP_LOG.append('dep_group')
-    return preprocessor(
-        dep(
-            [
-                dep_factory(2),
-                check_session,
-                get_some_data,
-            ],
-        ),
-    )
+    def _dep_group(_=dependency(dep_factory(2), check_session, get_some_data)):
+        DEP_LOG.append('dep_group')
+
+    return preprocessor(_dep_group)
 
 
 @preprocessor
@@ -85,7 +79,12 @@ async def dep_with_subgraph(handler: TestPageHandler) -> None:
 class SimpleHandler(TestPageHandler):
     x = '1'
 
-    async def get_page(self, session=dep(get_session), check=dep(check_session), data=dep(get_some_data)):
+    async def get_page(
+        self,
+        session=dependency(get_session),
+        check=dependency(check_session),
+        data=dependency(get_some_data),
+    ):
         DEP_LOG.append('get_page')
         return f'{self.session}_{self.check}_{self.data}'  # type: ignore
 
@@ -96,7 +95,7 @@ class SimpleHandler(TestPageHandler):
         return f'{self.session}_{self.check}_{self.data}'  # type: ignore
 
     @dep_factory(1)
-    async def put_page(self, _data=dep(dep_factory(2))):
+    async def put_page(self, _data=dependency(dep_factory(2))):
         DEP_LOG.append('put_page')
 
 
@@ -120,7 +119,7 @@ class PriorityHandler(TestPageHandler):
 
     @dep_group()
     @dep_factory(1)
-    async def put_page(self, _=dep(finisher_dep)):
+    async def put_page(self, _=dependency(finisher_dep)):
         DEP_LOG.append('put_page')
         return f'{self.data}'  # type: ignore
 
@@ -133,11 +132,11 @@ class SubGraphHandler(TestPageHandler):
         'tests.test_preprocessors.finisher_dep',
     ]
 
-    async def get_page(self, data=dep(get_some_data)):
+    async def get_page(self, data=dependency(get_some_data)):
         await build_and_run_sub_graph(self, [check_session])
         return data
 
-    async def post_page(self, data1=dep(dep_group), data2=dep(dep_with_subgraph)):
+    async def post_page(self, data1=dependency(dep_group), data2=dependency(dep_with_subgraph)):
         return f'{data1}_{data2}'
 
 
@@ -156,7 +155,7 @@ class TestPreprocessors:
     async def test_dep_group(self):
         handler = SimpleHandler()
         res = await asyncio.wait_for(execute_page_method_with_dependencies(handler, handler.post_page), timeout=0.15)
-        assert len(DEP_LOG) == 5
+        assert len(DEP_LOG) == 6
         assert DEP_LOG.index('check_session') > DEP_LOG.index('get_session')
         assert res == 'session1_check1_data1'
 
@@ -183,7 +182,7 @@ class TestPreprocessors:
     async def test_dep_with_finisher(self):
         handler = PriorityHandler()
         res = await execute_page_method_with_dependencies(handler, handler.put_page)
-        assert ['internal_dep_1', 'get_some_data', 'finisher_dep'] == DEP_LOG
+        assert DEP_LOG == ['internal_dep_1', 'get_some_data', 'finisher_dep']
         assert res is None
 
     async def test_subgraph_in_page(self):
@@ -195,5 +194,5 @@ class TestPreprocessors:
     async def test_subgraph_in_dep(self):
         handler = SubGraphHandler()
         res = await execute_page_method_with_dependencies(handler, handler.post_page)
-        assert ['internal_dep_1', 'dep_group', 'finisher_dep'] == DEP_LOG
+        assert DEP_LOG == ['internal_dep_1', 'finisher_dep']
         assert res is None

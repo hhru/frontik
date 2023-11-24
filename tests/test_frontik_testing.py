@@ -86,7 +86,7 @@ class TestFrontikTestingOld(FrontikTestCase):
 
 class TestFrontikTesting(FrontikTestBase):
     @pytest.fixture(scope='class')
-    def test_app(self) -> TestApplication:
+    def frontik_app(self) -> TestApplication:
         return TestApplication(app='test_app', app_root=FRONTIK_ROOT)
 
     async def test_config(self):
