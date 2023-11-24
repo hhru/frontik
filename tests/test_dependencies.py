@@ -4,7 +4,12 @@ from collections.abc import Callable
 import pytest
 
 from frontik.app import FrontikApplication
-from frontik.dependency_manager import async_deps, build_and_run_sub_graph, dep, execute_page_method_with_dependencies
+from frontik.dependency_manager import (
+    async_dependencies,
+    build_and_run_sub_graph,
+    dependency,
+    execute_page_method_with_dependencies,
+)
 from frontik.handler import PageHandler
 from frontik.request_context import current_handler
 from frontik.testing import FrontikTestBase
@@ -31,7 +36,7 @@ async def get_session(handler: TestPageHandler) -> str:
     return 'session' + handler.x
 
 
-def check_session(handler: TestPageHandler, _session: str = dep(get_session)) -> str:
+def check_session(handler: TestPageHandler, _session: str = dependency(get_session)) -> str:
     DEP_LOG.append('check_session')
     return 'check' + handler.x
 
@@ -50,7 +55,11 @@ def dep_factory(closure_param: int) -> Callable:
     return internal_dep
 
 
-def dep_group(data: int = dep(dep_factory(2)), _: str = dep(check_session), __: str = dep(get_some_data)) -> int:
+def dep_group(
+    data: int = dependency(dep_factory(2)),
+    _: str = dependency(check_session),
+    __: str = dependency(get_some_data),
+) -> int:
     DEP_LOG.append('dep_group')
     return data
 
@@ -73,15 +82,20 @@ async def dep_with_subgraph(handler: TestPageHandler) -> None:
 class SimpleHandler(TestPageHandler):
     x = '1'
 
-    async def get_page(self, session=dep(get_session), check=dep(check_session), data=dep(get_some_data)):
+    async def get_page(
+        self,
+        session=dependency(get_session),
+        check=dependency(check_session),
+        data=dependency(get_some_data),
+    ):
         DEP_LOG.append('get_page')
         return f'{session}_{check}_{data}'
 
-    async def post_page(self, group=dep(dep_group), data=dep(dep_factory(1))):
+    async def post_page(self, group=dependency(dep_group), data=dependency(dep_factory(1))):
         DEP_LOG.append('post_page')
         return f'{group}_{data}'
 
-    async def put_page(self, data1=dep(dep_factory(1)), data2=dep(dep_factory(2))):
+    async def put_page(self, data1=dependency(dep_factory(1)), data2=dependency(dep_factory(2))):
         DEP_LOG.append('put_page')
         return f'{data1}_{data2}'
 
@@ -93,14 +107,19 @@ class PriorityHandler(TestPageHandler):
         'tests.test_dependencies.finisher_dep',
     ]
 
-    async def get_page(self, session=dep(get_session), check=dep(check_session), data=dep(get_some_data)):
+    async def get_page(
+        self,
+        session=dependency(get_session),
+        check=dependency(check_session),
+        data=dependency(get_some_data),
+    ):
         DEP_LOG.append('get_page')
         return f'{session}_{check}_{data}'
 
-    async def post_page(self, _=dep(exception_dep)):
+    async def post_page(self, _=dependency(exception_dep)):
         pass
 
-    async def put_page(self, group=dep(dep_group), data=dep(dep_factory(1)), _=dep(finisher_dep)):
+    async def put_page(self, group=dependency(dep_group), data=dependency(dep_factory(1)), _=dependency(finisher_dep)):
         DEP_LOG.append('put_page')
         return f'{group}_{data}'
 
@@ -113,16 +132,16 @@ class SubGraphHandler(TestPageHandler):
         'tests.test_dependencies.finisher_dep',
     ]
 
-    async def get_page(self, data=dep(get_some_data)):
+    async def get_page(self, data=dependency(get_some_data)):
         await build_and_run_sub_graph(self, [check_session])
         return data
 
-    async def post_page(self, data1=dep(dep_group), data2=dep(dep_with_subgraph)):
+    async def post_page(self, data1=dependency(dep_group), data2=dependency(dep_with_subgraph)):
         return f'{data1}_{data2}'
 
 
 class AsyncDependencyHandler(TestPageHandler):
-    @async_deps([check_session])
+    @async_dependencies([check_session])
     async def get_page(self):
         DEP_LOG.append('get_page')
 
@@ -178,27 +197,27 @@ class TestDependencies:
     async def test_subgraph_in_page(self):
         handler = SubGraphHandler()
         res = await execute_page_method_with_dependencies(handler, handler.get_page)
-        assert ['internal_dep_1', 'get_some_data', 'get_session', 'check_session'] == DEP_LOG
+        assert DEP_LOG == ['internal_dep_1', 'get_some_data', 'get_session', 'check_session']
         assert res == 'data0'
 
     async def test_subgraph_in_dep(self):
         handler = SubGraphHandler()
         res = await execute_page_method_with_dependencies(handler, handler.post_page)
-        assert ['internal_dep_1', 'get_some_data', 'get_session', 'finisher_dep'] == DEP_LOG
+        assert DEP_LOG == ['internal_dep_1', 'get_some_data', 'get_session', 'finisher_dep']
         assert res is None
 
     async def test_async_deps(self):
         handler = AsyncDependencyHandler()
         await execute_page_method_with_dependencies(handler, handler.get_page)
-        assert ['get_page', 'get_session', 'check_session'] == DEP_LOG
+        assert DEP_LOG == ['get_page', 'get_session', 'check_session']
 
 
-def depends_on_current(handler: PageHandler = dep(current_handler)) -> None:
+def depends_on_current(handler: PageHandler = dependency(current_handler)) -> None:
     handler.json.put({"from_dep": 1})
 
 
 class HandlerWithDependencyWhichDependsOnCurrentHandler(PageHandler):
-    def get_page(self, handler=dep(depends_on_current)):
+    def get_page(self, handler=dependency(depends_on_current)):
         self.json.put({"from_handler": 2})
 
 
@@ -210,7 +229,7 @@ class TestDepApplication(FrontikTestBase):
             ]
 
     @pytest.fixture(scope='class')
-    def test_app(self):
+    def frontik_app(self):
         return self.TestApp(app='test_app', app_root=FRONTIK_ROOT)
 
     async def test_dependency_uses_current_handler(self):

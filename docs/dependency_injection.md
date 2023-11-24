@@ -9,7 +9,7 @@ Dependencies are great for running common actions before actual request processi
 Here is what a dependencies may look like:
 
 ```python
-from frontik.dependency_manager import dep
+from frontik.dependency_manager import dependency
 
 
 async def get_session_dependency(handler: PageHandler) -> Session:
@@ -21,7 +21,7 @@ class Page(PageHandler):
     # Can be used on class level
     dependencies = (another_dependency,)
 
-    async def get_page(self, session=dep(get_session_dependency)):
+    async def get_page(self, session=dependency(get_session_dependency)):
         self.json.put({'result': session})
 ```
 
@@ -38,8 +38,9 @@ in class level will be taken, the rest from the graph depths will be discarded
 
 
 There is an opportunity to specify priorities for dependencies:
+
 ```python
-from frontik.dependency_manager import dep
+from frontik.dependency_manager import dependency
 
 
 async def get_session_dependency(handler: PageHandler) -> Session:
@@ -55,7 +56,7 @@ class Page(PageHandler):
         another_dependency,
     ]
 
-    async def get_page(self, session=dep(get_session_dependency)):
+    async def get_page(self, session=dependency(get_session_dependency)):
         self.json.put({'result': session})
 ```
 If any of the _priority_dependency_names are present in the current graph, 
@@ -64,8 +65,9 @@ In the given example `another_dependency` -> `get_session_dependency` -> `get_pa
 
 
 *It is also possible to specify "async" dependencies:
+
 ```python
-from frontik.dependency_manager import dep, async_deps
+from frontik.dependency_manager import dependency, async_dependencies
 
 
 async def get_session_dependency(handler: PageHandler) -> Session:
@@ -74,7 +76,7 @@ async def get_session_dependency(handler: PageHandler) -> Session:
 
 
 class Page(PageHandler):
-    @async_deps([get_session_dependency])
+    @async_dependencies([get_session_dependency])
     async def get_page(self):
         self.json.put({'result': 'done'})
 ```

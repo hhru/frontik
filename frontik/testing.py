@@ -114,14 +114,14 @@ class FrontikTestBase:
         options.consul_enabled = False
 
     @pytest.fixture(scope='class', autouse=True)
-    async def inited_test_app(self, test_app, _enable_consul):
-        await test_app.init()
-        return test_app
+    async def inited_test_app(self, frontik_app, _enable_consul):
+        await frontik_app.init()
+        return frontik_app
 
     @pytest.fixture(scope='class', autouse=True)
-    async def test_server_port(self, test_app):
+    async def test_server_port(self, frontik_app):
         sock, port = bind_unused_port()
-        http_server = HTTPServer(test_app)
+        http_server = HTTPServer(frontik_app)
         http_server.add_sockets([sock])
 
         options.stderr_log = True

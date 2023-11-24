@@ -2,21 +2,19 @@ from __future__ import annotations
 
 import inspect
 from copy import copy, deepcopy
-from itertools import chain
 from typing import TYPE_CHECKING, Any
 
 from frontik.dependency_manager.dependencies import (
     Dependency,
     DependencyGraph,
+    DependencyGroupMarker,
     DependencyMarker,
     get_handler,
     make_stub_dependency,
 )
 from frontik.preprocessors import (
-    DependencyGroupMarker,
     Preprocessor,
-    get_all_preprocessors_functions,
-    get_simple_preprocessors_functions,
+    get_preprocessors,
     make_full_name,
 )
 
@@ -79,16 +77,15 @@ def get_dependency_graph(page_method_func: Callable, handler_cls: type) -> Depen
     meta_graph = DependencyGraph(root_dep, handler_cls)
 
     handler_dependencies = getattr(handler_cls, 'dependencies', [])
-    simple_preprocessors = chain(get_simple_preprocessors_functions(page_method_func), handler_dependencies)
-    all_preprocessors = chain(get_all_preprocessors_functions(page_method_func), handler_dependencies)
+    sid_dependencies = [*get_preprocessors(page_method_func), *handler_dependencies]
 
     # collect dependencies which defined explicitly
     _register_dependency_params(meta_graph, root_dep, add_to_args=False, deep_scan=False)
-    _register_side_dependencies(meta_graph, root_dep, simple_preprocessors, deep_scan=False)
+    _register_side_dependencies(meta_graph, root_dep, sid_dependencies, deep_scan=False)
 
     # collect all dependencies with deep_scan
     _register_dependency_params(meta_graph, root_dep, add_to_args=True, deep_scan=True)
-    _register_side_dependencies(meta_graph, root_dep, all_preprocessors, deep_scan=True)
+    _register_side_dependencies(meta_graph, root_dep, sid_dependencies, deep_scan=True)
 
     async_dependencies = getattr(page_method_func, '_async_deps', [])
     _register_async_dependencies(meta_graph, async_dependencies)
@@ -178,6 +175,14 @@ def _register_dependency_params(
             sub_dependency = _make_dependency_for_graph(graph, param.default.func, deep_scan)
             if deep_scan:
                 _register_sub_dependency(graph, dependency, sub_dependency, add_to_args)
+
+        elif isinstance(param.default, DependencyGroupMarker):
+            if add_to_args:
+                dependency.args.append(None)
+            for sub_dependency_func in param.default.deps:
+                sub_dependency = _make_dependency_for_graph(graph, sub_dependency_func, deep_scan)
+                if deep_scan:
+                    _register_sub_dependency(graph, dependency, sub_dependency, False)
 
         elif issubclass(graph.handler_cls, param.annotation) or param_name == 'self':
             sub_dependency = _make_dependency_for_graph(graph, get_handler, deep_scan)
