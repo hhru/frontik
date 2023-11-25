@@ -46,10 +46,6 @@ if TYPE_CHECKING:
     from frontik.integrations.statsd import StatsDClient, StatsDClientStub
 
 
-def _fallback_status_code(status_code: int) -> int:
-    return status_code if status_code in ALLOWED_STATUSES else http.client.SERVICE_UNAVAILABLE
-
-
 class FinishWithPostprocessors(Exception):
     def __init__(self, wait_finish_group: bool = False) -> None:
         self.wait_finish_group = wait_finish_group
@@ -292,7 +288,7 @@ class PageHandler(RequestHandler):
         return re.split(MEDIA_TYPE_PARAMETERS_SEPARATOR_RE, content_type)[0]
 
     def set_status(self, status_code: int, reason: str | None = None) -> None:
-        status_code = _fallback_status_code(status_code)
+        status_code = status_code if status_code in ALLOWED_STATUSES else http.client.SERVICE_UNAVAILABLE
         super().set_status(status_code, reason=reason)
 
     def redirect(self, url, *args, allow_protocol_relative=False, **kwargs):
