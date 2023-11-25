@@ -77,15 +77,15 @@ def get_dependency_graph(page_method_func: Callable, handler_cls: type) -> Depen
     meta_graph = DependencyGraph(root_dep, handler_cls)
 
     handler_dependencies = getattr(handler_cls, 'dependencies', [])
-    sid_dependencies = [*get_preprocessors(page_method_func), *handler_dependencies]
+    side_dependencies = [*get_preprocessors(page_method_func), *handler_dependencies]
 
     # collect dependencies which defined explicitly
     _register_dependency_params(meta_graph, root_dep, add_to_args=False, deep_scan=False)
-    _register_side_dependencies(meta_graph, root_dep, sid_dependencies, deep_scan=False)
+    _register_side_dependencies(meta_graph, root_dep, side_dependencies, deep_scan=False)
 
     # collect all dependencies with deep_scan
     _register_dependency_params(meta_graph, root_dep, add_to_args=True, deep_scan=True)
-    _register_side_dependencies(meta_graph, root_dep, sid_dependencies, deep_scan=True)
+    _register_side_dependencies(meta_graph, root_dep, side_dependencies, deep_scan=True)
 
     async_dependencies = getattr(page_method_func, '_async_deps', [])
     _register_async_dependencies(meta_graph, async_dependencies)

@@ -18,7 +18,6 @@ if TYPE_CHECKING:
 class _Context:
     request: HTTPServerRequest | None
     request_id: str | None
-    handler: PageHandler | None = None
     handler_name: str | None = None
     log_handler: DebugBufferedHandler | None = None
 
@@ -54,11 +53,6 @@ def set_handler_name(handler_name: str) -> None:
 def set_handler(handler: PageHandler) -> None:
     context = _context.get()
     context.handler_name = repr(handler)
-    context.handler = handler
-
-
-def current_handler() -> PageHandler:
-    return _context.get().handler  # type: ignore[return-value]
 
 
 def get_log_handler() -> DebugBufferedHandler | None:
