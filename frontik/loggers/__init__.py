@@ -10,6 +10,7 @@ from logging import Filter, Formatter, Handler
 from logging.handlers import SysLogHandler
 from typing import TYPE_CHECKING
 
+import orjson
 from tornado.log import LogFormatter
 
 from frontik import request_context
@@ -90,6 +91,8 @@ class JSONFormatter(Formatter):
             if stack_trace:
                 json_message['exception'] = stack_trace
 
+        if options.log_use_orjson:
+            return orjson.dumps(json_message).decode("utf-8")
         return json.dumps(json_message)
 
     @staticmethod
