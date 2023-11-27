@@ -30,6 +30,7 @@ class Options:
 
     log_dir: str | None = None
     log_level: str = 'info'
+    log_use_orjson: bool = True
     update_log_level_interval_in_seconds: int = 300
     log_json: bool = True
     log_text_format: str = '[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s'
