@@ -27,4 +27,6 @@ def get_preprocessors(func: Callable) -> list:
 
 
 def make_full_name(func: Callable | Any) -> str:
+    if isinstance(func, Preprocessor):
+        return f'{func.preprocessor_function.__module__}.{func.preprocessor_function.__name__}'
     return f'{func.__module__}.{func.__name__}'
