@@ -40,7 +40,7 @@ class TestJsonBuilder(unittest.TestCase):
         self.assertEqual(j.to_string(), '{"c": "d"}')
 
     def test_root_node_name(self) -> None:
-        j = JsonBuilder(root_node='root')
+        j = JsonBuilder()
         j.put({'a': 'b'})
 
         self.assertEqual(j.to_string(), """{"root": {"a": "b"}}""")

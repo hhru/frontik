@@ -1,0 +1,2293 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="1190" onload="init(evt)" viewBox="0 0 1200 1190" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+	#search, #ignorecase { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:17px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching, currentSearchTerm, ignorecase, ignorecaseBtn;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		ignorecaseBtn = document.getElementById("ignorecase");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+		currentSearchTerm = null;
+
+		// use GET parameters to restore a flamegraphs state.
+		var params = get_params();
+		if (params.x && params.y)
+			zoom(find_group(document.querySelector('[x="' + params.x + '"][y="' + params.y + '"]')));
+                if (params.s) search(params.s);
+	}
+
+	// event listeners
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom(true);
+			zoom(target);
+			if (!document.querySelector('.parent')) {
+				// we have basically done a clearzoom so clear the url
+				var params = get_params();
+				if (params.x) delete params.x;
+				if (params.y) delete params.y;
+				history.replaceState(null, null, parse_params(params));
+				unzoombtn.classList.add("hide");
+				return;
+			}
+
+			// set parameters for zoom state
+			var el = target.querySelector("rect");
+			if (el && el.attributes && el.attributes.y && el.attributes._orig_x) {
+				var params = get_params()
+				params.x = el.attributes._orig_x.value;
+				params.y = el.attributes.y.value;
+				history.replaceState(null, null, parse_params(params));
+			}
+		}
+		else if (e.target.id == "unzoom") clearzoom();
+		else if (e.target.id == "search") search_prompt();
+		else if (e.target.id == "ignorecase") toggle_ignorecase();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	// ctrl-I to toggle case-sensitive search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+		else if (e.ctrlKey && e.keyCode === 73) {
+			e.preventDefault();
+			toggle_ignorecase();
+		}
+	}, false)
+
+	// functions
+	function get_params() {
+		var params = {};
+		var paramsarr = window.location.search.substr(1).split('&');
+		for (var i = 0; i < paramsarr.length; ++i) {
+			var tmp = paramsarr[i].split("=");
+			if (!tmp[0] || !tmp[1]) continue;
+			params[tmp[0]]  = decodeURIComponent(tmp[1]);
+		}
+		return params;
+	}
+	function parse_params(params) {
+		var uri = "?";
+		for (var key in params) {
+			uri += key + '=' + encodeURIComponent(params[key]) + '&';
+		}
+		if (uri.slice(-1) == "&")
+			uri = uri.substring(0, uri.length - 1);
+		if (uri == '?')
+			uri = window.location.href.split('?')[0];
+		return uri;
+	}
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 12 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		var sl = t.getSubStringLength(0, txt.length);
+		// check if only whitespace or if we can fit the entire string into width w
+		if (/^ *$/.test(txt) || sl < w)
+			return;
+
+		// this isn't perfect, but gives a good starting point
+		// and avoids calling getSubStringLength too often
+		var start = Math.floor((w/sl) * txt.length);
+		for (var x = start; x > 0; x = x-2) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (0 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+		search();
+	}
+	function unzoom(dont_update_text) {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			if(!dont_update_text) update_text(el[i]);
+		}
+		search();
+	}
+	function clearzoom() {
+		unzoom();
+
+		// remove zoom state
+		var params = get_params();
+		if (params.x) delete params.x;
+		if (params.y) delete params.y;
+		history.replaceState(null, null, parse_params(params));
+	}
+
+	// search
+	function toggle_ignorecase() {
+		ignorecase = !ignorecase;
+		if (ignorecase) {
+			ignorecaseBtn.classList.add("show");
+		} else {
+			ignorecaseBtn.classList.remove("show");
+		}
+		reset_search();
+		search();
+	}
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+		var params = get_params();
+		delete params.s;
+		history.replaceState(null, null, parse_params(params));
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)"
+			    + (ignorecase ? ", ignoring case" : "")
+			    + "\nPress Ctrl-i to toggle case sensitivity", "");
+			if (term != null) search(term);
+		} else {
+			reset_search();
+			searching = 0;
+			currentSearchTerm = null;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		if (term) currentSearchTerm = term;
+
+		var re = new RegExp(currentSearchTerm, ignorecase ? 'i' : '');
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+		var params = get_params();
+		params.s = currentSearchTerm;
+		history.replaceState(null, null, parse_params(params));
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="1190.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="24" >Flame Graph</text>
+<text id="details" x="10.00" y="1173" > </text>
+<text id="unzoom" x="10.00" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="24" >Search</text>
+<text id="ignorecase" x="1174.00" y="24" >ic</text>
+<text id="matched" x="1090.00" y="1173" > </text>
+<g id="frames">
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/consul/__init__.py:1 (30 samples, 0.05%)</title><rect x="12.9" y="693" width="0.6" height="15.0" fill="rgb(214,42,10)" rx="2" ry="2" />
+<text  x="15.91" y="703.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/frontik/integrations/sentry.py:1 (7 samples, 0.01%)</title><rect x="55.9" y="869" width="0.1" height="15.0" fill="rgb(216,54,12)" rx="2" ry="2" />
+<text  x="58.85" y="879.5" ></text>
+</g>
+<g >
+<title>_run_worker:~/Development/frontik/frontik/server.py:97 (63,466 samples, 99.68%)</title><rect x="13.7" y="1093" width="1176.2" height="15.0" fill="rgb(249,206,49)" rx="2" ry="2" />
+<text  x="16.73" y="1103.5" >_run_worker:~/Development/frontik/frontik/server.py:97</text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (37 samples, 0.06%)</title><rect x="55.2" y="757" width="0.7" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="58.17" y="767.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (16 samples, 0.03%)</title><rect x="10.4" y="613" width="0.3" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="13.43" y="623.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (7 samples, 0.01%)</title><rect x="55.9" y="853" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="58.85" y="863.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (7 samples, 0.01%)</title><rect x="56.1" y="613" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.07" y="623.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (19 samples, 0.03%)</title><rect x="11.0" y="885" width="0.3" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="13.96" y="895.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (192 samples, 0.30%)</title><rect x="10.0" y="1109" width="3.6" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="13.00" y="1119.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (47 samples, 0.07%)</title><rect x="10.0" y="917" width="0.9" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="13.02" y="927.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (36 samples, 0.06%)</title><rect x="55.2" y="709" width="0.7" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="58.18" y="719.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (27 samples, 0.04%)</title><rect x="56.2" y="517" width="0.5" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="59.24" y="527.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (19 samples, 0.03%)</title><rect x="12.0" y="821" width="0.4" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="15.02" y="831.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (61 samples, 0.10%)</title><rect x="56.0" y="741" width="1.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.02" y="751.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (9 samples, 0.01%)</title><rect x="55.3" y="213" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.26" y="223.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (10 samples, 0.02%)</title><rect x="56.7" y="421" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="59.74" y="431.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (8 samples, 0.01%)</title><rect x="57.2" y="693" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="60.17" y="703.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (39 samples, 0.06%)</title><rect x="56.2" y="629" width="0.7" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.20" y="639.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (9 samples, 0.01%)</title><rect x="55.3" y="229" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="58.26" y="239.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/frontik/integrations/kafka.py:1 (37 samples, 0.06%)</title><rect x="55.2" y="869" width="0.7" height="15.0" fill="rgb(245,186,44)" rx="2" ry="2" />
+<text  x="58.17" y="879.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (7 samples, 0.01%)</title><rect x="55.5" y="373" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="58.46" y="383.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (47 samples, 0.07%)</title><rect x="10.0" y="933" width="0.9" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="13.02" y="943.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (61 samples, 0.10%)</title><rect x="56.0" y="805" width="1.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="59.02" y="815.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (6 samples, 0.01%)</title><rect x="55.9" y="741" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.85" y="751.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (25 samples, 0.04%)</title><rect x="11.4" y="789" width="0.4" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.37" y="799.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/kafka/consumer/__init__.py:1 (7 samples, 0.01%)</title><rect x="55.5" y="485" width="0.1" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="58.46" y="495.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (8 samples, 0.01%)</title><rect x="56.8" y="389" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="59.78" y="399.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (9 samples, 0.01%)</title><rect x="55.3" y="69" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.26" y="79.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (7 samples, 0.01%)</title><rect x="11.4" y="661" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="14.41" y="671.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/ioloop.py:1 (10 samples, 0.02%)</title><rect x="11.4" y="773" width="0.2" height="15.0" fill="rgb(245,186,44)" rx="2" ry="2" />
+<text  x="14.37" y="783.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (12 samples, 0.02%)</title><rect x="12.4" y="709" width="0.2" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="15.39" y="719.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (19 samples, 0.03%)</title><rect x="11.0" y="869" width="0.3" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="13.96" y="879.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (6 samples, 0.01%)</title><rect x="12.7" y="629" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="15.67" y="639.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/google/rpc/__init__.py:1 (27 samples, 0.04%)</title><rect x="56.2" y="533" width="0.5" height="15.0" fill="rgb(209,22,5)" rx="2" ry="2" />
+<text  x="59.24" y="543.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (8 samples, 0.01%)</title><rect x="13.1" y="37" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="16.06" y="47.5" ></text>
+</g>
+<g >
+<title>_handle_read:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/iostream.py:771 (331 samples, 0.52%)</title><rect x="49.0" y="997" width="6.1" height="15.0" fill="rgb(245,186,44)" rx="2" ry="2" />
+<text  x="52.01" y="1007.5" ></text>
+</g>
+<g >
+<title>_read_message:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/http1connection.py:183 (492 samples, 0.77%)</title><rect x="57.6" y="1013" width="9.1" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="60.61" y="1023.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (27 samples, 0.04%)</title><rect x="11.4" y="853" width="0.5" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="14.35" y="863.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (6 samples, 0.01%)</title><rect x="57.2" y="597" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="60.17" y="607.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (28 samples, 0.04%)</title><rect x="12.9" y="533" width="0.6" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="15.95" y="543.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (44 samples, 0.07%)</title><rect x="10.1" y="837" width="0.8" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="13.06" y="847.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (141 samples, 0.22%)</title><rect x="10.9" y="965" width="2.7" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="13.95" y="975.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (7 samples, 0.01%)</title><rect x="13.2" y="325" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="16.24" y="335.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (7 samples, 0.01%)</title><rect x="55.5" y="405" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.46" y="415.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/kafka/cluster.py:1 (9 samples, 0.01%)</title><rect x="55.3" y="197" width="0.1" height="15.0" fill="rgb(230,117,27)" rx="2" ry="2" />
+<text  x="58.26" y="207.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/concurrent.py:1 (7 samples, 0.01%)</title><rect x="11.4" y="677" width="0.1" height="15.0" fill="rgb(248,199,47)" rx="2" ry="2" />
+<text  x="14.41" y="687.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (25 samples, 0.04%)</title><rect x="55.2" y="565" width="0.4" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="58.18" y="575.5" ></text>
+</g>
+<g >
+<title>wrapper:~/Development/frontik/frontik/app.py:189 (478 samples, 0.75%)</title><rect x="57.6" y="965" width="8.9" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="60.61" y="975.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (7 samples, 0.01%)</title><rect x="55.9" y="821" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="58.85" y="831.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (10 samples, 0.02%)</title><rect x="55.3" y="341" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="58.26" y="351.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/grpc/__init__.py:1 (9 samples, 0.01%)</title><rect x="56.0" y="677" width="0.2" height="15.0" fill="rgb(213,36,8)" rx="2" ry="2" />
+<text  x="59.04" y="687.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (30 samples, 0.05%)</title><rect x="12.9" y="725" width="0.6" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="15.91" y="735.5" ></text>
+</g>
+<g >
+<title>handle:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:1636 (627 samples, 0.98%)</title><rect x="37.4" y="901" width="11.6" height="15.0" fill="rgb(236,144,34)" rx="2" ry="2" />
+<text  x="40.39" y="911.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (16 samples, 0.03%)</title><rect x="10.4" y="549" width="0.3" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="13.43" y="559.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (18 samples, 0.03%)</title><rect x="12.0" y="773" width="0.4" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="15.04" y="783.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (30 samples, 0.05%)</title><rect x="12.9" y="805" width="0.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.91" y="815.5" ></text>
+</g>
+<g >
+<title>get_target_delegate:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/routing.py:376 (478 samples, 0.75%)</title><rect x="57.6" y="901" width="8.9" height="15.0" fill="rgb(210,27,6)" rx="2" ry="2" />
+<text  x="60.61" y="911.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (7 samples, 0.01%)</title><rect x="11.4" y="549" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.41" y="559.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/process.py:1 (15 samples, 0.02%)</title><rect x="11.6" y="773" width="0.2" height="15.0" fill="rgb(241,167,39)" rx="2" ry="2" />
+<text  x="14.56" y="783.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/opentelemetry/exporter/otlp/proto/grpc/trace_exporter/__init__.py:1 (61 samples, 0.10%)</title><rect x="56.0" y="773" width="1.1" height="15.0" fill="rgb(230,118,28)" rx="2" ry="2" />
+<text  x="59.02" y="783.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (30 samples, 0.05%)</title><rect x="12.9" y="709" width="0.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.91" y="719.5" ></text>
+</g>
+<g >
+<title>_log:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:1610 (477 samples, 0.75%)</title><rect x="57.6" y="805" width="8.9" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="60.63" y="815.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (16 samples, 0.03%)</title><rect x="10.4" y="501" width="0.3" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="13.43" y="511.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (17 samples, 0.03%)</title><rect x="10.4" y="645" width="0.3" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="13.41" y="655.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (10 samples, 0.02%)</title><rect x="56.7" y="517" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="59.74" y="527.5" ></text>
+</g>
+<g >
+<title>_handle_fromlist:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1209 (21 samples, 0.03%)</title><rect x="57.1" y="853" width="0.4" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="60.15" y="863.5" ></text>
+</g>
+<g >
+<title>read_from_fd:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/iostream.py:1114 (331 samples, 0.52%)</title><rect x="49.0" y="949" width="6.1" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="52.01" y="959.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (7 samples, 0.01%)</title><rect x="55.5" y="469" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="58.46" y="479.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (6 samples, 0.01%)</title><rect x="55.9" y="693" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.85" y="703.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/requests/compat.py:1 (12 samples, 0.02%)</title><rect x="13.0" y="309" width="0.2" height="15.0" fill="rgb(226,99,23)" rx="2" ry="2" />
+<text  x="16.00" y="319.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (12 samples, 0.02%)</title><rect x="13.0" y="277" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="16.00" y="287.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (14 samples, 0.02%)</title><rect x="10.1" y="629" width="0.3" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="13.15" y="639.5" ></text>
+</g>
+<g >
+<title>headers_received:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/routing.py:238 (478 samples, 0.75%)</title><rect x="57.6" y="997" width="8.9" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="60.61" y="1007.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (10 samples, 0.02%)</title><rect x="55.3" y="325" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="58.26" y="335.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (20 samples, 0.03%)</title><rect x="10.9" y="901" width="0.4" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.95" y="911.5" ></text>
+</g>
+<g >
+<title>transform_first_chunk:~/Development/frontik/frontik/debug.py:378 (10 samples, 0.02%)</title><rect x="26.2" y="949" width="0.2" height="15.0" fill="rgb(244,183,43)" rx="2" ry="2" />
+<text  x="29.22" y="959.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (23 samples, 0.04%)</title><rect x="13.0" y="421" width="0.4" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.98" y="431.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (13 samples, 0.02%)</title><rect x="55.2" y="373" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="58.20" y="383.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (19 samples, 0.03%)</title><rect x="12.0" y="805" width="0.4" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.02" y="815.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (15 samples, 0.02%)</title><rect x="11.6" y="741" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.56" y="751.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (192 samples, 0.30%)</title><rect x="10.0" y="1093" width="3.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.00" y="1103.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (27 samples, 0.04%)</title><rect x="56.2" y="469" width="0.5" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="59.24" y="479.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (37 samples, 0.06%)</title><rect x="55.2" y="741" width="0.7" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.17" y="751.5" ></text>
+</g>
+<g >
+<title>read_from_fd:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/iostream.py:1114 (13 samples, 0.02%)</title><rect x="66.5" y="933" width="0.2" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="69.47" y="943.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (14 samples, 0.02%)</title><rect x="55.2" y="421" width="0.3" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="58.20" y="431.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (7 samples, 0.01%)</title><rect x="57.0" y="549" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.98" y="559.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (37 samples, 0.06%)</title><rect x="56.2" y="549" width="0.7" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.24" y="559.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (10 samples, 0.02%)</title><rect x="11.4" y="709" width="0.2" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="14.37" y="719.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (7 samples, 0.01%)</title><rect x="11.1" y="725" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.13" y="735.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (24 samples, 0.04%)</title><rect x="55.2" y="501" width="0.4" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.18" y="511.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (9 samples, 0.01%)</title><rect x="12.6" y="789" width="0.2" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="15.63" y="799.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (9 samples, 0.01%)</title><rect x="55.3" y="117" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.26" y="127.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (29 samples, 0.05%)</title><rect x="12.9" y="613" width="0.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.93" y="623.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (28 samples, 0.04%)</title><rect x="12.9" y="549" width="0.6" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="15.95" y="559.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (141 samples, 0.22%)</title><rect x="10.9" y="981" width="2.7" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="13.95" y="991.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (17 samples, 0.03%)</title><rect x="12.0" y="757" width="0.4" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.04" y="767.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/frontik/producers/json_producer.py:1 (15 samples, 0.02%)</title><rect x="12.6" y="837" width="0.3" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="15.61" y="847.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (30 samples, 0.05%)</title><rect x="12.9" y="789" width="0.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.91" y="799.5" ></text>
+</g>
+<g >
+<title>finish:~/Development/frontik/frontik/handler.py:602 (1,904 samples, 2.99%)</title><rect x="13.7" y="997" width="35.3" height="15.0" fill="rgb(224,89,21)" rx="2" ry="2" />
+<text  x="16.73" y="1007.5" >fi..</text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (15 samples, 0.02%)</title><rect x="55.2" y="469" width="0.3" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="58.18" y="479.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (9 samples, 0.01%)</title><rect x="56.9" y="597" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.94" y="607.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (26 samples, 0.04%)</title><rect x="11.4" y="821" width="0.5" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="14.37" y="831.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (13 samples, 0.02%)</title><rect x="10.4" y="485" width="0.3" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.43" y="495.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (44 samples, 0.07%)</title><rect x="10.1" y="805" width="0.8" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.06" y="815.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (7 samples, 0.01%)</title><rect x="11.4" y="629" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="14.41" y="639.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/aiohttp/__init__.py:1 (39 samples, 0.06%)</title><rect x="10.1" y="789" width="0.7" height="15.0" fill="rgb(211,31,7)" rx="2" ry="2" />
+<text  x="13.06" y="799.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (8 samples, 0.01%)</title><rect x="13.2" y="341" width="0.2" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="16.24" y="351.5" ></text>
+</g>
+<g >
+<title>_handle_fromlist:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1209 (27 samples, 0.04%)</title><rect x="11.4" y="917" width="0.5" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="14.35" y="927.5" ></text>
+</g>
+<g >
+<title>_handle_fromlist:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1209 (7 samples, 0.01%)</title><rect x="57.0" y="565" width="0.1" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="59.98" y="575.5" ></text>
+</g>
+<g >
+<title>_handle_fromlist:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1209 (7 samples, 0.01%)</title><rect x="56.1" y="661" width="0.1" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="59.07" y="671.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (16 samples, 0.03%)</title><rect x="10.4" y="533" width="0.3" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.43" y="543.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (6 samples, 0.01%)</title><rect x="56.8" y="325" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="59.81" y="335.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (12 samples, 0.02%)</title><rect x="13.0" y="293" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="16.00" y="303.5" ></text>
+</g>
+<g >
+<title>__getattr__:~/Development/frontik/.venv/lib/python3.11/site-packages/pydantic/__init__.py:360 (13 samples, 0.02%)</title><rect x="12.4" y="805" width="0.2" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="15.37" y="815.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (36 samples, 0.06%)</title><rect x="10.1" y="757" width="0.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.06" y="767.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (6 samples, 0.01%)</title><rect x="55.9" y="789" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.85" y="799.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (7 samples, 0.01%)</title><rect x="12.7" y="661" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.67" y="671.5" ></text>
+</g>
+<g >
+<title>_read_to_buffer_loop:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/iostream.py:730 (13 samples, 0.02%)</title><rect x="66.5" y="965" width="0.2" height="15.0" fill="rgb(238,153,36)" rx="2" ry="2" />
+<text  x="69.47" y="975.5" ></text>
+</g>
+<g >
+<title>_run_once:~/.pyenv/versions/3.11.1/lib/python3.11/asyncio/base_events.py:1842 (63,466 samples, 99.68%)</title><rect x="13.7" y="1061" width="1176.2" height="15.0" fill="rgb(233,132,31)" rx="2" ry="2" />
+<text  x="16.73" y="1071.5" >_run_once:~/.pyenv/versions/3.11.1/lib/python3.11/asyncio/base_events.py:1842</text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (25 samples, 0.04%)</title><rect x="55.2" y="549" width="0.4" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.18" y="559.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (63 samples, 0.10%)</title><rect x="56.0" y="837" width="1.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.98" y="847.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/frontik/service_discovery.py:1 (31 samples, 0.05%)</title><rect x="12.9" y="837" width="0.6" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="15.91" y="847.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/opentelemetry/sdk/metrics/_internal/__init__.py:1 (10 samples, 0.02%)</title><rect x="56.7" y="437" width="0.2" height="15.0" fill="rgb(228,109,26)" rx="2" ry="2" />
+<text  x="59.74" y="447.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (9 samples, 0.01%)</title><rect x="13.2" y="373" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="16.22" y="383.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (21 samples, 0.03%)</title><rect x="57.1" y="821" width="0.4" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="60.15" y="831.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/opentelemetry/sdk/metrics/_internal/measurement_consumer.py:1 (6 samples, 0.01%)</title><rect x="56.8" y="341" width="0.1" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="59.81" y="351.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (9 samples, 0.01%)</title><rect x="55.3" y="85" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="58.26" y="95.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (27 samples, 0.04%)</title><rect x="56.2" y="485" width="0.5" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="59.24" y="495.5" ></text>
+</g>
+<g >
+<title>find_handler:~/Development/frontik/frontik/app.py:181 (478 samples, 0.75%)</title><rect x="57.6" y="981" width="8.9" height="15.0" fill="rgb(221,74,17)" rx="2" ry="2" />
+<text  x="60.61" y="991.5" ></text>
+</g>
+<g >
+<title>select:~/.pyenv/versions/3.11.1/lib/python3.11/selectors.py:553 (60,604 samples, 95.18%)</title><rect x="66.8" y="1045" width="1123.1" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="69.77" y="1055.5" >select:~/.pyenv/versions/3.11.1/lib/python3.11/selectors.py:553</text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/netutil.py:1 (14 samples, 0.02%)</title><rect x="11.6" y="581" width="0.2" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="14.56" y="591.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (27 samples, 0.04%)</title><rect x="11.4" y="837" width="0.5" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.35" y="847.5" ></text>
+</g>
+<g >
+<title>_handle_write:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/iostream.py:947 (593 samples, 0.93%)</title><rect x="26.4" y="917" width="11.0" height="15.0" fill="rgb(239,158,37)" rx="2" ry="2" />
+<text  x="29.40" y="927.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (9 samples, 0.01%)</title><rect x="55.3" y="149" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="58.26" y="159.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (10 samples, 0.02%)</title><rect x="11.1" y="789" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="14.11" y="799.5" ></text>
+</g>
+<g >
+<title>run_forever:~/.pyenv/versions/3.11.1/lib/python3.11/asyncio/base_events.py:593 (63,466 samples, 99.68%)</title><rect x="13.7" y="1077" width="1176.2" height="15.0" fill="rgb(248,199,47)" rx="2" ry="2" />
+<text  x="16.73" y="1087.5" >run_forever:~/.pyenv/versions/3.11.1/lib/python3.11/asyncio/base_events.py:593</text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/jinja2/__init__.py:1 (9 samples, 0.01%)</title><rect x="12.6" y="741" width="0.2" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="15.63" y="751.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (7 samples, 0.01%)</title><rect x="55.5" y="357" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.46" y="367.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (13 samples, 0.02%)</title><rect x="12.4" y="757" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="15.37" y="767.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/log.py:1 (7 samples, 0.01%)</title><rect x="11.4" y="581" width="0.1" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="14.41" y="591.5" ></text>
+</g>
+<g >
+<title>_handle_fromlist:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1209 (17 samples, 0.03%)</title><rect x="10.4" y="677" width="0.3" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="13.41" y="687.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/http_client/__init__.py:1 (46 samples, 0.07%)</title><rect x="10.0" y="885" width="0.9" height="15.0" fill="rgb(242,171,40)" rx="2" ry="2" />
+<text  x="13.02" y="895.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (51 samples, 0.08%)</title><rect x="56.2" y="661" width="0.9" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="59.20" y="671.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/.pyenv/versions/3.11.1/lib/python3.11/asyncio/base_events.py:1 (18 samples, 0.03%)</title><rect x="11.0" y="837" width="0.3" height="15.0" fill="rgb(243,175,41)" rx="2" ry="2" />
+<text  x="13.96" y="847.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (46 samples, 0.07%)</title><rect x="10.0" y="901" width="0.9" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.02" y="911.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (89 samples, 0.14%)</title><rect x="11.9" y="917" width="1.6" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="14.89" y="927.5" ></text>
+</g>
+<g >
+<title>_run:~/.pyenv/versions/3.11.1/lib/python3.11/asyncio/events.py:78 (2,862 samples, 4.50%)</title><rect x="13.7" y="1045" width="53.1" height="15.0" fill="rgb(206,4,1)" rx="2" ry="2" />
+<text  x="16.73" y="1055.5" >_run:..</text>
+</g>
+<g >
+<title>produce_debug_body:~/Development/frontik/frontik/debug.py:401 (10 samples, 0.02%)</title><rect x="26.2" y="933" width="0.2" height="15.0" fill="rgb(244,183,43)" rx="2" ry="2" />
+<text  x="29.22" y="943.5" ></text>
+</g>
+<g >
+<title>_gcd_import:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1194 (13 samples, 0.02%)</title><rect x="12.4" y="773" width="0.2" height="15.0" fill="rgb(251,213,51)" rx="2" ry="2" />
+<text  x="15.37" y="783.5" ></text>
+</g>
+<g >
+<title>finish:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/web.py:1185 (1,904 samples, 2.99%)</title><rect x="13.7" y="981" width="35.3" height="15.0" fill="rgb(241,168,40)" rx="2" ry="2" />
+<text  x="16.73" y="991.5" >fi..</text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/frontik/integrations/telemetry.py:1 (84 samples, 0.13%)</title><rect x="56.0" y="869" width="1.5" height="15.0" fill="rgb(214,42,10)" rx="2" ry="2" />
+<text  x="58.98" y="879.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (9 samples, 0.01%)</title><rect x="13.1" y="53" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="16.06" y="63.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (9 samples, 0.01%)</title><rect x="55.3" y="165" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.26" y="175.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (10 samples, 0.02%)</title><rect x="56.7" y="453" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.74" y="463.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (14 samples, 0.02%)</title><rect x="11.6" y="597" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.56" y="607.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (7 samples, 0.01%)</title><rect x="10.5" y="437" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.50" y="447.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (21 samples, 0.03%)</title><rect x="57.1" y="789" width="0.4" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="60.15" y="799.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (25 samples, 0.04%)</title><rect x="55.2" y="533" width="0.4" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="58.18" y="543.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (131 samples, 0.21%)</title><rect x="55.1" y="933" width="2.5" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.15" y="943.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (8 samples, 0.01%)</title><rect x="56.8" y="357" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.78" y="367.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (25 samples, 0.04%)</title><rect x="12.9" y="469" width="0.5" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.95" y="479.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (9 samples, 0.01%)</title><rect x="56.6" y="405" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.56" y="415.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (48 samples, 0.08%)</title><rect x="10.0" y="981" width="0.9" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.00" y="991.5" ></text>
+</g>
+<g >
+<title>__init__:~/Development/frontik/frontik/app.py:102 (8 samples, 0.01%)</title><rect x="13.6" y="1093" width="0.1" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="16.58" y="1103.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/opentelemetry/trace/__init__.py:1 (10 samples, 0.02%)</title><rect x="57.4" y="741" width="0.1" height="15.0" fill="rgb(240,162,38)" rx="2" ry="2" />
+<text  x="60.35" y="751.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (21 samples, 0.03%)</title><rect x="57.1" y="837" width="0.4" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="60.15" y="847.5" ></text>
+</g>
+<g >
+<title>_handle_fromlist:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1209 (10 samples, 0.02%)</title><rect x="11.1" y="821" width="0.2" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="14.11" y="831.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (21 samples, 0.03%)</title><rect x="57.1" y="805" width="0.4" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="60.15" y="815.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (9 samples, 0.01%)</title><rect x="12.6" y="725" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="15.63" y="735.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/opentelemetry/propagate/__init__.py:1 (6 samples, 0.01%)</title><rect x="57.2" y="549" width="0.1" height="15.0" fill="rgb(223,86,20)" rx="2" ry="2" />
+<text  x="60.17" y="559.5" ></text>
+</g>
+<g >
+<title>write_headers:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/http1connection.py:379 (593 samples, 0.93%)</title><rect x="26.4" y="949" width="11.0" height="15.0" fill="rgb(207,12,2)" rx="2" ry="2" />
+<text  x="29.40" y="959.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (11 samples, 0.02%)</title><rect x="13.0" y="165" width="0.2" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="16.02" y="175.5" ></text>
+</g>
+<g >
+<title>_init_app:~/Development/frontik/frontik/server.py:168 (133 samples, 0.21%)</title><rect x="55.1" y="1029" width="2.5" height="15.0" fill="rgb(211,28,6)" rx="2" ry="2" />
+<text  x="58.15" y="1039.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (25 samples, 0.04%)</title><rect x="55.2" y="597" width="0.4" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.18" y="607.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (30 samples, 0.05%)</title><rect x="12.9" y="741" width="0.6" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="15.91" y="751.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (10 samples, 0.02%)</title><rect x="11.4" y="757" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="14.37" y="767.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (30 samples, 0.05%)</title><rect x="12.9" y="773" width="0.6" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="15.91" y="783.5" ></text>
+</g>
+<g >
+<title>_log:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:1610 (674 samples, 1.06%)</title><rect x="13.7" y="917" width="12.5" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="16.73" y="927.5" ></text>
+</g>
+<g >
+<title>callHandlers:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:1690 (674 samples, 1.06%)</title><rect x="13.7" y="885" width="12.5" height="15.0" fill="rgb(252,217,52)" rx="2" ry="2" />
+<text  x="16.73" y="895.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (18 samples, 0.03%)</title><rect x="10.1" y="661" width="0.3" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.07" y="671.5" ></text>
+</g>
+<g >
+<title>_initialize_master_working_set:~/Development/frontik/.venv/lib/python3.11/site-packages/pkg_resources/__init__.py:3324 (17 samples, 0.03%)</title><rect x="56.2" y="405" width="0.4" height="15.0" fill="rgb(251,212,50)" rx="2" ry="2" />
+<text  x="59.24" y="415.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (11 samples, 0.02%)</title><rect x="56.9" y="613" width="0.2" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="59.94" y="623.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (14 samples, 0.02%)</title><rect x="55.2" y="437" width="0.3" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="58.20" y="447.5" ></text>
+</g>
+<g >
+<title>on_finish:~/Development/frontik/frontik/handler.py:486 (627 samples, 0.98%)</title><rect x="37.4" y="965" width="11.6" height="15.0" fill="rgb(218,62,14)" rx="2" ry="2" />
+<text  x="40.39" y="975.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (7 samples, 0.01%)</title><rect x="12.7" y="693" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="15.67" y="703.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (14 samples, 0.02%)</title><rect x="55.2" y="405" width="0.3" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.20" y="415.5" ></text>
+</g>
+<g >
+<title>_execute:~/Development/frontik/frontik/handler.py:338 (1,904 samples, 2.99%)</title><rect x="13.7" y="1029" width="35.3" height="15.0" fill="rgb(235,140,33)" rx="2" ry="2" />
+<text  x="16.73" y="1039.5" >_e..</text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (12 samples, 0.02%)</title><rect x="12.4" y="693" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.39" y="703.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (6 samples, 0.01%)</title><rect x="11.0" y="773" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="14.00" y="783.5" ></text>
+</g>
+<g >
+<title>find_on_path:~/Development/frontik/.venv/lib/python3.11/site-packages/pkg_resources/__init__.py:2116 (10 samples, 0.02%)</title><rect x="56.3" y="341" width="0.2" height="15.0" fill="rgb(210,27,6)" rx="2" ry="2" />
+<text  x="59.30" y="351.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (9 samples, 0.01%)</title><rect x="57.1" y="725" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="60.15" y="735.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (8 samples, 0.01%)</title><rect x="11.0" y="821" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="13.96" y="831.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (192 samples, 0.30%)</title><rect x="10.0" y="1045" width="3.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.00" y="1055.5" ></text>
+</g>
+<g >
+<title>write:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/iostream.py:503 (593 samples, 0.93%)</title><rect x="26.4" y="933" width="11.0" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="29.40" y="943.5" ></text>
+</g>
+<g >
+<title>_log:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/web.py:1812 (674 samples, 1.06%)</title><rect x="13.7" y="965" width="12.5" height="15.0" fill="rgb(207,13,3)" rx="2" ry="2" />
+<text  x="16.73" y="975.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (44 samples, 0.07%)</title><rect x="10.1" y="821" width="0.8" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="13.06" y="831.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (46 samples, 0.07%)</title><rect x="10.0" y="869" width="0.9" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="13.02" y="879.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (12 samples, 0.02%)</title><rect x="13.0" y="341" width="0.2" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="16.00" y="351.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (6 samples, 0.01%)</title><rect x="57.2" y="613" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="60.17" y="623.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (9 samples, 0.01%)</title><rect x="13.2" y="389" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="16.22" y="399.5" ></text>
+</g>
+<g >
+<title>flush_stages:~/Development/frontik/frontik/loggers/stages.py:38 (627 samples, 0.98%)</title><rect x="37.4" y="949" width="11.6" height="15.0" fill="rgb(216,54,12)" rx="2" ry="2" />
+<text  x="40.39" y="959.5" ></text>
+</g>
+<g >
+<title>import_module:~/.pyenv/versions/3.11.1/lib/python3.11/importlib/__init__.py:108 (131 samples, 0.21%)</title><rect x="55.1" y="981" width="2.5" height="15.0" fill="rgb(233,129,31)" rx="2" ry="2" />
+<text  x="58.15" y="991.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (6 samples, 0.01%)</title><rect x="11.0" y="789" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="14.00" y="799.5" ></text>
+</g>
+<g >
+<title>find_handler:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/routing.py:358 (478 samples, 0.75%)</title><rect x="57.6" y="933" width="8.9" height="15.0" fill="rgb(228,107,25)" rx="2" ry="2" />
+<text  x="60.61" y="943.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (7 samples, 0.01%)</title><rect x="11.4" y="645" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.41" y="655.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (37 samples, 0.06%)</title><rect x="55.2" y="805" width="0.7" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="58.17" y="815.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (7 samples, 0.01%)</title><rect x="55.5" y="309" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.46" y="319.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (16 samples, 0.03%)</title><rect x="10.4" y="581" width="0.3" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.43" y="591.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/aiohttp/http_parser.py:1 (7 samples, 0.01%)</title><rect x="10.5" y="469" width="0.1" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="13.50" y="479.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (61 samples, 0.10%)</title><rect x="56.0" y="821" width="1.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="59.02" y="831.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (7 samples, 0.01%)</title><rect x="11.4" y="565" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="14.41" y="575.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (17 samples, 0.03%)</title><rect x="10.4" y="629" width="0.3" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.41" y="639.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (21 samples, 0.03%)</title><rect x="57.1" y="773" width="0.4" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="60.15" y="783.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/kafka/conn.py:1 (9 samples, 0.01%)</title><rect x="55.3" y="101" width="0.1" height="15.0" fill="rgb(226,100,23)" rx="2" ry="2" />
+<text  x="58.26" y="111.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (9 samples, 0.01%)</title><rect x="11.1" y="741" width="0.2" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="14.13" y="751.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (7 samples, 0.01%)</title><rect x="55.5" y="325" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="58.46" y="335.5" ></text>
+</g>
+<g >
+<title>_gcd_import:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1194 (27 samples, 0.04%)</title><rect x="11.4" y="869" width="0.5" height="15.0" fill="rgb(251,213,51)" rx="2" ry="2" />
+<text  x="14.35" y="879.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (16 samples, 0.03%)</title><rect x="10.4" y="597" width="0.3" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="13.43" y="607.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (15 samples, 0.02%)</title><rect x="11.6" y="693" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.56" y="703.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (7 samples, 0.01%)</title><rect x="56.1" y="629" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="59.07" y="639.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (10 samples, 0.02%)</title><rect x="56.7" y="405" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.74" y="415.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (10 samples, 0.02%)</title><rect x="56.7" y="501" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.74" y="511.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (7 samples, 0.01%)</title><rect x="10.5" y="453" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="13.50" y="463.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/opentelemetry/instrumentation/aiohttp_client/__init__.py:1 (9 samples, 0.01%)</title><rect x="57.1" y="741" width="0.2" height="15.0" fill="rgb(211,31,7)" rx="2" ry="2" />
+<text  x="60.15" y="751.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (9 samples, 0.01%)</title><rect x="12.6" y="757" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.63" y="767.5" ></text>
+</g>
+<g >
+<title>add_entry:~/Development/frontik/.venv/lib/python3.11/site-packages/pkg_resources/__init__.py:659 (11 samples, 0.02%)</title><rect x="56.3" y="357" width="0.2" height="15.0" fill="rgb(213,40,9)" rx="2" ry="2" />
+<text  x="59.28" y="367.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/sentry_sdk/__init__.py:1 (6 samples, 0.01%)</title><rect x="55.9" y="773" width="0.1" height="15.0" fill="rgb(210,26,6)" rx="2" ry="2" />
+<text  x="58.85" y="783.5" ></text>
+</g>
+<g >
+<title>info:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:1479 (477 samples, 0.75%)</title><rect x="57.6" y="821" width="8.9" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="60.63" y="831.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (12 samples, 0.02%)</title><rect x="13.0" y="357" width="0.2" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="16.00" y="367.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (6 samples, 0.01%)</title><rect x="10.5" y="421" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="13.52" y="431.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (28 samples, 0.04%)</title><rect x="12.9" y="517" width="0.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.95" y="527.5" ></text>
+</g>
+<g >
+<title>find_handler:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/web.py:2273 (478 samples, 0.75%)</title><rect x="57.6" y="949" width="8.9" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="60.61" y="959.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (25 samples, 0.04%)</title><rect x="55.2" y="629" width="0.4" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="58.18" y="639.5" ></text>
+</g>
+<g >
+<title>get_target_delegate:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/routing.py:376 (478 samples, 0.75%)</title><rect x="57.6" y="853" width="8.9" height="15.0" fill="rgb(210,27,6)" rx="2" ry="2" />
+<text  x="60.61" y="863.5" ></text>
+</g>
+<g >
+<title>handle:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:965 (477 samples, 0.75%)</title><rect x="57.6" y="757" width="8.9" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="60.63" y="767.5" ></text>
+</g>
+<g >
+<title>handle:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:965 (674 samples, 1.06%)</title><rect x="13.7" y="869" width="12.5" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="16.73" y="879.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (18 samples, 0.03%)</title><rect x="11.0" y="853" width="0.3" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.96" y="863.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (9 samples, 0.01%)</title><rect x="12.6" y="709" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.63" y="719.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (15 samples, 0.02%)</title><rect x="11.6" y="645" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.56" y="655.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (37 samples, 0.06%)</title><rect x="55.2" y="821" width="0.7" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="58.17" y="831.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/chardet/universaldetector.py:1 (11 samples, 0.02%)</title><rect x="13.0" y="117" width="0.2" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="16.02" y="127.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (25 samples, 0.04%)</title><rect x="55.2" y="613" width="0.4" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="58.18" y="623.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (192 samples, 0.30%)</title><rect x="10.0" y="1061" width="3.6" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="13.00" y="1071.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/kafka/admin/__init__.py:1 (15 samples, 0.02%)</title><rect x="55.2" y="485" width="0.3" height="15.0" fill="rgb(214,41,9)" rx="2" ry="2" />
+<text  x="58.18" y="495.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (37 samples, 0.06%)</title><rect x="56.2" y="581" width="0.7" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="59.24" y="591.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (6 samples, 0.01%)</title><rect x="57.0" y="501" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="60.00" y="511.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (15 samples, 0.02%)</title><rect x="11.6" y="629" width="0.2" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="14.56" y="639.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (12 samples, 0.02%)</title><rect x="13.0" y="325" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="16.00" y="335.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (6 samples, 0.01%)</title><rect x="55.9" y="709" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="58.85" y="719.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (7 samples, 0.01%)</title><rect x="56.6" y="389" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="59.59" y="399.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (9 samples, 0.01%)</title><rect x="12.6" y="773" width="0.2" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="15.63" y="783.5" ></text>
+</g>
+<g >
+<title>Value:~/.pyenv/versions/3.11.1/lib/python3.11/multiprocessing/context.py:132 (7 samples, 0.01%)</title><rect x="13.6" y="1077" width="0.1" height="15.0" fill="rgb(211,29,7)" rx="2" ry="2" />
+<text  x="16.58" y="1087.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (7 samples, 0.01%)</title><rect x="12.7" y="677" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="15.67" y="687.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (16 samples, 0.03%)</title><rect x="10.4" y="517" width="0.3" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="13.43" y="527.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/opentelemetry/exporter/otlp/proto/grpc/exporter.py:1 (51 samples, 0.08%)</title><rect x="56.2" y="677" width="0.9" height="15.0" fill="rgb(223,86,20)" rx="2" ry="2" />
+<text  x="59.20" y="687.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (12 samples, 0.02%)</title><rect x="13.0" y="181" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="16.00" y="191.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (192 samples, 0.30%)</title><rect x="10.0" y="997" width="3.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.00" y="1007.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (26 samples, 0.04%)</title><rect x="11.4" y="805" width="0.5" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="14.37" y="815.5" ></text>
+</g>
+<g >
+<title>create_schema_validator:~/Development/frontik/.venv/lib/python3.11/site-packages/pydantic/plugin/_schema_validator.py:20 (10 samples, 0.02%)</title><rect x="12.1" y="693" width="0.2" height="15.0" fill="rgb(236,144,34)" rx="2" ry="2" />
+<text  x="15.13" y="703.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (7 samples, 0.01%)</title><rect x="11.4" y="597" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.41" y="607.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (27 samples, 0.04%)</title><rect x="56.2" y="453" width="0.5" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.24" y="463.5" ></text>
+</g>
+<g >
+<title>init:~/Development/frontik/frontik/app.py:149 (131 samples, 0.21%)</title><rect x="55.1" y="1013" width="2.5" height="15.0" fill="rgb(227,105,25)" rx="2" ry="2" />
+<text  x="58.15" y="1023.5" ></text>
+</g>
+<g >
+<title>main:~/Development/frontik/frontik/server.py:37 (63,477 samples, 99.70%)</title><rect x="13.6" y="1109" width="1176.4" height="15.0" fill="rgb(251,213,51)" rx="2" ry="2" />
+<text  x="16.56" y="1119.5" >main:~/Development/frontik/frontik/server.py:37</text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (9 samples, 0.01%)</title><rect x="12.4" y="645" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.45" y="655.5" ></text>
+</g>
+<g >
+<title>handle:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:1636 (477 samples, 0.75%)</title><rect x="57.6" y="789" width="8.9" height="15.0" fill="rgb(236,144,34)" rx="2" ry="2" />
+<text  x="60.63" y="799.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/requests/exceptions.py:1 (12 samples, 0.02%)</title><rect x="13.0" y="405" width="0.2" height="15.0" fill="rgb(245,186,44)" rx="2" ry="2" />
+<text  x="16.00" y="415.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (9 samples, 0.01%)</title><rect x="12.4" y="629" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="15.45" y="639.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/jinja2/environment.py:1 (7 samples, 0.01%)</title><rect x="12.7" y="645" width="0.1" height="15.0" fill="rgb(206,9,2)" rx="2" ry="2" />
+<text  x="15.67" y="655.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (30 samples, 0.05%)</title><rect x="12.9" y="661" width="0.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.91" y="671.5" ></text>
+</g>
+<g >
+<title>import_module:~/.pyenv/versions/3.11.1/lib/python3.11/importlib/__init__.py:108 (27 samples, 0.04%)</title><rect x="11.4" y="885" width="0.5" height="15.0" fill="rgb(233,129,31)" rx="2" ry="2" />
+<text  x="14.35" y="895.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (27 samples, 0.04%)</title><rect x="56.2" y="501" width="0.5" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.24" y="511.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (9 samples, 0.01%)</title><rect x="57.1" y="709" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="60.15" y="719.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (192 samples, 0.30%)</title><rect x="10.0" y="1077" width="3.6" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="13.00" y="1087.5" ></text>
+</g>
+<g >
+<title>write_to_fd:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/iostream.py:1122 (593 samples, 0.93%)</title><rect x="26.4" y="901" width="11.0" height="15.0" fill="rgb(253,223,53)" rx="2" ry="2" />
+<text  x="29.40" y="911.5" ></text>
+</g>
+<g >
+<title>_handle_events:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/iostream.py:677 (331 samples, 0.52%)</title><rect x="49.0" y="1013" width="6.1" height="15.0" fill="rgb(254,228,54)" rx="2" ry="2" />
+<text  x="52.01" y="1023.5" ></text>
+</g>
+<g >
+<title>emit:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:1098 (674 samples, 1.06%)</title><rect x="13.7" y="853" width="12.5" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="16.73" y="863.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (10 samples, 0.02%)</title><rect x="12.6" y="821" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="15.61" y="831.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (6 samples, 0.01%)</title><rect x="57.2" y="661" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="60.17" y="671.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (8 samples, 0.01%)</title><rect x="57.2" y="677" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="60.17" y="687.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (25 samples, 0.04%)</title><rect x="55.2" y="517" width="0.4" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="58.18" y="527.5" ></text>
+</g>
+<g >
+<title>handle:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:965 (627 samples, 0.98%)</title><rect x="37.4" y="869" width="11.6" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="40.39" y="879.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (6 samples, 0.01%)</title><rect x="57.2" y="629" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="60.17" y="639.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (11 samples, 0.02%)</title><rect x="13.0" y="101" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="16.02" y="111.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (8 samples, 0.01%)</title><rect x="11.0" y="805" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.96" y="815.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (86 samples, 0.14%)</title><rect x="11.9" y="869" width="1.6" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="14.95" y="879.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (6 samples, 0.01%)</title><rect x="12.7" y="613" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.67" y="623.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (9 samples, 0.01%)</title><rect x="12.4" y="613" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.45" y="623.5" ></text>
+</g>
+<g >
+<title>find_handler:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/routing.py:358 (478 samples, 0.75%)</title><rect x="57.6" y="885" width="8.9" height="15.0" fill="rgb(228,107,25)" rx="2" ry="2" />
+<text  x="60.61" y="895.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (7 samples, 0.01%)</title><rect x="56.1" y="645" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.07" y="655.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/opentelemetry/sdk/metrics/__init__.py:1 (10 samples, 0.02%)</title><rect x="56.7" y="533" width="0.2" height="15.0" fill="rgb(207,13,3)" rx="2" ry="2" />
+<text  x="59.74" y="543.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (35 samples, 0.05%)</title><rect x="10.1" y="709" width="0.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.07" y="719.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (9 samples, 0.01%)</title><rect x="55.3" y="133" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="58.26" y="143.5" ></text>
+</g>
+<g >
+<title>info:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:1479 (627 samples, 0.98%)</title><rect x="37.4" y="933" width="11.6" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="40.39" y="943.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (25 samples, 0.04%)</title><rect x="55.2" y="661" width="0.4" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="58.18" y="671.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (6 samples, 0.01%)</title><rect x="55.9" y="725" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="58.85" y="735.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/consul/std.py:1 (28 samples, 0.04%)</title><rect x="12.9" y="597" width="0.6" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="15.95" y="607.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (61 samples, 0.10%)</title><rect x="56.0" y="789" width="1.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.02" y="799.5" ></text>
+</g>
+<g >
+<title>get_target_delegate:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/web.py:2023 (478 samples, 0.75%)</title><rect x="57.6" y="917" width="8.9" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="60.61" y="927.5" ></text>
+</g>
+<g >
+<title>_execute:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/web.py:1742 (1,904 samples, 2.99%)</title><rect x="13.7" y="1013" width="35.3" height="15.0" fill="rgb(247,197,47)" rx="2" ry="2" />
+<text  x="16.73" y="1023.5" >_e..</text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/frontik/handler.py:1 (32 samples, 0.05%)</title><rect x="12.0" y="837" width="0.6" height="15.0" fill="rgb(219,66,15)" rx="2" ry="2" />
+<text  x="15.02" y="847.5" ></text>
+</g>
+<g >
+<title>distributions_from_metadata:~/Development/frontik/.venv/lib/python3.11/site-packages/pkg_resources/__init__.py:2187 (8 samples, 0.01%)</title><rect x="56.3" y="325" width="0.2" height="15.0" fill="rgb(236,142,34)" rx="2" ry="2" />
+<text  x="59.33" y="335.5" ></text>
+</g>
+<g >
+<title>emit:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:1098 (627 samples, 0.98%)</title><rect x="37.4" y="853" width="11.6" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="40.39" y="863.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/pydantic/main.py:1 (12 samples, 0.02%)</title><rect x="12.4" y="677" width="0.2" height="15.0" fill="rgb(223,87,20)" rx="2" ry="2" />
+<text  x="15.39" y="687.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/pkg_resources/__init__.py:1 (27 samples, 0.04%)</title><rect x="56.2" y="437" width="0.5" height="15.0" fill="rgb(208,14,3)" rx="2" ry="2" />
+<text  x="59.24" y="447.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (30 samples, 0.05%)</title><rect x="12.9" y="677" width="0.6" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="15.91" y="687.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (11 samples, 0.02%)</title><rect x="13.0" y="133" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="16.02" y="143.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (12 samples, 0.02%)</title><rect x="13.0" y="229" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="16.00" y="239.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/chardet/__init__.py:1 (12 samples, 0.02%)</title><rect x="13.0" y="213" width="0.2" height="15.0" fill="rgb(205,3,0)" rx="2" ry="2" />
+<text  x="16.00" y="223.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (23 samples, 0.04%)</title><rect x="13.0" y="437" width="0.4" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="15.98" y="447.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/iostream.py:1 (15 samples, 0.02%)</title><rect x="11.6" y="677" width="0.2" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="14.56" y="687.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (39 samples, 0.06%)</title><rect x="56.2" y="597" width="0.7" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.20" y="607.5" ></text>
+</g>
+<g >
+<title>__getattr__:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/__init__.py:64 (27 samples, 0.04%)</title><rect x="11.4" y="901" width="0.5" height="15.0" fill="rgb(234,133,32)" rx="2" ry="2" />
+<text  x="14.35" y="911.5" ></text>
+</g>
+<g >
+<title>load_integrations:~/Development/frontik/frontik/integrations/__init__.py:28 (131 samples, 0.21%)</title><rect x="55.1" y="997" width="2.5" height="15.0" fill="rgb(243,177,42)" rx="2" ry="2" />
+<text  x="58.15" y="1007.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (30 samples, 0.05%)</title><rect x="12.9" y="757" width="0.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.91" y="767.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (10 samples, 0.02%)</title><rect x="56.7" y="469" width="0.2" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="59.74" y="479.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (29 samples, 0.05%)</title><rect x="12.9" y="645" width="0.6" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="15.93" y="655.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (9 samples, 0.01%)</title><rect x="55.3" y="277" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="58.26" y="287.5" ></text>
+</g>
+<g >
+<title>get_target_delegate:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/web.py:2023 (478 samples, 0.75%)</title><rect x="57.6" y="869" width="8.9" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="60.61" y="879.5" ></text>
+</g>
+<g >
+<title>info:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:1479 (674 samples, 1.06%)</title><rect x="13.7" y="933" width="12.5" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="16.73" y="943.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (61 samples, 0.10%)</title><rect x="56.0" y="757" width="1.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="59.02" y="767.5" ></text>
+</g>
+<g >
+<title>import_module:~/.pyenv/versions/3.11.1/lib/python3.11/importlib/__init__.py:108 (13 samples, 0.02%)</title><rect x="12.4" y="789" width="0.2" height="15.0" fill="rgb(233,129,31)" rx="2" ry="2" />
+<text  x="15.37" y="799.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (7 samples, 0.01%)</title><rect x="11.4" y="613" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="14.41" y="623.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (7 samples, 0.01%)</title><rect x="55.5" y="421" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="58.46" y="431.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (10 samples, 0.02%)</title><rect x="11.1" y="773" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.11" y="783.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/opentelemetry/instrumentation/utils.py:1 (6 samples, 0.01%)</title><rect x="57.2" y="645" width="0.1" height="15.0" fill="rgb(220,70,16)" rx="2" ry="2" />
+<text  x="60.17" y="655.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (140 samples, 0.22%)</title><rect x="10.9" y="949" width="2.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.95" y="959.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (18 samples, 0.03%)</title><rect x="12.0" y="789" width="0.4" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="15.04" y="799.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (10 samples, 0.02%)</title><rect x="56.7" y="485" width="0.2" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="59.74" y="495.5" ></text>
+</g>
+<g >
+<title>_try_inline_read:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/iostream.py:823 (13 samples, 0.02%)</title><rect x="66.5" y="981" width="0.2" height="15.0" fill="rgb(254,228,54)" rx="2" ry="2" />
+<text  x="69.47" y="991.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (7 samples, 0.01%)</title><rect x="12.5" y="565" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.48" y="575.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (46 samples, 0.07%)</title><rect x="10.0" y="853" width="0.9" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.02" y="863.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (6 samples, 0.01%)</title><rect x="56.8" y="293" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="59.81" y="303.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (7 samples, 0.01%)</title><rect x="55.9" y="805" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="58.85" y="815.5" ></text>
+</g>
+<g >
+<title>_build_master:~/Development/frontik/.venv/lib/python3.11/site-packages/pkg_resources/__init__.py:617 (11 samples, 0.02%)</title><rect x="56.3" y="389" width="0.2" height="15.0" fill="rgb(215,46,11)" rx="2" ry="2" />
+<text  x="59.28" y="399.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (39 samples, 0.06%)</title><rect x="56.2" y="613" width="0.7" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="59.20" y="623.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (8 samples, 0.01%)</title><rect x="13.2" y="357" width="0.2" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="16.24" y="367.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (7 samples, 0.01%)</title><rect x="57.0" y="533" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="59.98" y="543.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (13 samples, 0.02%)</title><rect x="10.1" y="613" width="0.3" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.15" y="623.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (11 samples, 0.02%)</title><rect x="13.0" y="85" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="16.02" y="95.5" ></text>
+</g>
+<g >
+<title>find_handler:~/Development/frontik/frontik/routing.py:91 (478 samples, 0.75%)</title><rect x="57.6" y="837" width="8.9" height="15.0" fill="rgb(242,170,40)" rx="2" ry="2" />
+<text  x="60.61" y="847.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (28 samples, 0.04%)</title><rect x="12.9" y="581" width="0.6" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="15.95" y="591.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (130 samples, 0.20%)</title><rect x="55.2" y="901" width="2.4" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="58.17" y="911.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (130 samples, 0.20%)</title><rect x="55.2" y="917" width="2.4" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="58.17" y="927.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (60 samples, 0.09%)</title><rect x="56.0" y="725" width="1.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="59.04" y="735.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (8 samples, 0.01%)</title><rect x="56.8" y="373" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="59.78" y="383.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (83 samples, 0.13%)</title><rect x="11.9" y="853" width="1.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.95" y="863.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (6 samples, 0.01%)</title><rect x="57.2" y="581" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="60.17" y="591.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (6 samples, 0.01%)</title><rect x="56.1" y="597" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="59.09" y="607.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (60 samples, 0.09%)</title><rect x="56.0" y="693" width="1.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.04" y="703.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (15 samples, 0.02%)</title><rect x="11.6" y="613" width="0.2" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="14.56" y="623.5" ></text>
+</g>
+<g >
+<title>log_request:~/Development/frontik/frontik/app.py:248 (674 samples, 1.06%)</title><rect x="13.7" y="949" width="12.5" height="15.0" fill="rgb(231,121,28)" rx="2" ry="2" />
+<text  x="16.73" y="959.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (89 samples, 0.14%)</title><rect x="11.9" y="901" width="1.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.89" y="911.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/aiokafka/abc.py:1 (25 samples, 0.04%)</title><rect x="55.2" y="677" width="0.4" height="15.0" fill="rgb(233,130,31)" rx="2" ry="2" />
+<text  x="58.18" y="687.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (6 samples, 0.01%)</title><rect x="56.8" y="261" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.81" y="271.5" ></text>
+</g>
+<g >
+<title>_read_to_buffer:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/iostream.py:845 (13 samples, 0.02%)</title><rect x="66.5" y="949" width="0.2" height="15.0" fill="rgb(212,32,7)" rx="2" ry="2" />
+<text  x="69.47" y="959.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (29 samples, 0.05%)</title><rect x="12.9" y="629" width="0.6" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="15.93" y="639.5" ></text>
+</g>
+<g >
+<title>create_default_context:~/.pyenv/versions/3.11.1/lib/python3.11/ssl.py:745 (13 samples, 0.02%)</title><rect x="11.6" y="565" width="0.2" height="15.0" fill="rgb(228,107,25)" rx="2" ry="2" />
+<text  x="14.56" y="575.5" ></text>
+</g>
+<g >
+<title>emit:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:1098 (477 samples, 0.75%)</title><rect x="57.6" y="741" width="8.9" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="60.63" y="751.5" ></text>
+</g>
+<g >
+<title>load_default_certs:~/.pyenv/versions/3.11.1/lib/python3.11/ssl.py:591 (11 samples, 0.02%)</title><rect x="11.6" y="549" width="0.2" height="15.0" fill="rgb(227,101,24)" rx="2" ry="2" />
+<text  x="14.59" y="559.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (7 samples, 0.01%)</title><rect x="57.0" y="517" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.98" y="527.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/examples/example-run.py:1 (63,669 samples, 100.00%)</title><rect x="10.0" y="1125" width="1180.0" height="15.0" fill="rgb(252,217,52)" rx="2" ry="2" />
+<text  x="13.00" y="1135.5" >&lt;module&gt;:~/Development/frontik/examples/example-run.py:1</text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (7 samples, 0.01%)</title><rect x="55.5" y="453" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.46" y="463.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (11 samples, 0.02%)</title><rect x="13.0" y="149" width="0.2" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="16.02" y="159.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/autoreload.py:1 (27 samples, 0.04%)</title><rect x="11.4" y="933" width="0.5" height="15.0" fill="rgb(221,73,17)" rx="2" ry="2" />
+<text  x="14.35" y="943.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (9 samples, 0.01%)</title><rect x="13.1" y="69" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="16.06" y="79.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (10 samples, 0.02%)</title><rect x="12.6" y="805" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.61" y="815.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (51 samples, 0.08%)</title><rect x="56.2" y="645" width="0.9" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.20" y="655.5" ></text>
+</g>
+<g >
+<title>callHandlers:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:1690 (627 samples, 0.98%)</title><rect x="37.4" y="885" width="11.6" height="15.0" fill="rgb(252,217,52)" rx="2" ry="2" />
+<text  x="40.39" y="895.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/aiokafka/__init__.py:1 (37 samples, 0.06%)</title><rect x="55.2" y="773" width="0.7" height="15.0" fill="rgb(211,29,6)" rx="2" ry="2" />
+<text  x="58.17" y="783.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (15 samples, 0.02%)</title><rect x="11.6" y="725" width="0.2" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="14.56" y="735.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/kafka/consumer/group.py:1 (7 samples, 0.01%)</title><rect x="55.5" y="389" width="0.1" height="15.0" fill="rgb(243,179,42)" rx="2" ry="2" />
+<text  x="58.46" y="399.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (37 samples, 0.06%)</title><rect x="55.2" y="837" width="0.7" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.17" y="847.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (13 samples, 0.02%)</title><rect x="12.4" y="741" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.37" y="751.5" ></text>
+</g>
+<g >
+<title>_server_request_loop:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/http1connection.py:817 (492 samples, 0.77%)</title><rect x="57.6" y="1029" width="9.1" height="15.0" fill="rgb(206,4,1)" rx="2" ry="2" />
+<text  x="60.61" y="1039.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (20 samples, 0.03%)</title><rect x="10.9" y="917" width="0.4" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="13.95" y="927.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (12 samples, 0.02%)</title><rect x="13.0" y="373" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="16.00" y="383.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (7 samples, 0.01%)</title><rect x="55.9" y="837" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.85" y="847.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (11 samples, 0.02%)</title><rect x="56.9" y="629" width="0.2" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="59.94" y="639.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (48 samples, 0.08%)</title><rect x="10.0" y="965" width="0.9" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="13.00" y="975.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (12 samples, 0.02%)</title><rect x="13.0" y="261" width="0.2" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="16.00" y="271.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (21 samples, 0.03%)</title><rect x="57.1" y="757" width="0.4" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="60.15" y="767.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (6 samples, 0.01%)</title><rect x="56.1" y="581" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="59.09" y="591.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (37 samples, 0.06%)</title><rect x="56.2" y="565" width="0.7" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="59.24" y="575.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/frontik/validator.py:1 (14 samples, 0.02%)</title><rect x="12.1" y="741" width="0.3" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="15.09" y="751.5" ></text>
+</g>
+<g >
+<title>_read_to_buffer_loop:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/iostream.py:730 (331 samples, 0.52%)</title><rect x="49.0" y="981" width="6.1" height="15.0" fill="rgb(238,153,36)" rx="2" ry="2" />
+<text  x="52.01" y="991.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (12 samples, 0.02%)</title><rect x="13.0" y="389" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="16.00" y="399.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (6 samples, 0.01%)</title><rect x="56.8" y="277" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="59.81" y="287.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (9 samples, 0.01%)</title><rect x="55.3" y="261" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.26" y="271.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (35 samples, 0.05%)</title><rect x="10.1" y="725" width="0.6" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="13.07" y="735.5" ></text>
+</g>
+<g >
+<title>_handle_events:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/platform/asyncio.py:190 (331 samples, 0.52%)</title><rect x="49.0" y="1029" width="6.1" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="52.01" y="1039.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (6 samples, 0.01%)</title><rect x="11.0" y="757" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.00" y="767.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (86 samples, 0.14%)</title><rect x="11.9" y="885" width="1.6" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="14.95" y="895.5" ></text>
+</g>
+<g >
+<title>flush:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/web.py:1135 (603 samples, 0.95%)</title><rect x="26.2" y="965" width="11.2" height="15.0" fill="rgb(237,149,35)" rx="2" ry="2" />
+<text  x="29.22" y="975.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (25 samples, 0.04%)</title><rect x="55.2" y="645" width="0.4" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.18" y="655.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (7 samples, 0.01%)</title><rect x="56.6" y="373" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="59.59" y="383.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (15 samples, 0.02%)</title><rect x="55.2" y="453" width="0.3" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.18" y="463.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (36 samples, 0.06%)</title><rect x="55.2" y="725" width="0.7" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="58.18" y="735.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (14 samples, 0.02%)</title><rect x="10.1" y="645" width="0.3" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="13.15" y="655.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (12 samples, 0.02%)</title><rect x="13.0" y="245" width="0.2" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="16.00" y="255.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (10 samples, 0.02%)</title><rect x="55.3" y="309" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.26" y="319.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (28 samples, 0.04%)</title><rect x="12.9" y="565" width="0.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="15.95" y="575.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (37 samples, 0.06%)</title><rect x="55.2" y="853" width="0.7" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="58.17" y="863.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (131 samples, 0.21%)</title><rect x="55.1" y="949" width="2.5" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="58.15" y="959.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (17 samples, 0.03%)</title><rect x="10.4" y="661" width="0.3" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.41" y="671.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/kafka/admin/client.py:1 (14 samples, 0.02%)</title><rect x="55.2" y="389" width="0.3" height="15.0" fill="rgb(207,11,2)" rx="2" ry="2" />
+<text  x="58.20" y="399.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/.pyenv/versions/3.11.1/lib/python3.11/asyncio/__init__.py:1 (20 samples, 0.03%)</title><rect x="10.9" y="933" width="0.4" height="15.0" fill="rgb(210,25,6)" rx="2" ry="2" />
+<text  x="13.95" y="943.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (15 samples, 0.02%)</title><rect x="11.6" y="709" width="0.2" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="14.56" y="719.5" ></text>
+</g>
+<g >
+<title>__new__:~/Development/frontik/.venv/lib/python3.11/site-packages/pydantic/_internal/_model_construction.py:60 (14 samples, 0.02%)</title><rect x="12.1" y="725" width="0.3" height="15.0" fill="rgb(205,2,0)" rx="2" ry="2" />
+<text  x="15.09" y="735.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (6 samples, 0.01%)</title><rect x="56.8" y="309" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.81" y="319.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/google/rpc/error_details_pb2.py:1 (8 samples, 0.01%)</title><rect x="57.0" y="581" width="0.1" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="59.96" y="591.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (15 samples, 0.02%)</title><rect x="11.6" y="757" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="14.56" y="767.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (128 samples, 0.20%)</title><rect x="55.2" y="885" width="2.3" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.17" y="895.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (9 samples, 0.01%)</title><rect x="56.6" y="421" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="59.56" y="431.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/kafka/__init__.py:1 (25 samples, 0.04%)</title><rect x="55.2" y="581" width="0.4" height="15.0" fill="rgb(233,130,31)" rx="2" ry="2" />
+<text  x="58.18" y="591.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (15 samples, 0.02%)</title><rect x="11.6" y="661" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="14.56" y="671.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (9 samples, 0.01%)</title><rect x="11.4" y="693" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.37" y="703.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/aiohttp/http.py:1 (16 samples, 0.03%)</title><rect x="10.4" y="565" width="0.3" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="13.43" y="575.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (13 samples, 0.02%)</title><rect x="55.2" y="357" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.20" y="367.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/frontik/server.py:1 (192 samples, 0.30%)</title><rect x="10.0" y="1029" width="3.6" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="13.00" y="1039.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/frontik/app.py:1 (89 samples, 0.14%)</title><rect x="11.9" y="933" width="1.6" height="15.0" fill="rgb(237,148,35)" rx="2" ry="2" />
+<text  x="14.89" y="943.5" ></text>
+</g>
+<g >
+<title>_log:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:1610 (627 samples, 0.98%)</title><rect x="37.4" y="917" width="11.6" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="40.39" y="927.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (7 samples, 0.01%)</title><rect x="55.5" y="341" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="58.46" y="351.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/urllib3/__init__.py:1 (10 samples, 0.02%)</title><rect x="13.2" y="405" width="0.2" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="16.22" y="415.5" ></text>
+</g>
+<g >
+<title>callHandlers:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:1690 (477 samples, 0.75%)</title><rect x="57.6" y="773" width="8.9" height="15.0" fill="rgb(252,217,52)" rx="2" ry="2" />
+<text  x="60.63" y="783.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (60 samples, 0.09%)</title><rect x="56.0" y="709" width="1.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="59.04" y="719.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (6 samples, 0.01%)</title><rect x="56.1" y="565" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="59.09" y="575.5" ></text>
+</g>
+<g >
+<title>read_until_regex:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/iostream.py:326 (13 samples, 0.02%)</title><rect x="66.5" y="997" width="0.2" height="15.0" fill="rgb(252,220,52)" rx="2" ry="2" />
+<text  x="69.47" y="1007.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (9 samples, 0.01%)</title><rect x="55.3" y="245" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="58.26" y="255.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (18 samples, 0.03%)</title><rect x="10.1" y="677" width="0.3" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="13.07" y="687.5" ></text>
+</g>
+<g >
+<title>_handle_fromlist:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1209 (9 samples, 0.01%)</title><rect x="12.4" y="661" width="0.2" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="15.45" y="671.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (37 samples, 0.06%)</title><rect x="55.2" y="789" width="0.7" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.17" y="799.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (6 samples, 0.01%)</title><rect x="10.5" y="405" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="13.52" y="415.5" ></text>
+</g>
+<g >
+<title>_gcd_import:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1194 (131 samples, 0.21%)</title><rect x="55.1" y="965" width="2.5" height="15.0" fill="rgb(251,213,51)" rx="2" ry="2" />
+<text  x="58.15" y="975.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (6 samples, 0.01%)</title><rect x="57.0" y="485" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="60.00" y="495.5" ></text>
+</g>
+<g >
+<title>_read_to_buffer:~/Development/frontik/.venv/lib/python3.11/site-packages/tornado/iostream.py:845 (331 samples, 0.52%)</title><rect x="49.0" y="965" width="6.1" height="15.0" fill="rgb(212,32,7)" rx="2" ry="2" />
+<text  x="52.01" y="975.5" ></text>
+</g>
+<g >
+<title>_call_aside:~/Development/frontik/.venv/lib/python3.11/site-packages/pkg_resources/__init__.py:3298 (17 samples, 0.03%)</title><rect x="56.2" y="421" width="0.4" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="59.24" y="431.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/aiohttp/client.py:1 (35 samples, 0.05%)</title><rect x="10.1" y="693" width="0.6" height="15.0" fill="rgb(205,1,0)" rx="2" ry="2" />
+<text  x="13.07" y="703.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (10 samples, 0.02%)</title><rect x="11.1" y="805" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.11" y="815.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (10 samples, 0.02%)</title><rect x="11.4" y="741" width="0.2" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="14.37" y="751.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (9 samples, 0.01%)</title><rect x="11.1" y="757" width="0.2" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="14.13" y="767.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (35 samples, 0.05%)</title><rect x="10.1" y="741" width="0.6" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="13.07" y="751.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (12 samples, 0.02%)</title><rect x="13.0" y="197" width="0.2" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="16.00" y="207.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (9 samples, 0.01%)</title><rect x="55.3" y="181" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="58.26" y="191.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (30 samples, 0.05%)</title><rect x="12.9" y="821" width="0.6" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="15.91" y="831.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (6 samples, 0.01%)</title><rect x="57.2" y="565" width="0.1" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="60.17" y="575.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (23 samples, 0.04%)</title><rect x="13.0" y="453" width="0.4" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="15.98" y="463.5" ></text>
+</g>
+<g >
+<title>exec_module:~/Development/frontik/examples/&lt;frozen importlib._bootstrap_external&gt;:934 (7 samples, 0.01%)</title><rect x="12.5" y="581" width="0.1" height="15.0" fill="rgb(221,75,17)" rx="2" ry="2" />
+<text  x="15.48" y="591.5" ></text>
+</g>
+<g >
+<title>_call_with_frames_removed:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:233 (34 samples, 0.05%)</title><rect x="55.2" y="693" width="0.6" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="58.18" y="703.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (25 samples, 0.04%)</title><rect x="12.9" y="485" width="0.5" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="15.95" y="495.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (192 samples, 0.30%)</title><rect x="10.0" y="1013" width="3.6" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="13.00" y="1023.5" ></text>
+</g>
+<g >
+<title>_find_and_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1122 (48 samples, 0.08%)</title><rect x="10.0" y="949" width="0.9" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="13.00" y="959.5" ></text>
+</g>
+<g >
+<title>all (63,670 samples, 100%)</title><rect x="10.0" y="1141" width="1180.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="13.00" y="1151.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (6 samples, 0.01%)</title><rect x="55.9" y="757" width="0.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="58.85" y="767.5" ></text>
+</g>
+<g >
+<title>handle:~/.pyenv/versions/3.11.1/lib/python3.11/logging/__init__.py:1636 (674 samples, 1.06%)</title><rect x="13.7" y="901" width="12.5" height="15.0" fill="rgb(236,144,34)" rx="2" ry="2" />
+<text  x="16.73" y="911.5" ></text>
+</g>
+<g >
+<title>_handle_fromlist:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1209 (13 samples, 0.02%)</title><rect x="12.4" y="821" width="0.2" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="15.37" y="831.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (7 samples, 0.01%)</title><rect x="12.5" y="597" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="15.48" y="607.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/kafka/client_async.py:1 (10 samples, 0.02%)</title><rect x="55.3" y="293" width="0.1" height="15.0" fill="rgb(211,31,7)" rx="2" ry="2" />
+<text  x="58.26" y="303.5" ></text>
+</g>
+<g >
+<title>__init__:~/Development/frontik/.venv/lib/python3.11/site-packages/pkg_resources/__init__.py:603 (11 samples, 0.02%)</title><rect x="56.3" y="373" width="0.2" height="15.0" fill="rgb(226,97,23)" rx="2" ry="2" />
+<text  x="59.28" y="383.5" ></text>
+</g>
+<g >
+<title>complete_model_class:~/Development/frontik/.venv/lib/python3.11/site-packages/pydantic/_internal/_model_construction.py:444 (12 samples, 0.02%)</title><rect x="12.1" y="709" width="0.2" height="15.0" fill="rgb(212,36,8)" rx="2" ry="2" />
+<text  x="15.09" y="719.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (7 samples, 0.01%)</title><rect x="55.5" y="437" width="0.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="58.46" y="447.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (10 samples, 0.02%)</title><rect x="11.4" y="725" width="0.2" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="14.37" y="735.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (36 samples, 0.06%)</title><rect x="10.1" y="773" width="0.6" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="13.06" y="783.5" ></text>
+</g>
+<g >
+<title>_load_unlocked:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:666 (12 samples, 0.02%)</title><rect x="12.4" y="725" width="0.2" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="15.39" y="735.5" ></text>
+</g>
+<g >
+<title>_find_and_load:~/Development/frontik/examples/&lt;frozen importlib._bootstrap&gt;:1167 (63 samples, 0.10%)</title><rect x="56.0" y="853" width="1.1" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="58.98" y="863.5" ></text>
+</g>
+<g >
+<title>&lt;module&gt;:~/Development/frontik/.venv/lib/python3.11/site-packages/requests/__init__.py:1 (28 samples, 0.04%)</title><rect x="12.9" y="501" width="0.6" height="15.0" fill="rgb(215,48,11)" rx="2" ry="2" />
+<text  x="15.95" y="511.5" ></text>
+</g>
+</g>
+</svg>

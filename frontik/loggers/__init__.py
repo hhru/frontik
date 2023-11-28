@@ -250,7 +250,7 @@ def bootstrap_core_logging(log_level: str, use_json: bool, suppressed_loggers: l
     level = getattr(logging, log_level.upper())
     ROOT_LOGGER.setLevel(logging.NOTSET)
 
-    bootstrap_logger((ROOT_LOGGER, 'service'), level, use_json_formatter=use_json)
+    bootstrap_logger((ROOT_LOGGER, 'service'), level, use_json_formatter=use_json, formatter=JSONFormatter())
 
     if use_json:
         bootstrap_logger((JSON_REQUESTS_LOGGER, 'requests'), level, use_json_formatter=True)

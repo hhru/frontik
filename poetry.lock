@@ -1370,6 +1370,21 @@ files = [
 typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
 
 [[package]]
+name = "pyflame"
+version = "0.3.1"
+description = "A Flamegraph generator for Python"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "pyflame-0.3.1-py3-none-any.whl", hash = "sha256:241bbc9c31749225d4502662d9fb833500780c707177d0878cebfe394e758553"},
+    {file = "pyflame-0.3.1.tar.gz", hash = "sha256:d4d710a917bf12754675e058fb6d07c376ca52831a11f8f8d38b3426c5f06348"},
+]
+
+[package.extras]
+django = ["django (>=3.2)", "django-debug-toolbar"]
+jupyter = ["ipython", "traitlets (>=5)"]
+
+[[package]]
 name = "pyproject-api"
 version = "1.6.1"
 description = "API to interact with the python pyproject.toml based projects"
@@ -1871,4 +1886,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.*"
-content-hash = "5a30dcc539a432b892ad7b572c37071a307384be103cd7ce82aeffbb563f6abd"
+content-hash = "c8dabd5f160e7f0e838966eaacc7380d579fd1b62f1971ba4004b603bbe83086"

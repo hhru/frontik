@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import inspect
 from copy import copy, deepcopy
 from typing import TYPE_CHECKING, Any

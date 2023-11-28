@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 import weakref
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 import jinja2
 from jinja2.utils import concat
@@ -22,12 +22,14 @@ if TYPE_CHECKING:
 
 
 class JsonProducer:
+    __slots__ = ('handler', 'log', 'json', 'template_filename', 'environment', 'jinja_context_provider')
+
     def __init__(
         self,
         handler: PageHandler,
         environment: Any = None,
         json_encoder: Any = None,
-        jinja_context_provider: Any = None,
+        jinja_context_provider: Callable[[PageHandler], dict] = None,
     ) -> None:
         self.handler = weakref.proxy(handler)
         self.log = weakref.proxy(self.handler.log)
@@ -54,8 +56,7 @@ class JsonProducer:
     def get_jinja_context(self) -> Any:
         if callable(self.jinja_context_provider):
             return self.jinja_context_provider(self.handler)
-        else:
-            return self.json.to_dict()
+        return self.json.to_dict()
 
     async def _render_template_stream_on_ioloop(self, batch_render_timeout_ms: int) -> tuple[float, str]:
         template_render_start_time = time.time()

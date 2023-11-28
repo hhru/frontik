@@ -3,25 +3,19 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
+import orjson
 from tornado.concurrent import Future
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
     from typing import Any
 
 
 def _encode_value(value: Any) -> Any:
-    def _encode_iterable(values: Iterable) -> list:
-        return [_encode_value(v) for v in values]
-
-    def _encode_dict(d: dict) -> dict:
-        return {k: _encode_value(v) for k, v in d.items()}
-
     if isinstance(value, dict):
-        return _encode_dict(value)
+        return {k: _encode_value(v) for k, v in value.items()}
 
     elif isinstance(value, set | frozenset | list | tuple):
-        return _encode_iterable(value)
+        return [_encode_value(v1) for v1 in value]
 
     elif isinstance(value, Future):
         if value.done() and value.exception() is None:
@@ -50,16 +44,11 @@ class FrontikJsonEncoder(json.JSONEncoder):
 
 
 class JsonBuilder:
-    __slots__ = ('_data', '_encoder', 'root_node')
+    __slots__ = ('_data', '_encoder')
 
-    def __init__(self, root_node: str | None = None, json_encoder: Any = None) -> None:
-        if root_node is not None and not isinstance(root_node, str):
-            msg = f'Cannot set {root_node} as root node'
-            raise TypeError(msg)
-
+    def __init__(self, json_encoder: Any = None) -> None:
         self._data: list = []
         self._encoder = json_encoder
-        self.root_node = root_node
 
     def put(self, *args: Any, **kwargs: Any) -> None:
         """Append a chunk of data to JsonBuilder."""
@@ -89,9 +78,6 @@ class JsonBuilder:
 
             if chunk is not None:
                 result.update(chunk)
-
-        if self.root_node is not None:
-            result = {self.root_node: result}
 
         return result
 

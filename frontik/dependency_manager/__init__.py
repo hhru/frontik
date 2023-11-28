@@ -31,8 +31,7 @@ def dependency(*deps: Preprocessor | Callable) -> Any:
 
         raise ValueError('Bad dependency type, only func or list[func]')
 
-    else:
-        return DependencyGroupMarker(tuple(deps))
+    return DependencyGroupMarker(tuple(deps))
 
 
 def async_dependencies(async_deps: list[Callable]) -> Callable:
