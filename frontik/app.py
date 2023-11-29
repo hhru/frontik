@@ -21,6 +21,7 @@ import frontik.producers.xml_producer
 from frontik import integrations, media_types, request_context
 from frontik.debug import DebugTransform, get_frontik_and_apps_versions
 from frontik.handler import ErrorHandler
+from frontik.handler_return_values import ReturnedValueHandlers, get_default_returned_value_handlers
 from frontik.integrations.statsd import create_statsd_client
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.options import options
@@ -143,6 +144,7 @@ class FrontikApplication(Application):
             if options.consul_enabled
             else UpstreamCaches(self.children_pipes, self.upstreams)
         )
+        self.returned_value_handlers: ReturnedValueHandlers = get_default_returned_value_handlers()
 
         super().__init__(core_handlers, **tornado_settings)
 

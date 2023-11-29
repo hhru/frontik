@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from frontik.handler import PageHandler
+    from frontik.handler_return_values import ReturnedValue
 
 
 def dependency(*deps: Preprocessor | Callable) -> Any:
@@ -56,7 +57,7 @@ async def build_and_run_sub_graph(handler: PageHandler, functions_to_run: list) 
     await execute_graph(handler, sub_graph)
 
 
-async def execute_page_method_with_dependencies(handler: PageHandler, page_method: Any) -> Any:
+async def execute_page_method_with_dependencies(handler: PageHandler, page_method: Any) -> ReturnedValue:
     main_graph = get_dependency_graph(page_method.__func__, handler.__class__)
     setattr(handler, '_main_graph', main_graph)
     await execute_graph(handler, main_graph)
