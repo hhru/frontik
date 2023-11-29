@@ -13,6 +13,7 @@ from opentelemetry.instrumentation import aiohttp_client, tornado
 from opentelemetry.propagate import set_global_textmap
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import IdGenerator, TracerProvider
+from opentelemetry.sdk.trace import Span as SpanImpl
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 from opentelemetry.semconv.resource import ResourceAttributes
@@ -30,6 +31,7 @@ if TYPE_CHECKING:
     import aiohttp
     from http_client.request_response import RequestBuilder
     from opentelemetry.trace import Span
+    from opentelemetry.util import types
 
     from frontik.app import FrontikApplication
 
@@ -39,12 +41,24 @@ logging.getLogger('opentelemetry.context').setLevel(logging.CRITICAL)
 set_global_textmap(TraceContextTextMapPropagator())
 
 tornado._excluded_urls = ExcludeList([*list(tornado._excluded_urls._excluded_urls), '/status'])
+excluded_span_attributes = ['tornado.handler']
 
 
 class TelemetryIntegration(Integration):
     def __init__(self):
         self.aiohttp_instrumentor = aiohttp_client.AioHttpClientInstrumentor()
         self.tornado_instrumentor = tornado.TornadoInstrumentor()
+        TelemetryIntegration.patch_span_impl()
+
+    @staticmethod
+    def patch_span_impl() -> None:
+        set_attribute = SpanImpl.set_attribute
+
+        def patched_set_attribute(self: SpanImpl, key: str, value: types.AttributeValue) -> None:
+            if key not in excluded_span_attributes:
+                return set_attribute(self, key, value)
+
+        SpanImpl.set_attribute = patched_set_attribute  # type: ignore
 
     def initialize_app(self, app: FrontikApplication) -> Future | None:
         if not options.opentelemetry_enabled:
@@ -93,7 +107,12 @@ class TelemetryIntegration(Integration):
 
 
 def _server_request_hook(span, handler):
-    span.update_name(f'{request_context.get_handler_name()}.{handler.request.method.lower()}_page')
+    method_name = f'{handler.request.method.lower()}_page'
+    method_path = f'{request_context.get_handler_name()}'
+
+    span.update_name(f'{method_path}.{method_name}')
+    span.set_attribute(SpanAttributes.CODE_FUNCTION, method_name)
+    span.set_attribute(SpanAttributes.CODE_NAMESPACE, method_path)
     span.set_attribute(SpanAttributes.HTTP_TARGET, handler.request.uri)
 
 
