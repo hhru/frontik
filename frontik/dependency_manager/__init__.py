@@ -17,7 +17,7 @@ def dependency(*deps: Preprocessor | Callable) -> Any:
     """
     add dependency to page_method, it will be run before page_method and provide result
 
-    async def get_page(self, session=dep(get_session)):
+    async def get_page(self, session=dependency(get_session)):
       ...
     """
     if len(deps) == 1:
@@ -39,7 +39,7 @@ def async_dependencies(async_deps: list[Callable]) -> Callable:
     """
     add dependencies that will be run in parallel with page_method
 
-    @async_dep([get_session, get_data])
+    @async_dependencies([get_session, get_data])
     async def get_page(self):
       ...
     """

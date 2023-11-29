@@ -25,6 +25,26 @@ class Page(PageHandler):
         self.json.put({'result': session})
 ```
 
+If you have several dependencies without results, you can put them all to one dependency marker
+```python
+from frontik.dependency_manager import dependency
+
+
+async def check_host(handler: PageHandler) -> None:
+    if handler.request.host != 'example':
+        raise HttpError()
+
+    
+async def check_session(session=dependency(get_session_dependency)) -> None:
+    if session.role != 'admin':
+        raise HttpError()
+
+
+class Page(PageHandler):
+    async def get_page(self, _=dependency(check_host, check_session)):
+        ...
+```
+
 Dependency can be sync or async functions. When page is executed all ready to run 
 async dependencies run in parallel with asyncio.gather(). If something finishes the page 
 (call self.finish() or raise Exception), then we stop executing the remaining dependencies
