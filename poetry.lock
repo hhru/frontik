@@ -548,7 +548,7 @@ protobuf = ["grpcio-tools (>=1.59.3)"]
 
 [[package]]
 name = "http-client"
-version = "2.1.4"
+version = "2.1.5"
 description = "Balancing http client around aiohttp"
 optional = false
 python-versions = "3.11.*"
@@ -558,13 +558,14 @@ develop = false
 [package.dependencies]
 aiohttp = "3.8.3"
 lxml = "4.9.2"
+orjson = "*"
 yarl = "1.9.2"
 
 [package.source]
 type = "git"
 url = "https://github.com/hhru/balancing-http-client.git"
-reference = "2.1.4"
-resolved_reference = "b5bf03d1a664eb0cc28f15a1997428062fb0e648"
+reference = "2.1.5"
+resolved_reference = "1fb1da1cdc1c934ee8b6e33088e25129c9bde11c"
 
 [[package]]
 name = "idna"
@@ -1871,4 +1872,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.*"
-content-hash = "5a30dcc539a432b892ad7b572c37071a307384be103cd7ce82aeffbb563f6abd"
+content-hash = "0f94bde8c8f98a6d6928e1c62c082d62c295f60a132d2ea745aed419abc70246"
