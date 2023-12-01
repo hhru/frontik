@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from tornado.httputil import HTTPServerRequest
 
     from frontik.app import FrontikApplication
+    from frontik.handler_return_values import ReturnedValue, ReturnedValueHandlers
     from frontik.integrations.statsd import StatsDClient, StatsDClientStub
 
 
@@ -91,6 +92,7 @@ def _fail_fast_policy(fail_fast: bool, waited: bool, host: str, path: str) -> bo
 class PageHandler(RequestHandler):
     dependencies: Iterable = ()
     _priority_dependency_names: list[str] = []
+    returned_value_handlers: ReturnedValueHandlers = []
 
     def __init__(self, application: FrontikApplication, request: HTTPServerRequest, **kwargs: Any) -> None:
         self.name = self.__class__.__name__
@@ -106,6 +108,9 @@ class PageHandler(RequestHandler):
 
         for integration in application.available_integrations:
             integration.initialize_handler(self)
+
+        if not self.returned_value_handlers:
+            self.returned_value_handlers = list(application.returned_value_handlers)
 
         self.stages_logger = StagesLogger(request, self.statsd_client)
 
@@ -363,7 +368,9 @@ class PageHandler(RequestHandler):
     async def _execute_page(self, page_handler_method: Callable[[], Coroutine[Any, Any, None]]) -> None:
         self.stages_logger.commit_stage('prepare')
 
-        await execute_page_method_with_dependencies(self, page_handler_method)
+        returned_value: ReturnedValue = await execute_page_method_with_dependencies(self, page_handler_method)
+        for returned_value_handler in self.returned_value_handlers:
+            returned_value_handler(self, returned_value)
 
         self._handler_finished_notification()
         await self.finish_group.get_gathering_future()

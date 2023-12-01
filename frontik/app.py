@@ -21,6 +21,7 @@ import frontik.producers.xml_producer
 from frontik import integrations, media_types, request_context
 from frontik.debug import DebugTransform, get_frontik_and_apps_versions
 from frontik.handler import ErrorHandler
+from frontik.handler_return_values import ReturnedValueHandlers, get_default_returned_value_handlers
 from frontik.integrations.statsd import create_statsd_client
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.options import options
@@ -102,11 +103,8 @@ class FrontikApplication(Application):
     def __init__(self, app_root: str, **settings: Any) -> None:
         self.start_time = time.time()
 
-        tornado_settings = settings.get('tornado_settings')
-        if tornado_settings is None:
-            tornado_settings = {}
-
         self.config = self.application_config()
+
         self.app = settings.get('app')
         self.app_module = settings.get('app_module')
         self.app_root = app_root
@@ -143,7 +141,9 @@ class FrontikApplication(Application):
             if options.consul_enabled
             else UpstreamCaches(self.children_pipes, self.upstreams)
         )
+        self.returned_value_handlers: ReturnedValueHandlers = get_default_returned_value_handlers()
 
+        tornado_settings = settings.get('tornado_settings') or {}
         super().__init__(core_handlers, **tornado_settings)
 
     async def init(self) -> None:
