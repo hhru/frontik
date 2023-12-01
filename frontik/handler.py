@@ -102,7 +102,6 @@ class PageHandler(RequestHandler):
 
         super().__init__(application, request, **kwargs)
 
-        self._exception_hooks: list = []
         self.statsd_client: StatsDClient | StatsDClientStub
 
         for integration in application.available_integrations:
@@ -486,19 +485,6 @@ class PageHandler(RequestHandler):
     def on_finish(self):
         self.stages_logger.commit_stage('flush')
         self.stages_logger.flush_stages(self.get_status())
-
-    def register_exception_hook(self, exception_hook):
-        """
-        Adds a function to the list of hooks, which are executed when `log_exception` is called.
-        `exception_hook` must have the same signature as `log_exception`
-        """
-        self._exception_hooks.append(exception_hook)
-
-    def log_exception(self, typ, value, tb):
-        for exception_hook in self._exception_hooks:
-            exception_hook(typ, value, tb)
-
-        super().log_exception(typ, value, tb)
 
     def _handle_request_exception(self, e: BaseException) -> None:
         if isinstance(e, AbortAsyncGroup):
