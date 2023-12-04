@@ -12,16 +12,17 @@ from tests import FRONTIK_ROOT
 class _PydanticModel(BaseModel):
     int_field: int
     bool_field: bool
+    str_field: str
 
 
 class ReturnPydanticModelHandler(PageHandler):
     async def get_page(self) -> _PydanticModel:
-        return _PydanticModel(int_field=1, bool_field=True)
+        return _PydanticModel(int_field=1, bool_field=True, str_field='Ну привет')
 
 
 class ReturnDictHandler(PageHandler):
     async def get_page(self) -> dict:
-        return {'is_dict': True}
+        return {'is_dict': True, 'msg': 'Ну привет'}
 
 
 class TestApplication(FrontikApplication):
@@ -40,8 +41,10 @@ class TestHandlerReturnedValuesProcessing(FrontikTestBase):
     async def test_get_dict(self):
         resp = await self.fetch_json('/return_dict')
         assert resp['is_dict'] is True
+        assert resp['msg'] == 'Ну привет'
 
     async def test_get_pydantic_model(self):
         resp = await self.fetch_json('/return_pydantic')
         assert resp['int_field'] == 1
         assert resp['bool_field'] is True
+        assert resp['str_field'] == 'Ну привет'
