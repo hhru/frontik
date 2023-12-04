@@ -127,7 +127,7 @@ def _run_worker(
     initialize_application_task.result()
 
 
-async def run_server(
+def run_server(
     app: FrontikApplication,
     need_to_register_in_service_discovery: bool,
 ) -> None:
@@ -174,7 +174,7 @@ async def _init_app(
     await app.init()
     if not need_to_register_in_service_discovery and read_pipe_fd is not None:
         app.upstream_update_listener = UpstreamUpdateListener(app.upstream_manager, read_pipe_fd)
-    await run_server(app, need_to_register_in_service_discovery)
+    run_server(app, need_to_register_in_service_discovery)
     log.info('Successfully inited application %s', app.app)
     with count_down_lock:
         app.init_workers_count_down.value -= 1
