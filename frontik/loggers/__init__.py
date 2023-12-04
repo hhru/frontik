@@ -169,7 +169,7 @@ def bootstrap_logger(
         handlers.extend(_configure_file(logger_name, use_json_formatter, formatter))
 
     if options.stderr_log:
-        handlers.extend(_configure_stderr(formatter))
+        handlers.extend(_configure_stderr(JSONFormatter()))
 
     if options.syslog:
         handlers.extend(_configure_syslog(logger_name, use_json_formatter, formatter))
