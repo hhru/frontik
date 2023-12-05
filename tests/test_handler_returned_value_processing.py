@@ -25,11 +25,18 @@ class ReturnDictHandler(PageHandler):
         return {'is_dict': True, 'msg': 'Ну привет'}
 
 
+class ReturnSelfJsonPutHandler(PageHandler):
+    async def get_page(self) -> dict:
+        self.json.put({'a': 'b'})
+        return self.json.put({'c': 'd'})  # type: ignore[func-returns-value]
+
+
 class TestApplication(FrontikApplication):
     def application_urls(self) -> list[tuple]:
         return [
             ('/return_dict', ReturnDictHandler),
             ('/return_pydantic', ReturnPydanticModelHandler),
+            ('/return_self_json_put', ReturnSelfJsonPutHandler),
         ]
 
 
@@ -48,3 +55,8 @@ class TestHandlerReturnedValuesProcessing(FrontikTestBase):
         assert resp['int_field'] == 1
         assert resp['bool_field'] is True
         assert resp['str_field'] == 'Ну привет'
+
+    async def test_return_self_json_put(self):
+        resp = await self.fetch_json('/return_self_json_put')
+        assert resp['a'] == 'b'
+        assert resp['c'] == 'd'
