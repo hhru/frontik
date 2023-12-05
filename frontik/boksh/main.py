@@ -1,16 +1,21 @@
 import asyncio
-import multiprocessing as mp
+import logging
 import time
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
+import multiprocess as mp
 from pydantic import BaseModel
 from tornado.httpserver import HTTPServer
 
 import frontik.boksh
+
 from frontik.app import FrontikApplication
-from frontik.boksh.service import AsyncioService, ProcessService, ThreadService, ManagedEnv
-from frontik.loggers import MDC, bootstrap_core_logging
+from frontik.boksh.service.aio import AsyncioService, ManagedEnvAsync
+
+from frontik.boksh.service.sync import ProcessService, ManagedEnvSync
+from frontik.loggers import MDC, bootstrap_core_logging, _configure_stderr, JSONFormatter
 from frontik.options import options
 from frontik.server import log
 
@@ -63,28 +68,7 @@ class FrontikAioService(AsyncioService):
         http_server.stop()
 
 
-class TestProcessService(ProcessService):
-    def __init__(self, name: str, all_workers_on: mp.Event) -> None:
-        super().__init__(name)
-        self.all_workers_on = all_workers_on
-
-    def run(self):
-        print("before start")
-        while True:
-            print("wait")
-            time.sleep(1)
-            # result = self.in_queue.get()
-            # print(result)
-
-            # print(f"{self.name} {self.all_workers_on}")
-            # time.sleep(1)
-            # i += 1
-            # print(mp.current_process() == self._process)
-        # print("interrupted")
-        # print("stopped")
-
-
-async def frontik_lifespan(menv: ManagedEnv):
+async def run_frontik_server(menv: ManagedEnvAsync):
     MDC.init(f'master')
     options.consul_enabled = False
     options.port = 8080
@@ -99,6 +83,7 @@ async def frontik_lifespan(menv: ManagedEnv):
     http_server.bind(options.port, options.host, reuse_port=options.reuse_port)
     http_server.start()
     menv.mark_started()
+    await menv.interrupted()
     http_server.stop()
 
 
@@ -106,23 +91,45 @@ class NewUpstreamInfo(BaseModel):
     upstream: str
 
 
-def notifier(menv: ManagedEnv):
+def notifier(menv: ManagedEnvSync):
     menv.mark_started()
-    print("started")
     while not menv.is_interrupted():
         menv.send_message_out(NewUpstreamInfo(upstream="test"))
         time.sleep(1)
     print("stopped")
 
 
+def main(main_env: ManagedEnvSync):
+    while not main_env.is_interrupted():
+
+        time.sleep(1)
+    print("exit")
+
+
 if __name__ == '__main__':
+    options.stderr_log = True
+    bootstrap_core_logging("INFO", True, [])
+    # for handlr in _configure_stderr(JSONFormatter()):
+    #     logging.root.addHandler(handlr)
 
-    service = ProcessService.wrap_async(AsyncioService.wrap(frontik_lifespan))
-    service.start()
+    logger = logging.getLogger(__file__)
+    logger.error("qqqqqqqqqqqqqq")
+    # service = ProcessService.wrap(main).start()
+    # service.add_listener(lambda m: print(m))
+    # time.sleep(0.4)
+    # service.stop()
+    # print(service.interrupted())
+    # print(service.stopped())
+    # service.wait_for(service.stopped())
+
+    # service = ProcessService.wrap_async(AsyncioService.wrap(run_frontik_server))
+    #
+    # service.start()
+    # print(service.started())
+    # service.wait_for(service.started(), timeout=timedelta(milliseconds=1))
+    # print(service.started())
+    # print("wait stop")
+    # service.wait_for(service.stopped())
+    # print("stoped")
+
     # service.add_listener(lambda message: print(message))
-    service.wait_for(service.started())
-    service.stop()
-    print("wait stop")
-    # time.sleep(5)
-
-    service.wait_for(service.stopped())

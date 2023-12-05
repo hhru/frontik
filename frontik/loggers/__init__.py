@@ -246,7 +246,6 @@ def _configure_syslog(
 
 def bootstrap_core_logging(log_level: str, use_json: bool, suppressed_loggers: list[str]) -> None:
     """This is a replacement for standard Tornado logging configuration."""
-
     level = getattr(logging, log_level.upper())
     ROOT_LOGGER.setLevel(logging.NOTSET)
 
