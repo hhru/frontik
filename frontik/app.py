@@ -100,8 +100,9 @@ class FrontikApplication(Application):
     class DefaultConfig:
         pass
 
-    def __init__(self, app_root: str, **settings: Any) -> None:
+    def __init__(self, app_root: str, is_started_check: Callable[[], bool], **settings: Any) -> None:
         self.start_time = time.time()
+        self.is_started_check = is_started_check
 
         self.config = self.application_config()
 
@@ -226,11 +227,17 @@ class FrontikApplication(Application):
         return FrontikApplication.request_id
 
     def get_current_status(self) -> dict[str, str]:
-        if self.init_workers_count_down.value > 0:
+        if not self.is_started_check():
             raise HTTPError(
                 500,
-                f'some workers are not started init_workers_count_down={self.init_workers_count_down.value}',
+                f'not started yet',
             )
+
+        # if self.init_workers_count_down.value > 0:
+        #     raise HTTPError(
+        #         500,
+        #         f'some workers are not started init_workers_count_down={self.init_workers_count_down.value}',
+        #     )
 
         cur_uptime = time.time() - self.start_time
         if cur_uptime < 60:

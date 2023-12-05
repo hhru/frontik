@@ -13,8 +13,9 @@ logger = logging.Logger(__file__)
 class AsyncioService(Service[asyncio.Future]):
     def __init__(self, name: str | None = None):
         super().__init__(name)
-        self._task: asyncio.Task | None = None
-        self.handle_messages = False
+        self._main_task: asyncio.Task | None = None
+
+        self.on_start_callbacks: list[Callable[[AsyncioService], ...]] = []
 
         self.in_queue: asyncio.Queue = asyncio.Queue()
         self.out_queue: asyncio.Queue = asyncio.Queue()
@@ -25,9 +26,13 @@ class AsyncioService(Service[asyncio.Future]):
     def _state_setter(self):
         return asyncio.Future()
 
+    def add_on_start_callback(self, callback: Callable[['AsyncioService'], ...]) -> Self:
+        self.on_start_callbacks.append(callback)
+        return self
+
     def send_message_in(self, message: Any):
         if self.message_handlers:
-            self._task.get_loop().call_soon_threadsafe(lambda: self.in_queue.put_nowait(message))
+            self._main_task.get_loop().call_soon_threadsafe(lambda: self.in_queue.put_nowait(message))
 
     def _send_message_out(self, message: Any):
         if self.message_listeners:
@@ -52,10 +57,13 @@ class AsyncioService(Service[asyncio.Future]):
             return None
         self._running.set_result(None)
 
+        for cb in self.on_start_callbacks:
+            cb(self)
+
         for child in self.children:
             child.start()
 
-        self._task = asyncio.create_task(self.__run_wrapper())
+        self._main_task = asyncio.create_task(self.__run_wrapper())
         return self
 
     def mark_start_success(self):
@@ -68,7 +76,7 @@ class AsyncioService(Service[asyncio.Future]):
         asyncio.get_running_loop().call_soon_threadsafe(
             lambda: {
                 self._interrupted.set_result(None),
-                self._task.cancel(),
+                self._main_task.cancel(),
             }
         )
 

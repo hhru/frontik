@@ -11,11 +11,14 @@ from typing import Callable, Self, Type, Any, Protocol
 import multiprocess as mp
 
 from frontik.boksh.service import Service
-from frontik.boksh.service.aio import AsyncioService, ManagedEnvAsync
+from frontik.boksh.service.aio import AsyncioService
 from frontik.boksh.service.timeout import timeout_seconds, ServiceTimeout
 
 logger = logging.Logger(__file__)
 
+
+class SyncService(Service[concurrent.futures.Future]):
+    pass
 
 class ThreadService(Service[concurrent.futures.Future]):
     def __init__(self, name: str | None = None):
@@ -207,6 +210,7 @@ class ProcessService(Service[mp.Event]):
         return self
 
     def mark_start_success(self):
+        print(f"mark service {self} as started")
         self._started.set()
 
     def _run_wrapper(self):
@@ -245,19 +249,21 @@ class ProcessService(Service[mp.Event]):
         event.wait(timeout_seconds(timeout))
 
     @classmethod
-    def wrap_async(cls: Type['ProcessService'], service: AsyncioService) -> 'ProcessService':
+    def wrap_async(cls: Type['ProcessService'], async_service: AsyncioService) -> 'ProcessService':
         def async_wrapper(menv: ManagedEnvSync):
             async def main_coroutine():
-                service.start()
-                await service.wait_for(service.started())
-                cls.current().mark_start_success()
-                await service.wait_for(service.stopped())
+                async_service.start()
+                await async_service.wait_for(async_service.started())
+                await async_service.wait_for(async_service.stopped())
 
             return asyncio.run(main_coroutine())
 
-        result = cls.wrap(async_wrapper)
-        result.add_child(service)
-        return result
+        process_service = cls.wrap(async_wrapper)
+        process_service.add_child(async_service)
+        async_service.add_on_start_callback(
+            lambda s: async_service.started().add_done_callback(lambda f: process_service.mark_start_success())
+        )
+        return process_service
 
     # @classmethod
     # def combine(cls, *services):
