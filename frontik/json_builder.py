@@ -1,27 +1,23 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import TYPE_CHECKING
 
 from tornado.concurrent import Future
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
     from typing import Any
+
+handler_logger = logging.getLogger('handler')
 
 
 def _encode_value(value: Any) -> Any:
-    def _encode_iterable(values: Iterable) -> list:
-        return [_encode_value(v) for v in values]
-
-    def _encode_dict(d: dict) -> dict:
-        return {k: _encode_value(v) for k, v in d.items()}
-
     if isinstance(value, dict):
-        return _encode_dict(value)
+        return {k: _encode_value(v) for k, v in value.items()}
 
     elif isinstance(value, set | frozenset | list | tuple):
-        return _encode_iterable(value)
+        return [_encode_value(v1) for v1 in value]
 
     elif isinstance(value, Future):
         if value.done() and value.exception() is None:
@@ -85,6 +81,7 @@ class JsonBuilder:
         result = {}
         for chunk in self._data:
             if isinstance(chunk, Future) or hasattr(chunk, 'to_dict'):
+                handler_logger.warning("Using handler.json.put(FUTURE) is bad, please use only json-compatible data")
                 chunk = _encode_value(chunk)
 
             if chunk is not None:
