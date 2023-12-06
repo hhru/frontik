@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from tornado.concurrent import Future
 from tornado.testing import AsyncTestCase
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class MyException(Exception):
-    def __init__(self, result_was: object | None = None) -> None:
+    def __init__(self, result_was: Optional[object] = None) -> None:
         self.result_was = result_was
 
 
@@ -129,7 +129,7 @@ class TestFutureFold(AsyncTestCase):
 class FutureProbe:
     _DEFAULT = object
 
-    def __init__(self, future_to_check: Future, stop_cb: Callable | None = None) -> None:
+    def __init__(self, future_to_check: Future, stop_cb: Optional[Callable] = None) -> None:
         self._calls: list[tuple] = []
         self._stop_cb = stop_cb
         future_to_check.add_done_callback(self.build_callback())

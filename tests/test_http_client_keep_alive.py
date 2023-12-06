@@ -1,6 +1,6 @@
 import socket
 from contextlib import closing
-from typing import Any
+from typing import Any, Optional
 
 from tests.instances import find_free_port, frontik_test_app
 
@@ -72,7 +72,7 @@ class Client:
         self.socket.connect(('127.0.0.1', port))
         self.socket.settimeout(5)
 
-    def send_request(self, backend_port: int, request_id: str | None = None) -> None:
+    def send_request(self, backend_port: int, request_id: Optional[str] = None) -> None:
         self.socket.send(b'GET /http_client/proxy_code?port=' + str(backend_port).encode() + b' HTTP/1.1\r\n')
         self.socket.send(b'Host: 127.0.0.1:' + str(self.port).encode() + b'\r\n')
         if request_id:

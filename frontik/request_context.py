@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import contextvars
 from contextlib import contextmanager
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -14,12 +13,14 @@ if TYPE_CHECKING:
     from frontik.handler import PageHandler
 
 
-@dataclass(slots=True)
 class _Context:
-    request: HTTPServerRequest | None
-    request_id: str | None
-    handler_name: str | None = None
-    log_handler: DebugBufferedHandler | None = None
+    __slots__ = ('request', 'request_id', 'handler_name', 'log_handler')
+
+    def __init__(self, request: Optional[HTTPServerRequest], request_id: Optional[str]) -> None:
+        self.request = request
+        self.request_id = request_id
+        self.handler_name: Optional[str] = None
+        self.log_handler: Optional[DebugBufferedHandler] = None
 
 
 _context = contextvars.ContextVar('context', default=_Context(None, None))
@@ -38,11 +39,11 @@ def get_request():
     return _context.get().request
 
 
-def get_request_id() -> str | None:
+def get_request_id() -> Optional[str]:
     return _context.get().request_id
 
 
-def get_handler_name() -> str | None:
+def get_handler_name() -> Optional[str]:
     return _context.get().handler_name
 
 
@@ -55,7 +56,7 @@ def set_handler(handler: PageHandler) -> None:
     context.handler_name = repr(handler)
 
 
-def get_log_handler() -> DebugBufferedHandler | None:
+def get_log_handler() -> Optional[DebugBufferedHandler]:
     return _context.get().log_handler
 
 

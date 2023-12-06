@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from tornado.concurrent import Future
 
@@ -16,7 +16,7 @@ def _encode_value(value: Any) -> Any:
     if isinstance(value, dict):
         return {k: _encode_value(v) for k, v in value.items()}
 
-    elif isinstance(value, set | frozenset | list | tuple):
+    elif isinstance(value, (set, frozenset, list, tuple)):
         return [_encode_value(v1) for v1 in value]
 
     elif isinstance(value, Future):
@@ -48,7 +48,7 @@ class FrontikJsonEncoder(json.JSONEncoder):
 class JsonBuilder:
     __slots__ = ('_data', '_encoder', 'root_node')
 
-    def __init__(self, root_node: str | None = None, json_encoder: Any = None) -> None:
+    def __init__(self, root_node: Optional[str] = None, json_encoder: Any = None) -> None:
         if root_node is not None and not isinstance(root_node, str):
             msg = f'Cannot set {root_node} as root node'
             raise TypeError(msg)

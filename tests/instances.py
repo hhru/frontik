@@ -6,7 +6,7 @@ import socket
 import subprocess
 import sys
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import requests
 from lxml import etree
@@ -61,7 +61,7 @@ class FrontikTestInstance:
             raise Exception(msg)
         self.command = command
         self.popen: subprocess.Popen
-        self.port: int | None = None
+        self.port: Optional[int] = None
 
     def start(self) -> None:
         if self.port:

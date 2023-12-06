@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import sentry_sdk
 from http_client.request_response import FailFastError
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 
 class SentryIntegration(Integration):
-    def initialize_app(self, app: FrontikApplication) -> Future | None:
+    def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
         if not options.sentry_dsn:
             integrations_logger.info('sentry integration is disabled: sentry_dsn option is not configured')
             return None

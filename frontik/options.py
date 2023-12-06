@@ -1,5 +1,6 @@
 import logging.handlers
 from dataclasses import dataclass, field, fields
+from typing import Optional
 
 LOG_DIR_OPTION_NAME = 'log_dir'
 STDERR_LOG_OPTION_NAME = 'stderr_log'
@@ -7,17 +8,17 @@ STDERR_LOG_OPTION_NAME = 'stderr_log'
 
 @dataclass
 class Options:
-    app: str | None = None
-    app_class: str | None = None
+    app: Optional[str] = None
+    app_class: Optional[str] = None
     workers: int = 1
     init_workers_timeout_sec: int = 60
-    tornado_settings: dict | None = None
+    tornado_settings: Optional[dict] = None
     max_active_handlers: int = 100
     reuse_port: bool = True
     xheaders: bool = False
     validate_request_id: bool = False
 
-    config: str | None = None
+    config: Optional[str] = None
     host: str = '0.0.0.0'
     port: int = 8080
     node_name: str = ''
@@ -25,10 +26,10 @@ class Options:
 
     autoreload: bool = False
     stop_timeout: int = 3
-    asyncio_task_threshold_sec: float | None = None
-    asyncio_task_critical_threshold_sec: float | None = None
+    asyncio_task_threshold_sec: Optional[float] = None
+    asyncio_task_critical_threshold_sec: Optional[float] = None
 
-    log_dir: str | None = None
+    log_dir: Optional[str] = None
     log_level: str = 'info'
     log_use_orjson: bool = True
     update_log_level_interval_in_seconds: int = 300
@@ -50,32 +51,32 @@ class Options:
     suppressed_loggers: list = field(default_factory=lambda: [])
 
     debug: bool = False
-    debug_login: str | None = None
-    debug_password: str | None = None
+    debug_login: Optional[str] = None
+    debug_password: Optional[str] = None
 
-    http_client_metrics_kafka_cluster: str | None = None
+    http_client_metrics_kafka_cluster: Optional[str] = None
 
     kafka_clusters: dict = field(default_factory=lambda: {})
 
-    statsd_host: str | None = None
-    statsd_port: int | None = None
+    statsd_host: Optional[str] = None
+    statsd_port: Optional[int] = None
     statsd_default_periodic_send_interval_sec: int = 60
-    gc_metrics_send_interval_ms: int | None = None
+    gc_metrics_send_interval_ms: Optional[int] = None
     long_gc_log_enabled: bool = True
     long_gc_log_threshold_sec: float = 0.01
 
-    xml_root: str | None = None
-    xml_cache_limit: int | None = None
-    xml_cache_step: int | None = None
-    xsl_root: str | None = None
-    xsl_cache_limit: int | None = None
-    xsl_cache_step: int | None = None
+    xml_root: Optional[str] = None
+    xml_cache_limit: Optional[int] = None
+    xml_cache_step: Optional[int] = None
+    xsl_root: Optional[str] = None
+    xsl_cache_limit: Optional[int] = None
+    xsl_cache_step: Optional[int] = None
     xsl_executor_pool_size: int = 1
-    jinja_template_root: str | None = None
+    jinja_template_root: Optional[str] = None
     jinja_template_cache_limit: int = 50
     jinja_streaming_render_timeout_ms: int = 50
 
-    sentry_dsn: str | None = None
+    sentry_dsn: Optional[str] = None
     sentry_max_breadcrumbs: int = 0
 
     send_timeout_stats_interval_ms: int = 60000
@@ -83,9 +84,9 @@ class Options:
     # consul options
     consul_enabled: bool = True
     consul_host: str = '127.0.0.1'
-    consul_port: int | None = None
-    consul_service_address: str | None = None
-    consul_check_host: str | None = None
+    consul_port: Optional[int] = None
+    consul_service_address: Optional[str] = None
+    consul_check_host: Optional[str] = None
     consul_http_check_interval_sec: int = 10
     consul_http_check_timeout_sec: float = 1
     consul_tags: list = field(default_factory=lambda: [])

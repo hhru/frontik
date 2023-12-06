@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 import http.client
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from tornado.escape import to_unicode
 from tornado.web import Finish
@@ -17,7 +17,7 @@ class DebugUnauthorizedError(Finish):
     pass
 
 
-def passed_basic_auth(handler: PageHandler, login: str | None, passwd: str | None) -> bool:
+def passed_basic_auth(handler: PageHandler, login: Optional[str], passwd: Optional[str]) -> bool:
     auth_header = handler.request.headers.get('Authorization')
     if auth_header and auth_header.startswith('Basic '):
         method, auth_b64 = auth_header.split(' ')
@@ -30,7 +30,7 @@ def passed_basic_auth(handler: PageHandler, login: str | None, passwd: str | Non
     return False
 
 
-def check_debug_auth(handler: PageHandler, login: str | None, password: str | None) -> None:
+def check_debug_auth(handler: PageHandler, login: Optional[str], password: Optional[str]) -> None:
     """
     :type handler: tornado.web.RequestHandler
     :return: None or tuple(http_code, headers)

@@ -7,7 +7,7 @@ import os.path
 import random
 import re
 from string import Template
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 from urllib.parse import urlencode
 from uuid import uuid4
 
@@ -81,7 +81,7 @@ def choose_boundary():
     return utf8(uuid4().hex)
 
 
-def get_cookie_or_url_param_value(handler: PageHandler, param_name: str) -> str | None:
+def get_cookie_or_url_param_value(handler: PageHandler, param_name: str) -> Optional[str]:
     return handler.get_argument(param_name, handler.get_cookie(param_name, None))
 
 
@@ -112,7 +112,7 @@ def reverse_regex_named_groups(pattern: str, *args: Any, **kwargs: Any) -> str:
     return result.replace('^', '').replace('$', '')
 
 
-def get_abs_path(root_path: str, relative_path: str | None) -> str:
+def get_abs_path(root_path: str, relative_path: Optional[str]) -> str:
     if relative_path is None or os.path.isabs(relative_path):
         return relative_path  # type: ignore
 
@@ -146,4 +146,4 @@ async def gather_dict(coro_dict: dict) -> dict:
     None can be used in coros, see :func:`gather_list`
     """
     results = await gather_list(*coro_dict.values())
-    return dict(zip(coro_dict.keys(), results, strict=True))
+    return dict(zip(coro_dict.keys(), results))

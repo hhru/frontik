@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from aiokafka import AIOKafkaProducer
 from tornado import gen
@@ -19,8 +19,8 @@ class KafkaIntegration(Integration):
     def __init__(self):
         self.kafka_producers = {}
 
-    def initialize_app(self, app: FrontikApplication) -> Future | None:
-        def get_kafka_producer(producer_name: str) -> AIOKafkaProducer | None:
+    def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
+        def get_kafka_producer(producer_name: str) -> Optional[AIOKafkaProducer]:
             return self.kafka_producers.get(producer_name)
 
         app.get_kafka_producer = get_kafka_producer  # type: ignore

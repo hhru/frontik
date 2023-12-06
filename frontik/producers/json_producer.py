@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 import weakref
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import jinja2
 from jinja2.utils import concat
@@ -103,7 +103,7 @@ class JsonProducer:
 
             await asyncio.sleep(0)
 
-    async def _finish_with_template(self) -> tuple[str | None, None]:
+    async def _finish_with_template(self) -> tuple[Optional[str], None]:
         if not self.environment:
             msg = 'Cannot apply template, no Jinja2 environment configured'
             raise Exception(msg)

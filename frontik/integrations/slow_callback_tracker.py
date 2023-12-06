@@ -4,6 +4,7 @@ import logging
 import time
 from asyncio import Future
 from functools import partial
+from typing import Optional
 
 import sentry_sdk
 
@@ -17,7 +18,7 @@ long_gc_log = None
 
 
 class SlowCallbackTrackerIntegration(Integration):
-    def initialize_app(self, app: FrontikApplication) -> Future | None:
+    def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
         if options.asyncio_task_threshold_sec is None:
             integrations_logger.info(
                 'slow callback tracker integration is disabled: asyncio_task_threshold_sec option is None',
@@ -78,8 +79,8 @@ class GCStats:
     __slots__ = ('callback_start', 'gc_start', 'sum_duration')
 
     def __init__(self) -> None:
-        self.callback_start: float | None = None
-        self.gc_start: float | None = None
+        self.callback_start: Optional[float] = None
+        self.gc_start: Optional[float] = None
         self.sum_duration: float = 0
 
 

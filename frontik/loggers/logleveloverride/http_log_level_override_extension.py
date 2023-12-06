@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from http_client import HttpClientFactory
 from tornado.httpclient import HTTPError
@@ -10,7 +11,7 @@ from frontik.loggers.logleveloverride.logging_configurator_client import LOG_LEV
 logger = logging.getLogger('http_log_level_override_extension')
 
 
-def parse_result_to_log_level_overrides_dto(data: dict | None) -> list[LogLevelOverride]:
+def parse_result_to_log_level_overrides_dto(data: Optional[dict]) -> list[LogLevelOverride]:
     result: list[LogLevelOverride] = []
     if data is None:
         return result

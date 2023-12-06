@@ -9,7 +9,7 @@ import time
 from asyncio import Task
 from asyncio.futures import Future
 from functools import wraps
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import tornado.httputil
 import tornado.web
@@ -114,7 +114,7 @@ class PageHandler(RequestHandler):
 
         self.stages_logger = StagesLogger(request, self.statsd_client)
 
-        self._debug_access: bool | None = None
+        self._debug_access: Optional[bool] = None
         self._render_postprocessors: list = []
         self._postprocessors: list = []
 
@@ -158,7 +158,7 @@ class PageHandler(RequestHandler):
 
         super().prepare()
 
-    def require_debug_access(self, login: str | None = None, passwd: str | None = None) -> None:
+    def require_debug_access(self, login: Optional[str] = None, passwd: Optional[str] = None) -> None:
         if self._debug_access is None:
             if options.debug:
                 debug_access = True
@@ -178,7 +178,7 @@ class PageHandler(RequestHandler):
             },
         )
 
-    def decode_argument(self, value: bytes, name: str | None = None) -> str:
+    def decode_argument(self, value: bytes, name: Optional[str] = None) -> str:
         try:
             return super().decode_argument(value, name)
         except (UnicodeError, tornado.web.HTTPError):
@@ -190,7 +190,7 @@ class PageHandler(RequestHandler):
             self.log.exception('cannot decode argument, ignoring invalid chars')
             return value.decode('utf-8', 'ignore')
 
-    def get_body_argument(self, name: str, default: Any = _ARG_DEFAULT, strip: bool = True) -> str | None:
+    def get_body_argument(self, name: str, default: Any = _ARG_DEFAULT, strip: bool = True) -> Optional[str]:
         if self._get_request_mime_type(self.request) == media_types.APPLICATION_JSON:
             if name not in self.json_body and default == _ARG_DEFAULT:
                 raise tornado.web.MissingArgumentError(name)
@@ -206,7 +206,7 @@ class PageHandler(RequestHandler):
             return super().get_body_argument(name, strip=strip)
         return super().get_body_argument(name, default, strip)
 
-    def set_validation_model(self, model: type[BaseValidationModel | BaseModel]) -> None:
+    def set_validation_model(self, model: type[Union[BaseValidationModel, BaseModel]]) -> None:
         if issubclass(model, BaseModel):
             self._validation_model = model
         else:
@@ -258,7 +258,7 @@ class PageHandler(RequestHandler):
         default: Any = _ARG_DEFAULT,
         path_safe: bool = True,
         **kwargs: Any,
-    ) -> str | list[str] | None:
+    ) -> Optional[Union[str, list[str]]]:
         if path_safe:
             return self.get_validated_argument(name, Validators.PATH_SAFE_STRING, default=default, **kwargs)
         return self.get_validated_argument(name, Validators.STRING, default=default, **kwargs)
@@ -268,7 +268,7 @@ class PageHandler(RequestHandler):
         name: str,
         default: Any = _ARG_DEFAULT,
         **kwargs: Any,
-    ) -> int | list[int] | None:
+    ) -> Optional[Union[int, list[int]]]:
         return self.get_validated_argument(name, Validators.INTEGER, default=default, **kwargs)
 
     def get_bool_argument(
@@ -276,7 +276,7 @@ class PageHandler(RequestHandler):
         name: str,
         default: Any = _ARG_DEFAULT,
         **kwargs: Any,
-    ) -> bool | list[bool] | None:
+    ) -> Optional[Union[bool, list[bool]]]:
         return self.get_validated_argument(name, Validators.BOOLEAN, default=default, **kwargs)
 
     def get_float_argument(
@@ -284,14 +284,14 @@ class PageHandler(RequestHandler):
         name: str,
         default: Any = _ARG_DEFAULT,
         **kwargs: Any,
-    ) -> float | list[float] | None:
+    ) -> Optional[Union[float, list[float]]]:
         return self.get_validated_argument(name, Validators.FLOAT, default=default, **kwargs)
 
     def _get_request_mime_type(self, request: HTTPServerRequest) -> str:
         content_type = request.headers.get('Content-Type', '')
         return re.split(MEDIA_TYPE_PARAMETERS_SEPARATOR_RE, content_type)[0]
 
-    def set_status(self, status_code: int, reason: str | None = None) -> None:
+    def set_status(self, status_code: int, reason: Optional[str] = None) -> None:
         status_code = status_code if status_code in ALLOWED_STATUSES else http.client.SERVICE_UNAVAILABLE
         super().set_status(status_code, reason=reason)
 
@@ -592,7 +592,7 @@ class PageHandler(RequestHandler):
         if hasattr(self, 'active_limit'):
             self.active_limit.release()
 
-    def finish(self, chunk: str | bytes | dict | None = None) -> Future[None]:
+    def finish(self, chunk: Optional[Union[str, bytes, dict]] = None) -> Future[None]:
         self.stages_logger.commit_stage('postprocess')
         for name, value in self._mandatory_headers.items():
             self.set_header(name, value)
@@ -620,10 +620,10 @@ class PageHandler(RequestHandler):
         self,
         name: str,
         value: str,
-        domain: str | None = None,
-        expires: str | None = None,
+        domain: Optional[str] = None,
+        expires: Optional[str] = None,
         path: str = "/",
-        expires_days: int | None = None,
+        expires_days: Optional[int] = None,
         **kwargs: Any,
     ) -> None:
         self._mandatory_cookies[name] = ((name, value, domain, expires, path, expires_days), kwargs)
@@ -633,7 +633,7 @@ class PageHandler(RequestHandler):
             del self._mandatory_headers[name]
         super().clear_header(name)
 
-    def clear_cookie(self, name: str, path: str = "/", domain: str | None = None) -> None:  # type: ignore
+    def clear_cookie(self, name: str, path: str = "/", domain: Optional[str] = None) -> None:  # type: ignore
         if name in self._mandatory_cookies:
             del self._mandatory_cookies[name]
         super().clear_cookie(name, path=path, domain=domain)
@@ -718,15 +718,15 @@ class PageHandler(RequestHandler):
         host: str,
         path: str,
         *,
-        name: str | None = None,
+        name: Optional[str] = None,
         data: Any = None,
         headers: Any = None,
         follow_redirects: bool = True,
-        profile: str | None = None,
-        connect_timeout: float | None = None,
-        request_timeout: float | None = None,
-        max_timeout_tries: int | None = None,
-        speculative_timeout_pct: float | None = None,
+        profile: Optional[str] = None,
+        connect_timeout: Optional[float] = None,
+        request_timeout: Optional[float] = None,
+        max_timeout_tries: Optional[int] = None,
+        speculative_timeout_pct: Optional[float] = None,
         waited: bool = True,
         parse_response: bool = True,
         parse_on_error: bool = True,
@@ -759,15 +759,15 @@ class PageHandler(RequestHandler):
         host: str,
         path: str,
         *,
-        name: str | None = None,
+        name: Optional[str] = None,
         data: Any = None,
         headers: Any = None,
         follow_redirects: bool = True,
-        profile: str | None = None,
-        connect_timeout: float | None = None,
-        request_timeout: float | None = None,
-        max_timeout_tries: int | None = None,
-        speculative_timeout_pct: float | None = None,
+        profile: Optional[str] = None,
+        connect_timeout: Optional[float] = None,
+        request_timeout: Optional[float] = None,
+        max_timeout_tries: Optional[int] = None,
+        speculative_timeout_pct: Optional[float] = None,
         waited: bool = True,
         fail_fast: bool = False,
     ) -> Future[RequestResult]:
@@ -796,18 +796,18 @@ class PageHandler(RequestHandler):
         host: str,
         path: str,
         *,
-        name: str | None = None,
+        name: Optional[str] = None,
         data: Any = '',
         headers: Any = None,
         files: Any = None,
-        content_type: str | None = None,
-        follow_redirects: bool | None = True,
-        profile: str | None = None,
-        connect_timeout: float | None = None,
-        request_timeout: float | None = None,
-        max_timeout_tries: int | None = None,
+        content_type: Optional[str] = None,
+        follow_redirects: bool = True,
+        profile: Optional[str] = None,
+        connect_timeout: Optional[float] = None,
+        request_timeout: Optional[float] = None,
+        max_timeout_tries: Optional[int] = None,
         idempotent: bool = False,
-        speculative_timeout_pct: float | None = None,
+        speculative_timeout_pct: Optional[float] = None,
         waited: bool = True,
         parse_response: bool = True,
         parse_on_error: bool = True,
@@ -843,17 +843,17 @@ class PageHandler(RequestHandler):
         host: str,
         path: str,
         *,
-        name: str | None = None,
+        name: Optional[str] = None,
         data: Any = '',
         headers: Any = None,
-        content_type: str | None = None,
+        content_type: Optional[str] = None,
         follow_redirects: bool = True,
-        profile: str | None = None,
-        connect_timeout: float | None = None,
-        request_timeout: float | None = None,
-        max_timeout_tries: int | None = None,
+        profile: Optional[str] = None,
+        connect_timeout: Optional[float] = None,
+        request_timeout: Optional[float] = None,
+        max_timeout_tries: Optional[int] = None,
         idempotent: bool = True,
-        speculative_timeout_pct: float | None = None,
+        speculative_timeout_pct: Optional[float] = None,
         waited: bool = True,
         parse_response: bool = True,
         parse_on_error: bool = True,
@@ -888,15 +888,15 @@ class PageHandler(RequestHandler):
         host: str,
         path: str,
         *,
-        name: str | None = None,
+        name: Optional[str] = None,
         data: Any = None,
         headers: Any = None,
-        content_type: str | None = None,
-        profile: str | None = None,
-        connect_timeout: float | None = None,
-        request_timeout: float | None = None,
-        max_timeout_tries: int | None = None,
-        speculative_timeout_pct: float | None = None,
+        content_type: Optional[str] = None,
+        profile: Optional[str] = None,
+        connect_timeout: Optional[float] = None,
+        request_timeout: Optional[float] = None,
+        max_timeout_tries: Optional[int] = None,
+        speculative_timeout_pct: Optional[float] = None,
         waited: bool = True,
         parse_response: bool = True,
         parse_on_error: bool = True,

@@ -8,7 +8,7 @@ import time
 from functools import cache
 from logging import Filter, Formatter, Handler
 from logging.handlers import SysLogHandler
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Union
 
 import orjson
 from tornado.log import LogFormatter
@@ -152,11 +152,11 @@ def get_text_formatter() -> Formatter:
 
 
 def bootstrap_logger(
-    logger_info: str | tuple[logging.Logger, str],
+    logger_info: Union[str, tuple[logging.Logger, str]],
     logger_level: int,
     use_json_formatter: bool = True,
     *,
-    formatter: Formatter | None = None,
+    formatter: Optional[Formatter] = None,
 ) -> logging.Logger:
     if isinstance(logger_info, tuple):
         logger, logger_name = logger_info
@@ -187,7 +187,7 @@ def bootstrap_logger(
 def _configure_file(
     logger_name: str,
     use_json_formatter: bool = True,
-    formatter: Formatter | None = None,
+    formatter: Optional[Formatter] = None,
 ) -> list[Handler]:
     log_extension = '.slog' if use_json_formatter else '.log'
     file_handler = logging.handlers.WatchedFileHandler(
@@ -205,7 +205,7 @@ def _configure_file(
     return [file_handler]
 
 
-def _configure_stderr(formatter: Formatter | None = None) -> list[logging.StreamHandler]:
+def _configure_stderr(formatter: Optional[Formatter] = None) -> list[logging.StreamHandler]:
     stderr_handler = logging.StreamHandler()
     if formatter is not None:
         stderr_handler.setFormatter(formatter)
@@ -219,7 +219,7 @@ def _configure_stderr(formatter: Formatter | None = None) -> list[logging.Stream
 def _configure_syslog(
     logger_name: str,
     use_json_formatter: bool = True,
-    formatter: Formatter | None = None,
+    formatter: Optional[Formatter] = None,
 ) -> list[Handler]:
     try:
         syslog_handler = SysLogHandler(

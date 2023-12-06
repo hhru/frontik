@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 import logging
 import pkgutil
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from asyncio import Future
@@ -15,10 +15,10 @@ integrations_logger = logging.getLogger('integrations')
 
 
 class Integration:
-    def initialize_app(self, app: FrontikApplication) -> Future | None:
+    def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
         raise NotImplementedError()  # pragma: no cover
 
-    def deinitialize_app(self, app: FrontikApplication) -> Future | None:
+    def deinitialize_app(self, app: FrontikApplication) -> Optional[Future]:
         pass  # pragma: no cover
 
     def initialize_handler(self, handler: PageHandler) -> None:

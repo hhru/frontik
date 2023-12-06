@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections import namedtuple
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from tornado.ioloop import PeriodicCallback
 
@@ -35,7 +35,7 @@ class TimeoutCounter(dict):
 class Sender:
     def __init__(self) -> None:
         self._timeout_counters = TimeoutCounter()
-        self._send_stats_callback: PeriodicCallback | None = None
+        self._send_stats_callback: Optional[PeriodicCallback] = None
 
     def send_data(self, data: LoggingData, already_spent_ms: float) -> None:
         self._timeout_counters.increment(data, already_spent_ms)
@@ -82,7 +82,7 @@ _sender = Sender()
 class TimeoutChecker:
     def __init__(
         self,
-        outer_caller: str | None,
+        outer_caller: Optional[str],
         outer_timeout_ms: float,
         time_since_outer_request_start_sec_supplier: Callable,
         *,
@@ -111,7 +111,7 @@ class TimeoutChecker:
 
 
 def get_timeout_checker(
-    outer_caller: str | None,
+    outer_caller: Optional[str],
     outer_timeout_ms: float,
     time_since_outer_request_start_ms_supplier: Callable,
     *,

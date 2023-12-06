@@ -6,7 +6,7 @@ import re
 import time
 import weakref
 from concurrent.futures import ThreadPoolExecutor
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from lxml import etree
 from tornado.ioloop import IOLoop
@@ -45,7 +45,7 @@ class XmlProducer:
 
         self.doc = frontik.doc.Doc()
         self.transform: Any = None
-        self.transform_filename: str | None = None
+        self.transform_filename: Optional[str] = None
 
     def __call__(self):
         if any(frontik.util.get_cookie_or_url_param_value(self.handler, p) is not None for p in ('noxsl', 'notpl')):
@@ -73,7 +73,7 @@ class XmlProducer:
     def set_xsl(self, filename: str) -> None:
         self.transform_filename = filename
 
-    async def _finish_with_xslt(self) -> tuple[str | None, list[Any] | None]:
+    async def _finish_with_xslt(self) -> tuple[Optional[str], Optional[list[Any]]]:
         self.log.debug('finishing with XSLT')
 
         if self.handler._headers.get('Content-Type') is None:
