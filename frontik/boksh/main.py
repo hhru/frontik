@@ -1,5 +1,7 @@
 import asyncio
 import multiprocessing
+import queue
+import random
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -10,30 +12,31 @@ from tornado.httpserver import HTTPServer
 
 import frontik.boksh
 from frontik.app import FrontikApplication
-from frontik.boksh.service.aio import AsyncioService, ManagedEnvAsync
-from frontik.boksh.service.sync import ProcessService, ManagedEnvSync
+from frontik.boksh.service.aio import AsyncioService, AsyncManagedEnv
+from frontik.boksh.service.common import Service
+from frontik.boksh.service.sync import ProcessService, ManagedEnvSync, ThreadService
 from frontik.loggers import MDC, bootstrap_core_logging
 from frontik.options import options
 from frontik.server import log
 
 
 class MyFrontikApplication(FrontikApplication):
-    def __init__(self, is_started_check: Callable[[], bool], **settings: Any) -> None:
+    def __init__(self, **settings: Any) -> None:
         super().__init__(
             app_root=str(Path(__file__).parent),
             app_module=frontik.boksh.__name__,
-            is_started_check=is_started_check,
+            # is_started_check=is_started_check,
             **settings,
         )
 
 
 def make_frontik(is_started_check: Callable[[], bool]):
-    async def run_frontik_server(menv: ManagedEnvAsync):
+    async def run_frontik_server(menv: AsyncManagedEnv):
         MDC.init(f'master')
         options.consul_enabled = False
         options.port = 8080
-        options.debug = True
-        options.autoreload = True
+        # options.debug = True
+        # options.autoreload = True
         options.stderr_log = True
         bootstrap_core_logging("INFO", True, [])
         app = MyFrontikApplication(is_started_check=is_started_check)
@@ -62,23 +65,51 @@ def notifier(menv: ManagedEnvSync):
     print("stopped")
 
 
-def main(main_env: ManagedEnvSync):
-    while not main_env.is_interrupted():
-        time.sleep(1)
-        main_env.send_message_out({"sas": "sas"})
-    print("exit")
+
+
+
+
+# def concurrent_thread(env: ):
+
 
 
 if __name__ == '__main__':
-    # init_workers_count_down = multiprocessing.Value('i', options.workers)
-    event = multiprocessing.Event()
-    service = ProcessService.wrap_async(AsyncioService.wrap(make_frontik(lambda: event.is_set())))
-    service.start()
-    time.sleep(5)
-    event.set()
-    print("started")
+    services = []
+    queue = multiprocessing.JoinableQueue()
 
-    service.wait_for(service.stopped())
+    def listeners(main_env: ManagedEnvSync):
+        while not main_env.is_interrupted():
+            msg = queue.get()
+            # print(f"{id(Service.current())} got message {msg}")
+            queue.task_done()
+
+    def producers(main_env: ManagedEnvSync):
+        while not main_env.is_interrupted():
+            time.sleep(random.randint(3, 10))
+            queue.put_nowait(f"from {id(Service.current())}")
+
+
+    # for i in range(1):
+    #     services.append(ThreadService.wrap(listeners).start())
+    # # #
+    # for i in range(1):
+    #     services.append(ThreadService.wrap(producers).start())
+
+    # time.sleep(20)
+    # init_workers_count_down = multiprocessing.Value('i', options.workers)
+    # event = multiprocessing.Event()
+    async def main():
+        service = AsyncioService.wrap(make_frontik(lambda: True)).start()
+        print(id(service))
+        await service.wait_for(service.stopped())
+    #
+    asyncio.run(main())
+    # service.start()
+    # time.sleep(5)
+    # event.set()
+    # print("started")
+    #
+    # service.wait_for(service.stopped())
 
     # asyncio.run(main())
 

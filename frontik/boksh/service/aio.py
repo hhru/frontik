@@ -4,7 +4,7 @@ import logging
 from abc import abstractmethod
 from typing import Callable, Self, Type, Coroutine, Protocol, Any
 
-from frontik.boksh.service import Service
+from frontik.boksh.service.common import Service, start_all_children, ServiceState, stop_all_children
 from frontik.boksh.service.timeout import ServiceTimeout, timeout_seconds
 
 logger = logging.Logger(__file__)
@@ -13,66 +13,66 @@ logger = logging.Logger(__file__)
 class AsyncioService(Service[asyncio.Future]):
     def __init__(self, name: str | None = None):
         super().__init__(name)
+        self._state = ServiceState.NOT_STARTED
         self._main_task: asyncio.Task | None = None
-
-        self.on_start_callbacks: list[Callable[[AsyncioService], ...]] = []
+        self._in_queue_processing_task: asyncio.Task | None = None
+        self._out_queue_processing_task: asyncio.Task | None = None
 
         self.in_queue: asyncio.Queue = asyncio.Queue()
         self.out_queue: asyncio.Queue = asyncio.Queue()
 
+        def _start_queues_processing(_: AsyncioService):
+            self._in_queue_processing_task = _start_queue_processing(self.in_queue, self.in_message_handlers)
+            self._out_queue_processing_task = _start_queue_processing(self.out_queue, self.out_message_listeners)
+
+        self.on_start_callbacks: list[Callable[[AsyncioService], ...]] = [
+            start_all_children,
+            _start_queues_processing,
+        ]
+
     def _state_getter(self, event: asyncio.Future) -> bool:
         return event is not None and event.done()
 
-    def _state_setter(self):
-        return asyncio.Future()
+    def get_state(self) -> ServiceState:
+        return self._state
 
     def add_on_start_callback(self, callback: Callable[['AsyncioService'], ...]) -> Self:
         self.on_start_callbacks.append(callback)
         return self
 
-    def send_message_in(self, message: Any):
-        if self.message_handlers:
-            self._main_task.get_loop().call_soon_threadsafe(lambda: self.in_queue.put_nowait(message))
+    def send_message(self, message: Any):
+        self._main_task.get_loop().call_soon_threadsafe(lambda: self.in_queue.put_nowait(message))
 
     def _send_message_out(self, message: Any):
-        if self.message_listeners:
-            self.out_queue.put_nowait(message)
+        self._main_task.get_loop().call_soon_threadsafe(lambda: self.out_queue.put_nowait(message))
 
     def _add_message_handler(self, service_in_message_handler: Callable[[Any], ...]):
-        need_to_start_listener = not self.message_handlers
-        self.message_handlers.append(service_in_message_handler)
-        if need_to_start_listener:
-            start_message_listener_task(self.is_interrupted, self.in_queue, self.message_handlers)
+        self.in_message_handlers.append(service_in_message_handler)
 
-    def add_listener(self, service_out_message_listener: Callable[[Any], ...]):
-        need_to_start_listener = not self.message_listeners
-        self.message_listeners.append(service_out_message_listener)
-        if need_to_start_listener:
-            start_message_listener_task(self.is_interrupted, self.in_queue, self.message_listeners)
+    def add_message_listener(self, service_out_message_listener: Callable[[Any], ...]):
+        self.out_message_listeners.append(service_out_message_listener)
 
     def start(self):
-        self.set_start_state()
-
-        if self._running.done():
-            return None
-        self._running.set_result(None)
+        if self.get_state() != ServiceState.NOT_STARTED:
+            return
+        self._state = ServiceState.STARTING
+        self._started = asyncio.Future()
+        self._interrupted = asyncio.Future()
+        self._stopped = asyncio.Future()
 
         for cb in self.on_start_callbacks:
             cb(self)
 
-        for child in self.children:
-            child.start()
-
         self._main_task = asyncio.create_task(self.__run_wrapper())
         return self
 
-    def mark_start_success(self):
+    def _mark_started(self):
         if not self._started.done():
             self._started.set_result(None)
+            self._state = ServiceState.STARTED
 
     def stop(self) -> Self:
-        for child in self.children:
-            child.stop()
+        stop_all_children(self)
         asyncio.get_running_loop().call_soon_threadsafe(
             lambda: {
                 self._interrupted.set_result(None),
@@ -90,14 +90,21 @@ class AsyncioService(Service[asyncio.Future]):
                 for future in (self._started, self._interrupted, self._stopped):
                     if not future.done():
                         self._started.set_exception(ex)
+            finally:
+                await self.stop_queues_processing()
             self._stopped.set_result(None)
+
+    async def stop_queues_processing(self):
+        await asyncio.gather(self.in_queue.join(), self.out_queue.join())
+        self._in_queue_processing_task.cancel()
+        self._out_queue_processing_task.cancel()
 
     @abstractmethod
     async def run(self):
         ...
 
     @classmethod
-    def wrap(cls: Type['AsyncioService'], run_function: Callable[['ManagedEnvAsync'], Coroutine]) -> 'AsyncioService':
+    def wrap(cls: Type['AsyncioService'], run_function: Callable[['AsyncManagedEnv'], Coroutine]) -> 'AsyncioService':
         class _AnonAsyncioService(cls):
             async def run(self):
                 await run_function(AsyncServiceManagedEnv(self))
@@ -127,9 +134,9 @@ class AsyncioService(Service[asyncio.Future]):
         await asyncio.wait_for(future, timeout_seconds(timeout))
 
 
-def start_message_listener_task(interrupted: Callable[[], bool], queue: asyncio.Queue, processors: list[Callable]):
+def _start_queue_processing(queue: asyncio.Queue, processors: list[Callable[[Any], ...]]) -> asyncio.Task:
     async def handle_messages():
-        while not interrupted():
+        while not asyncio.current_task().cancelled():
             message = await queue.get()
             for processor in processors:
                 try:
@@ -139,11 +146,13 @@ def start_message_listener_task(interrupted: Callable[[], bool], queue: asyncio.
                         processor(message)
                 except Exception as ex:
                     logger.exception("exception on message handling")
+                finally:
+                    queue.task_done()
 
-    asyncio.create_task(handle_messages())
+    return asyncio.create_task(handle_messages())
 
 
-class ManagedEnvAsync(Protocol):
+class AsyncManagedEnv(Protocol):
     def interrupted(self) -> asyncio.Future:
         ...
 
@@ -174,7 +183,7 @@ class AsyncServiceManagedEnv:
         return self.__service.started()
 
     def mark_started(self):
-        self.__service.mark_start_success()
+        self.__service._mark_started()
 
     def add_message_handler(self, handler: Callable):
         self.__service._add_message_handler(handler)

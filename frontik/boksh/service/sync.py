@@ -10,7 +10,7 @@ from typing import Callable, Self, Type, Any, Protocol
 
 import multiprocess as mp
 
-from frontik.boksh.service import Service
+from frontik.boksh.service.common import Service, ServiceState, start_all_children, stop_all_children
 from frontik.boksh.service.aio import AsyncioService
 from frontik.boksh.service.timeout import timeout_seconds, ServiceTimeout
 
@@ -18,12 +18,14 @@ logger = logging.Logger(__file__)
 
 
 class SyncService(Service[concurrent.futures.Future]):
-    pass
+    def __init__(self, name: str | None = None):
+        super().__init__(name)
+
 
 class ThreadService(Service[concurrent.futures.Future]):
     def __init__(self, name: str | None = None):
         super().__init__(name)
-        self.handle_messages = False
+        self._state = ServiceState.NOT_STARTED
         self._in_current_thread: bool = False
         self._thread: threading.Thread | None = None
 
@@ -32,6 +34,9 @@ class ThreadService(Service[concurrent.futures.Future]):
 
         self._message_handlers_thread: threading.Thread | None = None
         self._message_listeners_thread: threading.Thread | None = None
+
+    def get_state(self) -> ServiceState:
+        return self._state
 
     def _state_getter(self, event: concurrent.futures.Future) -> bool:
         return event is not None and event.done()
@@ -42,57 +47,60 @@ class ThreadService(Service[concurrent.futures.Future]):
     def in_current_thread(self, run_in_current: bool = True, /):
         self._in_current_thread = run_in_current
 
-    def send_message_in(self, message: Any):
-        if self.message_handlers:
-            self.in_queue.put(message)
+    def send_message(self, message: Any):
+        self.in_queue.put(message)
 
     def _send_message_out(self, message: Any):
-        if self.message_listeners:
-            self.out_queue.put(message)
+        self.out_queue.put(message)
 
     def _add_message_handler(self, service_in_message_handler: Callable[[Any], ...]):
-        self.message_handlers.append(service_in_message_handler)
-        if self._message_handlers_thread is None:
-            self._message_handlers_thread = message_processing_thread(
-                self.is_interrupted, self.in_queue, self.message_handlers
-            )
-            if self.is_running():
-                self._message_handlers_thread.start()
+        self.in_message_handlers.append(service_in_message_handler)
+        # self.in_message_handlers.append(service_in_message_handler)
+        # if self._message_handlers_thread is None:
+        #     self._message_handlers_thread = message_processing_thread(
+        #         self.is_interrupted, self.in_queue, self.in_message_handlers
+        #     )
+        #     if self.is_running():
+        #         self._message_handlers_thread.start()
 
-    def add_listener(self, service_out_message_listener: Callable[[Any], ...]):
-        self.message_listeners.append(service_out_message_listener)
-        if self._message_listeners_thread is None:
-            self._message_listeners_thread = message_processing_thread(
-                self.is_interrupted, self.out_queue, self.message_listeners
-            )
-            if self.is_running():
-                self._message_handlers_thread.start()
+    def add_message_listener(self, service_out_message_listener: Callable[[Any], ...]):
+        self.out_message_listeners.append(service_out_message_listener)
+        # self.out_message_listeners.append(service_out_message_listener)
+        # if self._message_listeners_thread is None:
+        #     self._message_listeners_thread = message_processing_thread(
+        #         self.is_interrupted, self.out_queue, self.out_message_listeners
+        #     )
+        #     if self.is_running():
+        #         self._message_handlers_thread.start()
 
-    def mark_start_success(self):
+    def _mark_started(self):
         if not self._started.done():
             self._started.set_result(None)
 
     def start(self):
-        self.set_start_state()
-        if self._message_handlers_thread:
-            self._message_handlers_thread.start()
-        if self._message_listeners_thread:
-            self._message_listeners_thread.start()
+        if self.get_state() != ServiceState.NOT_STARTED:
+            return
+        self._state = ServiceState.STARTING
 
-        if self._running.done():
-            return None
-        self._running.set_result(None)
+        self._started = concurrent.futures.Future()
+        self._interrupted = concurrent.futures.Future()
+        self._stopped = concurrent.futures.Future()
 
-        for name, child in self.children.items():
-            child.start()
+        # if self._message_handlers_thread:
+        # self._message_handlers_thread.start()
+        # if self._message_listeners_thread:
+        # self._message_listeners_thread.start()
+
+        start_all_children(self)
+
         self._thread = threading.Thread(target=self.__run_wrapper, daemon=True)
         self._thread.start()
         return self
 
     def stop(self) -> Self:
-        for service_name, child_service in self.children.items():
-            child_service.stop()
+        stop_all_children(self)
         self._interrupted.set_result(None)
+        self._state = ServiceState.INTERRUPTED
         return self
 
     def __run_wrapper(self):
@@ -110,12 +118,12 @@ class ThreadService(Service[concurrent.futures.Future]):
         ...
 
     @classmethod
-    def wrap(cls: Type['ThreadService'], run_function: Callable[['ManagedEnvSync'], ...]) -> Type['ThreadService']:
+    def wrap(cls: Type['ThreadService'], run_function: Callable[['ManagedEnvSync'], ...]) -> 'ThreadService':
         class _AnonThreadingService(cls):
             def run(self):
                 run_function(ServiceManagedEnv(self))
 
-        return _AnonThreadingService
+        return _AnonThreadingService()
 
     @staticmethod
     def wait_for(future: concurrent.futures.Future, timeout: ServiceTimeout = None):
@@ -123,58 +131,61 @@ class ThreadService(Service[concurrent.futures.Future]):
 
 
 class ProcessService(Service[mp.Event]):
-    def __init__(self, name: str | None = None):
-        super().__init__(name)
+    def __init__(self, address: Any | None = None):
+        super().__init__(address)
         self._in_current_process: bool = False
         self._process: mp.Process | None = None
 
-        self.in_queue: mp.Queue = mp.Queue()
-        self.out_queue: mp.Queue = mp.Queue()
+        self.in_queue: multiprocessing.Queue = multiprocessing.Queue()
+        self.out_queue: multiprocessing.Queue = multiprocessing.Queue()
 
-        self._has_listeners = mp.Event()
-        self._has_handlers = mp.Event()
+        self._has_listeners = multiprocessing.Event()
+        self._has_handlers = multiprocessing.Event()
         self._message_handlers_thread: threading.Thread | None = None
         self._message_listeners_thread: threading.Thread | None = None
 
-    def _state_getter(self, event: mp.Event) -> bool:
+    def _state_getter(self, event: multiprocessing.Event) -> bool:
         return event is not None and event.is_set()
 
-    def _state_setter(self) -> mp.Event:
-        return mp.Event()
+    def _state_setter(self) -> multiprocessing.Event:
+        return multiprocessing.Event()
 
     def in_current_process(self, run_in_current: bool = True, /) -> Self:
         self._in_current_process = run_in_current
         return self
 
-    def send_message_in(self, message: Any):
+    def send_message(self, message: Any):
         if self._has_handlers.is_set():
             self.in_queue.put(message)
 
     def _send_message_out(self, message: Any):
         if self._has_listeners.is_set():
             self.out_queue.put(message)
+        else:
+            print("sasas")
 
     def _add_message_handler(self, service_in_message_handler: Callable[[Any], ...]):
         need_to_start_listener = not self._has_handlers.is_set()
-        self.message_handlers.append(service_in_message_handler)
+        self.in_message_handlers.append(service_in_message_handler)
         if need_to_start_listener and not self._message_handlers_thread:
             self._has_handlers.set()
             self._message_handlers_thread = message_processing_thread(
-                self.is_interrupted, self.in_queue, self.message_handlers
+                self.is_interrupted, self.in_queue, self.in_message_handlers
             )
             if self.is_running():
                 self._message_handlers_thread.start()
 
-    def add_listener(self, service_out_message_listener: Callable[[Any], ...]):
+    def add_message_listener(self, service_out_message_listener: Callable[[Any], ...]) -> Self:
         need_to_start_listener = not self._has_listeners.is_set()
-        self.message_listeners.append(service_out_message_listener)
+        self.out_message_listeners.append(service_out_message_listener)
         if need_to_start_listener and not self._message_listeners_thread:
             self._has_listeners.set()
             self._message_listeners_thread = message_processing_thread(
-                self.is_interrupted, self.out_queue, self.message_listeners
+                self.is_interrupted, self.out_queue, self.out_message_listeners
             )
             if self.is_running():
                 self._message_listeners_thread.start()
+        return self
 
     def start(self) -> Self:
         if self._started:
@@ -209,7 +220,7 @@ class ProcessService(Service[mp.Event]):
             child.stop()
         return self
 
-    def mark_start_success(self):
+    def _mark_started(self):
         print(f"mark service {self} as started")
         self._started.set()
 
@@ -261,7 +272,7 @@ class ProcessService(Service[mp.Event]):
         process_service = cls.wrap(async_wrapper)
         process_service.add_child(async_service)
         async_service.add_on_start_callback(
-            lambda s: async_service.started().add_done_callback(lambda f: process_service.mark_start_success())
+            lambda s: async_service.started().add_done_callback(lambda f: process_service._mark_started())
         )
         return process_service
 
@@ -328,7 +339,7 @@ class ServiceManagedEnv:
         return self.__service.is_started()
 
     def mark_started(self):
-        return self.__service.mark_start_success()
+        return self.__service._mark_started()
 
     def add_message_handler(self, handler):
         return self.__service._add_message_handler(handler)
