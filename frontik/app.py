@@ -8,7 +8,7 @@ import sys
 import time
 import traceback
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from http_client import AIOHttpClientWrapper, HttpClientFactory
 from http_client import options as http_client_options
@@ -76,12 +76,12 @@ class PydevdHandler(RequestHandler):
         except BaseException:
             self.error_page()
 
-    def settrace(self, debugger_ip: str | None, debugger_port: int) -> None:
+    def settrace(self, debugger_ip: Optional[str], debugger_port: int) -> None:
         import pydevd
 
         pydevd.settrace(debugger_ip, port=debugger_port, stdoutToServer=True, stderrToServer=True, suspend=False)
 
-    def trace_page(self, ip: str | None, port: str) -> None:
+    def trace_page(self, ip: Optional[str], port: str) -> None:
         self.set_header('Content-Type', media_types.TEXT_PLAIN)
         self.finish(f'Connected to debug server at {ip}:{port}')
 
@@ -113,7 +113,7 @@ class FrontikApplication(Application):
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
         self.available_integrations: list[integrations.Integration] = []
-        self.tornado_http_client: AIOHttpClientWrapper | None = None
+        self.tornado_http_client: Optional[AIOHttpClientWrapper] = None
         self.http_client_factory: HttpClientFactory
         self.upstream_manager: UpstreamManager = None
         self.upstreams: dict[str, Upstream] = {}
@@ -217,7 +217,7 @@ class FrontikApplication(Application):
         version.text = 'unknown'
         return [version]
 
-    def application_version(self) -> str | None:
+    def application_version(self) -> Optional[str]:
         return None
 
     @staticmethod
@@ -266,5 +266,5 @@ class FrontikApplication(Application):
 
         JSON_REQUESTS_LOGGER.info('', extra={CUSTOM_JSON_EXTRA: extra})
 
-    def get_kafka_producer(self, producer_name: str) -> AIOKafkaProducer | None:  # pragma: no cover
+    def get_kafka_producer(self, producer_name: str) -> Optional[AIOKafkaProducer]:  # pragma: no cover
         pass

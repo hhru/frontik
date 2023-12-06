@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel, field_validator
 
@@ -14,13 +15,13 @@ class Validators(Enum):
 
 
 class BaseValidationModel(BaseModel):
-    boolean: bool | None = None
-    string: str | None = None
-    integer: int | None = None
-    float_: float | None = None
-    list_int: list[int] | None = None
-    list_str: list[str] | None = None
-    path_safe_string: str | None = None
+    boolean: Optional[bool] = None
+    string: Optional[str] = None
+    integer: Optional[int] = None
+    float_: Optional[float] = None
+    list_int: Optional[list[int]] = None
+    list_str: Optional[list[str]] = None
+    path_safe_string: Optional[str] = None
 
     @field_validator('path_safe_string', mode='before')
     @classmethod

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import random
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 from urllib.parse import urlparse
 
 from http_client import client_request_context, response_status_code_context
@@ -60,7 +60,7 @@ class TelemetryIntegration(Integration):
 
         SpanImpl.set_attribute = patched_set_attribute  # type: ignore
 
-    def initialize_app(self, app: FrontikApplication) -> Future | None:
+    def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
         if not options.opentelemetry_enabled:
             return None
 
@@ -93,7 +93,7 @@ class TelemetryIntegration(Integration):
 
         return None
 
-    def deinitialize_app(self, app: FrontikApplication) -> Future | None:
+    def deinitialize_app(self, app: FrontikApplication) -> Optional[Future]:
         if not options.opentelemetry_enabled:
             return None
 

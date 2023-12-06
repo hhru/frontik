@@ -5,7 +5,7 @@ import logging
 import os
 import re
 from inspect import isclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from tornado.routing import ReversibleRouter, Router
 from tornado.web import RequestHandler
@@ -29,7 +29,7 @@ class FileMappingRouter(Router):
     def __init__(self, module: Any) -> None:
         self.name = module.__name__
 
-    def find_handler(self, request: HTTPServerRequest, **kwargs: Any) -> HTTPMessageDelegate | None:
+    def find_handler(self, request: HTTPServerRequest, **kwargs: Any) -> Optional[HTTPMessageDelegate]:
         url_parts = request.path.strip('/').split('/')
         application = kwargs['application']
 

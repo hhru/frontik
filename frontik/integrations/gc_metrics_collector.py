@@ -3,7 +3,7 @@ from __future__ import annotations
 import gc
 import time
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from tornado.ioloop import PeriodicCallback
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 
 class GCMetricsCollectorIntegration(Integration):
-    def initialize_app(self, app: FrontikApplication) -> Future | None:
+    def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
         if options.gc_metrics_send_interval_ms is None or options.gc_metrics_send_interval_ms <= 0:
             integrations_logger.info(
                 'GC metrics collector integration is disabled: gc_metrics_send_interval_ms option is not configured',

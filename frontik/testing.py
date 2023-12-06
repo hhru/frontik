@@ -3,7 +3,7 @@ import json
 import logging
 import re
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Optional, Union
 
 import pytest
 from aioresponses import aioresponses
@@ -42,7 +42,7 @@ class FrontikTestCase(AsyncHTTPTestCase):
         self.forced_client = AIOHttpClientWrapper()
         return self.forced_client
 
-    def fetch(self, path: str, query: dict | None = None, **kwargs: Any) -> RequestResult:  # type: ignore
+    def fetch(self, path: str, query: Optional[dict] = None, **kwargs: Any) -> RequestResult:  # type: ignore
         """Extends `AsyncHTTPTestCase.fetch` method with `query` kwarg.
         This argument accepts a `dict` of request query parameters that will be encoded
         and added to request path.
@@ -51,11 +51,11 @@ class FrontikTestCase(AsyncHTTPTestCase):
         query = {} if query is None else query
         return super().fetch(make_url(path, **query), **kwargs)
 
-    def fetch_xml(self, path: str, query: dict | None = None, **kwargs: Any) -> etree.Element:
+    def fetch_xml(self, path: str, query: Optional[dict] = None, **kwargs: Any) -> etree.Element:
         """Fetch the request and parse xml document from response body."""
         return etree.fromstring(utf8(self.fetch(path, query, **kwargs).raw_body))
 
-    def fetch_json(self, path: str, query: dict | None = None, **kwargs: Any) -> Any:
+    def fetch_json(self, path: str, query: Optional[dict] = None, **kwargs: Any) -> Any:
         """Fetch the request and parse JSON tree from response body."""
         return json.loads(self.fetch(path, query, **kwargs).raw_body)
 
@@ -67,8 +67,8 @@ class FrontikTestCase(AsyncHTTPTestCase):
         self,
         url: str,
         request_method: str = 'GET',
-        response_function: Callable | None = None,
-        response_file: str | None = None,
+        response_function: Optional[Callable] = None,
+        response_file: Optional[str] = None,
         response_body: Any = '',
         response_code: int = 200,
         response_headers: Any = None,
@@ -158,7 +158,7 @@ class FrontikTestBase:
     async def fetch(
         self,
         path: str,
-        query: dict | None = None,
+        query: Optional[dict] = None,
         method: str = 'GET',
         request_timeout: float = 2,
         **kwargs: Any,
@@ -181,26 +181,26 @@ class FrontikTestBase:
     async def fetch_xml(
         self,
         path: str,
-        query: dict | None = None,
+        query: Optional[dict] = None,
         method: str = 'GET',
         **kwargs: Any,
     ) -> etree.Element:
         resp = await self.fetch(path, query, method, **kwargs)
         return etree.fromstring(utf8(resp.raw_body))
 
-    async def fetch_json(self, path: str, query: dict | None = None, method: str = 'GET', **kwargs: Any) -> Any:
+    async def fetch_json(self, path: str, query: Optional[dict] = None, method: str = 'GET', **kwargs: Any) -> Any:
         resp = await self.fetch(path, query, method, **kwargs)
         return json.loads(resp.raw_body)
 
     def set_stub(
         self,
-        url: URL | str | re.Pattern,
+        url: Union[URL, str, re.Pattern],
         request_method: str = 'GET',
-        response_file: str | None = None,
+        response_file: Optional[str] = None,
         response_body: Any = '',
         response_code: int = 200,
-        response_headers: dict | None = None,
-        response_body_processor: Callable | None = safe_template,
+        response_headers: Optional[dict] = None,
+        response_body_processor: Callable = safe_template,
         repeat: bool = True,
         **kwargs: Any,
     ) -> None:

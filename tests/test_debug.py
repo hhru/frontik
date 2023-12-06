@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import http.client
 import unittest
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from tornado.escape import to_unicode
 
@@ -87,7 +87,7 @@ class TestDebug(unittest.TestCase):
         self,
         page: str,
         expected_code: int,
-        headers: dict[str, str] | None = None,
+        headers: Optional[dict[str, str]] = None,
     ) -> Response:
         response = frontik_no_debug_app.get_page(page, headers=headers)
         self.assertEqual(response.status_code, expected_code)

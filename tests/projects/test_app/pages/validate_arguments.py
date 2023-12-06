@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import field_validator
 
 from frontik.handler import PageHandler
@@ -5,7 +7,7 @@ from frontik.validator import BaseValidationModel, Validators
 
 
 class CustomModel(BaseValidationModel):
-    string: str | None = None
+    string: Optional[str] = None
 
     @field_validator('string')
     @classmethod

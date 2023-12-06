@@ -11,7 +11,7 @@ import time
 from queue import Full, Queue
 from random import shuffle
 from threading import Lock, Thread
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Union
 
 from consul.base import Check, ConsistencyMode, HealthCache, KVCache, Weight
 from http_client import consul_parser
@@ -45,7 +45,7 @@ CONSUL_REQUEST_FAILED_RESULT = "failure"
 log = logging.getLogger('service_discovery')
 
 
-def _get_service_address(options: Options) -> str | None:
+def _get_service_address(options: Options) -> Optional[str]:
     if options.consul_service_address:
         if options.consul_service_address.lower() == AUTO_RESOLVE_ADDRESS_VALUE:
             hostname = socket.gethostname()
@@ -55,11 +55,11 @@ def _get_service_address(options: Options) -> str | None:
     return None
 
 
-def _make_service_id(options: Options, *, service_name: str | None, hostname: str) -> str:
+def _make_service_id(options: Options, *, service_name: Optional[str], hostname: str) -> str:
     return f'{service_name}-{hostname}-{options.port}'
 
 
-def _create_http_check(options: Options, address: str | None) -> dict:
+def _create_http_check(options: Options, address: Optional[str]) -> dict:
     check_host = options.consul_check_host
     if not check_host:
         check_host = address if address else '127.0.0.1'
@@ -77,7 +77,7 @@ def _create_meta():
     return {'serviceVersion': version}
 
 
-def _get_weight_or_default(value: dict | None) -> int:
+def _get_weight_or_default(value: Optional[dict]) -> int:
     return int(value['Value']) if value is not None else DEFAULT_WEIGHT
 
 
@@ -92,8 +92,8 @@ class _AsyncServiceDiscovery:
     def __init__(
         self,
         options: Options,
-        statsd_client: StatsDClient | StatsDClientStub,
-        event_loop: BaseEventLoop | None = None,
+        statsd_client: Union[StatsDClient, StatsDClientStub],
+        event_loop: Optional[BaseEventLoop] = None,
     ) -> None:
         self.options = options
         self.consul = AsyncConsulClient(
@@ -109,7 +109,7 @@ class _AsyncServiceDiscovery:
         self.consul_weight_total_timeout_sec = options.consul_weight_total_timeout_sec
         self.consul_weight_consistency_mode = ConsistencyMode(options.consul_weight_consistency_mode.lower())
         self.consul_cache_initial_warmup_timeout_sec = options.consul_cache_initial_warmup_timeout_sec
-        self.weight: int | None = None
+        self.weight: Optional[int] = None
 
     async def register_service(self) -> None:
         address = _get_service_address(self.options)
@@ -122,7 +122,7 @@ class _AsyncServiceDiscovery:
             except Exception as exc:
                 log.exception('Failed to register %s: %s', self.service_id, exc)
 
-    async def _async_register(self, address: str | None, http_check: dict) -> None:
+    async def _async_register(self, address: Optional[str], http_check: dict) -> None:
         index, value = await self.consul.kv.get(
             f'host/{self.hostname}/weight',
             wait=self.consul_weight_watch_seconds,
@@ -157,7 +157,7 @@ class _AsyncServiceDiscovery:
 
 
 class _SyncServiceDiscovery:
-    def __init__(self, options: Options, statsd_client: StatsDClient | StatsDClientStub) -> None:
+    def __init__(self, options: Options, statsd_client: Union[StatsDClient, StatsDClientStub]) -> None:
         self.options = options
         self.consul = SyncConsulClient(
             host=options.consul_host,
@@ -237,7 +237,7 @@ class _SyncStub:
 
 
 class ConsulMetricsTracker(ClientEventCallback):
-    def __init__(self, statsd_client: StatsDClient | StatsDClientStub) -> None:
+    def __init__(self, statsd_client: Union[StatsDClient, StatsDClientStub]) -> None:
         self._statsd_client = statsd_client
         self._request_counters = Counters()
         self._statsd_client.send_periodically(self._send_metrics)
@@ -284,7 +284,7 @@ class UpstreamCaches:
         self,
         children_pipes: dict[int, Any],
         upstreams: dict[str, Upstream],
-        service_discovery: None | _SyncServiceDiscovery | _SyncStub = None,
+        service_discovery: Optional[Union[_SyncServiceDiscovery, _SyncStub]] = None,
     ) -> None:
         self._upstreams_config: dict[str, dict] = {}
         self._upstreams_servers: dict[str, list[Server]] = {}
@@ -378,7 +378,7 @@ class UpstreamCaches:
             if self._children_pipes:
                 self.send_updates(upstream=upstream)
 
-    def send_updates(self, upstream: Upstream | None = None) -> None:
+    def send_updates(self, upstream: Optional[Upstream] = None) -> None:
         upstreams = list(self._upstreams.values()) if upstream is None else [upstream]
         data = pickle.dumps(upstreams)
         log.debug('sending upstreams to all length: %d', len(data))
@@ -440,8 +440,8 @@ class UpstreamCaches:
 
 def get_sync_service_discovery(
     opts: Options,
-    statsd_client: StatsDClient | StatsDClientStub,
-) -> _SyncServiceDiscovery | _SyncStub:
+    statsd_client: Union[StatsDClient, StatsDClientStub],
+) -> Union[_SyncServiceDiscovery, _SyncStub]:
     if not opts.consul_enabled:
         log.info('Consul disabled, skipping')
         return _SyncStub()
@@ -451,10 +451,10 @@ def get_sync_service_discovery(
 
 def get_async_service_discovery(
     opts: Options,
-    statsd_client: StatsDClient | StatsDClientStub,
+    statsd_client: Union[StatsDClient, StatsDClientStub],
     *,
-    event_loop: BaseEventLoop | None = None,
-) -> _AsyncServiceDiscovery | _AsyncStub:
+    event_loop: Optional[BaseEventLoop] = None,
+) -> Union[_AsyncServiceDiscovery, _AsyncStub]:
     if not opts.consul_enabled:
         log.info('Consul disabled, skipping')
         return _AsyncStub()

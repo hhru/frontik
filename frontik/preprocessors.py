@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Union
 
 
 class Preprocessor:
@@ -26,5 +26,5 @@ def get_preprocessors(func: Callable) -> list:
     return getattr(func, '_preprocessors', [])
 
 
-def make_full_name(func: Callable | Any) -> str:
+def make_full_name(func: Union[Callable, Any]) -> str:
     return f'{func.__module__}.{func.__name__}'

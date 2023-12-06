@@ -13,7 +13,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Union
 
 import tornado.autoreload
 from http_client.options import options as http_client_options
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 log = logging.getLogger('server')
 
 
-def main(config_file: str | None = None) -> None:
+def main(config_file: Optional[str] = None) -> None:
     parse_configs(config_files=config_file)
 
     if options.app is None:
@@ -43,7 +43,7 @@ def main(config_file: str | None = None) -> None:
 
     log.info('starting application %s', options.app)
 
-    app_class_name: str | None
+    app_class_name: Optional[str]
     try:
         if options.app_class is not None and re.match(r'^\w+\.', options.app_class):
             app_module_name, app_class_name = options.app_class.rsplit('.', 1)
@@ -98,7 +98,7 @@ def _run_worker(
     app: FrontikApplication,
     count_down_lock: LockBase,
     need_to_register_in_service_discovery: bool,
-    read_pipe_fd: int | None,
+    read_pipe_fd: Optional[int],
 ) -> None:
     gc.enable()
     MDC.init('worker')
@@ -169,7 +169,7 @@ async def _init_app(
     app: FrontikApplication,
     count_down_lock: LockBase,
     need_to_register_in_service_discovery: bool,
-    read_pipe_fd: int | None,
+    read_pipe_fd: Optional[int],
 ) -> None:
     await app.init()
     if not need_to_register_in_service_discovery and read_pipe_fd is not None:
@@ -192,7 +192,7 @@ async def _init_app(
 
 
 async def _deinit_app(app: FrontikApplication, need_to_register_in_service_discovery: bool) -> None:
-    deinit_futures: list[Future | Coroutine | None] = []
+    deinit_futures: list[Optional[Union[Future, Coroutine]]] = []
 
     if need_to_register_in_service_discovery:
         deregistration = app.service_discovery_client.deregister_service_and_close()

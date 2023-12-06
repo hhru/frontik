@@ -2,14 +2,14 @@ import copy
 import logging
 import os
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Optional, Union
 
 from frontik.options import options
 
 
 # This implementation is broken in so many ways
 class LimitedDict(dict):
-    def __init__(self, max_len: int | None = None, step: int | None = None, deepcopy: bool = False) -> None:
+    def __init__(self, max_len: Optional[int] = None, step: Optional[int] = None, deepcopy: bool = False) -> None:
         dict.__init__(self)
         self._order: list = []
         self.max_len = max_len
@@ -49,8 +49,8 @@ class FileCache:
         cache_name: str,
         root_dir: str,
         load_fn: Callable,
-        max_len: int | None = None,
-        step: int | None = None,
+        max_len: Optional[int] = None,
+        step: Optional[int] = None,
         deepcopy: bool = False,
     ) -> None:
         self.cache_name = cache_name
@@ -101,12 +101,12 @@ class InvalidOptionCache:
 def make_file_cache(
     cache_name: str,
     option_name: str,
-    root_dir: str | None,
+    root_dir: Optional[str],
     fun: Callable,
-    max_len: int | None = None,
-    step: int | None = None,
+    max_len: Optional[int] = None,
+    step: Optional[int] = None,
     deepcopy: bool = False,
-) -> FileCache | InvalidOptionCache:
+) -> Union[FileCache, InvalidOptionCache]:
     if root_dir:
         # disable cache in development environment
         max_len = 0 if options.debug else max_len

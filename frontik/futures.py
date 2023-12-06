@@ -4,7 +4,7 @@ import asyncio
 import logging
 import time
 from functools import partial, wraps
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
@@ -31,9 +31,9 @@ class AsyncGroup:
     would not be automatically called.
     """
 
-    def __init__(self, finish_cb: Callable, name: str | None = None) -> None:
+    def __init__(self, finish_cb: Callable, name: Optional[str] = None) -> None:
         self._counter = 0
-        self._finish_cb: Callable | None = finish_cb
+        self._finish_cb: Optional[Callable] = finish_cb
         self._finished = False
         self._name = name
         self._future: Future = Future()
@@ -85,7 +85,7 @@ class AsyncGroup:
     def _dec(self) -> None:
         self._counter -= 1
 
-    def add(self, intermediate_cb: Callable, exception_handler: Callable | None = None) -> Callable:
+    def add(self, intermediate_cb: Callable, exception_handler: Optional[Callable] = None) -> Callable:
         self._inc()
 
         @wraps(intermediate_cb)
@@ -139,8 +139,8 @@ class AsyncGroup:
 
 def future_fold(
     future: Future,
-    result_mapper: Callable | None = None,
-    exception_mapper: Callable | None = None,
+    result_mapper: Optional[Callable] = None,
+    exception_mapper: Optional[Callable] = None,
 ) -> Future:
     """
     Creates a new future with result or exception processed by result_mapper and exception_mapper.
@@ -151,7 +151,7 @@ def future_fold(
 
     res_future: Future = Future()
 
-    def _process(func: Callable | None, value: Any) -> None:
+    def _process(func: Optional[Callable], value: Any) -> None:
         try:
             processed = func(value) if func is not None else value
         except Exception as e:

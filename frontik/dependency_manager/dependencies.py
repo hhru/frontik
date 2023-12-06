@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from graphlib import TopologicalSorter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from frontik.preprocessors import make_full_name
 
@@ -30,7 +30,7 @@ class Dependency:
         self.args: list = []
         self.result = None
         self.finished = False
-        self.task: asyncio.Task | None = None
+        self.task: Optional[asyncio.Task] = None
         self.waited = True
 
     async def run(self) -> None:
@@ -74,7 +74,7 @@ class DependencyGraph:
         self.registered_deps: set[Dependency] = set()
         self.dependency_links: dict[Dependency, set[Dependency]] = {root_dep: set()}
         self.handler_cls: type = handler_cls
-        self.topological_sorter: TopologicalSorter[Dependency] | None = None
+        self.topological_sorter: Optional[TopologicalSorter[Dependency]] = None
         self.special_deps: set[Dependency] = set()
 
     def build_topological_sorter(self) -> None:

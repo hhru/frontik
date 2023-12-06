@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import sys
 from dataclasses import asdict, fields
-from typing import TYPE_CHECKING, get_args
+from typing import TYPE_CHECKING, Optional, get_args
 
 import tornado.autoreload
 from http_client.options import options as http_client_options
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 log = logging.getLogger('config_parser')
 
 
-def parse_configs(config_files: str | None) -> None:
+def parse_configs(config_files: Optional[str]) -> None:
     """Reads command line options / config file and bootstraps logging."""
     allowed_options = {**asdict(options), **asdict(http_client_options)}.keys()
     parse_command_line(options, allowed_options)
@@ -35,7 +35,7 @@ def parse_configs(config_files: str | None) -> None:
 
     configs_to_read_filter = filter(
         None,
-        [configs_to_read] if not isinstance(configs_to_read, list | tuple) else configs_to_read,
+        [configs_to_read] if not isinstance(configs_to_read, (list, tuple)) else configs_to_read,
     )
 
     for config in configs_to_read_filter:

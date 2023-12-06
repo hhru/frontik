@@ -5,7 +5,7 @@ import socket
 import threading
 import time
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Union
 
 from frontik.integrations import Integration, integrations_logger
 
@@ -22,7 +22,7 @@ class StatsdIntegration(Integration):
     def __init__(self):
         self.statsd_client = None
 
-    def initialize_app(self, app: FrontikApplication) -> Future | None:
+    def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
         self.statsd_client = app.statsd_client
         return None
 
@@ -41,8 +41,8 @@ def _convert_tags(tags: dict[str, Any]) -> str:
     return '.' + '.'.join(_convert_tag(name, value) for name, value in tags.items() if value is not None)
 
 
-def _encode_str(some: str | bytes) -> bytes:
-    return some if isinstance(some, bytes | bytearray) else some.encode('utf-8')
+def _encode_str(some: Union[str, bytes]) -> bytes:
+    return some if isinstance(some, (bytes, bytearray)) else some.encode('utf-8')
 
 
 class Counters:
@@ -92,7 +92,7 @@ class StatsDClient:
         host: str,
         port: int,
         default_periodic_send_interval_sec: int,
-        app: str | None = None,
+        app: Optional[str] = None,
         max_udp_size: int = 508,
         reconnect_timeout: int = 2,
     ) -> None:
@@ -104,7 +104,7 @@ class StatsDClient:
         self.reconnect_timeout = reconnect_timeout
         self.buffer: collections.deque = collections.deque()
         self.stacking = False
-        self.socket: socket.socket | None
+        self.socket: Optional[socket.socket]
 
         self._connect()
 
@@ -136,7 +136,7 @@ class StatsDClient:
 
         self._write(message)
 
-    def _write(self, data: bytes | str) -> None:
+    def _write(self, data: Union[bytes, str]) -> None:
         if self.socket is None:
             integrations_logger.debug('statsd: trying to write to closed socket, dropping')
             return
@@ -184,7 +184,7 @@ class StatsDClient:
     def gauge(self, aspect: str, value: float, **kwargs: Any) -> None:
         self._send(f'{aspect}{_convert_tags(dict(kwargs, app=self.app))}:{value}|g')
 
-    def send_periodically(self, callback: Callable, send_interval_sec: float | None = None) -> None:
+    def send_periodically(self, callback: Callable, send_interval_sec: Optional[float] = None) -> None:
         if send_interval_sec is None:
             send_interval_sec = self.default_periodic_send_interval_sec
         threading.Thread(target=partial(self._send_periodically, callback, send_interval_sec), daemon=True).start()
@@ -199,8 +199,8 @@ class StatsDClient:
                 integrations_logger.warning('statsd: writing error: %s', e)
 
 
-def create_statsd_client(options: Options, app: FrontikApplication) -> StatsDClient | StatsDClientStub:
-    statsd_client: StatsDClient | StatsDClientStub
+def create_statsd_client(options: Options, app: FrontikApplication) -> Union[StatsDClient, StatsDClientStub]:
+    statsd_client: Union[StatsDClient, StatsDClientStub]
     if options.statsd_host is None or options.statsd_port is None:
         statsd_client = StatsDClientStub()
         integrations_logger.info('statsd integration is disabled: statsd_host / statsd_port options are not configured')

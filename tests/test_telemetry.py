@@ -1,6 +1,6 @@
 import unittest
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Optional
 
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
@@ -106,7 +106,7 @@ def make_otel_provider() -> TracerProvider:
 SPAN_STORAGE: list[ReadableSpan] = []
 
 
-def find_span(attr: str, value: Any) -> ReadableSpan | None:
+def find_span(attr: str, value: Any) -> Optional[ReadableSpan]:
     return next(filter(lambda item: item.attributes.get(attr, None) == value, SPAN_STORAGE), None)  # type: ignore
 
 

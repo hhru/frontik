@@ -9,7 +9,7 @@ import signal
 import sys
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from frontik.options import options
 
@@ -150,7 +150,7 @@ def _set_pipe_size(fd: int, i: int) -> None:
         log.warning('failed to set pipe size for %d', i)
 
 
-def errno_from_exception(e: BaseException) -> int | None:
+def errno_from_exception(e: BaseException) -> Optional[int]:
     if hasattr(e, "errno"):
         return e.errno  # type: ignore
     elif e.args:
