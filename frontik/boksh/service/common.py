@@ -52,7 +52,7 @@ class Service(Generic[T], ABC):
         ...
 
     @abstractmethod
-    def add_message_listener(self, service_out_message_listener: Callable[[Any], ...]):
+    def add_message_listener(self, message_listener: Callable[[Any], ...]) -> Self:
         ...
 
     @abstractmethod
@@ -60,7 +60,7 @@ class Service(Generic[T], ABC):
         ...
 
     @abstractmethod
-    def _add_message_handler(self, service_in_message_handler: Callable[[Any], ...]):
+    def _add_message_handler(self, message_hadler: Callable[[Any], ...]):
         ...
 
     @abstractmethod
@@ -130,3 +130,8 @@ def start_all_children(service: Service):
 def stop_all_children(service: Service):
     for child in service.children:
         child.stop()
+
+
+def proxy_message_to_all_children(message: Any, service: Service):
+    for child in service.children:
+        child.send_message(message)

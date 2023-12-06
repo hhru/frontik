@@ -6,12 +6,13 @@ import queue
 import signal
 import threading
 from abc import abstractmethod
+from multiprocessing.synchronize import Event
 from typing import Callable, Self, Type, Any, Protocol
 
 import multiprocess as mp
 
-from frontik.boksh.service.common import Service, ServiceState, start_all_children, stop_all_children
 from frontik.boksh.service.aio import AsyncioService
+from frontik.boksh.service.common import Service, ServiceState, start_all_children, stop_all_children
 from frontik.boksh.service.timeout import timeout_seconds, ServiceTimeout
 
 logger = logging.Logger(__file__)
@@ -29,52 +30,55 @@ class ThreadService(Service[concurrent.futures.Future]):
         self._in_current_thread: bool = False
         self._thread: threading.Thread | None = None
 
-        self.in_queue: queue.Queue = queue.Queue()
-        self.out_queue: queue.Queue = queue.Queue()
-
+        # in-out messaging
+        self._in_queue: queue.Queue = queue.Queue()
+        self._out_queue: queue.Queue = queue.Queue()
         self._message_handlers_thread: threading.Thread | None = None
         self._message_listeners_thread: threading.Thread | None = None
+        self._queues_joined: threading.Event | None = None
 
     def get_state(self) -> ServiceState:
         return self._state
 
-    def _state_getter(self, event: concurrent.futures.Future) -> bool:
-        return event is not None and event.done()
-
-    def _state_setter(self) -> concurrent.futures.Future:
-        return concurrent.futures.Future()
-
-    def in_current_thread(self, run_in_current: bool = True, /):
+    def in_current_thread(self, run_in_current: bool = True, /) -> Self:
         self._in_current_thread = run_in_current
+        return self
 
     def send_message(self, message: Any):
-        self.in_queue.put(message)
+        if not self._state == ServiceState.STOPPED:
+            self._in_queue.put(message)
 
     def _send_message_out(self, message: Any):
-        self.out_queue.put(message)
+        self._out_queue.put(message)
 
-    def _add_message_handler(self, service_in_message_handler: Callable[[Any], ...]):
-        self.in_message_handlers.append(service_in_message_handler)
-        # self.in_message_handlers.append(service_in_message_handler)
-        # if self._message_handlers_thread is None:
-        #     self._message_handlers_thread = message_processing_thread(
-        #         self.is_interrupted, self.in_queue, self.in_message_handlers
-        #     )
-        #     if self.is_running():
-        #         self._message_handlers_thread.start()
+    def _add_message_handler(self, message_hadler: Callable[[Any], ...]):
+        self.in_message_handlers.append(message_hadler)
 
-    def add_message_listener(self, service_out_message_listener: Callable[[Any], ...]):
-        self.out_message_listeners.append(service_out_message_listener)
-        # self.out_message_listeners.append(service_out_message_listener)
-        # if self._message_listeners_thread is None:
-        #     self._message_listeners_thread = message_processing_thread(
-        #         self.is_interrupted, self.out_queue, self.out_message_listeners
-        #     )
-        #     if self.is_running():
-        #         self._message_handlers_thread.start()
+    def add_message_listener(self, message_listener: Callable[[Any], ...]) -> Self:
+        self.out_message_listeners.append(message_listener)
+        return self
 
     def _mark_started(self):
         if not self._started.done():
+            print("mark_started")
+
+            def _start_processing(future: concurrent.futures.Future):
+                if future.exception():
+                    return
+                print("starting listeners")
+                self._queues_joined = threading.Event()
+                self._message_handlers_thread = queue_messages_processing_thread(
+                    self._queues_joined.is_set,
+                    self._in_queue,
+                    self.in_message_handlers,
+                ).start()
+                self._message_listeners_thread = queue_messages_processing_thread(
+                    self._queues_joined.is_set,
+                    self._out_queue,
+                    self.out_message_listeners,
+                ).start()
+
+            self._started.add_done_callback(_start_processing)
             self._started.set_result(None)
 
     def start(self):
@@ -86,15 +90,14 @@ class ThreadService(Service[concurrent.futures.Future]):
         self._interrupted = concurrent.futures.Future()
         self._stopped = concurrent.futures.Future()
 
-        # if self._message_handlers_thread:
-        # self._message_handlers_thread.start()
-        # if self._message_listeners_thread:
-        # self._message_listeners_thread.start()
-
         start_all_children(self)
 
-        self._thread = threading.Thread(target=self.__run_wrapper, daemon=True)
-        self._thread.start()
+        if self._in_current_thread:
+            self.__run_wrapper()
+        else:
+            self._thread = threading.Thread(target=self.__run_wrapper, daemon=True)
+            self._thread.start()
+
         return self
 
     def stop(self) -> Self:
@@ -108,10 +111,20 @@ class ThreadService(Service[concurrent.futures.Future]):
             try:
                 self.run()
             except Exception as ex:
+                if not self._started.done():
+                    self._state = ServiceState.START_FAILED
+                else:
+                    self._state = ServiceState.STOPPED
+
                 for future in (self._started, self._interrupted, self._stopped):
                     if not future.done():
                         self._started.set_exception(ex)
-            self._stopped.set_result(None)
+            finally:
+                if not self._stopped.done():
+                    self._stopped.set_result(None)
+                self._in_queue.join()
+                self._out_queue.join()
+                self._queues_joined.set()
 
     @abstractmethod
     def run(self):
@@ -133,78 +146,56 @@ class ThreadService(Service[concurrent.futures.Future]):
 class ProcessService(Service[mp.Event]):
     def __init__(self, address: Any | None = None):
         super().__init__(address)
+        self._state = multiprocessing.Value('i', ServiceState.NOT_STARTED)
         self._in_current_process: bool = False
         self._process: mp.Process | None = None
 
-        self.in_queue: multiprocessing.Queue = multiprocessing.Queue()
-        self.out_queue: multiprocessing.Queue = multiprocessing.Queue()
-
-        self._has_listeners = multiprocessing.Event()
-        self._has_handlers = multiprocessing.Event()
+        # in-out messaging
+        self._in_queue: queue.Queue = queue.Queue()
+        self._out_queue: queue.Queue = queue.Queue()
         self._message_handlers_thread: threading.Thread | None = None
         self._message_listeners_thread: threading.Thread | None = None
-
-    def _state_getter(self, event: multiprocessing.Event) -> bool:
-        return event is not None and event.is_set()
-
-    def _state_setter(self) -> multiprocessing.Event:
-        return multiprocessing.Event()
+        self._queues_joined: threading.Event | None = None
 
     def in_current_process(self, run_in_current: bool = True, /) -> Self:
         self._in_current_process = run_in_current
         return self
 
+    def get_state(self) -> ServiceState:
+        return self._state.value
+
     def send_message(self, message: Any):
-        if self._has_handlers.is_set():
-            self.in_queue.put(message)
+        self._in_queue.put(message)
 
-    def _send_message_out(self, message: Any):
-        if self._has_listeners.is_set():
-            self.out_queue.put(message)
-        else:
-            print("sasas")
-
-    def _add_message_handler(self, service_in_message_handler: Callable[[Any], ...]):
-        need_to_start_listener = not self._has_handlers.is_set()
-        self.in_message_handlers.append(service_in_message_handler)
-        if need_to_start_listener and not self._message_handlers_thread:
-            self._has_handlers.set()
-            self._message_handlers_thread = message_processing_thread(
-                self.is_interrupted, self.in_queue, self.in_message_handlers
-            )
-            if self.is_running():
-                self._message_handlers_thread.start()
-
-    def add_message_listener(self, service_out_message_listener: Callable[[Any], ...]) -> Self:
-        need_to_start_listener = not self._has_listeners.is_set()
-        self.out_message_listeners.append(service_out_message_listener)
-        if need_to_start_listener and not self._message_listeners_thread:
-            self._has_listeners.set()
-            self._message_listeners_thread = message_processing_thread(
-                self.is_interrupted, self.out_queue, self.out_message_listeners
-            )
-            if self.is_running():
-                self._message_listeners_thread.start()
+    def add_message_listener(self, message_listener: Callable[[Any], ...]) -> Self:
+        self.out_message_listeners.append(message_listener)
         return self
 
+    def _send_message_out(self, message: Any):
+        self._out_queue.put(message)
+
+    def _add_message_handler(self, message_hadler: Callable[[Any], ...]):
+        self.in_message_handlers.append(message_hadler)
+
     def start(self) -> Self:
-        if self._started:
-            return
-        self.set_start_state()
-
-        if self._message_listeners_thread is not None:
-            self._message_listeners_thread.start()
-
-        if self._interrupted.is_set():
-            self._started.set()
-            self._stopped.set()
+        if self.get_state() != ServiceState.NOT_STARTED:
             return self
+        self._state = ServiceState.STARTING
+
+        self._started = multiprocessing.Event()
+        self._interrupted = multiprocessing.Event()
+        self._stopped = multiprocessing.Event()
+
+        # if self._interrupted.is_set():
+        #     self._started.set()
+        #     self._stopped.set()
+        #     return self
 
         if self._in_current_process:
-            self._process = mp.current_process()
-            self._run_wrapper()
+            self._process = multiprocessing.current_process()
+            self.__run_wrapper()
         else:
-            self._process = mp.Process(target=self._run_wrapper)
+            self._process = mp.Process(target=self.__run_wrapper)
             self._process.start()
         return self
 
@@ -224,10 +215,9 @@ class ProcessService(Service[mp.Event]):
         print(f"mark service {self} as started")
         self._started.set()
 
-    def _run_wrapper(self):
+    def __run_wrapper(self):
         with self.context():
-            if self._message_handlers_thread is not None:
-                self._message_handlers_thread.start()
+            # self._message_handlers_thread.start()
 
             def sigterm_handler(signum, frame):
                 logger.info(f"got stop signal for {self}")
@@ -255,55 +245,36 @@ class ProcessService(Service[mp.Event]):
 
         return _AnonProcessService()
 
-    @staticmethod
-    def wait_for(event: multiprocessing.Event, timeout: ServiceTimeout = None):
-        event.wait(timeout_seconds(timeout))
-
     @classmethod
     def wrap_async(cls: Type['ProcessService'], async_service: AsyncioService) -> 'ProcessService':
         def async_wrapper(menv: ManagedEnvSync):
             async def main_coroutine():
                 async_service.start()
-                await async_service.wait_for(async_service.started())
-                await async_service.wait_for(async_service.stopped())
+                await async_service.started()
+                menv.mark_started()
+                await async_service.stopped()
 
             return asyncio.run(main_coroutine())
 
         process_service = cls.wrap(async_wrapper)
-        process_service.add_child(async_service)
-        async_service.add_on_start_callback(
-            lambda s: async_service.started().add_done_callback(lambda f: process_service._mark_started())
-        )
+        # process_service.add_child(async_service)
         return process_service
 
-    # @classmethod
-    # def combine(cls, *services):
-    #     def run():
-    #         _self = cls.current()
-    #         for service in services:
-    #             _self.add_child(service)
-    #
-    #         for service in services:
-    #             service.start()
-    #
-    #         for service in services:
-    #             await service.started()
-    #
-    #         for service in services:
-    #             await service.interrupted()
-    #
-    #     return cls.wrap(run)
 
-
-def message_processing_thread(interrupted: Callable[[], bool], queue: queue.Queue, processors: list[Callable]):
+def queue_messages_processing_thread(
+    is_interrupted: Callable[[], bool],
+    queue: queue.Queue,
+    processors: list[Callable],
+):
     def handle_messages():
-        while not interrupted():
+        while not is_interrupted():
             message = queue.get()
             for processor in processors:
                 try:
                     processor(message)
                 except Exception as ex:
                     logger.exception("exception on message processing")
+            queue.task_done()
 
     return threading.Thread(target=handle_messages, daemon=True)
 
