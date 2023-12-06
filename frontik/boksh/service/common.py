@@ -43,10 +43,6 @@ class Service(Generic[T], ABC):
         self.out_message_listeners: list[Callable[[Any], ...]] = []
         self.in_message_handlers: list[Callable[[Any], ...]] = []
 
-    # @abstractmethod
-    # def get_state(self) -> ServiceState:
-    #     ...
-
     @abstractmethod
     def send_message(self, message: Any):
         ...
@@ -55,12 +51,12 @@ class Service(Generic[T], ABC):
     def send_message_out(self, message: Any):
         ...
 
-    def add_message_handler(self, message_handler: Callable[[Any], ...]) -> Self:
-        self.in_message_handlers.append(message_handler)
+    def add_message_handler(self, in_message_handler: Callable[[Any], ...]) -> Self:
+        self.in_message_handlers.append(in_message_handler)
         return self
 
-    def add_message_listener(self, message_listener: Callable[[Any], ...]) -> Self:
-        self.out_message_listeners.append(message_listener)
+    def add_message_listener(self, out_message_listener: Callable[[Any], ...]) -> Self:
+        self.out_message_listeners.append(out_message_listener)
         return self
 
     @abstractmethod
@@ -68,25 +64,23 @@ class Service(Generic[T], ABC):
         ...
 
     @abstractmethod
-    def _mark_started(self):
-        ...
-
-    @abstractmethod
     def stop(self) -> Self:
         ...
 
+    @abstractmethod
+    def mark_started(self):
+        ...
+
     def is_running(self) -> bool:
-        return self.get_state() not in (ServiceState.NOT_STARTED, ServiceState.STOPPED)
+        return self._started is not None
 
-    def is_started(self) -> bool:
-        current_running = self.get_state() in (ServiceState.STARTED, ServiceState.INTERRUPTED)
-        return current_running and all(child.is_started() for child in self.children)
-
+    @abstractmethod
     def is_interrupted(self) -> bool:
-        return self.get_state() == ServiceState.INTERRUPTED
+        ...
 
+    @abstractmethod
     def is_stopped(self) -> bool:
-        return all(child.is_stopped() for child in self.children) and self.get_state() == ServiceState.STOPPED
+        ...
 
     def started(self) -> T:
         return self._started

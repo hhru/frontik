@@ -17,7 +17,7 @@ def test_huemoe():
 
     time.sleep(5)
     # print(main_service.stopped())
-    main_service.wait_for(main_service.stopped())
+    # main_service.wait_for(main_service.stopped())
     # while not queue.empty():
 
 
@@ -133,7 +133,6 @@ def test_thread_service_messaging():
     main_service.wait_for(main_service.stopped())
 
 
-
 def test_process_service_wrap_asyncio():
     def make_listener(msg):
         async def listener(menv: AsyncManagedEnv):
@@ -142,6 +141,7 @@ def test_process_service_wrap_asyncio():
                 print(msg)
                 print(f"{asyncio.current_task()} {multiprocessing.current_process()}")
                 await asyncio.sleep(1)
+
         return listener
 
     main_service1 = ProcessService.wrap_async(AsyncService.wrap(make_listener("1"))).start()

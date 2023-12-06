@@ -1,14 +1,12 @@
 import asyncio
 import inspect
 import logging
-import multiprocessing
 from abc import abstractmethod
 from typing import Callable, Self, Type, Coroutine, Protocol, Any
 
 from frontik.boksh.service.common import (
     Service,
     start_all_children,
-    ServiceState,
     stop_all_children,
     proxy_message_to_all_children,
 )
@@ -20,7 +18,6 @@ logger = logging.Logger(__file__)
 class AsyncService(Service[asyncio.Future]):
     def __init__(self, address: str | None = None):
         super().__init__(address)
-        self._state = ServiceState.NOT_STARTED
         self._main_task: asyncio.Task | None = None
 
         # in-out messaging
@@ -29,34 +26,27 @@ class AsyncService(Service[asyncio.Future]):
         self._in_queue: asyncio.Queue = asyncio.Queue()
         self._out_queue: asyncio.Queue = asyncio.Queue()
 
-    def get_state(self) -> ServiceState:
-        return self._state
-
-    def add_on_start_callback(self, callback: Callable[['AsyncService'], ...]) -> Self:
-        self.on_start_callbacks.append(callback)
-        return self
-
     def send_message(self, message: Any):
-        self._main_task.get_loop().call_soon_threadsafe(lambda: self._in_queue.put_nowait(message))
+        if not self._interrupted.done():
+            self._main_task.get_loop().call_soon_threadsafe(lambda: self._in_queue.put_nowait(message))
 
     def send_message_out(self, message: Any):
         self._main_task.get_loop().call_soon_threadsafe(lambda: self._out_queue.put_nowait(message))
 
     def start(self):
-        logger.info(f"starting service {self}")
-        if self.get_state() != ServiceState.NOT_STARTED:
+        if self.is_running():
             return
-        self._state = ServiceState.STARTING
-
+        logger.info(f"starting service {self}")
         self._started = asyncio.Future()
         self._interrupted = asyncio.Future()
         self._stopped = asyncio.Future()
-
         start_all_children(self)
+        self._main_task = asyncio.create_task(self.__run_wrapper())
+        return self
 
-        def _start_queues_processing_tasks(future: asyncio.Future):
-            if future.exception():
-                return
+    def mark_started(self):
+        if not self._started.done():
+            self._started.set_result(None)
             self._in_queue_processing_task = queue_messages_processing_task(
                 self._in_queue,
                 self.in_message_handlers,
@@ -66,19 +56,8 @@ class AsyncService(Service[asyncio.Future]):
                 self.out_message_listeners,
             )
 
-        self._started.add_done_callback(_start_queues_processing_tasks)
-
-        self._main_task = asyncio.create_task(self.__run_wrapper())
-        return self
-
-    def _mark_started(self):
-        if not self._started.done():
-            self._started.set_result(None)
-            self._state = ServiceState.STARTED
-
     def stop(self) -> Self:
         logger.info(f"trying to stop service {self}")
-        self._state = ServiceState.INTERRUPTED
         stop_all_children(self)
 
         def _interrupt():
@@ -88,17 +67,17 @@ class AsyncService(Service[asyncio.Future]):
         self._main_task.get_loop().call_soon_threadsafe(_interrupt)
         return self
 
+    def is_interrupted(self) -> bool:
+        return self._interrupted.done()
+
+    def is_stopped(self) -> bool:
+        return all(child.is_stopped() for child in self.children) and self._stopped.done()
+
     async def __run_wrapper(self):
         with self.context():
             try:
-                print(multiprocessing.current_process())
                 await self.run()
             except Exception as ex:
-                if not self._started.done():
-                    self._state = ServiceState.START_FAILED
-                else:
-                    self._state = ServiceState.STOPPED
-
                 for future in (self._started, self._interrupted, self._stopped):
                     if not future.done():
                         self._started.set_exception(ex)
@@ -137,8 +116,7 @@ class AsyncService(Service[asyncio.Future]):
             async def run(self):
                 for service in services:
                     await service.started()
-                self._mark_started()
-                await asyncio.sleep(3)
+                self.mark_started()
 
                 await self.interrupted()
                 for service in services:
@@ -175,9 +153,6 @@ class AsyncManagedEnv(Protocol):
     def interrupted(self) -> asyncio.Future:
         ...
 
-    def started(self) -> asyncio.Future:
-        ...
-
     def mark_started(self):
         ...
 
@@ -198,11 +173,8 @@ class AsyncServiceManagedEnv:
     def interrupted(self) -> asyncio.Future:
         return self.__service.interrupted()
 
-    def started(self) -> asyncio.Future:
-        return self.__service.started()
-
     def mark_started(self):
-        self.__service._mark_started()
+        self.__service.mark_started()
 
     def add_message_handler(self, handler: Callable):
         self.__service.add_message_handler(handler)

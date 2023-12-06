@@ -2,6 +2,7 @@ import asyncio
 import concurrent.futures
 import logging
 import multiprocessing
+import multiprocessing.queues
 import queue
 import signal
 import threading
@@ -18,7 +19,7 @@ from frontik.boksh.service.timeout import timeout_seconds, ServiceTimeout
 logger = logging.Logger(__file__)
 
 SyncEvent = threading.Event | multiprocessing.synchronize.Event
-SyncQueue = queue.Queue | multiprocessing.JoinableQueue
+SyncQueue = queue.Queue | multiprocessing.queues.JoinableQueue
 
 
 class SyncService(Service[concurrent.futures.Future]):
@@ -42,14 +43,14 @@ class SyncService(Service[concurrent.futures.Future]):
         self._message_listeners_thread: threading.Thread | multiprocessing.Process | None = None
         self._queues_joined: threading.Event | multiprocessing.Event | None = None
 
-    def __create_income_messages_processing_thread(self):
+    def _create_income_messages_processing_thread(self):
         return queue_messages_processing_thread(
             self._queues_joined.is_set,
             self._in_queue,
             self.in_message_handlers,
         )
 
-    def __create_outcome_messages_processing_thread(self):
+    def _create_outcome_messages_processing_thread(self):
         return queue_messages_processing_thread(
             self._queues_joined.is_set,
             self._out_queue,
@@ -94,13 +95,18 @@ class ThreadService(SyncService):
         self._in_current_env = run_in_current
         return self
 
-    def _mark_started(self):
+    def is_interrupted(self) -> bool:
+        return self._interrupted_event.is_set()
+
+    def is_stopped(self) -> bool:
+        return all(child.is_stopped() for child in self.children) and self._stopped.done()
+
+    def mark_started(self):
         if not self._started.done():
             self._started.set_result(None)
-
             self._queues_joined = threading.Event()
-            self._message_handlers_thread = self.__create_income_messages_processing_thread().start()
-            self._message_listeners_thread = self.__create_outcome_messages_processing_thread().start()
+            self._message_handlers_thread = self._create_income_messages_processing_thread().start()
+            self._message_listeners_thread = self._create_outcome_messages_processing_thread().start()
 
     def start(self):
         if self._started is not None:
@@ -217,7 +223,7 @@ class ProcessService(Service[mp.Event]):
             child.stop()
         return self
 
-    def _mark_started(self):
+    def mark_started(self):
         print(f"mark service {self} as started")
         self._started.set()
 
@@ -289,9 +295,6 @@ class SyncManagedEnv(Protocol):
     def is_interrupted(self) -> bool:
         ...
 
-    def is_started(self) -> bool:
-        ...
-
     def mark_started(self):
         ...
 
@@ -312,11 +315,8 @@ class SyncServiceManagedEnv:
     def is_interrupted(self) -> bool:
         return self.__service.is_interrupted()
 
-    def is_started(self) -> bool:
-        return self.__service.is_started()
-
     def mark_started(self):
-        self.__service._mark_started()
+        self.__service.mark_started()
 
     def add_message_handler(self, handler):
         self.__service.add_message_handler(handler)
