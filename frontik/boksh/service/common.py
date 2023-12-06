@@ -43,25 +43,25 @@ class Service(Generic[T], ABC):
         self.out_message_listeners: list[Callable[[Any], ...]] = []
         self.in_message_handlers: list[Callable[[Any], ...]] = []
 
-    @abstractmethod
-    def get_state(self) -> ServiceState:
-        ...
+    # @abstractmethod
+    # def get_state(self) -> ServiceState:
+    #     ...
 
     @abstractmethod
     def send_message(self, message: Any):
         ...
 
     @abstractmethod
+    def send_message_out(self, message: Any):
+        ...
+
+    def add_message_handler(self, message_handler: Callable[[Any], ...]) -> Self:
+        self.in_message_handlers.append(message_handler)
+        return self
+
     def add_message_listener(self, message_listener: Callable[[Any], ...]) -> Self:
-        ...
-
-    @abstractmethod
-    def _send_message_out(self, message: Any):
-        ...
-
-    @abstractmethod
-    def _add_message_handler(self, message_hadler: Callable[[Any], ...]):
-        ...
+        self.out_message_listeners.append(message_listener)
+        return self
 
     @abstractmethod
     def start(self) -> Self:

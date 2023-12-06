@@ -12,9 +12,9 @@ from tornado.httpserver import HTTPServer
 
 import frontik.boksh
 from frontik.app import FrontikApplication
-from frontik.boksh.service.aio import AsyncioService, AsyncManagedEnv
+from frontik.boksh.service.aio import AsyncService, AsyncManagedEnv
 from frontik.boksh.service.common import Service
-from frontik.boksh.service.sync import ProcessService, ManagedEnvSync, ThreadService
+from frontik.boksh.service.sync import ProcessService, SyncManagedEnv, ThreadService
 from frontik.loggers import MDC, bootstrap_core_logging
 from frontik.options import options
 from frontik.server import log
@@ -57,7 +57,7 @@ class NewUpstreamInfo(BaseModel):
     upstream: str
 
 
-def notifier(menv: ManagedEnvSync):
+def notifier(menv: SyncManagedEnv):
     menv.mark_started()
     while not menv.is_interrupted():
         menv.send_message_out(NewUpstreamInfo(upstream="test"))
@@ -77,13 +77,13 @@ if __name__ == '__main__':
     services = []
     queue = multiprocessing.JoinableQueue()
 
-    def listeners(main_env: ManagedEnvSync):
+    def listeners(main_env: SyncManagedEnv):
         while not main_env.is_interrupted():
             msg = queue.get()
             # print(f"{id(Service.current())} got message {msg}")
             queue.task_done()
 
-    def producers(main_env: ManagedEnvSync):
+    def producers(main_env: SyncManagedEnv):
         while not main_env.is_interrupted():
             time.sleep(random.randint(3, 10))
             queue.put_nowait(f"from {id(Service.current())}")
@@ -99,7 +99,7 @@ if __name__ == '__main__':
     # init_workers_count_down = multiprocessing.Value('i', options.workers)
     # event = multiprocessing.Event()
     async def main():
-        service = AsyncioService.wrap(make_frontik(lambda: True)).start()
+        service = AsyncService.wrap(make_frontik(lambda: True)).start()
         print(id(service))
         await service.wait_for(service.stopped())
     #

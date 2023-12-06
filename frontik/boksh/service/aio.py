@@ -17,7 +17,7 @@ from frontik.boksh.service.timeout import ServiceTimeout, timeout_seconds
 logger = logging.Logger(__file__)
 
 
-class AsyncioService(Service[asyncio.Future]):
+class AsyncService(Service[asyncio.Future]):
     def __init__(self, address: str | None = None):
         super().__init__(address)
         self._state = ServiceState.NOT_STARTED
@@ -29,29 +29,18 @@ class AsyncioService(Service[asyncio.Future]):
         self._in_queue: asyncio.Queue = asyncio.Queue()
         self._out_queue: asyncio.Queue = asyncio.Queue()
 
-        self.on_start_callbacks: list[Callable[[Self], ...]] = [
-            start_all_children,
-        ]
-
     def get_state(self) -> ServiceState:
         return self._state
 
-    def add_on_start_callback(self, callback: Callable[['AsyncioService'], ...]) -> Self:
+    def add_on_start_callback(self, callback: Callable[['AsyncService'], ...]) -> Self:
         self.on_start_callbacks.append(callback)
         return self
 
     def send_message(self, message: Any):
         self._main_task.get_loop().call_soon_threadsafe(lambda: self._in_queue.put_nowait(message))
 
-    def _send_message_out(self, message: Any):
+    def send_message_out(self, message: Any):
         self._main_task.get_loop().call_soon_threadsafe(lambda: self._out_queue.put_nowait(message))
-
-    def _add_message_handler(self, message_hadler: Callable[[Any], ...]):
-        self.in_message_handlers.append(message_hadler)
-
-    def add_message_listener(self, message_listener: Callable[[Any], ...]) -> Self:
-        self.out_message_listeners.append(message_listener)
-        return self
 
     def start(self):
         logger.info(f"starting service {self}")
@@ -63,8 +52,7 @@ class AsyncioService(Service[asyncio.Future]):
         self._interrupted = asyncio.Future()
         self._stopped = asyncio.Future()
 
-        for cb in self.on_start_callbacks:
-            cb(self)
+        start_all_children(self)
 
         def _start_queues_processing_tasks(future: asyncio.Future):
             if future.exception():
@@ -129,7 +117,7 @@ class AsyncioService(Service[asyncio.Future]):
         ...
 
     @classmethod
-    def wrap(cls: Type['AsyncioService'], run_function: Callable[['AsyncManagedEnv'], Coroutine]) -> 'AsyncioService':
+    def wrap(cls: Type['AsyncService'], run_function: Callable[['AsyncManagedEnv'], Coroutine]) -> 'AsyncService':
         class _AnonAsyncioService(cls):
             async def run(self):
                 await run_function(AsyncServiceManagedEnv(self))
@@ -137,8 +125,8 @@ class AsyncioService(Service[asyncio.Future]):
         return _AnonAsyncioService()
 
     @classmethod
-    def combine_async(cls, *services: 'AsyncioService') -> 'AsyncioService':
-        class _AnonAsyncioService(AsyncioService):
+    def combine_async(cls, *services: 'AsyncService') -> 'AsyncService':
+        class _AnonAsyncService(AsyncService):
             def __init__(self):
                 super().__init__()
                 for service in services:
@@ -156,7 +144,7 @@ class AsyncioService(Service[asyncio.Future]):
                 for service in services:
                     await service.stopped()
 
-        return _AnonAsyncioService()
+        return _AnonAsyncService()
 
     @staticmethod
     async def wait_for(future: asyncio.Future, timeout: ServiceTimeout = None):
@@ -204,7 +192,7 @@ class AsyncManagedEnv(Protocol):
 
 
 class AsyncServiceManagedEnv:
-    def __init__(self, service: AsyncioService) -> None:
+    def __init__(self, service: AsyncService) -> None:
         self.__service = service
 
     def interrupted(self) -> asyncio.Future:
@@ -217,10 +205,10 @@ class AsyncServiceManagedEnv:
         self.__service._mark_started()
 
     def add_message_handler(self, handler: Callable):
-        self.__service._add_message_handler(handler)
+        self.__service.add_message_handler(handler)
 
     def send_message_out(self, message):
-        self.__service._send_message_out(message)
+        self.__service.send_message_out(message)
 
     def add_child(self, service: Service):
         self.__service.add_child(service)
