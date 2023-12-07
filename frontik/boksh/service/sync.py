@@ -13,7 +13,7 @@ from typing import Callable, Self, Type, Any, Protocol
 import multiprocess as mp
 
 from frontik.boksh.service.aio import AsyncService
-from frontik.boksh.service.common import Service, ServiceState, start_all_children, stop_all_children
+from frontik.boksh.service.common import Service, start_all_children, stop_all_children
 from frontik.boksh.service.timeout import timeout_seconds, ServiceTimeout
 
 logger = logging.Logger(__file__)
@@ -43,19 +43,33 @@ class SyncService(Service[concurrent.futures.Future]):
         self._message_listeners_thread: threading.Thread | multiprocessing.Process | None = None
         self._queues_joined: threading.Event | multiprocessing.Event | None = None
 
+    def in_current_env(self, run_in_current: bool = True, /) -> Self:
+        self._in_current_env = run_in_current
+        return self
+
     def _create_income_messages_processing_thread(self):
-        return queue_messages_processing_thread(
-            self._queues_joined.is_set,
-            self._in_queue,
-            self.in_message_handlers,
-        )
+        return self._queue_messages_processing_thread(self._in_queue, self.in_message_handlers)
 
     def _create_outcome_messages_processing_thread(self):
-        return queue_messages_processing_thread(
-            self._queues_joined.is_set,
-            self._out_queue,
-            self.out_message_listeners,
-        )
+        return self._queue_messages_processing_thread(self._out_queue, self.out_message_listeners)
+
+    def _queue_messages_processing_thread(
+        self,
+        queue: queue.Queue,
+        processors: list[Callable],
+    ):
+        def handle_messages():
+            self._started_event.wait()
+            while not self._queues_joined.is_set():
+                message = queue.get()
+                for processor in processors:
+                    try:
+                        processor(message)
+                    except Exception as ex:
+                        logger.exception("exception on message processing")
+                queue.task_done()
+
+        return threading.Thread(target=handle_messages, daemon=True)
 
     def send_message(self, message: Any):
         if not self._interrupted_event.is_set():
@@ -78,22 +92,36 @@ class SyncService(Service[concurrent.futures.Future]):
             if not skip_error:
                 raise ex
 
+    @classmethod
+    def wrap(cls: Type['ProcessService'], run_function: Callable[['SyncManagedEnv'], ...]) -> 'ProcessService':
+        class _AnonSyncService(cls):
+            def run(self):
+                run_function(SyncServiceManagedEnv(self))
+
+        return _AnonSyncService()
+
+    @classmethod
+    def wrap_async(cls: Type['ProcessService'], async_service: AsyncService) -> 'ProcessService':
+        class _AnonSyncService(cls):
+            def run(self):
+                async def main_coroutine():
+                    async_service.add_message_listener(lambda m: self.send_message_out(m))
+                    self.add_message_handler(lambda m: async_service.send_message(m))
+                    async_service.start()
+                    self.add_child(async_service)
+                    await async_service.started()
+                    self.mark_started()
+                    await async_service.stopped()
+
+                return asyncio.run(main_coroutine())
+
+        return _AnonSyncService()
+
 
 class ThreadService(SyncService):
     def __init__(self, address: str | None = None):
         super().__init__(event_factory=threading.Event, queue_factory=queue.Queue, address=address)
         self._thread: threading.Thread | None = None
-
-        # in-out messaging
-        self._in_queue: queue.Queue = queue.Queue()
-        self._out_queue: queue.Queue = queue.Queue()
-        self._message_handlers_thread: threading.Thread | None = None
-        self._message_listeners_thread: threading.Thread | None = None
-        self._queues_joined: threading.Event | None = None
-
-    def in_current_thread(self, run_in_current: bool = True, /) -> Self:
-        self._in_current_env = run_in_current
-        return self
 
     def is_interrupted(self) -> bool:
         return self._interrupted_event.is_set()
@@ -104,19 +132,21 @@ class ThreadService(SyncService):
     def mark_started(self):
         if not self._started.done():
             self._started.set_result(None)
+            self._started_event.set()
             self._queues_joined = threading.Event()
             self._message_handlers_thread = self._create_income_messages_processing_thread().start()
             self._message_listeners_thread = self._create_outcome_messages_processing_thread().start()
 
     def start(self):
         if self._started is not None:
-            return
+            return self
         self._started = concurrent.futures.Future()
         self._interrupted = concurrent.futures.Future()
         self._stopped = concurrent.futures.Future()
         start_all_children(self)
 
         if self._in_current_env:
+            self._thread = threading.current_thread()
             self.__run_wrapper()
         else:
             self._thread = threading.Thread(target=self.__run_wrapper, daemon=True)
@@ -146,90 +176,70 @@ class ThreadService(SyncService):
     def run(self):
         ...
 
-    @classmethod
-    def wrap(cls: Type['ThreadService'], run_function: Callable[['SyncManagedEnv'], ...]) -> 'ThreadService':
-        class _AnonThreadingService(cls):
-            def run(self):
-                run_function(SyncServiceManagedEnv(self))
 
-        return _AnonThreadingService()
-
-
-class ProcessService(Service[mp.Event]):
+class ProcessService(SyncService):
     def __init__(self, address: Any | None = None):
-        super().__init__(address)
-        self._state = multiprocessing.Value('i', ServiceState.NOT_STARTED)
-        self._in_current_process: bool = False
+        super().__init__(
+            event_factory=multiprocessing.Event, queue_factory=multiprocessing.JoinableQueue, address=address
+        )
         self._process: mp.Process | None = None
 
-        # in-out messaging
-        self._in_queue: queue.Queue = queue.Queue()
-        self._out_queue: queue.Queue = queue.Queue()
-        self._message_handlers_thread: threading.Thread | None = None
-        self._message_listeners_thread: threading.Thread | None = None
-        self._queues_joined: threading.Event | None = None
+    def is_interrupted(self) -> bool:
+        return self._interrupted_event.is_set()
 
-    def in_current_process(self, run_in_current: bool = True, /) -> Self:
-        self._in_current_process = run_in_current
-        return self
-
-    def get_state(self) -> ServiceState:
-        return self._state.value
-
-    def send_message(self, message: Any):
-        self._in_queue.put(message)
-
-    def add_message_listener(self, message_listener: Callable[[Any], ...]) -> Self:
-        self.out_message_listeners.append(message_listener)
-        return self
-
-    def send_message_out(self, message: Any):
-        self._out_queue.put(message)
-
-    def add_message_handler(self, message_handler: Callable[[Any], ...]):
-        self.in_message_handlers.append(message_handler)
+    def is_stopped(self) -> bool:
+        return all(child.is_stopped() for child in self.children) and self._stopped_event.is_set()
 
     def start(self) -> Self:
-        if self.get_state() != ServiceState.NOT_STARTED:
+        """Called in parent"""
+        if self._started is not None:
             return self
-        self._state = ServiceState.STARTING
+        self._started = concurrent.futures.Future()
+        self._interrupted = concurrent.futures.Future()
+        self._stopped = concurrent.futures.Future()
+        start_all_children(self)
 
-        self._started = multiprocessing.Event()
-        self._interrupted = multiprocessing.Event()
-        self._stopped = multiprocessing.Event()
-
-        # if self._interrupted.is_set():
-        #     self._started.set()
-        #     self._stopped.set()
-        #     return self
-
-        if self._in_current_process:
+        self._queues_joined = threading.Event()
+        self._message_listeners_thread = self._create_outcome_messages_processing_thread().start()
+        if self._in_current_env:
             self._process = multiprocessing.current_process()
             self.__run_wrapper()
         else:
+
+            def _do_control_checks():
+                self._started_event.wait()
+                self._started.set_result(None)
+
+                self._interrupted_event.wait()
+                self._interrupted.set_result(None)
+
+                self._stopped_event.wait()
+                self._stopped.set_result(None)
+
+            self._control_thread = threading.Thread(target=_do_control_checks)
+            self._control_thread.start()
+
             self._process = mp.Process(target=self.__run_wrapper)
             self._process.start()
         return self
 
     def stop(self) -> Self:
-        self._interrupted.set()
+        self._interrupted_event.set()
         # run in parent
         if mp.current_process() != self._process:
             self._process.terminate()
             return self
 
         # run in child
-        for child in self.children:
-            child.stop()
+        stop_all_children(self)
         return self
 
     def mark_started(self):
-        print(f"mark service {self} as started")
-        self._started.set()
+        self._started_event.set()
 
     def __run_wrapper(self):
         with self.context():
-            # self._message_handlers_thread.start()
+            self._message_handlers_thread = self._create_income_messages_processing_thread().start()
 
             def sigterm_handler(signum, frame):
                 logger.info(f"got stop signal for {self}")
@@ -243,34 +253,19 @@ class ProcessService(Service[mp.Event]):
             except Exception as ex:
                 logger.error(ex)
             finally:
-                self._stopped.set()
+                self._stopped_event.set()
 
     @abstractmethod
     def run(self):
         ...
 
-    @classmethod
-    def wrap(cls: Type['ProcessService'], run_function: Callable[['SyncManagedEnv'], ...]) -> 'ProcessService':
-        class _AnonProcessService(ProcessService):
-            def run(self):
-                run_function(SyncServiceManagedEnv(self))
-
-        return _AnonProcessService()
-
-    @classmethod
-    def wrap_async(cls: Type['ProcessService'], async_service: AsyncService) -> 'ProcessService':
-        def async_wrapper(menv: SyncManagedEnv):
-            async def main_coroutine():
-                async_service.start()
-                await async_service.started()
-                menv.mark_started()
-                await async_service.stopped()
-
-            return asyncio.run(main_coroutine())
-
-        process_service = cls.wrap(async_wrapper)
-        # process_service.add_child(async_service)
-        return process_service
+    # @classmethod
+    # def wrap(cls: Type['ProcessService'], run_function: Callable[['SyncManagedEnv'], ...]) -> 'ProcessService':
+    #     class _AnonProcessService(ProcessService):
+    #         def run(self):
+    #             run_function(SyncServiceManagedEnv(self))
+    #
+    #     return _AnonProcessService()
 
 
 def queue_messages_processing_thread(

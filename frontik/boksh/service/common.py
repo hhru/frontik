@@ -1,33 +1,9 @@
 import contextlib
 import contextvars
 from abc import ABC, abstractmethod
-from enum import auto, IntEnum
 from typing import Generic, ClassVar, Callable, Any, Self, TypeVar
 
 T = TypeVar("T")
-
-
-class ServiceState(IntEnum):
-    NOT_STARTED = auto()
-    STARTING = auto()
-    STARTED = auto()
-    START_FAILED = auto()
-    INTERRUPTED = auto()
-    STOPPED = auto()
-
-
-ServiceStateSymbols = {
-    ServiceState.NOT_STARTED: object(),
-    ServiceState.STARTING: object(),
-    ServiceState.STARTED: object(),
-    ServiceState.START_FAILED: object(),
-    ServiceState.INTERRUPTED: object(),
-    ServiceState.STOPPED: object(),
-}
-
-
-def get_state_symbol(state: ServiceState):
-    return ServiceStateSymbols[state]
 
 
 class Service(Generic[T], ABC):

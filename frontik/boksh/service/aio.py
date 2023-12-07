@@ -26,6 +26,8 @@ class AsyncService(Service[asyncio.Future]):
         self._in_queue: asyncio.Queue = asyncio.Queue()
         self._out_queue: asyncio.Queue = asyncio.Queue()
 
+        self._on_start_callbacks: list[Callable] = []
+
     def send_message(self, message: Any):
         if not self._interrupted.done():
             self._main_task.get_loop().call_soon_threadsafe(lambda: self._in_queue.put_nowait(message))
@@ -35,7 +37,7 @@ class AsyncService(Service[asyncio.Future]):
 
     def start(self):
         if self.is_running():
-            return
+            return self
         logger.info(f"starting service {self}")
         self._started = asyncio.Future()
         self._interrupted = asyncio.Future()
@@ -104,11 +106,12 @@ class AsyncService(Service[asyncio.Future]):
         return _AnonAsyncioService()
 
     @classmethod
-    def combine_async(cls, *services: 'AsyncService') -> 'AsyncService':
+    def combine(cls, *services: 'AsyncService') -> 'AsyncService':
         class _AnonAsyncService(AsyncService):
             def __init__(self):
                 super().__init__()
                 for service in services:
+                    service.add_message_listener(lambda m: self.send_message_out(m))
                     self.add_child(service)
 
                 self.add_message_listener(lambda message: proxy_message_to_all_children(message, self))
