@@ -147,19 +147,19 @@ def run_server(
             loop.call_soon_threadsafe(server_stop)
 
     def server_stop():
-        loop.create_task(_deinit_app(app, need_to_register_in_service_discovery))
+        deinit_task = loop.create_task(_deinit_app(app, need_to_register_in_service_discovery))
         http_server.stop()
 
         if loop.is_running():
             log.info('going down in %s seconds', options.stop_timeout)
 
-            def ioloop_stop():
+            def ioloop_stop(_deinit_task):
                 if loop.is_running():
                     log.info('stopping IOLoop')
                     loop.stop()
                     log.info('stopped')
 
-            loop.call_later(options.stop_timeout, ioloop_stop)
+            deinit_task.add_done_callback(ioloop_stop)
 
     signal.signal(signal.SIGTERM, sigterm_handler)
     signal.signal(signal.SIGINT, sigterm_handler)
@@ -200,12 +200,13 @@ async def _deinit_app(app: FrontikApplication, need_to_register_in_service_disco
 
     deinit_futures.extend([integration.deinitialize_app(app) for integration in app.available_integrations])
 
-    if app.tornado_http_client is not None:
-        deinit_futures.append(app.tornado_http_client.client_session.close())
-
     if deinit_futures:
         try:
             await asyncio.gather(*[future for future in deinit_futures if future])
             log.info('Successfully deinited application')
         except Exception as e:
             log.exception('failed to deinit, deinit returned: %s', e)
+
+    await asyncio.sleep(options.stop_timeout)
+    if app.tornado_http_client is not None:
+        await app.tornado_http_client.client_session.close()
