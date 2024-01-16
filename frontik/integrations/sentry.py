@@ -24,7 +24,6 @@ class SentryIntegration(Integration):
 
         sentry_sdk.init(
             dsn=options.sentry_dsn,
-            release=app.application_version(),
             max_breadcrumbs=options.sentry_max_breadcrumbs,
             default_integrations=False,
             auto_enabling_integrations=False,
