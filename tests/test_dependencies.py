@@ -12,7 +12,7 @@ from frontik.dependency_manager import (
 from frontik.handler import PageHandler
 
 
-class TestPageHandler(PageHandler):
+class BaseTestHandler(PageHandler):
     _priority_dependency_names: list[str] = []
     x = '0'
 
@@ -26,18 +26,18 @@ class TestPageHandler(PageHandler):
 DEP_LOG = []
 
 
-async def get_session(handler: TestPageHandler) -> str:
+async def get_session(handler: BaseTestHandler) -> str:
     DEP_LOG.append('get_session')
     await asyncio.sleep(0.1)
     return 'session' + handler.x
 
 
-def check_session(handler: TestPageHandler, _session: str = dependency(get_session)) -> str:
+def check_session(handler: BaseTestHandler, _session: str = dependency(get_session)) -> str:
     DEP_LOG.append('check_session')
     return 'check' + handler.x
 
 
-async def get_some_data(handler: TestPageHandler) -> str:
+async def get_some_data(handler: BaseTestHandler) -> str:
     DEP_LOG.append('get_some_data')
     await asyncio.sleep(0.1)
     return 'data' + handler.x
@@ -66,16 +66,16 @@ async def exception_dep() -> None:
     raise ArithmeticError(msg)
 
 
-async def finisher_dep(handler: TestPageHandler) -> None:
+async def finisher_dep(handler: BaseTestHandler) -> None:
     DEP_LOG.append('finisher_dep')
     handler.finished = True
 
 
-async def dep_with_subgraph(handler: TestPageHandler) -> None:
+async def dep_with_subgraph(handler: BaseTestHandler) -> None:
     await build_and_run_sub_graph(handler, [finisher_dep])
 
 
-class SimpleHandler(TestPageHandler):
+class SimpleHandler(BaseTestHandler):
     x = '1'
 
     async def get_page(
@@ -96,7 +96,7 @@ class SimpleHandler(TestPageHandler):
         return f'{data1}_{data2}'
 
 
-class PriorityHandler(TestPageHandler):
+class PriorityHandler(BaseTestHandler):
     _priority_dependency_names: list[str] = [
         'tests.test_dependencies.internal_dep',
         'tests.test_dependencies.get_some_data',
@@ -120,7 +120,7 @@ class PriorityHandler(TestPageHandler):
         return f'{group}_{data}'
 
 
-class SubGraphHandler(TestPageHandler):
+class SubGraphHandler(BaseTestHandler):
     dependencies = [dep_factory(1)]
     _priority_dependency_names: list[str] = [
         'tests.test_dependencies.internal_dep',
@@ -136,7 +136,7 @@ class SubGraphHandler(TestPageHandler):
         return f'{data1}_{data2}'
 
 
-class AsyncDependencyHandler(TestPageHandler):
+class AsyncDependencyHandler(BaseTestHandler):
     @async_dependencies([check_session])
     async def get_page(self):
         DEP_LOG.append('get_page')

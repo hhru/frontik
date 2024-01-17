@@ -28,9 +28,9 @@ CUSTOM_JSON_EXTRA = 'custom_json'
 class Mdc:
     def __init__(self) -> None:
         self.pid: int
-        self.role: str
+        self.role: Union[str, None] = None
 
-    def init(self, role: str) -> None:
+    def init(self, role: Union[str, None] = None) -> None:
         self.pid = os.getpid()
         self.role = role
 
@@ -97,11 +97,14 @@ class JSONFormatter(Formatter):
 
     @staticmethod
     def get_mdc() -> dict:
-        mdc = {'thread': MDC.pid, 'role': MDC.role}
+        mdc: dict = {'thread': MDC.pid}
+
+        if MDC.role is not None:
+            mdc['role'] = MDC.role
 
         handler_name = request_context.get_handler_name()
         if handler_name:
-            mdc['controller'] = handler_name
+            mdc['page'] = handler_name
 
         request_id = request_context.get_request_id()
         if request_id:
@@ -251,6 +254,7 @@ def bootstrap_core_logging(log_level: str, use_json: bool, suppressed_loggers: l
     ROOT_LOGGER.setLevel(logging.NOTSET)
 
     bootstrap_logger((ROOT_LOGGER, 'service'), level, use_json_formatter=use_json)
+    bootstrap_logger('server', level, use_json_formatter=use_json)
 
     if use_json:
         bootstrap_logger((JSON_REQUESTS_LOGGER, 'requests'), level, use_json_formatter=True)

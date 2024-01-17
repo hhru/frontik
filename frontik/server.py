@@ -101,7 +101,7 @@ def _run_worker(
     read_pipe_fd: Optional[int],
 ) -> None:
     gc.enable()
-    MDC.init('worker')
+    MDC.init()
 
     try:
         import uvloop
