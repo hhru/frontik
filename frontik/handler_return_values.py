@@ -15,7 +15,7 @@ ReturnedValueHandlers = Collection[ReturnedValueHandler]
 def write_json_response_from_dict(handler: PageHandler, value: Any) -> None:
     if isinstance(value, dict):
         handler.set_header('Content-Type', media_types.APPLICATION_JSON)
-        handler.text = orjson.dumps(value).decode("utf-8")
+        handler.text = orjson.dumps(value).decode('utf-8')
 
 
 def write_json_response_from_pydantic(handler: PageHandler, value: BaseModel) -> None:

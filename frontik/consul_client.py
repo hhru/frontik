@@ -17,10 +17,10 @@ if TYPE_CHECKING:
 
 PY_341 = sys.version_info >= (3, 4, 1)
 
-HTTP_METHOD_GET = "GET"
-HTTP_METHOD_POST = "POST"
-HTTP_METHOD_PUT = "PUT"
-HTTP_METHOD_DELETE = "DELETE"
+HTTP_METHOD_GET = 'GET'
+HTTP_METHOD_POST = 'POST'
+HTTP_METHOD_PUT = 'PUT'
+HTTP_METHOD_DELETE = 'DELETE'
 
 
 class ClientEventCallback:
@@ -131,9 +131,9 @@ class _AsyncConsulHttpClient(base.HTTPClient):
     if PY_341:  # pragma: no branch
 
         def __del__(self):
-            warnings.warn("Unclosed connector in aio.Consul.HTTPClient", ResourceWarning)
+            warnings.warn('Unclosed connector in aio.Consul.HTTPClient', ResourceWarning)
             if self._session and not self._session.closed:
-                warnings.warn("Unclosed connector in aio.Consul.HTTPClient", ResourceWarning)
+                warnings.warn('Unclosed connector in aio.Consul.HTTPClient', ResourceWarning)
                 asyncio.ensure_future(self.close())
 
     async def get(self, callback, path, params=None, headers=None, total_timeout=None):

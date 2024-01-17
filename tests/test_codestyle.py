@@ -22,10 +22,10 @@ def test_ruff():
     assert code == 0, out
 
 
-def test_black():
+def test_ruff_format():
     modules = ' '.join(MODULES)
     opts = ''
-    completed_proc = subprocess.run(f'cd {ROOT}; black {opts} {modules}', capture_output=True, shell=True)
+    completed_proc = subprocess.run(f'cd {ROOT}; ruff format {opts} {modules}', capture_output=True, shell=True)
     code = completed_proc.returncode
     out = completed_proc.stdout.decode('utf-8')
     assert code == 0, out

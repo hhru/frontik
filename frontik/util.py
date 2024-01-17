@@ -134,7 +134,7 @@ def check_request_id(request_id: str) -> bool:
         return False
 
 
-async def gather_list(*coros: Any) -> tuple:
+async def gather_list(*coros: Any) -> list:
     """
     Similar to asyncio.gather, but None can be used in coros_or_futures param
     """

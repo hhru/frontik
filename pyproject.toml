@@ -22,7 +22,7 @@ lxml = '4.9.2'
 pydantic = '^2.3.0'
 tornado = '6.3.2'
 orjson = '*'
-http-client = {git = 'https://github.com/hhru/balancing-http-client.git', tag = '2.1.6'}
+http-client = {git = 'https://github.com/hhru/balancing-http-client.git', tag = '2.1.7'}
 python-consul2-hh = {git = 'https://github.com/hhru/python-consul2', tag = 'v0.2.9'}
 opentelemetry-sdk = '1.17.0'
 opentelemetry-api = '1.17.0'
@@ -42,9 +42,8 @@ tornado-httpclient-mock = '0.2.3'
 sentry-sdk = '1.26.0'
 aiokafka = '0.8.1'
 aioresponses = '0.7.4'
-mypy = '1.5.1'
-black = '23.9.1'
-ruff = '0.0.291'
+mypy = '1.8.0'
+ruff = '0.1.13'
 exceptiongroup = '1.2.0'
 tomli = '2.0.1'
 
@@ -55,49 +54,72 @@ addopts = '''
   -p no:warnings
 '''
 
-[tool.black]
-line-length = 120
-skip-string-normalization = true
-
 [tool.mypy]
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unused_configs = true
+show_error_codes = true
 ignore_missing_imports = true
+follow_imports = 'silent'
 disallow_untyped_calls = true
 disallow_incomplete_defs = true
+disallow_untyped_decorators = true
 check_untyped_defs = true
-strict = false
 exclude = [
     '.*/api/2.*',
 ]
+# should be fixed and enabled
+#strict = true
+#disallow_untyped_defs = true
+#disallow_any_generics = true
+#disallow_subclassing_any = true
+#warn_return_any = true
 
 
 [tool.ruff]
 line-length = 120
 target-version = 'py39'
 select = [
-    'F', 'E', 'W', 'I', 'N', 'UP', 'ASYNC', 'B', 'COM', 'C4', 'T10', 'EM', 'FA', 'ISC', 'ICN', 'G',
-    'T20', 'PT', 'SLOT', 'SIM', 'TID', 'TCH', 'INT', 'TD', 'FIX', 'ERA', 'FLY', 'PERF', 'FURB', 'LOG',
+    'F','E','W','C90','I','N','D','UP','YTT','ANN','ASYNC','S','BLE','FBT','B','A','COM','CPY','C4','DTZ',
+    'T10','DJ','EM','EXE','FA','ISC','ICN','G','INP','PIE','T20','PYI','PT','Q','RSE','RET','SLF','SLOT','SIM',
+    'TID','TCH','INT','ARG','PTH','TD','FIX','ERA','PGH','PL','TRY','FLY','NPY','PERF','FURB','LOG','RUF'
 ]
 preview = true
 ignore = [
-    'N818', 'EM101', 'EM102', 'SIM300',
-    'B028', 'B904',
-    'B008', 'B009', 'B010',
-    'UP007', 'FA100', 'PERF203'
+    # should be fixed and enabled
+    'SLF001','ANN001','ANN002','ANN003','ANN201','ANN202','ANN204','ANN205','ANN206','ANN401',
+    'PTH','PLR6301','S410','FBT003','TRY400','TRY301','PLR0917','PIE807',
+    'PGH003','B904','S101','FA100','PLR0913','ARG002','PGH004','TRY200','S311','A001','FBT001','FBT002',
+    'RUF012','UP007','TRY002','PLR0904','PLW1510','N818','Q000','S320',
+    'D212','D200','D213','D401','D205','D404','D203','D400','D415',
+    'DTZ005','FURB101','F841','TRY401','S403','PLR2004','ARG001','BLE001','B009','B010','C901','PLR0912','PLR0911',
+    'PLC0415','RUF003','TRY201','TRY300','S301','S102','S104','E721','PLW0603','RET503','PLR6201','PERF203',
+    'TRY003','EM102','RUF006','PYI055','RET501','PLC1901','RET502','PLC2801','EM101','B028','A002','DTZ006',
+    'PLR0402','PYI024','PYI024','PLW2901','S701',
+    # should be ignored
+    'ANN101','ANN102','D102','D101','CPY001','D100','D107','D106','B008','D103','D104','D105','D202',
+    'RET505','RET506','RET504','RSE102',
 ]
 
 [tool.ruff.isort]
 known-third-party = ['http_client']
 
-
 [tool.ruff.per-file-ignores]
 'tests/**/*.py' = [
-    'S101', # asserts allowed in tests...
-    'ARG', # Unused function args -> fixtures nevertheless are functionally relevant...
+    'S101', # asserts allowed in tests
+    'ARG', # Unused function args -> fixtures nevertheless are functionally relevant
     'FBT', # Don't care about booleans as positional arguments in tests, e.g. via @pytest.mark.parametrize()
-    'PLR2004', # Magic value used in comparison, ...
+    'PLR2004', # Magic value used in comparison
     'S311', # Standard pseudo-random generators are not suitable for cryptographic purposes
     'PT009', 'PT027', # while using unittest
+    'ANN201',
+    'RUF001',
+    # should be fixed
+    'SIM300','PLC0414','S602','S404','S110','S603','INP001',
 ]
 
 [tool.ruff.format]
 quote-style = 'single'
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = 'single'

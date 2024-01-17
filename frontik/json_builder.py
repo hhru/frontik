@@ -81,7 +81,7 @@ class JsonBuilder:
         result = {}
         for chunk in self._data:
             if isinstance(chunk, Future) or hasattr(chunk, 'to_dict'):
-                handler_logger.warning("Using handler.json.put(FUTURE) is bad, please use only json-compatible data")
+                handler_logger.warning('Using handler.json.put(FUTURE) is bad, please use only json-compatible data')
                 chunk = _encode_value(chunk)
 
             if chunk is not None:

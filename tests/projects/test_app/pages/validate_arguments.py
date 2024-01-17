@@ -54,4 +54,4 @@ class Page(PageHandler):
         )
 
     async def put_page(self):
-        self.get_str_argument('str_arg', 3)  # type: ignore
+        self.get_str_argument('str_arg', 3)
