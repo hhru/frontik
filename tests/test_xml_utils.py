@@ -9,7 +9,7 @@ from lxml_asserts.testcase import LxmlTestCaseMixin
 from frontik.xml_util import dict_to_xml, xml_from_file, xml_to_dict
 
 XML = etree.XML(
-    '''
+    """
     <root>
         <key1>value</key1>
         <key2></key2>
@@ -26,7 +26,7 @@ XML = etree.XML(
             <bool>True</bool>
         </complexNested>
     </root>
-    ''',
+    """,
 )
 
 DICT_BEFORE = {

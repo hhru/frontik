@@ -31,7 +31,7 @@ class ReturnSelfJsonPutHandler(PageHandler):
         return self.json.put({'c': 'd'})  # type: ignore[func-returns-value]
 
 
-class TestApplication(FrontikApplication):
+class Application(FrontikApplication):
     def application_urls(self) -> list[tuple]:
         return [
             ('/return_dict', ReturnDictHandler),
@@ -42,8 +42,8 @@ class TestApplication(FrontikApplication):
 
 class TestHandlerReturnedValuesProcessing(FrontikTestBase):
     @pytest.fixture(scope='class')
-    def frontik_app(self) -> TestApplication:
-        return TestApplication(app='test_app', app_root=FRONTIK_ROOT)
+    def frontik_app(self) -> Application:
+        return Application(app='test_app', app_root=FRONTIK_ROOT)
 
     async def test_get_dict(self):
         resp = await self.fetch_json('/return_dict')

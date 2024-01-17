@@ -10,7 +10,7 @@ class TestFinishWithPostprocessors(unittest.TestCase):
         type_to_content = {
             'text': b'ok',
             'xml': b"<?xml version='1.0' encoding='utf-8'?>\n<doc><ok/></doc>",
-            'xsl': b"<html><body><h1>ok</h1></body></html>\n",
+            'xsl': b'<html><body><h1>ok</h1></body></html>\n',
             'json': b'{"ok": true}',
         }
 

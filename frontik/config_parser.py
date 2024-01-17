@@ -57,12 +57,12 @@ def parse_command_line(options: Options, allowed_options: Iterable) -> None:
     args = sys.argv
 
     for i in range(1, len(args)):
-        if not args[i].startswith("-"):
+        if not args[i].startswith('-'):
             break
-        if args[i] == "--":
+        if args[i] == '--':
             break
-        arg = args[i].lstrip("-")
-        name, equals, value = arg.partition("=")
+        arg = args[i].lstrip('-')
+        name, equals, value = arg.partition('=')
         if name not in allowed_options:
             log.error('Unrecognized command line option: %s, skipped', name)
             continue
@@ -78,7 +78,7 @@ def parse_command_line(options: Options, allowed_options: Iterable) -> None:
                 raise Exception('Option %r requires a value' % name)
 
         if option.type == bool or get_args(option.type) == (bool, type(None)):
-            setattr(options, name, value.lower() not in ("false", "0", "f"))
+            setattr(options, name, value.lower() not in ('false', '0', 'f'))
         elif option.type == int or get_args(option.type) == (int, type(None)):
             setattr(options, name, int(value))
         elif option.type == float or get_args(option.type) == (float, type(None)):

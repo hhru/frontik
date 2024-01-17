@@ -173,8 +173,8 @@ class PageHandler(RequestHandler):
     def set_default_headers(self):
         self._headers = tornado.httputil.HTTPHeaders(
             {
-                'Server': f'Frontik/{frontik_version}',  # type: ignore
-                'X-Request-Id': self.request_id,  # type: ignore
+                'Server': f'Frontik/{frontik_version}',
+                'X-Request-Id': self.request_id,
             },
         )
 
@@ -622,7 +622,7 @@ class PageHandler(RequestHandler):
         value: str,
         domain: Optional[str] = None,
         expires: Optional[str] = None,
-        path: str = "/",
+        path: str = '/',
         expires_days: Optional[int] = None,
         **kwargs: Any,
     ) -> None:
@@ -633,7 +633,7 @@ class PageHandler(RequestHandler):
             del self._mandatory_headers[name]
         super().clear_header(name)
 
-    def clear_cookie(self, name: str, path: str = "/", domain: Optional[str] = None) -> None:  # type: ignore
+    def clear_cookie(self, name: str, path: str = '/', domain: Optional[str] = None) -> None:  # type: ignore
         if name in self._mandatory_cookies:
             del self._mandatory_cookies[name]
         super().clear_cookie(name, path=path, domain=domain)

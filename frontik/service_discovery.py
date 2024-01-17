@@ -38,9 +38,9 @@ AUTO_RESOLVE_ADDRESS_VALUE = 'resolve'
 MESSAGE_HEADER_MAGIC = b'T1uf31f'
 MESSAGE_SIZE_STRUCT = '=Q'
 
-CONSUL_REQUESTS_METRIC = "consul-client.request"
-CONSUL_REQUEST_SUCCESSFUL_RESULT = "success"
-CONSUL_REQUEST_FAILED_RESULT = "failure"
+CONSUL_REQUESTS_METRIC = 'consul-client.request'
+CONSUL_REQUEST_SUCCESSFUL_RESULT = 'success'
+CONSUL_REQUEST_FAILED_RESULT = 'failure'
 
 log = logging.getLogger('service_discovery')
 

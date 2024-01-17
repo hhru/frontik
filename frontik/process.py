@@ -42,7 +42,7 @@ def fork_workers(
     before_workers_shutdown_action: Callable,
     children_pipes: dict,
 ) -> None:
-    log.info("starting %d processes", num_workers)
+    log.info('starting %d processes', num_workers)
     state = State(server=True, children={}, read_pipe=0, write_pipes=children_pipes, terminating=False)
 
     def sigterm_handler(signum, frame):
@@ -100,15 +100,15 @@ def _supervise_workers(state: State, worker_function: Callable) -> None:
             log.warning('failed to close pipe for %d', pid)
 
         if os.WIFSIGNALED(status):
-            log.warning("child %d (pid %d) killed by signal %d, restarting", id, pid, os.WTERMSIG(status))
+            log.warning('child %d (pid %d) killed by signal %d, restarting', id, pid, os.WTERMSIG(status))
         elif os.WEXITSTATUS(status) != 0:
-            log.warning("child %d (pid %d) exited with status %d, restarting", id, pid, os.WEXITSTATUS(status))
+            log.warning('child %d (pid %d) exited with status %d, restarting', id, pid, os.WEXITSTATUS(status))
         else:
             log.info('child %d (pid %d) exited normally', id, pid)
             continue
 
         if state.terminating:
-            log.info("server is shutting down, not restarting %d", id)
+            log.info('server is shutting down, not restarting %d', id)
             continue
 
         is_worker = _start_child(id, state)
@@ -151,8 +151,8 @@ def _set_pipe_size(fd: int, i: int) -> None:
 
 
 def errno_from_exception(e: BaseException) -> Optional[int]:
-    if hasattr(e, "errno"):
-        return e.errno  # type: ignore
+    if hasattr(e, 'errno'):
+        return e.errno
     elif e.args:
         return e.args[0]
     else:

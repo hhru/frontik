@@ -10,7 +10,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 class Page(PageHandler):
     async def get_page(self):
-        upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(retry_policy={503: {"idempotent": "true"}})}
+        upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(retry_policy={503: {'idempotent': 'true'}})}
         self.application.upstream_manager.update_upstream(
             Upstream('retry_non_idempotent_503', upstream_config, [get_server(self, 'normal')]),
         )

@@ -33,7 +33,7 @@ class CheckConfigHandler(PageHandler):
         self.text = self.config.config_param  # type: ignore
 
 
-class TestApplication(FrontikApplication):
+class Application(FrontikApplication):
     def application_urls(self) -> list[tuple]:
         return [
             ('/config', CheckConfigHandler),
@@ -48,8 +48,8 @@ class TestFrontikTestingOld(FrontikTestCase):
         super().setUp()
         self.configure_app(serviceHost='http://service.host')
 
-    def get_app(self) -> TestApplication:
-        app = TestApplication(app='test_app', app_root=FRONTIK_ROOT)
+    def get_app(self) -> Application:
+        app = Application(app='test_app', app_root=FRONTIK_ROOT)
 
         IOLoop.current().run_sync(app.init)
 
@@ -86,8 +86,8 @@ class TestFrontikTestingOld(FrontikTestCase):
 
 class TestFrontikTesting(FrontikTestBase):
     @pytest.fixture(scope='class')
-    def frontik_app(self) -> TestApplication:
-        return TestApplication(app='test_app', app_root=FRONTIK_ROOT)
+    def frontik_app(self) -> Application:
+        return Application(app='test_app', app_root=FRONTIK_ROOT)
 
     async def test_config(self):
         self.configure_app(config_param='param_value')
