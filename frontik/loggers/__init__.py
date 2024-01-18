@@ -104,7 +104,7 @@ class JSONFormatter(Formatter):
 
         handler_name = request_context.get_handler_name()
         if handler_name:
-            mdc['page'] = handler_name
+            mdc['controller'] = handler_name
 
         request_id = request_context.get_request_id()
         if request_id:
