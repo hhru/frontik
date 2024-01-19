@@ -43,7 +43,7 @@ class TestNonDebugMode(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'{"authenticated": true}')
+        self.assertEqual(response.content, b'{"authenticated":true}')
 
     def test_basic_auth_pass_async(self):
         response = frontik_no_debug_app.get_page(
@@ -52,4 +52,4 @@ class TestNonDebugMode(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'{"authenticated": true}')
+        self.assertEqual(response.content, b'{"authenticated":true}')

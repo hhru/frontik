@@ -11,7 +11,7 @@ class TestHttpClient(unittest.TestCase):
     def test_post_url_mfd(self):
         response = frontik_test_app.get_page('http_client/post_url')
         self.assertEqual(200, response.status_code)
-        self.assertEqual(b'{"errors_count": 0}', response.content)
+        self.assertEqual(b'{"errors_count":0}', response.content)
 
     def test_delete_query_arguments(self):
         json = frontik_test_app.get_page_json('handler/delete')

@@ -60,12 +60,12 @@ class TestHttpError(unittest.TestCase):
     def test_http_error_json(self):
         response = frontik_test_app.get_page('test_exception_json')
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.content, b'{"reason": "bad argument"}')
+        self.assertEqual(response.content, b'{"reason":"bad argument"}')
 
     def test_write_error(self) -> None:
         response = frontik_test_app.get_page('write_error')
         self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.content, b'{"write_error": true}')
+        self.assertEqual(response.content, b'{"write_error":true}')
 
     def test_write_error_exception(self) -> None:
         response = frontik_test_app.get_page('write_error?fail_write_error=true')
