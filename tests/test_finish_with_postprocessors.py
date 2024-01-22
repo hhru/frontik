@@ -11,7 +11,7 @@ class TestFinishWithPostprocessors(unittest.TestCase):
             'text': b'ok',
             'xml': b"<?xml version='1.0' encoding='utf-8'?>\n<doc><ok/></doc>",
             'xsl': b'<html><body><h1>ok</h1></body></html>\n',
-            'json': b'{"ok": true}',
+            'json': b'{"ok":true}',
         }
 
         for content_type, content in type_to_content.items():

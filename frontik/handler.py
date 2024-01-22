@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import http.client
-import json
 import logging
 import re
 import time
@@ -29,6 +28,7 @@ from frontik.debug import DEBUG_HEADER_NAME, DebugMode
 from frontik.dependency_manager import execute_page_method_with_dependencies
 from frontik.futures import AbortAsyncGroup, AsyncGroup
 from frontik.http_status import ALLOWED_STATUSES, CLIENT_CLOSED_REQUEST
+from frontik.json_builder import FrontikJsonDecodeError, json_decode
 from frontik.loggers.stages import StagesLogger
 from frontik.options import options
 from frontik.timeout_tracking import get_timeout_checker
@@ -317,8 +317,8 @@ class PageHandler(RequestHandler):
 
     def _get_json_body(self) -> Any:
         try:
-            return json.loads(self.request.body)
-        except json.JSONDecodeError as _:
+            return json_decode(self.request.body)
+        except FrontikJsonDecodeError as _:
             raise JSONBodyParseError()
 
     @classmethod

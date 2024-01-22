@@ -32,7 +32,7 @@ class TestPostprocessors(unittest.TestCase):
     def test_render_postprocessors_notpl(self):
         response = frontik_test_app.get_page(POSTPROCESS_URL.format('content&notpl'))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'{"content": "CONTENT"}')
+        self.assertEqual(response.content, b'{"content":"CONTENT"}')
 
     def test_metainfo_in_xsl_postprocessor(self):
         response = frontik_test_app.get_page('/postprocess_xsl?meta_key=my_meta_key')

@@ -1,15 +1,18 @@
 from __future__ import annotations
 
-import json
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
+import orjson
 from tornado.concurrent import Future
 
 if TYPE_CHECKING:
     from typing import Any
 
 handler_logger = logging.getLogger('handler')
+
+
+FrontikJsonDecodeError = orjson.JSONDecodeError
 
 
 def _encode_value(value: Any) -> Any:
@@ -31,24 +34,18 @@ def _encode_value(value: Any) -> Any:
     return value
 
 
-class FrontikJsonEncoder(json.JSONEncoder):
-    """
-    This encoder supports additional value types:
-    * sets and frozensets
-    * datetime.date objects
-    * objects with `to_dict()` method
-    * objects with `to_json_value()` method
-    * `Future` objects (only if the future is resolved)
-    """
+def json_encode(obj: Any, default: Callable = _encode_value) -> str:
+    return orjson.dumps(obj, default=default, option=orjson.OPT_NON_STR_KEYS).decode('utf-8')
 
-    def default(self, obj):
-        return _encode_value(obj)
+
+def json_decode(value: Union[str, bytes]) -> Any:
+    return orjson.loads(value)
 
 
 class JsonBuilder:
     __slots__ = ('_data', '_encoder', 'root_node')
 
-    def __init__(self, root_node: Optional[str] = None, json_encoder: Any = None) -> None:
+    def __init__(self, root_node: Optional[str] = None, json_encoder: Optional[Callable] = None) -> None:
         if root_node is not None and not isinstance(root_node, str):
             msg = f'Cannot set {root_node} as root node'
             raise TypeError(msg)
@@ -94,10 +91,6 @@ class JsonBuilder:
 
     def to_string(self) -> str:
         if self._encoder is None:
-            return json.dumps(self._concat_chunks(), cls=FrontikJsonEncoder, ensure_ascii=False)
+            return json_encode(self._concat_chunks())
 
-        if issubclass(self._encoder, FrontikJsonEncoder):
-            return json.dumps(self._concat_chunks(), cls=self._encoder, ensure_ascii=False)
-
-        # For backwards compatibility, remove when all encoders extend FrontikJsonEncoder
-        return json.dumps(self.to_dict(), cls=self._encoder, ensure_ascii=False)
+        return json_encode(self._concat_chunks(), default=self._encoder)

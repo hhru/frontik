@@ -22,7 +22,7 @@ class TestJsonBuilder(unittest.TestCase):
         j.put({'a': 'b'})
 
         self.assertFalse(j.is_empty())
-        self.assertEqual(j.to_string(), """{"a": "b"}""")
+        self.assertEqual(j.to_string(), """{"a":"b"}""")
 
     def test_clear(self) -> None:
         j = JsonBuilder()
@@ -37,13 +37,13 @@ class TestJsonBuilder(unittest.TestCase):
         j.put({'a': 'b'})
         j.replace({'c': 'd'})
 
-        self.assertEqual(j.to_string(), '{"c": "d"}')
+        self.assertEqual(j.to_string(), '{"c":"d"}')
 
     def test_root_node_name(self) -> None:
         j = JsonBuilder(root_node='root')
         j.put({'a': 'b'})
 
-        self.assertEqual(j.to_string(), """{"root": {"a": "b"}}""")
+        self.assertEqual(j.to_string(), """{"root":{"a":"b"}}""")
 
     def test_invalid_root_node_name(self) -> None:
         self.assertRaises(TypeError, JsonBuilder, root_node=10)
@@ -52,7 +52,7 @@ class TestJsonBuilder(unittest.TestCase):
         j = JsonBuilder()
         j.put({'a': {'b': [1, 2, 3]}})
 
-        self.assertEqual(j.to_string(), """{"a": {"b": [1, 2, 3]}}""")
+        self.assertEqual(j.to_string(), """{"a":{"b":[1,2,3]}}""")
 
     def test_set(self) -> None:
         j = JsonBuilder()
@@ -74,16 +74,15 @@ class TestJsonBuilder(unittest.TestCase):
             def to_json(self):
                 return '1.2.3'
 
-        class JSONEncoder(json.JSONEncoder):
-            def default(self, obj):
-                if hasattr(obj, 'to_json'):
-                    return obj.to_json()
-                return json.JSONEncoder.default(self, obj)
+        def default(obj):
+            if hasattr(obj, 'to_json'):
+                return obj.to_json()
+            return json.JSONEncoder().default(obj)
 
-        j = JsonBuilder(json_encoder=JSONEncoder)
+        j = JsonBuilder(json_encoder=default)
         j.put({'a': CustomValue()})
 
-        self.assertEqual(j.to_string(), """{"a": "1.2.3"}""")
+        self.assertEqual(j.to_string(), """{"a":"1.2.3"}""")
 
     def test_multiple_items(self) -> None:
         j = JsonBuilder()
@@ -111,7 +110,7 @@ class TestJsonBuilder(unittest.TestCase):
         f.set_result({'a': 'b'})
 
         self.assertEqual(j.to_dict()['a'], 'b')
-        self.assertEqual(j.to_string(), """{"a": "b"}""")
+        self.assertEqual(j.to_string(), """{"a":"b"}""")
 
     async def test_future_string_value(self):
         j = JsonBuilder()
@@ -143,12 +142,12 @@ class TestJsonBuilder(unittest.TestCase):
         f1.set_result({'nested': f2})
         j.put(f1)
 
-        self.assertEqual(j.to_string(), """{"nested": null}""")
+        self.assertEqual(j.to_string(), """{"nested":null}""")
 
         f2.set_result({'a': f3})
         f3.set_result(['b', 'c'])
 
-        self.assertEqual(j.to_string(), """{"nested": {"a": ["b", "c"]}}""")
+        self.assertEqual(j.to_string(), """{"nested":{"a":["b","c"]}}""")
 
     async def test_nested_future_error_node(self):
         j = JsonBuilder()
@@ -158,7 +157,7 @@ class TestJsonBuilder(unittest.TestCase):
         f1.set_result({'nested': f2})
         j.put(f1)
 
-        self.assertEqual(j.to_string(), """{"nested": null}""")
+        self.assertEqual(j.to_string(), """{"nested":null}""")
         result = TestDoc.get_test_request_result()
         result._data_parse_error = DataParseError(reason='error', code='code')
 

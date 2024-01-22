@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 import os
 import socket
@@ -10,10 +9,10 @@ from logging import Filter, Formatter, Handler
 from logging.handlers import SysLogHandler
 from typing import TYPE_CHECKING, Optional, Union
 
-import orjson
 from tornado.log import LogFormatter
 
 from frontik import request_context
+from frontik.json_builder import json_encode
 from frontik.options import options
 
 if TYPE_CHECKING:
@@ -91,9 +90,7 @@ class JSONFormatter(Formatter):
             if stack_trace:
                 json_message['exception'] = stack_trace
 
-        if options.log_use_orjson:
-            return orjson.dumps(json_message).decode('utf-8')
-        return json.dumps(json_message)
+        return json_encode(json_message)
 
     @staticmethod
     def get_mdc() -> dict:
