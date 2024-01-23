@@ -4,6 +4,7 @@ import logging
 from typing import TYPE_CHECKING, Callable, Optional, Union
 
 import orjson
+from pydantic import BaseModel
 from tornado.concurrent import Future
 
 if TYPE_CHECKING:
@@ -27,6 +28,9 @@ def _encode_value(value: Any) -> Any:
             return _encode_value(value.result())
 
         return None
+
+    elif isinstance(value, BaseModel):
+        return value.model_dump()
 
     elif hasattr(value, 'to_dict'):
         return value.to_dict()

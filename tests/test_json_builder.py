@@ -2,6 +2,7 @@ import json
 import unittest
 
 from http_client.request_response import DataParseError
+from pydantic import BaseModel
 from tornado.concurrent import Future
 
 from frontik.json_builder import JsonBuilder
@@ -53,6 +54,21 @@ class TestJsonBuilder(unittest.TestCase):
         j.put({'a': {'b': [1, 2, 3]}})
 
         self.assertEqual(j.to_string(), """{"a":{"b":[1,2,3]}}""")
+
+    def test_encode_pydantic_model(self) -> None:
+        j = JsonBuilder()
+
+        class InnerTestModel(BaseModel):
+            field: str
+
+        class TestModel(BaseModel):
+            str_field: str
+            int_field: int
+            pydantic_field: InnerTestModel
+
+        j.put({'a': {'b': TestModel(str_field='a', int_field=1, pydantic_field=InnerTestModel(field='some'))}})
+
+        assert j.to_string() == """{"a":{"b":{"str_field":"a","int_field":1,"pydantic_field":{"field":"some"}}}}"""
 
     def test_set(self) -> None:
         j = JsonBuilder()
