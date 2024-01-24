@@ -92,8 +92,8 @@ class StatsDClient:
         host: str,
         port: int,
         default_periodic_send_interval_sec: int,
+        max_udp_size: int,
         app: Optional[str] = None,
-        max_udp_size: int = 508,
         reconnect_timeout: int = 2,
     ) -> None:
         self.host = host
@@ -209,6 +209,7 @@ def create_statsd_client(options: Options, app: FrontikApplication) -> Union[Sta
             options.statsd_host,
             options.statsd_port,
             options.statsd_default_periodic_send_interval_sec,
+            options.statsd_max_udp_size,
             app=app.app,
         )
     return statsd_client
