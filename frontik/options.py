@@ -60,6 +60,8 @@ class Options:
     statsd_host: Optional[str] = None
     statsd_port: Optional[int] = None
     statsd_default_periodic_send_interval_sec: int = 60
+    statsd_max_udp_size: int = 508
+
     gc_metrics_send_interval_ms: Optional[int] = None
     long_gc_log_enabled: bool = True
     long_gc_log_threshold_sec: float = 0.01
