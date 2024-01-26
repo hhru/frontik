@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 
 
 class Validators(Enum):
@@ -23,7 +23,7 @@ class BaseValidationModel(BaseModel):
     list_str: Optional[list[str]] = None
     path_safe_string: Optional[str] = None
 
-    @field_validator('path_safe_string', mode='before')
+    # @field_validator('path_safe_string', mode='before')
     @classmethod
     def check_path_safe_string(cls, value):
         assert isinstance(value, str)

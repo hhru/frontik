@@ -14,7 +14,7 @@ from http_client import AIOHttpClientWrapper, HttpClientFactory
 from http_client import options as http_client_options
 from http_client.balancing import RequestBalancerBuilder, Upstream, UpstreamManager
 from lxml import etree
-from tornado.web import Application, HTTPError, RequestHandler
+# from tornado.web import Application, HTTPError, RequestHandler
 
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
@@ -28,8 +28,9 @@ from frontik.options import options
 from frontik.routing import FileMappingRouter, FrontikRouter
 from frontik.service_discovery import UpstreamCaches, get_async_service_discovery, get_sync_service_discovery
 from frontik.util import check_request_id, generate_uniq_timestamp_request_id
-
-app_logger = logging.getLogger('http_client')
+from fastapi import APIRouter, Response, Request
+import pkgutil
+import inspect
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -37,64 +38,108 @@ if TYPE_CHECKING:
     from typing import Any
 
     from aiokafka import AIOKafkaProducer
-    from tornado import httputil
-    from tornado.httputil import HTTPServerRequest
+    # from tornado import httputil
+    # from tornado.httputil import HTTPServerRequest
 
     from frontik.handler import PageHandler
     from frontik.integrations.statsd import StatsDClient, StatsDClientStub
     from frontik.service_discovery import UpstreamUpdateListener
 
 
-class VersionHandler(RequestHandler):
-    def get(self):
-        self.application: FrontikApplication
-        self.set_header('Content-Type', 'text/xml')
-        self.write(
-            etree.tostring(get_frontik_and_apps_versions(self.application), encoding='utf-8', xml_declaration=True),
-        )
+app_logger = logging.getLogger('http_client')
+core_router = APIRouter()
+app_router = APIRouter()
+frontik_app = None
 
 
-class StatusHandler(RequestHandler):
-    def get(self):
-        self.application: FrontikApplication
-        self.set_header('Content-Type', media_types.APPLICATION_JSON)
-        self.finish(self.application.get_current_status())
+def qq_path() -> str:
+    curframe = inspect.currentframe()
+    calframe = inspect.getouterframes(curframe, 2)
+    page_file_path = calframe[1].filename
+    idx = page_file_path.find('/pages')
+    if idx == -1:
+        raise RuntimeError('cant generate url path')
+    return page_file_path[idx + 6:-3]
 
 
-class PydevdHandler(RequestHandler):
-    def get(self):
-        if hasattr(sys, 'gettrace') and sys.gettrace() is not None:
-            self.already_tracing_page()
-            return
-
-        try:
-            debugger_ip = self.get_argument('debugger_ip', self.request.remote_ip)
-            debugger_port = self.get_argument('debugger_port', '32223')
-            self.settrace(debugger_ip, int(debugger_port))
-            self.trace_page(debugger_ip, debugger_port)
-
-        except BaseException:
-            self.error_page()
-
-    def settrace(self, debugger_ip: Optional[str], debugger_port: int) -> None:
-        import pydevd
-
-        pydevd.settrace(debugger_ip, port=debugger_port, stdoutToServer=True, stderrToServer=True, suspend=False)
-
-    def trace_page(self, ip: Optional[str], port: str) -> None:
-        self.set_header('Content-Type', media_types.TEXT_PLAIN)
-        self.finish(f'Connected to debug server at {ip}:{port}')
-
-    def already_tracing_page(self) -> None:
-        self.set_header('Content-Type', media_types.TEXT_PLAIN)
-        self.finish('App is already in tracing mode, try to restart service')
-
-    def error_page(self) -> None:
-        self.set_header('Content-Type', media_types.TEXT_PLAIN)
-        self.finish(traceback.format_exc())
+def fill_app_router(frontik_app):
+    print('sha budem importit stranichki')
+    # importlib.import_module(f'{frontik_app.app_module}.pages')
+    package_name = f'{frontik_app.app_module}.pages'
+    package = sys.modules[package_name]
+    for _loader, name, _is_pkg in pkgutil.walk_packages(package.__path__):
+        importlib.import_module(package_name + '.' + name)
+    return app_router
 
 
-class FrontikApplication(Application):
+@core_router.get("/version")
+async def get_version(request: Request):  # response: Response
+    # response.headers['Content-Type'] = 'text/xml'
+    self_application = request.app.frontik
+    data = etree.tostring(get_frontik_and_apps_versions(self_application), encoding='utf-8', xml_declaration=True)
+    return Response(content=data, media_type='text/xml')
+
+
+@core_router.get("/status")
+async def get_status(request: Request):
+    # теперь вопросец охуенный
+    # это раньше была в ручках ссылка на апп, а ща есть?
+    # request.app
+    self_application = request.app.frontik
+    return self_application.get_current_status()
+
+
+# class VersionHandler(RequestHandler):
+#     def get(self):
+#         self.application: FrontikApplication
+#         self.set_header('Content-Type', 'text/xml')
+#         self.write(
+#             etree.tostring(get_frontik_and_apps_versions(self.application), encoding='utf-8', xml_declaration=True),
+#         )
+#
+#
+# class StatusHandler(RequestHandler):
+#     def get(self):
+#         self.application: FrontikApplication
+#         self.set_header('Content-Type', media_types.APPLICATION_JSON)
+#         self.finish(self.application.get_current_status())
+
+
+# class PydevdHandler(RequestHandler):
+#     def get(self):
+#         if hasattr(sys, 'gettrace') and sys.gettrace() is not None:
+#             self.already_tracing_page()
+#             return
+#
+#         try:
+#             debugger_ip = self.get_argument('debugger_ip', self.request.remote_ip)
+#             debugger_port = self.get_argument('debugger_port', '32223')
+#             self.settrace(debugger_ip, int(debugger_port))
+#             self.trace_page(debugger_ip, debugger_port)
+#
+#         except BaseException:
+#             self.error_page()
+#
+#     def settrace(self, debugger_ip: Optional[str], debugger_port: int) -> None:
+#         import pydevd
+#
+#         pydevd.settrace(debugger_ip, port=debugger_port, stdoutToServer=True, stderrToServer=True, suspend=False)
+#
+#     def trace_page(self, ip: Optional[str], port: str) -> None:
+#         self.set_header('Content-Type', media_types.TEXT_PLAIN)
+#         self.finish(f'Connected to debug server at {ip}:{port}')
+#
+#     def already_tracing_page(self) -> None:
+#         self.set_header('Content-Type', media_types.TEXT_PLAIN)
+#         self.finish('App is already in tracing mode, try to restart service')
+#
+#     def error_page(self) -> None:
+#         self.set_header('Content-Type', media_types.TEXT_PLAIN)
+#         self.finish(traceback.format_exc())
+
+
+# class FrontikApplication(Application):
+class FrontikApplication:
     request_id = ''
 
     class DefaultConfig:
@@ -113,7 +158,7 @@ class FrontikApplication(Application):
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
         self.available_integrations: list[integrations.Integration] = []
-        self.tornado_http_client: Optional[AIOHttpClientWrapper] = None
+        self.hh_http_client: Optional[AIOHttpClientWrapper] = None
         self.http_client_factory: HttpClientFactory
         self.upstream_manager: UpstreamManager = None
         self.upstreams: dict[str, Upstream] = {}
@@ -122,14 +167,15 @@ class FrontikApplication(Application):
         self.router = FrontikRouter(self)
         self.init_workers_count_down: Synchronized = multiprocessing.Value('i', options.workers)  # type: ignore
 
-        core_handlers: list[Any] = [
-            (r'/version/?', VersionHandler),
-            (r'/status/?', StatusHandler),
-            (r'.*', self.router),
-        ]
+        # core_handlers: list[Any] = [
+        #     (r'/version/?', VersionHandler),
+        #     (r'/status/?', StatusHandler),
+        #     (r'.*', self.router),
+        # ]
+        self.core_router = core_router
 
-        if options.debug:
-            core_handlers.insert(0, (r'/pydevd/?', PydevdHandler))
+        # if options.debug:
+        #     core_handlers.insert(0, (r'/pydevd/?', PydevdHandler))
 
         self.statsd_client: StatsDClient | StatsDClientStub = create_statsd_client(options, self)
         sync_service_discovery = get_sync_service_discovery(options, self.statsd_client)
@@ -143,16 +189,16 @@ class FrontikApplication(Application):
         )
         self.returned_value_handlers: ReturnedValueHandlers = get_default_returned_value_handlers()
 
-        tornado_settings = settings.get('tornado_settings') or {}
-        super().__init__(core_handlers, **tornado_settings)
+        # tornado_settings = settings.get('tornado_settings') or {}
+        # super().__init__(core_handlers, **tornado_settings)
 
     async def init(self) -> None:
-        self.transforms.insert(0, partial(DebugTransform, self))  # type: ignore
+        # self.transforms.insert(0, partial(DebugTransform, self))  # type: ignore     qqq хз че с этим делать
 
         self.available_integrations, integration_futures = integrations.load_integrations(self)
         await asyncio.gather(*[future for future in integration_futures if future])
 
-        self.tornado_http_client = AIOHttpClientWrapper()
+        self.hh_http_client = AIOHttpClientWrapper()
 
         kafka_cluster = options.http_client_metrics_kafka_cluster
         send_metrics_to_kafka = kafka_cluster and kafka_cluster in options.kafka_clusters
@@ -176,7 +222,7 @@ class FrontikApplication(Application):
             statsd_client=self.statsd_client,
             kafka_producer=kafka_producer,
         )
-        self.http_client_factory = HttpClientFactory(self.app, self.tornado_http_client, request_balancer_builder)
+        self.http_client_factory = HttpClientFactory(self.app, self.hh_http_client, request_balancer_builder)
 
     def find_handler(self, request, **kwargs):
         request_id = request.headers.get('X-Request-Id')
@@ -206,7 +252,7 @@ class FrontikApplication(Application):
     def application_urls(self) -> list[tuple]:
         return [('', FileMappingRouter(importlib.import_module(f'{self.app_module}.pages')))]
 
-    def application_404_handler(self, request: HTTPServerRequest) -> tuple[type[PageHandler], dict]:
+    def application_404_handler(self, request) -> tuple[type[PageHandler], dict]:
         return ErrorHandler, {'status_code': 404}
 
     def application_config(self) -> DefaultConfig:
@@ -227,7 +273,7 @@ class FrontikApplication(Application):
 
     def get_current_status(self) -> dict[str, str]:
         if self.init_workers_count_down.value > 0:
-            raise HTTPError(
+            raise RuntimeError(
                 500,
                 f'some workers are not started init_workers_count_down={self.init_workers_count_down.value}',
             )

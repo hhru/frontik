@@ -15,7 +15,7 @@ import tornado.web
 from http_client.request_response import USER_AGENT_HEADER, FailFastError, RequestBuilder, RequestResult
 from pydantic import BaseModel, ValidationError
 from tornado.ioloop import IOLoop
-from tornado.web import Finish, RequestHandler
+from tornado.web import Finish
 
 import frontik.auth
 import frontik.handler_active_limit
@@ -35,6 +35,7 @@ from frontik.timeout_tracking import get_timeout_checker
 from frontik.util import gather_dict, make_url
 from frontik.validator import BaseValidationModel, Validators
 from frontik.version import version as frontik_version
+from fastapi import Request
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine, Iterable
@@ -45,6 +46,28 @@ if TYPE_CHECKING:
     from frontik.app import FrontikApplication
     from frontik.handler_return_values import ReturnedValue, ReturnedValueHandlers
     from frontik.integrations.statsd import StatsDClient, StatsDClientStub
+
+
+
+# class CoreMiddleware:
+#     def __init__(
+#         self, app: ASGIApp, minimum_size: int = 500, compresslevel: int = 9
+#     ) -> None:
+#         self.app = app
+#         self.minimum_size = minimum_size
+#         self.compresslevel = compresslevel
+#
+#     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+#         if scope["type"] == "http":
+#             headers = Headers(scope=scope)
+#             if "gzip" in headers.get("Accept-Encoding", ""):
+#                 responder = GZipResponder(
+#                     self.app, self.minimum_size, compresslevel=self.compresslevel
+#                 )
+#                 await responder(scope, receive, send)
+#                 return
+#         await self.app(scope, receive, send)
+
 
 
 class FinishWithPostprocessors(Exception):
@@ -89,12 +112,13 @@ def _fail_fast_policy(fail_fast: bool, waited: bool, host: str, path: str) -> bo
     return fail_fast
 
 
-class PageHandler(RequestHandler):
+class PageHandler:
     dependencies: Iterable = ()
     _priority_dependency_names: list[str] = []
     returned_value_handlers: ReturnedValueHandlers = []
 
-    def __init__(self, application: FrontikApplication, request: HTTPServerRequest, **kwargs: Any) -> None:
+    # def __init__(self, application: FrontikApplication, request: HTTPServerRequest, **kwargs: Any) -> None:
+    def __init__(self, application: FrontikApplication, request: Request, **kwargs: Any) -> None:
         self.name = self.__class__.__name__
         self.request_id: str = request_context.get_request_id()  # type: ignore
         request.request_id = self.request_id  # type: ignore
@@ -102,7 +126,10 @@ class PageHandler(RequestHandler):
         self.log = handler_logger
         self.text: Any = None
 
-        super().__init__(application, request, **kwargs)
+        self.application = application
+        self.request: Request = request
+        self._finished = False
+        # super().__init__(application, request, **kwargs)
 
         self.statsd_client: StatsDClient | StatsDClientStub
 
@@ -156,7 +183,7 @@ class PageHandler(RequestHandler):
 
         self._handler_finished_notification = self.finish_group.add_notification()
 
-        super().prepare()
+        # super().prepare()
 
     def require_debug_access(self, login: Optional[str] = None, passwd: Optional[str] = None) -> None:
         if self._debug_access is None:
@@ -320,18 +347,6 @@ class PageHandler(RequestHandler):
             return json_decode(self.request.body)
         except FrontikJsonDecodeError as _:
             raise JSONBodyParseError()
-
-    @classmethod
-    def add_callback(cls, callback: Callable, *args: Any, **kwargs: Any) -> None:
-        IOLoop.current().add_callback(callback, *args, **kwargs)
-
-    @classmethod
-    def add_timeout(cls, deadline: float, callback: Callable, *args: Any, **kwargs: Any) -> Any:
-        return IOLoop.current().add_timeout(deadline, callback, *args, **kwargs)
-
-    @staticmethod
-    def remove_timeout(timeout):
-        IOLoop.current().remove_timeout(timeout)
 
     @classmethod
     def add_future(cls, future: Future, callback: Callable) -> None:
@@ -607,6 +622,7 @@ class PageHandler(RequestHandler):
             self._write_buffer = []
             chunk = None
 
+        self._finished = True
         finish_future = super().finish(chunk)
         self.cleanup()
         return finish_future
@@ -692,7 +708,7 @@ class PageHandler(RequestHandler):
     # HTTP client methods
 
     def modify_http_client_request(self, balanced_request: RequestBuilder) -> None:
-        balanced_request.headers['x-request-id'] = request_context.get_request_id()
+        balanced_request.headers['x-request-id'] = request_context.get_request_id() or 'kostyl_poka'
 
         balanced_request.headers[OUTER_TIMEOUT_MS_HEADER] = f'{balanced_request.request_timeout * 1000:.0f}'
 
@@ -957,3 +973,30 @@ class ErrorHandler(PageHandler, tornado.web.ErrorHandler):
 class RedirectHandler(PageHandler, tornado.web.RedirectHandler):
     def get_page(self):
         tornado.web.RedirectHandler.get(self)
+
+
+def self_getter(cls: type(PageHandler)):
+    async def make_frontik_self(request: Request):
+        print('depka')
+        from frontik.app import frontik_app  # это вообще пиздец никуда не годится
+        page_handler: PageHandler = cls(frontik_app, request)  # избавиться бы от request
+        page_handler.prepare()
+        return page_handler
+
+    return make_frontik_self
+
+
+async def core_middle_ware(request: Request, call_next):
+    print('midlware')  # здесь будут препроцы/постпроцы
+
+    # некст квест нахуй
+    # мы здесь хз какие препроцы/постпроцы выполнять
+    # думаю что хочу чтобы фастапи было боссом
+    # т.е. у фастаппа ссылка на фронтик апп
+    # у фастапи респонса ссылка на фронтик хендлер
+    # депки ручки в депках это норм ваще?
+    # хендлер класс то у нас есть в реквесте оттуда классные депки можно достать
+    # а депки выполняются до мидлвары, фух, нет
+
+    response = await call_next(request)
+    return response

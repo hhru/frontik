@@ -112,6 +112,7 @@ class _AsyncServiceDiscovery:
         self.weight: Optional[int] = None
 
     async def register_service(self) -> None:
+        print('REGAU CONSUL')
         address = _get_service_address(self.options)
         http_check = _create_http_check(self.options, address)
         await self._async_register(address, http_check)

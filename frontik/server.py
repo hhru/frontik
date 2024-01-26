@@ -15,16 +15,20 @@ from dataclasses import asdict
 from functools import partial
 from typing import TYPE_CHECKING, Optional, Union
 
-import tornado.autoreload
+# import tornado.autoreload
 from http_client.options import options as http_client_options
-from tornado.httpserver import HTTPServer
+# from tornado.httpserver import HTTPServer
+import uvicorn
+from typing import Callable
+from fastapi import FastAPI
 
-from frontik.app import FrontikApplication
+from frontik.app import FrontikApplication, fill_app_router
 from frontik.config_parser import parse_configs
 from frontik.loggers import MDC
 from frontik.options import options
 from frontik.process import fork_workers
 from frontik.service_discovery import UpstreamUpdateListener
+from frontik.handler import core_middle_ware
 
 if TYPE_CHECKING:
     from asyncio import Future
@@ -32,7 +36,7 @@ if TYPE_CHECKING:
     from multiprocessing.synchronize import Lock as LockBase
 
 log = logging.getLogger('server')
-
+config = None
 
 def main(config_file: Optional[str] = None) -> None:
     parse_configs(config_files=config_file)
@@ -127,19 +131,20 @@ def _run_worker(
     initialize_application_task.result()
 
 
-def run_server(
+async def run_server(
     app: FrontikApplication,
     need_to_register_in_service_discovery: bool,
+    reg_consul,
 ) -> None:
     """Starts Frontik server for an application"""
     loop = asyncio.get_event_loop()
     log.info('starting server on %s:%s', options.host, options.port)
-    http_server = HTTPServer(app, xheaders=options.xheaders)
-    http_server.bind(options.port, options.host, reuse_port=options.reuse_port)
-    http_server.start()
+    # http_server = HTTPServer(app, xheaders=options.xheaders)
+    # http_server.bind(options.port, options.host, reuse_port=options.reuse_port)
+    # http_server.start()
 
-    if options.autoreload:
-        tornado.autoreload.start(1000)
+    # if options.autoreload:
+    #     tornado.autoreload.start(1000)
 
     def sigterm_handler(signum, frame):
         log.info('requested shutdown, shutting down server on %s:%d', options.host, options.port)
@@ -148,7 +153,7 @@ def run_server(
 
     def server_stop():
         deinit_task = loop.create_task(_deinit_app(app, need_to_register_in_service_discovery))
-        http_server.stop()
+        # http_server.stop()
 
         if loop.is_running():
             log.info('going down in %s seconds', options.stop_timeout)
@@ -161,8 +166,43 @@ def run_server(
 
             deinit_task.add_done_callback(ioloop_stop)
 
-    signal.signal(signal.SIGTERM, sigterm_handler)
+    signal.signal(signal.SIGTERM, sigterm_handler)  # в уникорне они перехвачены эти не работают
     signal.signal(signal.SIGINT, sigterm_handler)
+
+
+    asgi_app = make_asgi_app(app)
+    global config
+    config = uvicorn.Config(asgi_app, host=options.host, port=options.port, log_level=options.log_level)
+    config.timeout_notify = -1
+    config.callback_notify = reg_consul
+    server = uvicorn.Server(config)
+    await server.serve()
+
+
+def make_asgi_app(frontik_app1: FrontikApplication) -> Callable:
+    asgi_app = FastAPI()
+
+    # эмммм.....
+    # придет запрос и фастапи скажет я вообще хуй знает такую ручку
+    # так что надо ща ебать достать из фронтика роуты похуй известные только и запихнуть в роуты фастапи
+    # как достать? как запихнуть?
+    # asgi_app.add_route() этот почемуто хуже
+
+    import frontik.app
+    frontik.app.frontik_app = frontik_app1
+
+    asgi_app.include_router(frontik_app1.core_router)
+
+    app_router = fill_app_router(frontik_app1)
+    asgi_app.include_router(app_router)
+
+    asgi_app.frontik = frontik_app1
+    asgi_app.middleware('http')(core_middle_ware)
+
+    # запихивать так
+    # asgi_app.add_api_route()
+
+    return asgi_app
 
 
 async def _init_app(
@@ -174,21 +214,29 @@ async def _init_app(
     await app.init()
     if not need_to_register_in_service_discovery and read_pipe_fd is not None:
         app.upstream_update_listener = UpstreamUpdateListener(app.upstream_manager, read_pipe_fd)
-    run_server(app, need_to_register_in_service_discovery)
     log.info('Successfully inited application %s', app.app)
     with count_down_lock:
         app.init_workers_count_down.value -= 1
         log.info('worker is up, remaining workers = %s', app.init_workers_count_down.value)
+
     if need_to_register_in_service_discovery:
-        loop = asyncio.get_event_loop()
-        register_task = loop.create_task(app.service_discovery_client.register_service())
+        async def reg_consul():
+            loop = asyncio.get_event_loop()
+            register_task = loop.create_task(app.service_discovery_client.register_service())
 
-        def register_task_result_handler(future):
-            if future.exception():
-                loop.stop()
-                future.result()
+            def register_task_result_handler(future):
+                if future.exception():
+                    loop.stop()
+                    future.result()
 
-        register_task.add_done_callback(register_task_result_handler)
+            register_task.add_done_callback(register_task_result_handler)
+            config.timeout_notify = 100000
+    else:
+        async def reg_consul():
+            config.timeout_notify = 100000
+
+    print('ZAPUSKAU SERVER')
+    await run_server(app, need_to_register_in_service_discovery, reg_consul)  # тут управление не возвращается
 
 
 async def _deinit_app(app: FrontikApplication, need_to_register_in_service_discovery: bool) -> None:
@@ -208,5 +256,5 @@ async def _deinit_app(app: FrontikApplication, need_to_register_in_service_disco
             log.exception('failed to deinit, deinit returned: %s', e)
 
     await asyncio.sleep(options.stop_timeout)
-    if app.tornado_http_client is not None:
-        await app.tornado_http_client.client_session.close()
+    if app.hh_http_client is not None:
+        await app.hh_http_client.client_session.close()

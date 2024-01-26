@@ -82,7 +82,9 @@ def choose_boundary():
 
 
 def get_cookie_or_url_param_value(handler: PageHandler, param_name: str) -> Optional[str]:
-    return handler.get_argument(param_name, handler.get_cookie(param_name, None))
+    cookie = handler.request.cookies.get(param_name, None)
+    return handler.request.query_params.get(param_name, cookie)
+    # return handler.get_argument(param_name, handler.get_cookie(param_name, None))
 
 
 def reverse_regex_named_groups(pattern: str, *args: Any, **kwargs: Any) -> str:

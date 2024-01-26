@@ -61,7 +61,7 @@ class FrontikTestCase(AsyncHTTPTestCase):
 
     def patch_app_http_client(self, app: FrontikApplication) -> None:
         """Patches application HTTPClient to enable requests stubbing."""
-        patch_http_client(app.tornado_http_client)
+        patch_http_client(app.hh_http_client)
 
     def set_stub(
         self,
@@ -76,7 +76,7 @@ class FrontikTestCase(AsyncHTTPTestCase):
         **kwargs: Any,
     ) -> None:
         set_stub(
-            self._app.tornado_http_client,
+            self._app.hh_http_client,
             url,
             request_method,
             response_function,
@@ -89,8 +89,8 @@ class FrontikTestCase(AsyncHTTPTestCase):
         )
 
     def tearDown(self) -> None:
-        if self._app.tornado_http_client is not None:
-            self.io_loop.run_sync(self._app.tornado_http_client.client_session.close)
+        if self._app.hh_http_client is not None:
+            self.io_loop.run_sync(self._app.hh_http_client.client_session.close)
         if self.forced_client is not None:
             self.io_loop.run_sync(self.forced_client.client_session.close)
         super().tearDown()

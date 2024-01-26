@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+from asyncio import Future
 import logging
 import time
 from functools import partial, wraps
 from typing import TYPE_CHECKING, Optional
 
-from tornado.concurrent import Future
+# from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 
 if TYPE_CHECKING:
