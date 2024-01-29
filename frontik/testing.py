@@ -150,10 +150,14 @@ class FrontikTestBase:
         self.http_client = app_client
 
     @pytest.fixture(autouse=True)
-    def setup_mock_client(self):
-        with aioresponses(passthrough=['http://127.0.0.1']) as mock_client:
+    def setup_mock_client(self, passthrow_hosts):
+        with aioresponses(passthrough=passthrow_hosts) as mock_client:
             self.mock_client = mock_client
             yield self.mock_client
+
+    @pytest.fixture()
+    def passthrow_hosts(self):
+        return ['http://127.0.0.1', 'http://localhost']
 
     async def fetch(
         self,
