@@ -1,3 +1,9 @@
+-   name: 7.4.7
+    date: '2024-02-02T14:54:40.066268+03:00'
+    description: ''
+    instructions: ''
+    compatible: true
+
 -   name: 7.4.6
     date: '2024-02-01T23:45:04.072976+03:00'
     description: Фикс рекурсии в `json_encode`.
