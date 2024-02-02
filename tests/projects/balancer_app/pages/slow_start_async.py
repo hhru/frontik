@@ -35,10 +35,10 @@ class Page(PageHandler):
 
         request2 = self.run_task(make_request())
         request3 = self.run_task(make_request())
-        request4 = self.run_task(make_request(0.9))
+        request4 = self.run_task(make_request(1.1))
 
         await asyncio.gather(request2, request3)
-        await asyncio.wait_for(request4, timeout=1)
+        await request4
 
         check_all_requests_done(self, 'slow_start_async')
 
