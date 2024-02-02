@@ -1,4 +1,4 @@
-version: 7.4.6
+version: 7.4.7
 docker_context: .
 build_docker_file: docker/Dockerfile.building
 build_method: pytest_run
