@@ -1,9 +1,10 @@
 from lxml import etree
 
-from frontik.handler import HTTPErrorWithPostprocessors, PageHandler
+from frontik.handler import HTTPErrorWithPostprocessors, PageHandler, router
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         self.set_xsl(self.get_argument('template', 'simple.xsl'))
         self.doc.put(etree.Element('ok'))

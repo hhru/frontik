@@ -1,9 +1,10 @@
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 
 
 class Page(PageHandler):
     data: dict = {}
 
+    @router.get()
     async def get_page(self):
         if self.request.method == 'HEAD':
             await self.head_page()
@@ -24,12 +25,15 @@ class Page(PageHandler):
     async def head_page(self) -> None:
         self._record_failed_request({'head_failed': True})
 
+    @router.post()
     async def post_page(self):
         self._record_failed_request({'post_failed': True})
 
+    @router.put()
     async def put_page(self):
         self._record_failed_request({'put_failed': True})
 
+    @router.delete()
     async def delete_page(self):
         self._record_failed_request({'delete_failed': True})
 

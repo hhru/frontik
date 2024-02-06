@@ -1,10 +1,12 @@
 from tornado.concurrent import Future
 
 import frontik.handler
+from frontik.handler import router
 from frontik.util import gather_dict
 
 
 class Page(frontik.handler.PageHandler):
+    @router.get()
     async def get_page(self):
         future: Future = Future()
 

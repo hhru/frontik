@@ -1,9 +1,11 @@
 from lxml.builder import E
 
 from frontik import handler, media_types
+from frontik.handler import router
 
 
 class Page(handler.PageHandler):
+    @router.get()
     async def get_page(self):
         self.log.debug('debug: starting debug page')
 
@@ -43,11 +45,13 @@ class Page(handler.PageHandler):
         self.log.debug('testing utf-8 text output', extra={'_text': 'some\nmultiline\nюникод\ndebug'})
         self.log.debug('testing unicode text output', extra={'_text': 'some\nmultiline\nюникод\ndebug'})
 
+    @router.post()
     async def post_page(self):
         self.log.debug('this page returns json')
 
         self.json.put({'param1': 'value', 'param2': 'тест', 'тест': 'value'})
 
+    @router.put()
     async def put_page(self):
         content_type = self.get_argument('type')
 

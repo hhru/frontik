@@ -2,11 +2,12 @@ from http_client.balancing import Upstream
 from tornado.web import HTTPError
 
 from frontik import media_types
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 from tests.projects.balancer_app import get_server
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         self.application.upstream_manager.upstreams['speculative_retry'] = Upstream('speculative_no_retry', {}, [])
         self.application.upstream_manager.update_upstream(
@@ -27,6 +28,7 @@ class Page(PageHandler):
 
         self.text = result.data
 
+    @router.put()
     async def put_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'

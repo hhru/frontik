@@ -14,7 +14,7 @@ from tornado.testing import gen_test
 
 from frontik import request_context
 from frontik.app import FrontikApplication
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 from frontik.integrations.telemetry import FrontikIdGenerator, get_netloc
 from frontik.options import options
 from frontik.testing import FrontikTestCase
@@ -76,12 +76,14 @@ class TestTelemetry(unittest.TestCase):
 
 
 class PageA(PageHandler):
+    @router.get()
     async def get_page(self):
         res = await self.get_url(self.request.host, '/page_b')
         self.json.put(res)
 
 
 class PageB(PageHandler):
+    @router.get()
     async def get_page(self):
         self.json.put({})
 

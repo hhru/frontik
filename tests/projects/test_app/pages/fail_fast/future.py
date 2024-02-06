@@ -1,11 +1,12 @@
 from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 from frontik.util import gather_dict
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         fail_future = self.get_argument('fail_future', 'false') == 'true'
 

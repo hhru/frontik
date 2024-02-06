@@ -1,9 +1,11 @@
 import frontik.handler
+from frontik.handler import router
 
 
 class Page(frontik.handler.PageHandler):
     result = 'Callback not called'
 
+    @router.get()
     async def get_page(self):
         # Callback must never be called
         def callback():

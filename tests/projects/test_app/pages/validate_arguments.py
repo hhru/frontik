@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import field_validator
 
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 from frontik.validator import BaseValidationModel, Validators
 
 
@@ -17,6 +17,7 @@ class CustomModel(BaseValidationModel):
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         is_custom_model = self.get_bool_argument('model', False)
         empty_default_str = self.get_str_argument('str_arg_with_default', 'default')
@@ -42,6 +43,7 @@ class Page(PageHandler):
             },
         )
 
+    @router.post()
     async def post_page(self):
         str_body_arg = self.get_str_argument('str_argument', 'default', from_body=True)
         int_body_arg = self.get_int_argument('int_argument', 0, from_body=True)
@@ -53,5 +55,6 @@ class Page(PageHandler):
             },
         )
 
+    @router.put()
     async def put_page(self):
         self.get_str_argument('str_arg', 3)

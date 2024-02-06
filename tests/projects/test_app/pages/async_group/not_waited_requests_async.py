@@ -1,11 +1,12 @@
 import asyncio
 
-from frontik.handler import AbortAsyncGroup, PageHandler
+from frontik.handler import AbortAsyncGroup, PageHandler, router
 
 
 class Page(PageHandler):
     data: dict = {}
 
+    @router.get()
     async def get_page(self):
         if not self.data:
             self.json.put({'get': True})
@@ -32,12 +33,15 @@ class Page(PageHandler):
         except AbortAsyncGroup:
             self.record_request({'delete_cancelled': True})
 
+    @router.post()
     async def post_page(self):
         self.record_request({'post_made': True})
 
+    @router.put()
     async def put_page(self):
         self.record_request({'put_made': True})
 
+    @router.delete()
     async def delete_page(self):
         self.record_request({'delete_made': True})
 

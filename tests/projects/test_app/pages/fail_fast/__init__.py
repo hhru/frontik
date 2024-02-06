@@ -1,15 +1,15 @@
-from frontik.handler import HTTPErrorWithPostprocessors, PageHandler
-from frontik.preprocessors import preprocessor
+from fastapi import Depends
+
+from frontik.handler import HTTPErrorWithPostprocessors, PageHandler, get_current_handler, router
 from frontik.util import gather_dict
 
 
-@preprocessor
-def get_page_preprocessor(handler: PageHandler) -> None:
+def get_page_preprocessor(handler: PageHandler = Depends(get_current_handler)) -> None:
     handler.json.put({'preprocessor': True})
 
 
 class Page(PageHandler):
-    @get_page_preprocessor
+    @router.get(dependencies=[Depends(get_page_preprocessor)])
     async def get_page(self):
         fail_fast = self.get_argument('fail_fast', 'false') == 'true'
 
@@ -45,6 +45,7 @@ class Page(PageHandler):
         self.set_status(403)
         self.finish_with_postprocessors()
 
+    @router.post()
     async def post_page(self):
         if self.get_argument('fail_fast_default', 'false') == 'true':
             results = await gather_dict(
@@ -61,11 +62,13 @@ class Page(PageHandler):
         else:
             self.json.put({'POST': self.get_argument('param')})
 
+    @router.put()
     async def put_page(self):
         # Testing parse_on_error=True
         self.json.put({'error': 'forbidden'})
         raise HTTPErrorWithPostprocessors(int(self.get_argument('code')))
 
+    @router.delete()
     async def delete_page(self):
         # Testing invalid return values
         if self.get_argument('invalid_dict_value', 'false') == 'true':

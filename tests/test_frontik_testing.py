@@ -5,7 +5,7 @@ from lxml import etree
 from tornado.ioloop import IOLoop
 
 from frontik.app import FrontikApplication
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 from frontik.options import options
 from frontik.testing import FrontikTestBase, FrontikTestCase
 from frontik.util import gather_list
@@ -14,6 +14,7 @@ from tests.projects.test_app.pages.handler import delete
 
 
 class AsyncHandler(PageHandler):
+    @router.get()
     async def get_page(self):
         self.result = 0
         service_host = self.config.serviceHost  # type: ignore
@@ -29,6 +30,7 @@ class AsyncHandler(PageHandler):
 
 
 class CheckConfigHandler(PageHandler):
+    @router.get()
     async def get_page(self):
         self.text = self.config.config_param  # type: ignore
 

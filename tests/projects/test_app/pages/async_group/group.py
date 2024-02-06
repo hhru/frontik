@@ -1,8 +1,10 @@
 import frontik.handler
+from frontik.handler import router
 from frontik.util import gather_dict
 
 
 class Page(frontik.handler.PageHandler):
+    @router.get()
     async def get_page(self):
         ensure_callback_is_async = False
         fail_callback = self.get_argument('fail_callback', 'false') == 'true'
@@ -43,5 +45,6 @@ class Page(frontik.handler.PageHandler):
 
         self.run_task(group_task())
 
+    @router.post()
     async def post_page(self):
         self.json.put({self.get_argument('data'): 'yay'})

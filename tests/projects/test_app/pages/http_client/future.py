@@ -1,7 +1,8 @@
 import frontik.handler
-
+from frontik.handler import router
 
 class Page(frontik.handler.PageHandler):
+    @router.get()
     async def get_page(self):
         state = {
             'second_callback_must_be_async': True,
@@ -23,6 +24,7 @@ class Page(frontik.handler.PageHandler):
         request_future = self.post_url(self.request.host, self.request.path)
         self.add_future(request_future, self.finish_group.add(additional_callback))
 
+    @router.post()
     async def post_page(self):
         self.json.put({
             'yay': 'yay'

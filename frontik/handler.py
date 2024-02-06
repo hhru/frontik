@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 import tornado.httputil
 import tornado.web
+from fastapi import Request  # noqa
 from http_client.request_response import USER_AGENT_HEADER, FailFastError, RequestBuilder, RequestResult
 from pydantic import BaseModel, ValidationError
 from tornado.ioloop import IOLoop
@@ -25,7 +26,7 @@ import frontik.util
 from frontik import media_types, request_context
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.debug import DEBUG_HEADER_NAME, DebugMode
-from frontik.dependency_manager import execute_page_method_with_dependencies
+from frontik.dependency_manager import APIRouter, execute_page_method_with_dependencies
 from frontik.futures import AbortAsyncGroup, AsyncGroup
 from frontik.http_status import ALLOWED_STATUSES, CLIENT_CLOSED_REQUEST
 from frontik.json_builder import FrontikJsonDecodeError, json_decode
@@ -37,7 +38,7 @@ from frontik.validator import BaseValidationModel, Validators
 from frontik.version import version as frontik_version
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine, Iterable
+    from collections.abc import Callable, Coroutine
 
     from http_client import HttpClient
     from tornado.httputil import HTTPServerRequest
@@ -75,6 +76,7 @@ MEDIA_TYPE_PARAMETERS_SEPARATOR_RE = r' *; *'
 OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
 
 handler_logger = logging.getLogger('handler')
+router = APIRouter()
 
 
 def _fail_fast_policy(fail_fast: bool, waited: bool, host: str, path: str) -> bool:
@@ -90,8 +92,6 @@ def _fail_fast_policy(fail_fast: bool, waited: bool, host: str, path: str) -> bo
 
 
 class PageHandler(RequestHandler):
-    dependencies: Iterable = ()
-    _priority_dependency_names: list[str] = []
     returned_value_handlers: ReturnedValueHandlers = []
 
     def __init__(self, application: FrontikApplication, request: HTTPServerRequest, **kwargs: Any) -> None:
@@ -380,18 +380,22 @@ class PageHandler(RequestHandler):
         if render_result is not None:
             self.write(render_result)
 
+    @router.get()
     async def get_page(self):
         """This method can be implemented in the subclass"""
         self.__return_405()
 
+    @router.post()
     async def post_page(self):
         """This method can be implemented in the subclass"""
         self.__return_405()
 
+    @router.put()
     async def put_page(self):
         """This method can be implemented in the subclass"""
         self.__return_405()
 
+    @router.delete()
     async def delete_page(self):
         """This method can be implemented in the subclass"""
         self.__return_405()
@@ -955,5 +959,10 @@ class ErrorHandler(PageHandler, tornado.web.ErrorHandler):
 
 
 class RedirectHandler(PageHandler, tornado.web.RedirectHandler):
+    @router.get()
     def get_page(self):
         tornado.web.RedirectHandler.get(self)
+
+
+def get_current_handler(request: Request) -> PageHandler:
+    return request['handler']

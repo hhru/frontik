@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
 from frontik import request_context
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 
 
 def _callback(name, handler, *args):
@@ -11,6 +11,7 @@ def _callback(name, handler, *args):
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         def _waited_callback(name: str) -> Callable:
             return self.finish_group.add(partial(_callback, name, self))
@@ -33,6 +34,7 @@ class Page(PageHandler):
 
         self.json.put({'coroutine_after_yield': request_context.get_handler_name()})
 
+    @router.post()
     async def post_page(self):
         pass
 

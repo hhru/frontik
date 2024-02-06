@@ -1,9 +1,10 @@
 from tornado.web import Finish
 
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         throw = self.get_argument('throw', 'true') == 'true'
         code = int(self.get_argument('code', '200'))

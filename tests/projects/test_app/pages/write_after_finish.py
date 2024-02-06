@@ -1,6 +1,6 @@
 import asyncio
 
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 
 
 class Page(PageHandler):
@@ -23,10 +23,12 @@ class Page(PageHandler):
                 await asyncio.sleep(0.1)
                 handler.json.put({'postprocessor_completed': True})
 
+    @router.get()
     async def get_page(self):
         await self.post_url(self.request.host, self.request.uri)  # type: ignore
         # test that postprocessors are scheduled only once
         self.finish_with_postprocessors()
 
+    @router.post()
     async def post_page(self):
         self.json.put({'counter': self.counter_static})

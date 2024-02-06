@@ -3,7 +3,7 @@ import re
 import frontik.handler
 from frontik.util import any_to_bytes, any_to_unicode
 from typing import Any
-
+from frontik.handler import router
 FIELDS: dict[str, Any] = {
     'fielda': 'hello',
     'fieldb': '',
@@ -24,11 +24,13 @@ FILES: dict[str, list] = {
 
 
 class Page(frontik.handler.PageHandler):
+    @router.get()
     async def get_page(self):
         result = await self.post_url(self.request.host, self.request.path, data=FIELDS, files=FILES)
         if not result.failed:
             self.json.put(result.data)
 
+    @router.post()
     async def post_page(self):
         errors_count = 0
         body_parts = self.request.body.split(b'\r\n--')

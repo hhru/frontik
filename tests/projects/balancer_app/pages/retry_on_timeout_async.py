@@ -2,12 +2,13 @@ from http_client.balancing import Upstream
 from tornado.web import HTTPError
 
 from frontik import media_types
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         self.application.upstream_manager.update_upstream(
             Upstream('retry_on_timeout_async', {}, [get_server(self, 'broken'), get_server(self, 'normal')]),
@@ -28,6 +29,7 @@ class Page(PageHandler):
 
         check_all_requests_done(self, 'retry_on_timeout_async')
 
+    @router.delete()
     async def delete_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'

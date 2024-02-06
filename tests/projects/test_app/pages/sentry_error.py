@@ -4,10 +4,11 @@ import sentry_sdk
 from tornado.ioloop import IOLoop
 from tornado.web import HTTPError
 
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         ip = self.get_argument('ip', None)
         extra = self.get_argument('extra_key', None)
@@ -18,9 +19,11 @@ class Page(PageHandler):
         msg = 'My_sentry_exception'
         raise Exception(msg)
 
+    @router.post()
     async def post_page(self):
         raise HTTPError(500, 'my_HTTPError')
 
+    @router.put()
     async def put_page(self):
         sentry_sdk.set_extra('extra_key', 'extra_value')
         sentry_sdk.capture_message('sentry_message')

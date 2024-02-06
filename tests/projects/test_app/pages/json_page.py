@@ -1,4 +1,5 @@
 from frontik import handler, media_types
+from frontik.handler import router
 from frontik.util import gather_dict
 
 
@@ -16,6 +17,7 @@ class Page(handler.PageHandler):
 
         super().prepare()
 
+    @router.get()
     async def get_page(self):
         invalid_json = self.get_argument('invalid', 'false')
 
@@ -31,6 +33,7 @@ class Page(handler.PageHandler):
         self.set_template(self.get_argument('template', 'jinja.html'))
         self.json.put(data)
 
+    @router.post()
     async def post_page(self):
         invalid_json = self.get_argument('invalid', 'false') == 'true'
 

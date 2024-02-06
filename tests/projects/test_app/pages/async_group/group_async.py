@@ -1,9 +1,11 @@
 from typing import Any
 
 import frontik.handler
+from frontik.handler import router
 
 
 class Page(frontik.handler.PageHandler):
+    @router.get()
     async def get_page(self):
         fail_callback = self.get_argument('fail_callback', 'false') == 'true'
         fail_request = self.get_argument('fail_request', 'false') == 'true'
@@ -35,5 +37,6 @@ class Page(frontik.handler.PageHandler):
         self.json.put({'future_callback_result': result['4'].data['4']})
         self.json.put({'final_callback_called': True})
 
+    @router.post()
     async def post_page(self):
         self.json.put({self.get_argument('data'): 'yay'})

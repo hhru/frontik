@@ -1,9 +1,10 @@
 from tornado.web import HTTPError
 
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         if self.get_argument('test_mandatory_headers', None) is not None:
             self.set_mandatory_header('TEST_HEADER', 'TEST_HEADER_VALUE')

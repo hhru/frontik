@@ -1,7 +1,8 @@
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         if self.get_argument('fail_args', 'false') != 'false':
             self.text = self.reverse_url('two_ids', 1)

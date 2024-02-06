@@ -4,12 +4,13 @@ from http_client.balancing import Upstream
 from tornado.web import HTTPError
 
 from frontik import media_types
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_servers_were_occupied
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         self.application.upstream_manager.update_upstream(
             Upstream('retry_connect_async', {}, [get_server(self, 'free'), get_server(self, 'normal')]),
@@ -36,6 +37,7 @@ class Page(PageHandler):
 
         check_all_servers_were_occupied(self, 'retry_connect_async')
 
+    @router.post()
     async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'
