@@ -1,6 +1,6 @@
 from tornado.web import HTTPError
 
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 
 
 class ContentPostprocessor:
@@ -9,6 +9,7 @@ class ContentPostprocessor:
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         if self.get_argument('raise_error', None) is not None:
             self.add_postprocessor(self._pp_1)

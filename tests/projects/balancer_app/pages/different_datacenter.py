@@ -7,7 +7,7 @@ from http_client.request_response import NoAvailableServerException
 from tornado.web import HTTPError
 
 from frontik import media_types
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 from tests.projects.balancer_app import get_server
 
 if TYPE_CHECKING:
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         free_server = get_server(self, 'free')
         free_server.datacenter = 'dc1'
@@ -37,6 +38,7 @@ class Page(PageHandler):
 
         self.text = result.data
 
+    @router.post()
     async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = 'result'

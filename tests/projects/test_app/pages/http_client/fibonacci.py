@@ -1,10 +1,11 @@
 import asyncio
 
 from frontik import media_types
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         n = int(self.get_argument('n'))
 

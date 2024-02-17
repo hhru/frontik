@@ -1,10 +1,11 @@
 from tornado.web import HTTPError
 
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 from frontik.util import gather_list
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         port = int(self.get_argument('port'))
 

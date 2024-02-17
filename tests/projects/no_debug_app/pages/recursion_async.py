@@ -1,7 +1,9 @@
 from frontik import handler, media_types
+from frontik.handler import router
 
 
 class Page(handler.PageHandler):
+    @router.get()
     async def get_page(self):
         n = int(self.get_argument('n'))
         if n > 0:

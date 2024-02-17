@@ -3,12 +3,13 @@ import asyncio
 from http_client.balancing import Upstream
 
 from frontik import media_types
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_were_occupied
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         self.application.upstream_manager.update_upstream(Upstream('requests_count', {}, [get_server(self, 'normal')]))
         self.text = ''
@@ -28,6 +29,7 @@ class Page(PageHandler):
         await asyncio.sleep(0.1)
         check_all_servers_were_occupied(self, 'requests_count')
 
+    @router.post()
     async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = str(self.application.upstream_manager.upstreams['requests_count'].servers[0].stat_requests)

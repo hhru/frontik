@@ -4,7 +4,7 @@ import pytest
 from pydantic import BaseModel
 
 from frontik.app import FrontikApplication
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 from frontik.testing import FrontikTestBase
 from tests import FRONTIK_ROOT
 
@@ -16,16 +16,19 @@ class _PydanticModel(BaseModel):
 
 
 class ReturnPydanticModelHandler(PageHandler):
+    @router.get()
     async def get_page(self) -> _PydanticModel:
         return _PydanticModel(int_field=1, bool_field=True, str_field='Ну привет')
 
 
 class ReturnDictHandler(PageHandler):
+    @router.get()
     async def get_page(self) -> dict:
         return {'is_dict': True, 'msg': 'Ну привет'}
 
 
 class ReturnSelfJsonPutHandler(PageHandler):
+    @router.get()
     async def get_page(self) -> dict:
         self.json.put({'a': 'b'})
         return self.json.put({'c': 'd'})  # type: ignore[func-returns-value]

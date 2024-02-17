@@ -3,9 +3,11 @@ from lxml import etree
 import frontik.handler
 from frontik import media_types
 from frontik.doc import Doc
+from frontik.handler import router
 
 
 class Page(frontik.handler.PageHandler):
+    @router.get()
     async def get_page(self):
         invalid_xml = self.get_argument('invalid', 'false')
 
@@ -13,6 +15,7 @@ class Page(frontik.handler.PageHandler):
         self.doc.put(self.post_url(self.request.host, self.request.path, data={'invalid': invalid_xml}))
         self.doc.put(Doc('c'))
 
+    @router.post()
     async def post_page(self):
         invalid_xml = self.get_argument('invalid', 'false') == 'true'
 

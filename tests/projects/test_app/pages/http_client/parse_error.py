@@ -1,7 +1,8 @@
 import frontik.handler
-
+from frontik.handler import router
 
 class Page(frontik.handler.PageHandler):
+    @router.get()
     async def get_page(self):
         el_result = await self.post_url(self.request.host, self.request.path + '?mode=xml')
         element = el_result.data
@@ -16,6 +17,7 @@ class Page(frontik.handler.PageHandler):
         else:
             assert False
 
+    @router.post()
     async def post_page(self):
         if self.get_argument('mode') == "xml":
             self.text = '''<doc frontik="tr"ue">this is broken xml</doc>'''

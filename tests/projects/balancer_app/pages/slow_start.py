@@ -3,12 +3,13 @@ import asyncio
 from http_client.balancing import Server, Upstream, UpstreamConfig
 
 from frontik import media_types
-from frontik.handler import PageHandler
+from frontik.handler import PageHandler, router
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_were_occupied
 
 
 class Page(PageHandler):
+    @router.get()
     async def get_page(self):
         server = get_server(self, 'normal')
         server.weight = 5
@@ -45,6 +46,7 @@ class Page(PageHandler):
         self.text = str(server.stat_requests + server_slow_start.stat_requests)
         check_all_requests_done(self, 'slow_start')
 
+    @router.post()
     async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
         self.text = str(self.application.upstream_manager.upstreams['slow_start'].servers[0].stat_requests)
