@@ -1,3 +1,10 @@
+-   name: 7.5.0
+    date: '2024-02-17T16:46:09.399282+03:00'
+    description: Теперь для зависимостей используется механизм из fastapi
+    instructions: "Если использовались зависимости нужно изменить синтаксис на такой:\
+        \ \r\nhttps://github.com/hhru/frontik/blob/1d4d283a7e49ecc5e9d43e8d60087ab41b284256/docs/dependency_injection.md"
+    compatible: false
+
 -   name: 7.4.7
     date: '2024-02-02T14:54:40.066268+03:00'
     description: ''
