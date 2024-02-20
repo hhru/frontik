@@ -363,7 +363,7 @@ class PageHandler(RequestHandler):
         await self._execute_page(self.get_page)
 
     def options(self, *args, **kwargs):
-        self.__return_405()
+        self.return_405()
 
     async def _execute_page(self, page_handler_method: Callable[[], Coroutine[Any, Any, None]]) -> None:
         self.stages_logger.commit_stage('prepare')
@@ -382,21 +382,21 @@ class PageHandler(RequestHandler):
 
     async def get_page(self):
         """This method can be implemented in the subclass"""
-        self.__return_405()
+        self.return_405()
 
     async def post_page(self):
         """This method can be implemented in the subclass"""
-        self.__return_405()
+        self.return_405()
 
     async def put_page(self):
         """This method can be implemented in the subclass"""
-        self.__return_405()
+        self.return_405()
 
     async def delete_page(self):
         """This method can be implemented in the subclass"""
-        self.__return_405()
+        self.return_405()
 
-    def __return_405(self) -> None:
+    def return_405(self) -> None:
         allowed_methods = [name for name in ('get', 'post', 'put', 'delete') if f'{name}_page' in vars(self.__class__)]
         self.set_header('Allow', ', '.join(allowed_methods))
         self.set_status(405)
