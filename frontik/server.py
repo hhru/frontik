@@ -14,6 +14,9 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from functools import partial
 from typing import TYPE_CHECKING, Optional, Union
+import cProfile
+import time
+import os
 
 import tornado.autoreload
 from http_client.options import options as http_client_options
@@ -125,6 +128,7 @@ def _run_worker(
     loop.run_forever()
     # to raise init exception if any
     initialize_application_task.result()
+    log.info('_run_worker ended')
 
 
 def run_server(
@@ -137,6 +141,7 @@ def run_server(
     http_server = HTTPServer(app, xheaders=options.xheaders)
     http_server.bind(options.port, options.host, reuse_port=options.reuse_port)
     http_server.start()
+    c_profiler = cProfile.Profile()
 
     if options.autoreload:
         tornado.autoreload.start(1000)
@@ -163,6 +168,17 @@ def run_server(
 
     signal.signal(signal.SIGTERM, sigterm_handler)
     signal.signal(signal.SIGINT, sigterm_handler)
+
+    def sig_handler(signum, _frame):
+        if signum == signal.SIGUSR1:
+            c_profiler.enable()
+
+        if signum == signal.SIGUSR2:
+            c_profiler.disable()
+            c_profiler.dump_stats(f"/tmp/cProfile_dump_{os.getpid()}_{time.time()}.prof")
+
+    signal.signal(signal.SIGUSR1, sig_handler)
+    signal.signal(signal.SIGUSR2, sig_handler)
 
 
 async def _init_app(
