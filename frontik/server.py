@@ -26,6 +26,8 @@ from frontik.options import options
 from frontik.process import fork_workers
 from frontik.service_discovery import UpstreamUpdateListener
 
+import traceback
+
 if TYPE_CHECKING:
     from asyncio import Future
     from collections.abc import Coroutine
@@ -125,6 +127,7 @@ def _run_worker(
     loop.run_forever()
     # to raise init exception if any
     initialize_application_task.result()
+    log.info('worker done')
 
 
 def run_server(
@@ -154,6 +157,7 @@ def run_server(
             log.info('going down in %s seconds', options.stop_timeout)
 
             def ioloop_stop(_deinit_task):
+                log.info('ioloop_stop callback')
                 if loop.is_running():
                     log.info('stopping IOLoop')
                     loop.stop()
@@ -163,6 +167,18 @@ def run_server(
 
     signal.signal(signal.SIGTERM, sigterm_handler)
     signal.signal(signal.SIGINT, sigterm_handler)
+
+    def sig_handler(signum, frame):
+        if signum == signal.SIGUSR1:
+            message = 'SIGUSR1 received. Traceback:\n' + ''.join(traceback.format_stack(frame))
+            log.info(message)
+
+        if signum == signal.SIGUSR2:
+            message = 'SIGUSR2 received. Current tasks:\n' + ''.join(map(str, asyncio.all_tasks()))
+            log.info(message)
+
+    signal.signal(signal.SIGUSR1, sig_handler)
+    signal.signal(signal.SIGUSR2, sig_handler)
 
 
 async def _init_app(
@@ -196,6 +212,7 @@ async def _deinit_app(app: FrontikApplication, need_to_register_in_service_disco
 
     if need_to_register_in_service_discovery:
         deregistration = app.service_discovery_client.deregister_service_and_close()
+        log.info('run deregistration')
         deinit_futures = [asyncio.wait_for(deregistration, timeout=options.stop_timeout)]
 
     deinit_futures.extend([integration.deinitialize_app(app) for integration in app.available_integrations])
@@ -203,10 +220,13 @@ async def _deinit_app(app: FrontikApplication, need_to_register_in_service_disco
     if deinit_futures:
         try:
             await asyncio.gather(*[future for future in deinit_futures if future])
-            log.info('Successfully deinited application')
+            log.info('deinit futures done')
         except Exception as e:
             log.exception('failed to deinit, deinit returned: %s', e)
 
+    log.info('wait stop_timeout')
     await asyncio.sleep(options.stop_timeout)
     if app.tornado_http_client is not None:
+        log.info('close http_client')
         await app.tornado_http_client.client_session.close()
+    log.info('Successfully deinited application')
