@@ -298,7 +298,7 @@ class UpstreamCaches:
         self._lock = Lock()
         self._resend_dict: dict[int, bool] = {}
         self._resend_notification: Queue = Queue(maxsize=1)
-        self._resend_thread = Thread(target=self._resend, daemon=True)
+        self._resend_thread = Thread(target=self._resend, name='qqq_consul_thread', daemon=True)
 
         if isinstance(service_discovery, _SyncServiceDiscovery):
             self._resend_thread.start()

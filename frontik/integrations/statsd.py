@@ -187,7 +187,7 @@ class StatsDClient:
     def send_periodically(self, callback: Callable, send_interval_sec: Optional[float] = None) -> None:
         if send_interval_sec is None:
             send_interval_sec = self.default_periodic_send_interval_sec
-        threading.Thread(target=partial(self._send_periodically, callback, send_interval_sec), daemon=True).start()
+        threading.Thread(target=partial(self._send_periodically, callback, send_interval_sec), name='qqq_statsd_sender', daemon=True).start()
 
     @staticmethod
     def _send_periodically(callback: Callable, send_interval_sec: float) -> None:

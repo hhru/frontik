@@ -25,6 +25,8 @@ from frontik.loggers import MDC
 from frontik.options import options
 from frontik.process import fork_workers
 from frontik.service_discovery import UpstreamUpdateListener
+import threading
+import traceback
 
 if TYPE_CHECKING:
     from asyncio import Future
@@ -111,7 +113,7 @@ def _run_worker(
         uvloop.install()
 
     loop = asyncio.get_event_loop()
-    executor = ThreadPoolExecutor(options.common_executor_pool_size)
+    executor = ThreadPoolExecutor(options.common_executor_pool_size, thread_name_prefix='qqq_base_executor')
     loop.set_default_executor(executor)
     initialize_application_task = loop.create_task(
         _init_app(app, count_down_lock, need_to_register_in_service_discovery, read_pipe_fd),
@@ -163,6 +165,15 @@ def run_server(
 
     signal.signal(signal.SIGTERM, sigterm_handler)
     signal.signal(signal.SIGINT, sigterm_handler)
+
+
+    def sig_handler(signum, frame):
+        for th in threading.enumerate():
+            a = f'{th}: ' + '\n'.join(traceback.format_stack(sys._current_frames()[th.ident]))
+            log.info(a)
+
+    signal.signal(signal.SIGUSR1, sig_handler)
+    signal.signal(signal.SIGUSR2, sig_handler)
 
 
 async def _init_app(
