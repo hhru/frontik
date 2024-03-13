@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 import importlib
 import logging
@@ -7,42 +5,36 @@ import multiprocessing
 import sys
 import time
 import traceback
+from collections.abc import Callable
+from ctypes import c_bool, c_int
 from functools import partial
-from typing import TYPE_CHECKING, Optional
+from threading import Lock
+from typing import Any, Optional, Union
 
+from aiokafka import AIOKafkaProducer
 from http_client import AIOHttpClientWrapper, HttpClientFactory
 from http_client import options as http_client_options
-from http_client.balancing import RequestBalancerBuilder, Upstream, UpstreamManager
+from http_client.balancing import RequestBalancerBuilder, Upstream
 from lxml import etree
+from tornado import httputil
+from tornado.httputil import HTTPServerRequest
 from tornado.web import Application, HTTPError, RequestHandler
 
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
 from frontik import integrations, media_types, request_context
 from frontik.debug import DebugTransform, get_frontik_and_apps_versions
-from frontik.handler import ErrorHandler
+from frontik.handler import ErrorHandler, PageHandler
 from frontik.handler_return_values import ReturnedValueHandlers, get_default_returned_value_handlers
-from frontik.integrations.statsd import create_statsd_client
+from frontik.integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.options import options
+from frontik.process import WorkerState
 from frontik.routing import FileMappingRouter, FrontikRouter
-from frontik.service_discovery import UpstreamCaches, get_async_service_discovery, get_sync_service_discovery
+from frontik.service_discovery import UpstreamManager
 from frontik.util import check_request_id, generate_uniq_timestamp_request_id
 
 app_logger = logging.getLogger('http_client')
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-    from multiprocessing.sharedctypes import Synchronized
-    from typing import Any
-
-    from aiokafka import AIOKafkaProducer
-    from tornado import httputil
-    from tornado.httputil import HTTPServerRequest
-
-    from frontik.handler import PageHandler
-    from frontik.integrations.statsd import StatsDClient, StatsDClientStub
-    from frontik.service_discovery import UpstreamUpdateListener
 
 
 class VersionHandler(RequestHandler):
@@ -115,36 +107,43 @@ class FrontikApplication(Application):
         self.available_integrations: list[integrations.Integration] = []
         self.tornado_http_client: Optional[AIOHttpClientWrapper] = None
         self.http_client_factory: HttpClientFactory
-        self.upstream_manager: UpstreamManager = None
-        self.upstreams: dict[str, Upstream] = {}
-        self.children_pipes: dict[int, Any] = {}
-        self.upstream_update_listener: UpstreamUpdateListener
         self.router = FrontikRouter(self)
-        self.init_workers_count_down: Synchronized = multiprocessing.Value('i', options.workers)  # type: ignore
 
         core_handlers: list[Any] = [
             (r'/version/?', VersionHandler),
             (r'/status/?', StatusHandler),
             (r'.*', self.router),
         ]
-
         if options.debug:
             core_handlers.insert(0, (r'/pydevd/?', PydevdHandler))
 
-        self.statsd_client: StatsDClient | StatsDClientStub = create_statsd_client(options, self)
-        sync_service_discovery = get_sync_service_discovery(options, self.statsd_client)
-        self.service_discovery_client = (
-            get_async_service_discovery(options, self.statsd_client) if options.workers == 1 else sync_service_discovery
-        )
-        self.upstream_caches = (
-            UpstreamCaches(self.children_pipes, self.upstreams, sync_service_discovery)
-            if options.consul_enabled
-            else UpstreamCaches(self.children_pipes, self.upstreams)
-        )
+        self.statsd_client: Union[StatsDClient, StatsDClientStub] = create_statsd_client(options, self)
+
+        init_workers_count_down = multiprocessing.Value(c_int, options.workers)
+        master_done = multiprocessing.Value(c_bool, False)
+        count_down_lock = multiprocessing.Lock()
+        self.worker_state = WorkerState(init_workers_count_down, master_done, count_down_lock)  # type: ignore
+
         self.returned_value_handlers: ReturnedValueHandlers = get_default_returned_value_handlers()
 
-        tornado_settings = settings.get('tornado_settings') or {}
-        super().__init__(core_handlers, **tornado_settings)
+        super().__init__(core_handlers)
+
+    def create_upstream_manager(
+        self,
+        upstreams: dict[str, Upstream],
+        upstreams_lock: Optional[Lock],
+        send_to_all_workers: Optional[Callable],
+        with_consul: bool,
+    ) -> None:
+        self.upstream_manager = UpstreamManager(
+            upstreams,
+            self.statsd_client,
+            upstreams_lock,
+            send_to_all_workers,
+            with_consul,
+        )
+
+        self.upstream_manager.send_updates()  # initial full state sending
 
     async def init(self) -> None:
         self.transforms.insert(0, partial(DebugTransform, self))  # type: ignore
@@ -170,13 +169,18 @@ class FrontikApplication(Application):
             self.get_kafka_producer(kafka_cluster) if send_metrics_to_kafka and kafka_cluster is not None else None
         )
 
-        self.upstream_manager = UpstreamManager(self.upstreams)
+        with_consul = self.worker_state.single_worker_mode and options.consul_enabled
+        self.create_upstream_manager({}, None, None, with_consul)
+        self.upstream_manager.register_service()
+
         request_balancer_builder = RequestBalancerBuilder(
-            self.upstream_manager,
+            self.upstream_manager.get_upstreams(),
             statsd_client=self.statsd_client,
             kafka_producer=kafka_producer,
         )
         self.http_client_factory = HttpClientFactory(self.app, self.tornado_http_client, request_balancer_builder)
+        if self.worker_state.single_worker_mode:
+            self.worker_state.master_done.value = True
 
     def find_handler(self, request, **kwargs):
         request_id = request.headers.get('X-Request-Id')
@@ -226,10 +230,12 @@ class FrontikApplication(Application):
         return FrontikApplication.request_id
 
     def get_current_status(self) -> dict[str, str]:
-        if self.init_workers_count_down.value > 0:
+        not_started_workers = self.worker_state.init_workers_count_down.value
+        master_done = self.worker_state.master_done.value
+        if not_started_workers > 0 or not master_done:
             raise HTTPError(
                 500,
-                f'some workers are not started init_workers_count_down={self.init_workers_count_down.value}',
+                f'some workers are not started not_started_workers={not_started_workers}, master_done={master_done}',
             )
 
         cur_uptime = time.time() - self.start_time
@@ -240,10 +246,7 @@ class FrontikApplication(Application):
         else:
             uptime_value = f'{cur_uptime / 3600:.2f} hours and {(cur_uptime % 3600) / 60:.2f} minutes'
 
-        return {
-            'uptime': uptime_value,
-            'datacenter': http_client_options.datacenter,
-        }
+        return {'uptime': uptime_value, 'datacenter': http_client_options.datacenter}
 
     def log_request(self, handler):
         if not options.log_json:

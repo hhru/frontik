@@ -158,9 +158,7 @@ class JsonProducerFactory(ProducerFactory):
             self.environment = jinja2.Environment(
                 auto_reload=options.debug,
                 cache_size=options.jinja_template_cache_limit,
-                loader=jinja2.FileSystemLoader(
-                    get_abs_path(application.app_root, options.jinja_template_root),
-                ),
+                loader=jinja2.FileSystemLoader(get_abs_path(application.app_root, options.jinja_template_root)),
             )
         else:
             self.environment = None

@@ -9,7 +9,8 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 class Page(handler.PageHandler):
     @router.get()
     async def get_page(self):
-        self.application.upstream_manager.update_upstream(Upstream('no_available_backend', {}, []))
+        upstreams = self.application.upstream_manager.get_upstreams()
+        upstreams['no_available_backend'] = Upstream('no_available_backend', {}, [])
 
         request = self.post_url('no_available_backend', self.request.path)
         check_all_requests_done(self, 'no_available_backend')

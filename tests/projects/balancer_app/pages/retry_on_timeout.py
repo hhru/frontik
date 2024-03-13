@@ -10,8 +10,11 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 class Page(PageHandler):
     @router.get()
     async def get_page(self):
-        self.application.upstream_manager.update_upstream(
-            Upstream('retry_on_timeout', {}, [get_server(self, 'broken'), get_server(self, 'normal')]),
+        upstreams = self.application.upstream_manager.get_upstreams()
+        upstreams['retry_on_timeout'] = Upstream(
+            'retry_on_timeout',
+            {},
+            [get_server(self, 'broken'), get_server(self, 'normal')],
         )
 
         result = await self.delete_url(

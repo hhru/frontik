@@ -4,7 +4,7 @@ from collections import namedtuple
 LogLevelOverride = namedtuple('LogLevelOverride', ['logger_name', 'log_level'])
 
 
-class LogLevelOverrideExtension(metaclass=abc.ABCMeta):
+class LogLevelOverrideExtension(abc.ABC):
     @abc.abstractmethod
     async def load_log_level_overrides(self) -> list[LogLevelOverride]:
         pass

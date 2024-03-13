@@ -9,9 +9,8 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 class Page(handler.PageHandler):
     @router.get()
     async def get_page(self):
-        self.application.upstream_manager.update_upstream(
-            Upstream('no_retry_error_async', {}, [get_server(self, 'broken')]),
-        )
+        upstreams = self.application.upstream_manager.get_upstreams()
+        upstreams['no_retry_error_async'] = Upstream('no_retry_error_async', {}, [get_server(self, 'broken')])
 
         result = await self.post_url('no_retry_error_async', self.request.path)
         if result.failed and result.status_code == 500:

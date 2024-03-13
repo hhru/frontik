@@ -1,7 +1,3 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
 from http_client.balancing import Upstream
 from http_client.request_response import NoAvailableServerException
 from tornado.web import HTTPError
@@ -9,9 +5,6 @@ from tornado.web import HTTPError
 from frontik import media_types
 from frontik.handler import PageHandler, router
 from tests.projects.balancer_app import get_server
-
-if TYPE_CHECKING:
-    from frontik.app import FrontikApplication
 
 
 class Page(PageHandler):
@@ -22,13 +15,11 @@ class Page(PageHandler):
         normal_server = get_server(self, 'normal')
         normal_server.datacenter = 'dc2'
 
-        self.application: FrontikApplication
-        self.application.upstream_manager.update_upstream(
-            Upstream('different_datacenter', {}, [free_server, normal_server]),
-        )
+        upstream = Upstream('different_datacenter', {}, [free_server, normal_server])
+        self.application.upstream_manager.get_upstreams()['different_datacenter'] = upstream
 
         result = await self.post_url('different_datacenter', self.request.path)
-        for server in self.application.upstream_manager.upstreams.get('different_datacenter').servers:
+        for server in upstream.servers:
             if server.stat_requests != 0:
                 raise HTTPError(500)
 

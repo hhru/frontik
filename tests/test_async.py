@@ -146,11 +146,7 @@ class FutureProbe:
 
         return _cb
 
-    def assert_single_result_call(
-        self,
-        test: TestFutureFold,
-        expected_result: tuple[object, object] | object,
-    ) -> None:
+    def assert_single_result_call(self, test: TestFutureFold, expected_result: tuple[object, object] | object) -> None:
         test.assertEqual(len(self._calls), 1, msg='should be only one future resolve')
         test.assertEqual(self._calls[0][0], expected_result, msg='expected future result not matched')
 

@@ -8,10 +8,7 @@ class Page(handler.PageHandler):
         if self.get_argument('custom_render', 'false') == 'true':
 
             def jinja_context_provider(handler):
-                return {
-                    'req1': {'result': 'custom1'},
-                    'req2': {'result': 'custom2'},
-                }
+                return {'req1': {'result': 'custom1'}, 'req2': {'result': 'custom2'}}
 
             self.jinja_context_provider = jinja_context_provider
 

@@ -8,7 +8,7 @@ from frontik.app import FrontikApplication
 from frontik.handler import RedirectHandler
 from frontik.loggers import bootstrap_logger
 from frontik.options import options
-from frontik.routing import _get_application_404_handler_delegate
+from frontik.routing import get_application_404_handler_delegate
 from tests.projects.test_app import config
 
 
@@ -65,6 +65,6 @@ class RedirectRouter(tornado.routing.Router):
         elif self.TEMPORARY_REDIRECT_PATTERN.match(request.uri):
             permanent = False
         else:
-            return _get_application_404_handler_delegate(application, request)
+            return get_application_404_handler_delegate(application, request)
         redirect_arguments = {'url': '/finish?foo=bar', 'permanent': permanent}
         return application.get_handler_delegate(request, RedirectHandler, redirect_arguments)

@@ -35,7 +35,7 @@ class FileMappingRouter(Router):
 
         if any('.' in part for part in url_parts):
             routing_logger.info('url contains "." character, using 404 page')
-            return _get_application_404_handler_delegate(application, request)
+            return get_application_404_handler_delegate(application, request)
 
         page_name = '.'.join(filter(None, url_parts))
         page_module_name = '.'.join(filter(None, (self.name, page_name)))
@@ -43,7 +43,7 @@ class FileMappingRouter(Router):
 
         if len(page_module_name) > MAX_MODULE_NAME_LENGTH:
             routing_logger.info('page module name exceeds PATH_MAX (%s), using 404 page', MAX_MODULE_NAME_LENGTH)
-            return _get_application_404_handler_delegate(application, request)
+            return get_application_404_handler_delegate(application, request)
 
         def _handle_general_module_import_exception() -> HTTPMessageDelegate:
             routing_logger.exception('error while importing %s module', page_module_name)
@@ -59,13 +59,13 @@ class FileMappingRouter(Router):
             ):
                 return _handle_general_module_import_exception()
             routing_logger.warning('%s module not found', (self.name, page_module_name))
-            return _get_application_404_handler_delegate(application, request)
+            return get_application_404_handler_delegate(application, request)
         except Exception:
             return _handle_general_module_import_exception()
 
         if not hasattr(page_module, 'Page'):
             routing_logger.error('%s.Page class not found', page_module_name)
-            return _get_application_404_handler_delegate(application, request)
+            return get_application_404_handler_delegate(application, request)
 
         return application.get_handler_delegate(request, page_module.Page)
 
@@ -110,7 +110,7 @@ class FrontikRouter(ReversibleRouter):
                     return _get_application_500_handler_delegate(self.application, request)
 
         routing_logger.error('match for request url "%s" not found', request.uri)
-        return _get_application_404_handler_delegate(self.application, request)
+        return get_application_404_handler_delegate(self.application, request)
 
     def reverse_url(self, name: str, *args: Any, **kwargs: Any) -> str:
         if name not in self.handler_names:
@@ -119,7 +119,7 @@ class FrontikRouter(ReversibleRouter):
         return reverse_regex_named_groups(self.handler_names[name], *args, **kwargs)
 
 
-def _get_application_404_handler_delegate(
+def get_application_404_handler_delegate(
     application: FrontikApplication,
     request: HTTPServerRequest,
 ) -> HTTPMessageDelegate:

@@ -21,7 +21,7 @@ def _is_valid_element(node: Any) -> bool:
 
 
 class Doc:
-    __slots__ = ('root_node', 'data')
+    __slots__ = ('data', 'root_node')
 
     def __init__(self, root_node: Any = 'doc') -> None:
         if isinstance(root_node, str):

@@ -57,8 +57,7 @@ def create_basic_auth_header(credentials: str) -> str:
 class FrontikTestInstance:
     def __init__(self, command: str, *, allow_to_create_log_files: bool = False) -> None:
         if not allow_to_create_log_files and options.LOG_DIR_OPTION_NAME in command:
-            msg = 'Log to file is prohibited it tests by default. use allow_to_create_log_files if needed'
-            raise Exception(msg)
+            raise Exception('Log to file is prohibited it tests by default. use allow_to_create_log_files if needed')
         self.command = command
         self.popen: subprocess.Popen
         self.port: Optional[int] = None
@@ -78,8 +77,7 @@ class FrontikTestInstance:
             except Exception:
                 pass
 
-        msg = 'Failed to start Frontik instance'
-        raise AssertionError(msg)
+        raise AssertionError('Failed to start Frontik instance')
 
     def start_with_check(self, check_function: Callable) -> None:
         self.port = find_free_port()

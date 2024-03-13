@@ -15,7 +15,8 @@ class Page(PageHandler):
             'profile_without_retry': UpstreamConfig(max_tries=1),
             'profile_with_retry': UpstreamConfig(max_tries=2),
         }
-        self.application.upstream_manager.upstreams['profile_with_retry'] = Upstream(
+        upstreams = self.application.upstream_manager.get_upstreams()
+        upstreams['profile_with_retry'] = Upstream(
             'profile_with_retry',
             upstream_config,
             servers,

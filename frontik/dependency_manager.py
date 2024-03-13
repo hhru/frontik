@@ -45,11 +45,6 @@ async def execute_page_method_with_dependencies(handler: Any, get_page_method: C
 
     route = get_page_method._route  # type: ignore
 
-    await solve_dependencies(
-        request=request,
-        dependant=route.dependant,
-        body=None,
-        dependency_overrides_provider=None,
-    )
+    await solve_dependencies(request=request, dependant=route.dependant, body=None, dependency_overrides_provider=None)
 
     return await get_page_method()
