@@ -456,8 +456,8 @@ class PageHandler(RequestHandler):
             self.log.info('page was already finished, skipping postprocessors')
             return
 
-        postprocessors_completed = await self._run_postprocessors(self._postprocessors)
         self.stages_logger.commit_stage('page')
+        postprocessors_completed = await self._run_postprocessors(self._postprocessors)
 
         if not postprocessors_completed:
             self.log.info('page was already finished, skipping page producer')
