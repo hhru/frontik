@@ -1,3 +1,9 @@
+-   name: 7.5.2
+    date: '2024-03-15T11:57:56.809374+03:00'
+    description: Обновил stages страницы
+    instructions: ''
+    compatible: true
+
 -   name: 7.5.1
     date: '2024-02-26T14:41:30.847923+03:00'
     description: ''
