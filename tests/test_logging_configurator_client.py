@@ -6,11 +6,7 @@ import pytest as pytest
 from frontik.loggers.logleveloverride.log_level_override_extension import LogLevelOverride, LogLevelOverrideExtension
 from frontik.loggers.logleveloverride.logging_configurator_client import LoggingConfiguratorClient
 
-MOCK_LOG_OVERRIDE_DTO = [
-    LogLevelOverride('a', 'DEBUG'),
-    LogLevelOverride('b', 'INFO'),
-    LogLevelOverride('c', 'WARN'),
-]
+MOCK_LOG_OVERRIDE_DTO = [LogLevelOverride('a', 'DEBUG'), LogLevelOverride('b', 'INFO'), LogLevelOverride('c', 'WARN')]
 
 
 class TestLogLevelOverrideExtension(LogLevelOverrideExtension):

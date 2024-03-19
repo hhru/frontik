@@ -1,21 +1,22 @@
-from __future__ import annotations
-
 import asyncio
 import contextlib
 import gc
 import importlib
 import logging
-import multiprocessing
 import os.path
 import re
 import signal
 import sys
+from asyncio import Future
+from collections.abc import Coroutine
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from functools import partial
-from typing import TYPE_CHECKING, Optional, Union
+from threading import Lock
+from typing import Callable, Optional, Union
 
 import tornado.autoreload
+from http_client.balancing import Upstream
 from http_client.options import options as http_client_options
 from tornado.httpserver import HTTPServer
 
@@ -24,12 +25,6 @@ from frontik.config_parser import parse_configs
 from frontik.loggers import MDC
 from frontik.options import options
 from frontik.process import fork_workers
-from frontik.service_discovery import UpstreamUpdateListener
-
-if TYPE_CHECKING:
-    from asyncio import Future
-    from collections.abc import Coroutine
-    from multiprocessing.synchronize import Lock as LockBase
 
 log = logging.getLogger('server')
 
@@ -69,39 +64,44 @@ def main(config_file: Optional[str] = None) -> None:
             app_module=app_module_name,
             **{**asdict(options), **asdict(http_client_options)},
         )
-        count_down_lock = multiprocessing.Lock()
 
         gc.disable()
         gc.collect()
         gc.freeze()
         if options.workers != 1:
             fork_workers(
-                partial(_run_worker, app, count_down_lock, False),
-                init_workers_count_down=app.init_workers_count_down,
+                worker_state=app.worker_state,
                 num_workers=options.workers,
-                after_workers_up_action=lambda: {
-                    app.upstream_caches.send_updates(),
-                    app.service_discovery_client.register_service(),
-                },
-                before_workers_shutdown_action=app.service_discovery_client.deregister_service_and_close,
-                children_pipes=app.children_pipes,
+                master_function=partial(_multi_worker_master_function, app),
+                master_before_shutdown_action=lambda: app.upstream_manager.deregister_service_and_close(),  # noqa PLW0108
+                worker_function=partial(_run_worker, app),
+                worker_listener_handler=partial(_worker_listener_handler, app),
             )
         else:
             # run in single process mode
-            _run_worker(app, count_down_lock, True, None)
+            gc.enable()
+            _run_worker(app)
     except Exception as e:
         log.exception('frontik application exited with exception: %s', e)
         sys.exit(1)
 
 
-def _run_worker(
+def _multi_worker_master_function(
     app: FrontikApplication,
-    count_down_lock: LockBase,
-    need_to_register_in_service_discovery: bool,
-    read_pipe_fd: Optional[int],
+    upstreams: dict[str, Upstream],
+    upstreams_lock: Lock,
+    send_to_all_workers: Callable,
 ) -> None:
-    gc.enable()
-    MDC.init()
+    app.create_upstream_manager(upstreams, upstreams_lock, send_to_all_workers, with_consul=options.consul_enabled)
+    app.upstream_manager.register_service()
+
+
+def _worker_listener_handler(app: FrontikApplication, data: list[Upstream]) -> None:
+    app.upstream_manager.update_upstreams(data)
+
+
+def _run_worker(app: FrontikApplication) -> None:
+    MDC.init('worker')
 
     try:
         import uvloop
@@ -113,9 +113,7 @@ def _run_worker(
     loop = asyncio.get_event_loop()
     executor = ThreadPoolExecutor(options.common_executor_pool_size)
     loop.set_default_executor(executor)
-    initialize_application_task = loop.create_task(
-        _init_app(app, count_down_lock, need_to_register_in_service_discovery, read_pipe_fd),
-    )
+    initialize_application_task = loop.create_task(_init_app(app))
 
     def initialize_application_task_result_handler(future):
         if future.exception():
@@ -127,10 +125,7 @@ def _run_worker(
     initialize_application_task.result()
 
 
-def run_server(
-    app: FrontikApplication,
-    need_to_register_in_service_discovery: bool,
-) -> None:
+def run_server(app: FrontikApplication) -> None:
     """Starts Frontik server for an application"""
     loop = asyncio.get_event_loop()
     log.info('starting server on %s:%s', options.host, options.port)
@@ -141,13 +136,13 @@ def run_server(
     if options.autoreload:
         tornado.autoreload.start(1000)
 
-    def sigterm_handler(signum, frame):
+    def worker_sigterm_handler(_signum, _frame):
         log.info('requested shutdown, shutting down server on %s:%d', options.host, options.port)
         with contextlib.suppress(RuntimeError):
             loop.call_soon_threadsafe(server_stop)
 
     def server_stop():
-        deinit_task = loop.create_task(_deinit_app(app, need_to_register_in_service_discovery))
+        deinit_task = loop.create_task(_deinit_app(app))
         http_server.stop()
 
         if loop.is_running():
@@ -161,42 +156,23 @@ def run_server(
 
             deinit_task.add_done_callback(ioloop_stop)
 
-    signal.signal(signal.SIGTERM, sigterm_handler)
-    signal.signal(signal.SIGINT, sigterm_handler)
+    signal.signal(signal.SIGTERM, worker_sigterm_handler)
+    signal.signal(signal.SIGINT, worker_sigterm_handler)
 
 
-async def _init_app(
-    app: FrontikApplication,
-    count_down_lock: LockBase,
-    need_to_register_in_service_discovery: bool,
-    read_pipe_fd: Optional[int],
-) -> None:
+async def _init_app(app: FrontikApplication) -> None:
     await app.init()
-    if not need_to_register_in_service_discovery and read_pipe_fd is not None:
-        app.upstream_update_listener = UpstreamUpdateListener(app.upstream_manager, read_pipe_fd)
-    run_server(app, need_to_register_in_service_discovery)
+    run_server(app)
     log.info('Successfully inited application %s', app.app)
-    with count_down_lock:
-        app.init_workers_count_down.value -= 1
-        log.info('worker is up, remaining workers = %s', app.init_workers_count_down.value)
-    if need_to_register_in_service_discovery:
-        loop = asyncio.get_event_loop()
-        register_task = loop.create_task(app.service_discovery_client.register_service())
-
-        def register_task_result_handler(future):
-            if future.exception():
-                loop.stop()
-                future.result()
-
-        register_task.add_done_callback(register_task_result_handler)
+    with app.worker_state.count_down_lock:
+        app.worker_state.init_workers_count_down.value -= 1
+        log.info('worker is up, remaining workers = %s', app.worker_state.init_workers_count_down.value)
 
 
-async def _deinit_app(app: FrontikApplication, need_to_register_in_service_discovery: bool) -> None:
+async def _deinit_app(app: FrontikApplication) -> None:
     deinit_futures: list[Optional[Union[Future, Coroutine]]] = []
 
-    if need_to_register_in_service_discovery:
-        deregistration = app.service_discovery_client.deregister_service_and_close()
-        deinit_futures = [asyncio.wait_for(deregistration, timeout=options.stop_timeout)]
+    app.upstream_manager.deregister_service_and_close()
 
     deinit_futures.extend([integration.deinitialize_app(app) for integration in app.available_integrations])
 

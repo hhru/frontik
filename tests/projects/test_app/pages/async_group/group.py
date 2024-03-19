@@ -15,18 +15,16 @@ class Page(frontik.handler.PageHandler):
             assert ensure_callback_is_async
 
         async def put_json_data() -> None:
-            result = await gather_dict(
-                {
-                    '1': self.post_url(self.request.host, self.request.path + '?data=1'),
-                    '2': self.post_url(self.request.host, self.request.path + '?data=2'),
-                    '3': self.post_url(
-                        self.request.host,
-                        self.request.path,
-                        data={'data': '3' if not fail_request else None},
-                        parse_on_error=False,
-                    ),
-                },
-            )
+            result = await gather_dict({
+                '1': self.post_url(self.request.host, self.request.path + '?data=1'),
+                '2': self.post_url(self.request.host, self.request.path + '?data=2'),
+                '3': self.post_url(
+                    self.request.host,
+                    self.request.path,
+                    data={'data': '3' if not fail_request else None},
+                    parse_on_error=False,
+                ),
+            })
             if fail_callback:
                 msg = "I'm dying!"
                 raise Exception(msg)

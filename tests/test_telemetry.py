@@ -141,10 +141,7 @@ class TestFrontikTesting(FrontikTestCase):
     def get_app(self):
         class TestApplication(FrontikApplication):
             def application_urls(self):
-                return [
-                    ('/page_a', PageA),
-                    ('/page_b', PageB),
-                ]
+                return [('/page_a', PageA), ('/page_b', PageB)]
 
         app = TestApplication(app='test_app', app_root=FRONTIK_ROOT)
         IOLoop.current().run_sync(app.init)

@@ -35,7 +35,7 @@ class GCMetricsCollectorIntegration(Integration):
 
 
 class GCStats:
-    __slots__ = ('start', 'duration', 'count', 'max_stw')
+    __slots__ = ('count', 'duration', 'max_stw', 'start')
 
     def __init__(self) -> None:
         self.start: float = 0

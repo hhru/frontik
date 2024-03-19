@@ -12,11 +12,16 @@ class Page(PageHandler):
     @router.get()
     async def get_page(self):
         upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(retry_policy={503: {'idempotent': 'true'}})}
-        self.application.upstream_manager.update_upstream(
-            Upstream('retry_non_idempotent_503', upstream_config, [get_server(self, 'normal')]),
+        upstreams = self.application.upstream_manager.get_upstreams()
+        upstreams['retry_non_idempotent_503'] = Upstream(
+            'retry_non_idempotent_503',
+            upstream_config,
+            [get_server(self, 'normal')],
         )
-        self.application.upstream_manager.update_upstream(
-            Upstream('do_not_retry_non_idempotent_503', {}, [get_server(self, 'broken')]),
+        upstreams['do_not_retry_non_idempotent_503'] = Upstream(
+            'do_not_retry_non_idempotent_503',
+            {},
+            [get_server(self, 'broken')],
         )
 
         res1, res2 = await gather_list(

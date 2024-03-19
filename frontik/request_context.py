@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class _Context:
-    __slots__ = ('request', 'request_id', 'handler_name', 'log_handler')
+    __slots__ = ('handler_name', 'log_handler', 'request', 'request_id')
 
     def __init__(self, request: Optional[HTTPServerRequest], request_id: Optional[str]) -> None:
         self.request = request

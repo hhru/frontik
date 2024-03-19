@@ -11,16 +11,13 @@ from tests.projects.balancer_app.pages import check_all_requests_done, check_all
 class Page(PageHandler):
     @router.get()
     async def get_page(self):
-        self.application.upstream_manager.update_upstream(
-            Upstream('requests_count_async', {}, [get_server(self, 'normal')]),
-        )
+        upstreams = self.application.upstream_manager.get_upstreams()
+        upstreams['requests_count_async'] = Upstream('requests_count_async', {}, [get_server(self, 'normal')])
         self.text = ''
 
         result1 = self.post_url('requests_count_async', self.request.path)
         result2 = self.post_url('requests_count_async', self.request.path)
-        self.application.upstream_manager.update_upstream(
-            Upstream('requests_count_async', {}, [get_server(self, 'normal')]),
-        )
+        upstreams['requests_count_async'].update(Upstream('requests_count_async', {}, [get_server(self, 'normal')]))
         result3 = self.post_url('requests_count_async', self.request.path)
 
         await asyncio.sleep(0)
@@ -36,5 +33,6 @@ class Page(PageHandler):
     @router.post()
     async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
-        servers = self.application.upstream_manager.upstreams['requests_count_async'].servers
+        upstreams = self.application.upstream_manager.get_upstreams()
+        servers = upstreams['requests_count_async'].servers
         self.text = str(servers[0].stat_requests)

@@ -25,7 +25,4 @@ def write_json_response_from_pydantic(handler: PageHandler, value: BaseModel) ->
 
 
 def get_default_returned_value_handlers() -> ReturnedValueHandlers:
-    return [
-        write_json_response_from_dict,
-        write_json_response_from_pydantic,
-    ]
+    return [write_json_response_from_dict, write_json_response_from_pydantic]

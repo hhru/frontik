@@ -17,7 +17,8 @@ class Page(PageHandler):
         server_slow_start = Server('127.0.0.1:12345', weight=5, dc='Test')
 
         upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=0.1)}
-        self.application.upstream_manager.update_upstream(Upstream('slow_start_async', upstream_config, [server]))
+        upstreams = self.application.upstream_manager.get_upstreams()
+        upstreams['slow_start_async'] = Upstream('slow_start_async', upstream_config, [server])
         self.text = ''
 
         async def make_request(delay: float = 0) -> None:
@@ -30,9 +31,7 @@ class Page(PageHandler):
         await asyncio.sleep(0.5)
 
         upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=1)}
-        self.application.upstream_manager.update_upstream(
-            Upstream('slow_start_async', upstream_config, [server, server_slow_start]),
-        )
+        upstreams['slow_start_async'] = Upstream('slow_start_async', upstream_config, [server, server_slow_start])
 
         request2 = self.run_task(make_request())
         request3 = self.run_task(make_request())
@@ -46,6 +45,7 @@ class Page(PageHandler):
     @router.post()
     async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
-        servers = self.application.upstream_manager.upstreams['slow_start_async'].servers
+        upstreams = self.application.upstream_manager.get_upstreams()
+        servers = upstreams['slow_start_async'].servers
         if len(servers) > 1:
             self.text = str(servers[1].stat_requests)

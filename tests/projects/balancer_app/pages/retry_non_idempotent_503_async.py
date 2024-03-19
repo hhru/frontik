@@ -13,12 +13,16 @@ class Page(PageHandler):
     @router.get()
     async def get_page(self):
         upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(retry_policy={503: {'idempotent': 'true'}})}
-        self.application.upstream_manager.update_upstream(
-            Upstream('retry_non_idempotent_503_async', upstream_config, [get_server(self, 'normal')]),
+        upstreams = self.application.upstream_manager.get_upstreams()
+        upstreams['retry_non_idempotent_503_async'] = Upstream(
+            'retry_non_idempotent_503_async',
+            upstream_config,
+            [get_server(self, 'normal')],
         )
-
-        self.application.upstream_manager.update_upstream(
-            Upstream('do_not_retry_non_idempotent_503_async', {}, [get_server(self, 'broken')]),
+        upstreams['do_not_retry_non_idempotent_503_async'] = Upstream(
+            'do_not_retry_non_idempotent_503_async',
+            {},
+            [get_server(self, 'broken')],
         )
 
         async def post_with_retry() -> None:
@@ -35,10 +39,7 @@ class Page(PageHandler):
             if result.status_code != 503:
                 raise HTTPError(500)
 
-        await asyncio.gather(
-            self.run_task(post_with_retry()),
-            self.run_task(post_without_retry()),
-        )
+        await asyncio.gather(self.run_task(post_with_retry()), self.run_task(post_without_retry()))
 
         check_all_requests_done(self, 'retry_non_idempotent_503_async')
         check_all_requests_done(self, 'do_not_retry_non_idempotent_503_async')

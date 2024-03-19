@@ -27,9 +27,7 @@ class SentryIntegration(Integration):
             max_breadcrumbs=options.sentry_max_breadcrumbs,
             default_integrations=False,
             auto_enabling_integrations=False,
-            integrations=[
-                TornadoIntegration(),
-            ],
+            integrations=[TornadoIntegration()],
             ignore_errors=[HTTPError, FailFastError],
         )
 

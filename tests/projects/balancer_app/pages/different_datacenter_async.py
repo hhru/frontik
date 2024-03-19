@@ -15,13 +15,12 @@ class Page(PageHandler):
         normal_server = get_server(self, 'normal')
         normal_server.datacenter = 'dc2'
 
-        self.application.upstream_manager.update_upstream(
-            Upstream('different_datacenter', {}, [free_server, normal_server]),
-        )
+        upstream = Upstream('different_datacenter', {}, [free_server, normal_server])
+        self.application.upstream_manager.get_upstreams()['different_datacenter'] = upstream
 
         result = await self.post_url('different_datacenter', self.request.path)
 
-        for server in self.application.upstream_manager.upstreams.get('different_datacenter').servers:
+        for server in upstream.servers:
             if server.stat_requests != 0:
                 raise HTTPError(500)
 

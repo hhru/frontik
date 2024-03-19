@@ -12,9 +12,8 @@ from tests.projects.balancer_app.pages import check_all_servers_were_occupied
 class Page(PageHandler):
     @router.get()
     async def get_page(self):
-        self.application.upstream_manager.update_upstream(
-            Upstream('retry_connect_timeout', {}, [get_server(self, 'normal')]),
-        )
+        upstreams = self.application.upstream_manager.get_upstreams()
+        upstreams['retry_connect_timeout'] = Upstream('retry_connect_timeout', {}, [get_server(self, 'normal')])
         self.text = ''
 
         async def make_request() -> None:

@@ -20,25 +20,21 @@ class Page(PageHandler):
         server_slow_start = Server('127.0.0.1:12345', weight=5, dc='Test')
 
         upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=0.1)}
-        self.application.upstream_manager.update_upstream(Upstream('slow_start', upstream_config, [server]))
+        upstreams = self.application.upstream_manager.get_upstreams()
+        upstreams['slow_start'] = Upstream('slow_start', upstream_config, [server])
         self.text = ''
 
         await self.post_url('slow_start', self.request.path)
 
         await asyncio.sleep(0.2)
         upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=1)}
-        self.application.upstream_manager.update_upstream(
-            Upstream('slow_start', upstream_config, [same_server, server_slow_start]),
-        )
+        upstreams['slow_start'].update(Upstream('slow_start', upstream_config, [same_server, server_slow_start]))
 
         await self.post_url('slow_start', self.request.path)
 
         await asyncio.sleep(1)
 
-        requests = [
-            self.post_url('slow_start', self.request.path),
-            self.post_url('slow_start', self.request.path),
-        ]
+        requests = [self.post_url('slow_start', self.request.path), self.post_url('slow_start', self.request.path)]
         await asyncio.gather(*requests)
 
         check_all_servers_were_occupied(self, 'slow_start')
@@ -49,4 +45,5 @@ class Page(PageHandler):
     @router.post()
     async def post_page(self):
         self.add_header('Content-Type', media_types.TEXT_PLAIN)
-        self.text = str(self.application.upstream_manager.upstreams['slow_start'].servers[0].stat_requests)
+        upstreams = self.application.upstream_manager.get_upstreams()
+        self.text = str(upstreams['slow_start'].servers[0].stat_requests)

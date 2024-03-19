@@ -18,18 +18,16 @@ class Page(frontik.handler.PageHandler):
             return request_result.data
 
         self.json.put(
-            self.group(
-                {
-                    '1': self.post_url(self.request.host, self.request.path + '?data=1'),
-                    '2': task(),
-                    '3': self.post_url(
-                        self.request.host,
-                        self.request.path,
-                        data={'data': '3' if not fail_request else None},
-                        parse_on_error=False,
-                    ),
-                },
-            ),
+            self.group({
+                '1': self.post_url(self.request.host, self.request.path + '?data=1'),
+                '2': task(),
+                '3': self.post_url(
+                    self.request.host,
+                    self.request.path,
+                    data={'data': '3' if not fail_request else None},
+                    parse_on_error=False,
+                ),
+            }),
         )
 
         result = await self.group({'4': self.post_url(self.request.host, self.request.path + '?data=4')})

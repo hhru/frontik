@@ -17,11 +17,4 @@ class Page(frontik.handler.PageHandler):
         another_future: Future = Future()
         another_future.set_result({'2': 'yay'})
 
-        self.json.put(
-            self.group(
-                {
-                    '1': future,
-                    '2': another_future,
-                },
-            ),
-        )
+        self.json.put(self.group({'1': future, '2': another_future}))

@@ -87,9 +87,7 @@ class TelemetryIntegration(Integration):
 
         self.aiohttp_instrumentor.instrument(request_hook=_client_request_hook, response_hook=_client_response_hook)
 
-        self.tornado_instrumentor.instrument(
-            server_request_hook=_server_request_hook,
-        )
+        self.tornado_instrumentor.instrument(server_request_hook=_server_request_hook)
 
         return None
 

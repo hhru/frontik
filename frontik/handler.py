@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 import tornado.httputil
 import tornado.web
-from fastapi import Request  # noqa
+from fastapi import Request
 from http_client.request_response import USER_AGENT_HEADER, FailFastError, RequestBuilder, RequestResult
 from pydantic import BaseModel, ValidationError
 from tornado.ioloop import IOLoop
@@ -171,12 +171,10 @@ class PageHandler(RequestHandler):
             self._debug_access = debug_access
 
     def set_default_headers(self):
-        self._headers = tornado.httputil.HTTPHeaders(
-            {
-                'Server': f'Frontik/{frontik_version}',
-                'X-Request-Id': self.request_id,
-            },
-        )
+        self._headers = tornado.httputil.HTTPHeaders({
+            'Server': f'Frontik/{frontik_version}',
+            'X-Request-Id': self.request_id,
+        })
 
     def decode_argument(self, value: bytes, name: Optional[str] = None) -> str:
         try:

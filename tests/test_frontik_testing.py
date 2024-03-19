@@ -37,11 +37,7 @@ class CheckConfigHandler(PageHandler):
 
 class Application(FrontikApplication):
     def application_urls(self) -> list[tuple]:
-        return [
-            ('/config', CheckConfigHandler),
-            ('/sum_values', AsyncHandler),
-            ('/delete', delete.Page),
-        ]
+        return [('/config', CheckConfigHandler), ('/sum_values', AsyncHandler), ('/delete', delete.Page)]
 
 
 class TestFrontikTestingOld(FrontikTestCase):

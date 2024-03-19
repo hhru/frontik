@@ -19,7 +19,8 @@ class Page(PageHandler):
             ],
         )
 
-        self.application.upstream_manager.update_upstream(upstream)
+        upstreams = self.application.upstream_manager.get_upstreams()
+        upstreams['retry_count_limit'] = upstream
 
         self.text = ''
 

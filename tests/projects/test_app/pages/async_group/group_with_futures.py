@@ -18,11 +18,6 @@ class Page(frontik.handler.PageHandler):
         another_future: Future = Future()
         another_future.set_result({'2': 'yay'})
 
-        result = await gather_dict(
-            {
-                '1': future,
-                '2': another_future,
-            },
-        )
+        result = await gather_dict({'1': future, '2': another_future})
         self.json.put({'final_callback_called': True})
         self.json.put(result)
