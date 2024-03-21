@@ -25,6 +25,7 @@ from frontik.config_parser import parse_configs
 from frontik.loggers import MDC
 from frontik.options import options
 from frontik.process import fork_workers
+from datetime import datetime
 
 log = logging.getLogger('server')
 
@@ -98,6 +99,8 @@ def _multi_worker_master_function(
 
 def _worker_listener_handler(app: FrontikApplication, data: list[Upstream]) -> None:
     app.upstream_manager.update_upstreams(data)
+    with open('/var/log/qqlog', 'a') as qqlog:
+        qqlog.write(f'{datetime.now()} worker ? obnovil upstreams \n')
 
 
 def _run_worker(app: FrontikApplication) -> None:

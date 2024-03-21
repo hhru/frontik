@@ -14,6 +14,7 @@ from frontik.consul_client import ClientEventCallback, SyncConsulClient
 from frontik.integrations.statsd import Counters, StatsDClient, StatsDClientStub
 from frontik.options import Options, options
 from frontik.version import version
+from datetime import datetime
 
 DEFAULT_WEIGHT = 100
 AUTO_RESOLVE_ADDRESS_VALUE = 'resolve'
@@ -234,6 +235,8 @@ class UpstreamManager:
             return
         with self._upstreams_lock:
             upstreams = list(self._upstreams.values()) if upstream is None else [upstream]
+            with open('/var/log/qqlog', 'a') as qqlog:
+                qqlog.write(f'{datetime.now()} master service_discovery.send_updates gogogo cool cool \n')
             self._send_to_all_workers(upstreams)
 
     def _create_upstream(self, key: str) -> Upstream:

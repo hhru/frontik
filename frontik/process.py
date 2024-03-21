@@ -19,6 +19,7 @@ from multiprocessing.synchronize import Lock as LockBase
 from queue import Full, Queue
 from threading import Lock, Thread
 from typing import Any, Optional
+from datetime import datetime
 
 from frontik.options import options
 
@@ -30,6 +31,7 @@ F_SETPIPE_SZ = 1031  # can't use fcntl.F_SETPIPE_SZ on macos
 PIPE_BUFFER_SIZE = 1000000
 MESSAGE_HEADER_MAGIC = b'T1uf31f'
 MESSAGE_SIZE_STRUCT = '=Q'
+listenere_tasks = set()
 
 
 @dataclass
@@ -177,28 +179,37 @@ def _worker_function_wrapper(worker_function, worker_listener_handler, read_fd, 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    loop.create_task(_worker_listener(read_fd, worker_listener_handler))
+    task = loop.create_task(_worker_listener(worker_id, read_fd, worker_listener_handler))
+    listenere_tasks.add(task)
     worker_function()
 
 
-async def _worker_listener(read_fd: int, worker_listener_handler: Callable) -> None:
+async def _worker_listener(worker_id, read_fd: int, worker_listener_handler: Callable) -> None:
     stream = asyncio.StreamReader()
     fio = os.fdopen(read_fd)
     await asyncio.get_running_loop().connect_read_pipe(lambda: asyncio.StreamReaderProtocol(stream), fio)
 
     while True:
         try:
+            with open('/var/log/qqlog', 'a') as qqlog:
+                qqlog.write(f'{datetime.now()} worker {worker_id} nachinau sluhat \n')
             await stream.readuntil(MESSAGE_HEADER_MAGIC)
             size_header = await stream.readexactly(8)
             (size,) = struct.unpack(MESSAGE_SIZE_STRUCT, size_header)
             data_raw = await stream.readexactly(size)
             log.debug('received data from master, length: %d', size)
             data = pickle.loads(data_raw)
+            with open('/var/log/qqlog', 'a') as qqlog:
+                qqlog.write(f'{datetime.now()} worker {worker_id} danniy poluchil obrabotaem \n')
             worker_listener_handler(data)
         except asyncio.IncompleteReadError as e:
+            with open('/var/log/qqlog', 'a') as qqlog:
+                qqlog.write(f'{datetime.now()} worker {worker_id} vnezapno IncompleteReadError \n')
             log.exception('master shared data pipe is closed')
             sys.exit(1)
         except Exception as e:
+            with open('/var/log/qqlog', 'a') as qqlog:
+                qqlog.write(f'{datetime.now()} worker {worker_id} vnezapno Exception \n')
             log.exception('failed to fetch data from master %s', e)
 
 
@@ -275,15 +286,23 @@ def _send_update(
 ) -> None:
     header_written = False
     try:
+        with open('/var/log/qqlog', 'a') as qqlog:
+            qqlog.write(f'{datetime.now()} master process pishem v workera {worker_pid} \n')
         pipe.write(MESSAGE_HEADER_MAGIC + struct.pack(MESSAGE_SIZE_STRUCT, len(data)))
         header_written = True
         pipe.write(data)
         pipe.flush()
+        with open('/var/log/qqlog', 'a') as qqlog:
+            qqlog.write(f'{datetime.now()} master process flushnuli {worker_pid} \n')
     except BlockingIOError:
+        with open('/var/log/qqlog', 'a') as qqlog:
+            qqlog.write(f'{datetime.now()} master process hoteli pisat no BlockingIOError {worker_pid} \n')
         log.warning('client %s pipe blocked', worker_pid)
         if header_written:
             resend_dict[worker_pid] = True
             with contextlib.suppress(Full):
                 resend_notification.put_nowait(True)
     except Exception as e:
+        with open('/var/log/qqlog', 'a') as qqlog:
+            qqlog.write(f'{datetime.now()} master process hoteli pisat no Exception {worker_pid} \n')
         log.exception('client %s pipe write failed  %s', worker_pid, e)
