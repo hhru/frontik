@@ -30,6 +30,7 @@ F_SETPIPE_SZ = 1031  # can't use fcntl.F_SETPIPE_SZ on macos
 PIPE_BUFFER_SIZE = 1000000
 MESSAGE_HEADER_MAGIC = b'T1uf31f'
 MESSAGE_SIZE_STRUCT = '=Q'
+LISTENER_TASK = set()  # keep task from garbage collector
 
 
 @dataclass
@@ -177,7 +178,8 @@ def _worker_function_wrapper(worker_function, worker_listener_handler, read_fd, 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    loop.create_task(_worker_listener(read_fd, worker_listener_handler))
+    task = loop.create_task(_worker_listener(read_fd, worker_listener_handler))
+    LISTENER_TASK.add(task)
     worker_function()
 
 
