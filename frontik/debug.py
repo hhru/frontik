@@ -80,8 +80,9 @@ def response_to_xml(result: RequestResult) -> etree.Element:
         body = repr(raw_body)
 
     try:
+        escaped_body = etree.tostring(etree.Element("body", body if body else ''), encoding=str)
         response = E.response(
-            E.body(body, content_type=content_type, mode=mode),
+            E.body(escaped_body, content_type=content_type, mode=mode),
             E.code(str(result.status_code)),
             E.error(str(result.error)),
             E.size(str(len(raw_body)) if raw_body is not None else '0'),
