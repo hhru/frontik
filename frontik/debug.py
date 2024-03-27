@@ -475,7 +475,7 @@ class DebugMode:
         debug_value = frontik.util.get_cookie_or_url_param_value(handler, 'debug')
 
         self.mode_values = debug_value.split(',') if debug_value is not None else ''
-        self.inherited = handler.request.headers.get(DEBUG_HEADER_NAME)
+        self.inherited = handler.get_my_header(DEBUG_HEADER_NAME, False)
 
         if self.inherited:
             debug_log.debug('debug mode is inherited due to %s request header', DEBUG_HEADER_NAME)

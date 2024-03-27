@@ -1,17 +1,13 @@
-from __future__ import annotations
-
 import asyncio
 import logging
 import time
 from functools import partial, wraps
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
-from tornado.concurrent import Future
-from tornado.ioloop import IOLoop
+from asyncio import Future, Task
+from collections.abc import Callable
+from typing import Any
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-    from typing import Any
 
 async_logger = logging.getLogger('frontik.futures')
 
@@ -70,10 +66,10 @@ class AsyncGroup:
         if self._counter == 0:
             self.finish()
 
-    def try_finish_async(self):
-        """Executes finish_cb in next IOLoop iteration"""
-        if self._counter == 0:
-            IOLoop.current().add_callback(self.finish)
+    # def try_finish_async(self):
+    #     """Executes finish_cb in next IOLoop iteration"""
+    #     if self._counter == 0:
+    #         asyncio.get_event_loop().add_callback(self.finish)
 
     def _inc(self) -> None:
         if self._finished:
@@ -122,10 +118,10 @@ class AsyncGroup:
         future.result()
         callback()
 
-    def add_future(self, future: Future) -> Future:
-        IOLoop.current().add_future(future, partial(self._handle_future, self.add_notification()))
-        self._futures.append(future)
-        return future
+    def add_future(self, task: Task) -> Future:
+        task.add_done_callback(partial(self._handle_future, self.add_notification()))
+        self._futures.append(task)
+        return task
 
     def get_finish_future(self) -> Future:
         return self._future
@@ -137,49 +133,49 @@ class AsyncGroup:
         return f'AsyncGroup(name={self._name}, finished={self._finished})'
 
 
-def future_fold(
-    future: Future,
-    result_mapper: Optional[Callable] = None,
-    exception_mapper: Optional[Callable] = None,
-) -> Future:
-    """
-    Creates a new future with result or exception processed by result_mapper and exception_mapper.
-
-    If result_mapper or exception_mapper raises an exception, it will be set as an exception for the resulting future.
-    Any of the mappers can be None — then the result or exception is left as is.
-    """
-
-    res_future: Future = Future()
-
-    def _process(func: Optional[Callable], value: Any) -> None:
-        try:
-            processed = func(value) if func is not None else value
-        except Exception as e:
-            res_future.set_exception(e)
-            return
-        res_future.set_result(processed)
-
-    def _on_ready(wrapped_future):
-        exception = wrapped_future.exception()
-        if exception is not None:
-            if not callable(exception_mapper):
-
-                def default_exception_func(error):
-                    raise error
-
-                _process(default_exception_func, exception)
-            else:
-                _process(exception_mapper, exception)
-        else:
-            _process(result_mapper, future.result())
-
-    IOLoop.current().add_future(future, callback=_on_ready)
-    return res_future
-
-
-def future_map(future, func):
-    return future_fold(future, result_mapper=func)
-
-
-def future_map_exception(future, func):
-    return future_fold(future, exception_mapper=func)
+# def future_fold(
+#     future: Future,
+#     result_mapper: Optional[Callable] = None,
+#     exception_mapper: Optional[Callable] = None,
+# ) -> Future:
+#     """
+#     Creates a new future with result or exception processed by result_mapper and exception_mapper.
+#
+#     If result_mapper or exception_mapper raises an exception, it will be set as an exception for the resulting future.
+#     Any of the mappers can be None — then the result or exception is left as is.
+#     """
+#
+#     res_future: Future = Future()
+#
+#     def _process(func: Optional[Callable], value: Any) -> None:
+#         try:
+#             processed = func(value) if func is not None else value
+#         except Exception as e:
+#             res_future.set_exception(e)
+#             return
+#         res_future.set_result(processed)
+#
+#     def _on_ready(wrapped_future):
+#         exception = wrapped_future.exception()
+#         if exception is not None:
+#             if not callable(exception_mapper):
+#
+#                 def default_exception_func(error):
+#                     raise error
+#
+#                 _process(default_exception_func, exception)
+#             else:
+#                 _process(exception_mapper, exception)
+#         else:
+#             _process(result_mapper, future.result())
+#
+#     asyncio.get_event_loop().add_future(future, callback=_on_ready)
+#     return res_future
+#
+#
+# def future_map(future, func):
+#     return future_fold(future, result_mapper=func)
+#
+#
+# def future_map_exception(future, func):
+#     return future_fold(future, exception_mapper=func)

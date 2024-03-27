@@ -10,6 +10,8 @@ from ctypes import c_bool, c_int
 from functools import partial
 from threading import Lock
 from typing import Any, Optional, Union
+import json
+import inspect
 
 from aiokafka import AIOKafkaProducer
 from http_client import AIOHttpClientWrapper, HttpClientFactory
@@ -24,7 +26,7 @@ import frontik.producers.json_producer
 import frontik.producers.xml_producer
 from frontik import integrations, media_types, request_context
 from frontik.debug import DebugTransform, get_frontik_and_apps_versions
-from frontik.handler import ErrorHandler, PageHandler
+from frontik.handler import ErrorHandler, PageHandler, MyFinishError, MyRedirectError
 from frontik.handler_return_values import ReturnedValueHandlers, get_default_returned_value_handlers
 from frontik.integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
@@ -33,24 +35,145 @@ from frontik.process import WorkerState
 from frontik.routing import FileMappingRouter, FrontikRouter
 from frontik.service_discovery import UpstreamManager
 from frontik.util import check_request_id, generate_uniq_timestamp_request_id
+from fastapi import FastAPI, APIRouter, Request
+import pkgutil
+from http_client import HttpClient
+from starlette.middleware.base import Response
+from fastapi import Depends
 
 app_logger = logging.getLogger('http_client')
 
-
-class VersionHandler(RequestHandler):
-    def get(self):
-        self.application: FrontikApplication
-        self.set_header('Content-Type', 'text/xml')
-        self.write(
-            etree.tostring(get_frontik_and_apps_versions(self.application), encoding='utf-8', xml_declaration=True),
-        )
+core_router = APIRouter()
+routers = [core_router]
+# mega_http_client: HttpClient = None
 
 
-class StatusHandler(RequestHandler):
-    def get(self):
-        self.application: FrontikApplication
-        self.set_header('Content-Type', media_types.APPLICATION_JSON)
-        self.finish(self.application.get_current_status())
+def fill_router(frontik_app):
+    """
+    понял мы пройдемся по всем файлам в pages и импортнем файлы
+    там будут странички импортящие роутеры
+    а роутеры должны быть кастом роутеры и они тогда в список добавятся
+    и мы тогда их апу скормим кайф
+    """
+    package_name = f'{frontik_app.app_module}.pages'
+    package = sys.modules[package_name]
+    for _loader, name, _is_pkg in pkgutil.walk_packages(package.__path__):
+        importlib.import_module(package_name + '.' + name)
+
+
+class CustomRouter(APIRouter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        routers.append(self)
+
+
+def build_self(cls: type(PageHandler)):  # здесь надо сделать апгрейд
+    async def make_frontik_self(request: Request):
+        # old_handler = request.state.handler
+        """
+        депки из декоратора раньше выполняются чем селфгеттер(((
+        хз че с этим делать
+        """
+
+        """
+        делаем вид что фронтикхендлер на уровне роутера не нужен был
+        и создаем только ща под конкретный роут
+        хз че будем делать с тем что кто-то делает сет_статус сет_хедер
+        """
+        print('delau frontik handler')
+        new_handler = cls(request.app.frontik_app, request.query_params, request.cookies, request.headers, request.state.start_time)
+
+        # page_handler: PageHandler = cls(request.app.frontik_app, request)
+        new_handler.prepare()
+        request.state.handler = new_handler
+        return new_handler
+
+    return make_frontik_self
+
+
+async def core_middle_ware(request: Request, call_next):
+    print(f'-----core----midlware---')
+    request.state.start_time = time.time()
+
+    request_id = request.headers.get('X-Request-Id')
+    if request_id is None:
+        request_id = FrontikApplication.next_request_id()
+    if options.validate_request_id:
+        check_request_id(request_id)
+
+    with request_context.request_context(request, request_id):
+        try:
+            response = await call_next(request)
+
+            if True:  # response.data is empty  будет 100% случаев в начале
+                if hasattr(request.state, 'handler'):  # а может быть ручку сделают без селфа? тогда в ней не будет финиш группы
+                    handler = request.state.handler
+                    handler._handler_finished_notification()
+                    await handler.finish_group.get_gathering_future()
+                    await handler.finish_group.get_finish_future()
+
+                    # надо еще постпроцы сделать
+                    render_result = await handler._postprocess()
+                    if render_result is not None:
+                        # здесь приедтся самим клепать респонс
+                        response = Response(status_code=handler._status, content=render_result)
+
+                    for k, v in handler.new_h_params.items():
+                        response.headers[k] = v
+                    handler._finished = True
+
+            else:  # response.data is not None
+                # чекаем что финиш группа пустая и нет пост процов
+                pass
+
+        except MyFinishError as finish_ex:
+            # надо прибить финиш группу
+
+            chunk = finish_ex.data
+            if isinstance(chunk, str):
+                chunk = chunk.encode("utf-8")
+            elif isinstance(chunk, dict):
+                chunk = json.dumps(chunk).replace("</", "<\\/")
+                chunk = chunk.encode("utf-8")
+            elif isinstance(chunk, bytes):
+                pass
+            else:
+                raise RuntimeError('unexpected type of chunk')
+
+            # должны быть еще хедеры и статус
+            response = Response(content=chunk, headers={"Content-Type": "application/json; charset=UTF-8"})
+
+        except MyRedirectError as redirect_ex:
+            # надо прибить финиш группу
+
+            url = redirect_ex.url
+            response = Response(status_code=302, headers={"Location": url.encode('utf-8')})
+
+    return response
+
+
+def qq_path() -> str:
+    curframe = inspect.currentframe()
+    calframe = inspect.getouterframes(curframe, 2)
+    page_file_path = calframe[1].filename
+    idx = page_file_path.find('/pages')
+    if idx == -1:
+        raise RuntimeError('cant generate url path')
+    return page_file_path[idx + 6:-3]
+
+
+@core_router.get('/version')
+async def get_version(self=Depends(build_self(PageHandler))):
+    self.set_header('Content-Type', 'text/xml')
+    self.finish(
+        etree.tostring(get_frontik_and_apps_versions(self.application), encoding='utf-8', xml_declaration=True),
+    )
+
+
+@core_router.get('/status')
+async def get_status(self=Depends(build_self(PageHandler))):
+    self.set_header('Content-Type', media_types.APPLICATION_JSON)
+    self.finish(self.application.get_current_status())
 
 
 class PydevdHandler(RequestHandler):
@@ -86,7 +209,10 @@ class PydevdHandler(RequestHandler):
         self.finish(traceback.format_exc())
 
 
-class FrontikApplication(Application):
+# class FrontikApplication(Application):
+from tornado.web import Application
+
+class FrontikApplication:
     request_id = ''
 
     class DefaultConfig:
@@ -107,15 +233,16 @@ class FrontikApplication(Application):
         self.available_integrations: list[integrations.Integration] = []
         self.tornado_http_client: Optional[AIOHttpClientWrapper] = None
         self.http_client_factory: HttpClientFactory
-        self.router = FrontikRouter(self)
 
-        core_handlers: list[Any] = [
-            (r'/version/?', VersionHandler),
-            (r'/status/?', StatusHandler),
-            (r'.*', self.router),
-        ]
-        if options.debug:
-            core_handlers.insert(0, (r'/pydevd/?', PydevdHandler))
+        # self.router = FrontikRouter(self)
+        #
+        # core_handlers: list[Any] = [
+        #     (r'/version/?', VersionHandler),
+        #     (r'/status/?', StatusHandler),
+        #     (r'.*', self.router),
+        # ]
+        # if options.debug:
+        #     core_handlers.insert(0, (r'/pydevd/?', PydevdHandler))
 
         self.statsd_client: Union[StatsDClient, StatsDClientStub] = create_statsd_client(options, self)
 
@@ -126,7 +253,7 @@ class FrontikApplication(Application):
 
         self.returned_value_handlers: ReturnedValueHandlers = get_default_returned_value_handlers()
 
-        super().__init__(core_handlers)
+        # super().__init__(core_handlers)
 
     def create_upstream_manager(
         self,
@@ -146,7 +273,7 @@ class FrontikApplication(Application):
         self.upstream_manager.send_updates()  # initial full state sending
 
     async def init(self) -> None:
-        self.transforms.insert(0, partial(DebugTransform, self))  # type: ignore
+        # self.transforms.insert(0, partial(DebugTransform, self))  # type: ignore
 
         self.available_integrations, integration_futures = integrations.load_integrations(self)
         await asyncio.gather(*[future for future in integration_futures if future])
@@ -182,36 +309,39 @@ class FrontikApplication(Application):
         if self.worker_state.single_worker_mode:
             self.worker_state.master_done.value = True
 
-    def find_handler(self, request, **kwargs):
-        request_id = request.headers.get('X-Request-Id')
-        if request_id is None:
-            request_id = FrontikApplication.next_request_id()
-        if options.validate_request_id:
-            check_request_id(request_id)
+        # global mega_http_client
+        # mega_http_client = self.http_client_factory.get_http_client()
 
-        def wrapped_in_context(func: Callable) -> Callable:
-            def wrapper(*args, **kwargs):
-                with request_context.request_context(request, request_id):
-                    return func(*args, **kwargs)
+    # def find_handler(self, request, **kwargs):
+    #     request_id = request.headers.get('X-Request-Id')
+    #     if request_id is None:
+    #         request_id = FrontikApplication.next_request_id()
+    #     if options.validate_request_id:
+    #         check_request_id(request_id)
+    #
+    #     def wrapped_in_context(func: Callable) -> Callable:
+    #         def wrapper(*args, **kwargs):
+    #             with request_context.request_context(request, request_id):
+    #                 return func(*args, **kwargs)
+    #
+    #         return wrapper
+    #
+    #     delegate: httputil.HTTPMessageDelegate = wrapped_in_context(super().find_handler)(request, **kwargs)
+    #     delegate.headers_received = wrapped_in_context(delegate.headers_received)  # type: ignore
+    #     delegate.data_received = wrapped_in_context(delegate.data_received)  # type: ignore
+    #     delegate.finish = wrapped_in_context(delegate.finish)  # type: ignore
+    #     delegate.on_connection_close = wrapped_in_context(delegate.on_connection_close)  # type: ignore
+    #
+    #     return delegate
 
-            return wrapper
+    # def reverse_url(self, name: str, *args: Any, **kwargs: Any) -> str:
+    #     return self.router.reverse_url(name, *args, **kwargs)
 
-        delegate: httputil.HTTPMessageDelegate = wrapped_in_context(super().find_handler)(request, **kwargs)
-        delegate.headers_received = wrapped_in_context(delegate.headers_received)  # type: ignore
-        delegate.data_received = wrapped_in_context(delegate.data_received)  # type: ignore
-        delegate.finish = wrapped_in_context(delegate.finish)  # type: ignore
-        delegate.on_connection_close = wrapped_in_context(delegate.on_connection_close)  # type: ignore
-
-        return delegate
-
-    def reverse_url(self, name: str, *args: Any, **kwargs: Any) -> str:
-        return self.router.reverse_url(name, *args, **kwargs)
-
-    def application_urls(self) -> list[tuple]:
-        return [('', FileMappingRouter(importlib.import_module(f'{self.app_module}.pages')))]
-
-    def application_404_handler(self, request: HTTPServerRequest) -> tuple[type[PageHandler], dict]:
-        return ErrorHandler, {'status_code': 404}
+    # def application_urls(self) -> list[tuple]:
+    #     return [('', FileMappingRouter(importlib.import_module(f'{self.app_module}.pages')))]
+    #
+    # def application_404_handler(self, request: HTTPServerRequest) -> tuple[type[PageHandler], dict]:
+    #     return ErrorHandler, {'status_code': 404}
 
     def application_config(self) -> DefaultConfig:
         return FrontikApplication.DefaultConfig()
@@ -249,6 +379,7 @@ class FrontikApplication(Application):
         return {'uptime': uptime_value, 'datacenter': http_client_options.datacenter}
 
     def log_request(self, handler):
+        # кто теперь это вызывать будет?
         if not options.log_json:
             super().log_request(handler)
             return
