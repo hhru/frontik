@@ -63,7 +63,7 @@ def response_to_xml(result: RequestResult) -> etree.Element:
             mode = 'html'
             body = frontik.util.decode_string_from_charset(raw_body, try_charsets)
         elif 'protobuf' in content_type:
-            body = repr(raw_body)
+            body = raw_body
         elif 'xml' in content_type:
             mode = 'xml'
             body = _pretty_print_xml(etree.fromstring(raw_body))
@@ -77,11 +77,12 @@ def response_to_xml(result: RequestResult) -> etree.Element:
 
     except Exception:
         debug_log.exception('cannot parse response body')
-        body = repr(raw_body)
+        body = raw_body
 
     try:
+        escaped_body = re.sub(r'\\n', '\n', repr(body)[1:-1])
         response = E.response(
-            E.body(body, content_type=content_type, mode=mode),
+            E.body(escaped_body, content_type=content_type, mode=mode),
             E.code(str(result.status_code)),
             E.error(str(result.error)),
             E.size(str(len(raw_body)) if raw_body is not None else '0'),
