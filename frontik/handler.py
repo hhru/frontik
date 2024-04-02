@@ -18,6 +18,8 @@ from pydantic import BaseModel, ValidationError
 from tornado.ioloop import IOLoop
 from tornado.web import Finish, RequestHandler
 
+import datetime
+from tornado.httputil import parse_body_arguments, format_timestamp
 import frontik.auth
 import frontik.handler_active_limit
 import frontik.producers.json_producer
@@ -26,7 +28,6 @@ import frontik.util
 from frontik import media_types, request_context
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.debug import DEBUG_HEADER_NAME, DebugMode
-from frontik.dependency_manager import APIRouter, execute_page_method_with_dependencies
 from frontik.futures import AbortAsyncGroup, AsyncGroup
 from frontik.http_status import ALLOWED_STATUSES, CLIENT_CLOSED_REQUEST
 from frontik.json_builder import FrontikJsonDecodeError, json_decode
@@ -36,6 +37,11 @@ from frontik.timeout_tracking import get_timeout_checker
 from frontik.util import gather_dict, make_url
 from frontik.validator import BaseValidationModel, Validators
 from frontik.version import version as frontik_version
+from collections.abc import Callable, Coroutine
+from fastapi import Request
+from fastapi import HTTPException
+from starlette.datastructures import QueryParams, Headers
+
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
@@ -71,13 +77,24 @@ class DefaultValueError(Exception):
         super().__init__(*args)
 
 
+class MyFinishError(Exception):
+    def __init__(self, data: None, *args: object) -> None:
+        super().__init__(*args)
+        self.data = data
+
+
+class MyRedirectError(Exception):
+    def __init__(self, url: str, status: int, *args: object) -> None:
+        super().__init__(*args)
+        self.url = url
+        self.status = status
+
+
 _ARG_DEFAULT = object()
 MEDIA_TYPE_PARAMETERS_SEPARATOR_RE = r' *; *'
 OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
 
 handler_logger = logging.getLogger('handler')
-router = APIRouter()
-
 
 def _fail_fast_policy(fail_fast: bool, waited: bool, host: str, path: str) -> bool:
     if fail_fast and not waited:
@@ -91,18 +108,46 @@ def _fail_fast_policy(fail_fast: bool, waited: bool, host: str, path: str) -> bo
     return fail_fast
 
 
-class PageHandler(RequestHandler):
+from tornado.web import RequestHandler
+
+class PageHandler:
     returned_value_handlers: ReturnedValueHandlers = []
 
-    def __init__(self, application: FrontikApplication, request: HTTPServerRequest, **kwargs: Any) -> None:
-        self.name = self.__class__.__name__
+    def __init__(
+        self,
+        application: FrontikApplication,
+        q_params: QueryParams = None,
+        c_params: dict[str, str] = None,
+        h_params: Headers = None,
+        body_bytes: bytes = None,
+        request_start_time: float = None,
+        path: str = None
+    ) -> None:  # request: Request
+        self.q_params = q_params
+        self.c_params = c_params or {}
+        self.h_params = h_params
+        self.body_bytes = body_bytes
+        self._json_body = None
+        self.body_arguments = {}
+        self.files = {}
+        self.parse_body_bytes()
+        self.path = path
+        self.request_start_time = request_start_time
+
         self.request_id: str = request_context.get_request_id()  # type: ignore
-        request.request_id = self.request_id  # type: ignore
+        self.resp_headers = self.set_default_headers()
+        self.resp_cookies: dict[str, dict] = {}
+
+        # self.name = self.__class__.__name__
+        # request.request_id = self.request_id  # type: ignore
         self.config = application.config
         self.log = handler_logger
         self.text: Any = None
 
-        super().__init__(application, request, **kwargs)
+        self.application = application
+        # self.request: Request = request
+        self._finished = False
+        # super().__init__(application, request, **kwargs)
 
         self.statsd_client: StatsDClient | StatsDClientStub
 
@@ -112,32 +157,27 @@ class PageHandler(RequestHandler):
         if not self.returned_value_handlers:
             self.returned_value_handlers = list(application.returned_value_handlers)
 
-        self.stages_logger = StagesLogger(request, self.statsd_client)
+        self.stages_logger = StagesLogger(request_start_time, self.statsd_client)
 
         self._debug_access: Optional[bool] = None
         self._render_postprocessors: list = []
         self._postprocessors: list = []
 
-        self._mandatory_cookies: dict = {}
-        self._mandatory_headers = tornado.httputil.HTTPHeaders()
-
         self._validation_model: type[BaseValidationModel | BaseModel] = BaseValidationModel
 
         self.timeout_checker = None
         self.use_adaptive_strategy = False
-        outer_timeout = request.headers.get(OUTER_TIMEOUT_MS_HEADER)
+        outer_timeout = h_params.get(OUTER_TIMEOUT_MS_HEADER)
         if outer_timeout:
             self.timeout_checker = get_timeout_checker(
-                request.headers.get(USER_AGENT_HEADER),
+                h_params.get(USER_AGENT_HEADER),
                 float(outer_timeout),
-                request.request_time,
+                request_start_time,
             )
 
-    def __repr__(self):
-        return f'{self.__module__}.{self.__class__.__name__}'
+        self._status = 200
+        self._reason = ''
 
-    def prepare(self) -> None:
-        self.application: FrontikApplication
         self.active_limit = frontik.handler_active_limit.ActiveHandlersLimit(self.statsd_client)
         self.debug_mode = DebugMode(self)
         self.finish_group = AsyncGroup(lambda: None, name='finish')
@@ -156,99 +196,57 @@ class PageHandler(RequestHandler):
 
         self._handler_finished_notification = self.finish_group.add_notification()
 
-        super().prepare()
+    def __repr__(self):
+        return f'{self.__module__}.{self.__class__.__name__}'
 
-    def require_debug_access(self, login: Optional[str] = None, passwd: Optional[str] = None) -> None:
-        if self._debug_access is None:
-            if options.debug:
-                debug_access = True
-            else:
-                check_login = login if login is not None else options.debug_login
-                check_passwd = passwd if passwd is not None else options.debug_password
-                frontik.auth.check_debug_auth(self, check_login, check_passwd)
-                debug_access = True
+    # --- Simple getters and setters ---
 
-            self._debug_access = debug_access
-
-    def set_default_headers(self):
-        self._headers = tornado.httputil.HTTPHeaders({
-            'Server': f'Frontik/{frontik_version}',
-            'X-Request-Id': self.request_id,
-        })
-
-    def decode_argument(self, value: bytes, name: Optional[str] = None) -> str:
-        try:
-            return super().decode_argument(value, name)
-        except (UnicodeError, tornado.web.HTTPError):
-            self.log.warning('cannot decode utf-8 query parameter, trying other charsets')
-
-        try:
-            return frontik.util.decode_string_from_charset(value)
-        except UnicodeError:
-            self.log.exception('cannot decode argument, ignoring invalid chars')
-            return value.decode('utf-8', 'ignore')
-
-    def get_body_argument(self, name: str, default: Any = _ARG_DEFAULT, strip: bool = True) -> Optional[str]:
-        if self._get_request_mime_type(self.request) == media_types.APPLICATION_JSON:
-            if name not in self.json_body and default == _ARG_DEFAULT:
-                raise tornado.web.MissingArgumentError(name)
-
-            result = self.json_body.get(name, default)
-
-            if strip and isinstance(result, str):
-                return result.strip()
-
-            return result
-
-        if default == _ARG_DEFAULT:
-            return super().get_body_argument(name, strip=strip)
-        return super().get_body_argument(name, default, strip)
-
-    def set_validation_model(self, model: type[Union[BaseValidationModel, BaseModel]]) -> None:
-        if issubclass(model, BaseModel):
-            self._validation_model = model
-        else:
-            msg = 'model is not subclass of BaseClass'
-            raise TypeError(msg)
-
-    def get_validated_argument(
+    def get_query_argument(
         self,
         name: str,
-        validation: Validators,
         default: Any = _ARG_DEFAULT,
-        from_body: bool = False,
-        array: bool = False,
         strip: bool = True,
-    ) -> Any:
-        validator = validation.value
-        if default is not _ARG_DEFAULT and default is not None:
-            try:
-                params = {validator: default}
-                validated_default = self._validation_model(**params).model_dump().get(validator)
-            except ValidationError:
-                raise DefaultValueError()
-        else:
-            validated_default = default
-
-        value: Any
-        if array and from_body:
-            value = self.get_body_arguments(name, strip)
-        elif from_body:
-            value = self.get_body_argument(name, validated_default, strip)
-        elif array:
-            value = self.get_arguments(name, strip)
-        else:
-            value = self.get_argument(name, validated_default, strip)
-
-        try:
-            params = {validator: value}
-            validated_value = self._validation_model(**params).model_dump().get(validator)
-        except ValidationError:
-            if default is _ARG_DEFAULT:
-                raise TypedArgumentError(http.client.BAD_REQUEST, f'"{name}" argument is invalid')
+    ) -> Optional[str]:
+        args = self._get_arguments(name, strip=strip)
+        if not args:
+            if default == _ARG_DEFAULT:
+                raise RuntimeError('MissingArgumentError(name)')
             return default
+        return args[-1]
 
-        return validated_value
+    def get_query_arguments(self, name: Optional[str], strip: bool = True) -> Union[list[str], dict[str, str]]:
+        if name is None:
+            return self._get_all_arguments(strip)
+        return self._get_arguments(name, strip)
+
+    def _get_all_arguments(self, strip: bool = True) -> dict[str, str]:
+        qargs_list = self.q_params.multi_items()
+        values = {}
+        for qarg_k, qarg_v in qargs_list:
+            v = re.compile(r"[\x00-\x08\x0e-\x1f]").sub(" ", qarg_v)
+            if strip:
+                v = v.strip()
+            values[qarg_k] = v
+
+        return values
+
+    def _get_arguments(self, name: str, strip: bool = True) -> list[str]:
+        qargs_list = self.q_params.multi_items()
+        values = []
+        for qarg_k, qarg_v in qargs_list:
+            if qarg_k != name:
+                continue
+
+            # Get rid of any weird control chars (unless decoding gave
+            # us bytes, in which case leave it alone)
+            # у нас уже уникод, т.е. можем убрать этот кал?
+            # раньше был фоллбэк декодирующий виндовую хуйню а ща так можем?
+            v = re.compile(r"[\x00-\x08\x0e-\x1f]").sub(" ", qarg_v)
+            if strip:
+                v = v.strip()
+            values.append(v)
+
+        return values
 
     def get_str_argument(
         self,
@@ -285,124 +283,249 @@ class PageHandler(RequestHandler):
     ) -> Optional[Union[float, list[float]]]:
         return self.get_validated_argument(name, Validators.FLOAT, default=default, **kwargs)
 
-    def _get_request_mime_type(self, request: HTTPServerRequest) -> str:
-        content_type = request.headers.get('Content-Type', '')
-        return re.split(MEDIA_TYPE_PARAMETERS_SEPARATOR_RE, content_type)[0]
+    def get_validated_argument(
+        self,
+        name: str,
+        validation: Validators,
+        default: Any = _ARG_DEFAULT,
+        from_body: bool = False,
+        array: bool = False,
+        strip: bool = True,
+    ) -> Any:
+        validator = validation.value
+        if default is not _ARG_DEFAULT and default is not None:
+            try:
+                params = {validator: default}
+                validated_default = self._validation_model(**params).model_dump().get(validator)
+            except ValidationError:
+                raise DefaultValueError()
+        else:
+            validated_default = default
 
-    def set_status(self, status_code: int, reason: Optional[str] = None) -> None:
-        status_code = status_code if status_code in ALLOWED_STATUSES else http.client.SERVICE_UNAVAILABLE
-        super().set_status(status_code, reason=reason)
+        value: Any
+        if array and from_body:
+            value = self.get_body_arguments(name, strip)
+        elif from_body:
+            value = self.get_body_argument(name, validated_default, strip)
+        elif array:
+            value = self.get_query_arguments(name, strip)
+        else:
+            value = self.get_query_argument(name, validated_default, strip)
 
-    def redirect(self, url, *args, allow_protocol_relative=False, **kwargs):
-        if not allow_protocol_relative and url.startswith('//'):
-            # A redirect with two initial slashes is a "protocol-relative" URL.
-            # This means the next path segment is treated as a hostname instead
-            # of a part of the path, making this effectively an open redirect.
-            # Reject paths starting with two slashes to prevent this.
-            # This is only reachable under certain configurations.
-            raise tornado.web.HTTPError(403, 'cannot redirect path with two initial slashes')
-        self.log.info('redirecting to: %s', url)
-        return super().redirect(url, *args, **kwargs)
+        try:
+            params = {validator: value}
+            validated_value = self._validation_model(**params).model_dump().get(validator)
+        except ValidationError:
+            if default is _ARG_DEFAULT:
+                raise TypedArgumentError(http.client.BAD_REQUEST, f'"{name}" argument is invalid')
+            return default
 
-    def reverse_url(self, name: str, *args: Any, **kwargs: Any) -> str:
-        return self.application.reverse_url(name, *args, **kwargs)
+        return validated_value
+
+    def get_body_arguments(self, name: str, strip: bool = True) -> list[str]:
+        # только для неджсона справедливо
+        return self._get_body_arguments(name, strip)
+
+    def get_body_argument(self, name: str, default: Any = _ARG_DEFAULT, strip: bool = True) -> Optional[str]:
+        if self._get_request_mime_type() == media_types.APPLICATION_JSON:
+            if name not in self.json_body and default == _ARG_DEFAULT:
+                raise RuntimeError('tornado.web.MissingArgumentError(name)')
+
+            result = self.json_body.get(name, default)
+
+            if strip and isinstance(result, str):
+                return result.strip()
+
+            return result
+
+        if default == _ARG_DEFAULT:
+            return self._get_body_argument(name, strip=strip)
+        return self._get_body_argument(name, default, strip)
+
+    def _get_body_argument(
+        self,
+        name: str,
+        default: Any = _ARG_DEFAULT,
+        strip: bool = True,
+    ) -> Optional[str]:
+        args = self._get_body_arguments(name, strip=strip)
+        if not args:
+            if default == _ARG_DEFAULT:
+                raise RuntimeError('MissingArgumentError(name)')
+            return default
+        return args[-1]
+
+    def _get_body_arguments(self, name: str, strip: bool = True) -> list[str]:
+        values = []
+        for v in self.body_arguments.get(name, []):
+            s = self.decode_argument(v, name=name)
+            if isinstance(s, str):
+                s = re.compile(r"[\x00-\x08\x0e-\x1f]").sub(" ", s)
+            if strip:
+                s = s.strip()
+            values.append(s)
+        return values
+
+    def parse_body_bytes(self):
+        if self._get_request_mime_type() == media_types.APPLICATION_JSON:  # если джсон то парсим сами
+            _ = self.json_body
+        else:
+            parse_body_arguments(
+                self.get_header('Content-Type', ''),
+                self.body_bytes,
+                self.body_arguments,
+                self.files,
+                self.h_params,
+            )
 
     @property
     def json_body(self):
-        if not hasattr(self, '_json_body'):
+        if self._json_body is None:
             self._json_body = self._get_json_body()
         return self._json_body
 
     def _get_json_body(self) -> Any:
         try:
-            return json_decode(self.request.body)
+            return json_decode(self.body_bytes)
         except FrontikJsonDecodeError as _:
             raise JSONBodyParseError()
 
-    @classmethod
-    def add_callback(cls, callback: Callable, *args: Any, **kwargs: Any) -> None:
-        IOLoop.current().add_callback(callback, *args, **kwargs)
+    def decode_argument(self, value: bytes, name: Optional[str] = None) -> str:
+        try:
+            return str(value)
+        except UnicodeError:
+            self.log.warning(f'cannot decode utf-8 body parameter {name}, trying other charsets')
 
-    @classmethod
-    def add_timeout(cls, deadline: float, callback: Callable, *args: Any, **kwargs: Any) -> Any:
-        return IOLoop.current().add_timeout(deadline, callback, *args, **kwargs)
+        try:
+            return frontik.util.decode_string_from_charset(value)
+        except UnicodeError:
+            self.log.exception(f'cannot decode body parameter {name}, ignoring invalid chars')
+            return value.decode('utf-8', 'ignore')
 
-    @staticmethod
-    def remove_timeout(timeout):
-        IOLoop.current().remove_timeout(timeout)
+    def get_header(self, param_name, default=None):
+        return self.h_params.get(param_name.lower(), default)
 
-    @classmethod
-    def add_future(cls, future: Future, callback: Callable) -> None:
-        IOLoop.current().add_future(future, callback)
+    def set_header(self, k, v):
+        self.resp_headers[k] = v
+
+    def _get_request_mime_type(self) -> str:
+        content_type = self.get_header('Content-Type', '')
+        return re.split(MEDIA_TYPE_PARAMETERS_SEPARATOR_RE, content_type)[0]
+
+    def clear_header(self, name: str) -> None:
+        if name in self.resp_headers:
+            del self.resp_headers[name]
+
+    def clear_cookie(self, name: str, path: str = '/', domain: Optional[str] = None) -> None:  # type: ignore
+        expires = datetime.datetime.utcnow() - datetime.timedelta(days=365)
+        self.set_cookie(name, value="", expires=expires, path=path, domain=domain)
+
+    def get_cookie(self, param_name, default):
+        return self.c_params.get(param_name, default)
+
+    def set_cookie(
+        self,
+        name: str,
+        value: Union[str, bytes],
+        domain: Optional[str] = None,
+        expires: Optional[Union[float, tuple, datetime.datetime]] = None,
+        path: str = "/",
+        expires_days: Optional[float] = None,
+        # Keyword-only args start here for historical reasons.
+        *,
+        max_age: Optional[int] = None,
+        httponly: bool = False,
+        secure: bool = False,
+        samesite: Optional[str] = None,
+    ) -> None:
+        name = str(name)
+        value = str(value)
+        if re.search(r"[\x00-\x20]", name + value):
+            # Don't let us accidentally inject bad stuff
+            raise ValueError("Invalid cookie %r: %r" % (name, value))
+
+        if name in self.resp_cookies:
+            del self.resp_cookies[name]
+        self.resp_cookies[name] = {'value': value}
+        morsel = self.resp_cookies[name]
+        if domain:
+            morsel["domain"] = domain
+        if expires_days is not None and not expires:
+            expires = datetime.datetime.utcnow() + datetime.timedelta(days=expires_days)
+        if expires:
+            morsel["expires"] = format_timestamp(expires)
+        if path:
+            morsel["path"] = path
+        if max_age:
+            # Note change from _ to -.
+            morsel["max_age"] = str(max_age)
+        if httponly:
+            # Note that SimpleCookie ignores the value here. The presense of an
+            # httponly (or secure) key is treated as true.
+            morsel["httponly"] = True
+        if secure:
+            morsel["secure"] = True
+        if samesite:
+            morsel["samesite"] = samesite
 
     # Requests handling
 
-    async def _execute(self, transforms, *args, **kwargs):
-        request_context.set_handler(self)
-        try:
-            return await super()._execute(transforms, *args, **kwargs)
-        except Exception as ex:
-            self._handle_request_exception(ex)
-            return True
+    def set_default_headers(self):
+        return {
+            'Server': f'Frontik/{frontik_version}',
+            'X-Request-Id': self.request_id,
+        }
 
-    async def get(self, *args, **kwargs):
-        await self._execute_page(self.get_page)
+    def require_debug_access(self, login: Optional[str] = None, passwd: Optional[str] = None) -> None:
+        if self._debug_access is None:
+            if options.debug:
+                debug_access = True
+            else:
+                check_login = login if login is not None else options.debug_login
+                check_passwd = passwd if passwd is not None else options.debug_password
+                frontik.auth.check_debug_auth(self, check_login, check_passwd)
+                debug_access = True
 
-    async def post(self, *args, **kwargs):
-        await self._execute_page(self.post_page)
+            self._debug_access = debug_access
 
-    async def put(self, *args, **kwargs):
-        await self._execute_page(self.put_page)
+    def set_status(self, status_code: int, reason: Optional[str] = None) -> None:
+        status_code = status_code if status_code in ALLOWED_STATUSES else http.client.SERVICE_UNAVAILABLE
+        # super().set_status(status_code, reason=reason)
 
-    async def delete(self, *args, **kwargs):
-        await self._execute_page(self.delete_page)
+        self._status = status_code
+        self._reason = reason
 
-    async def head(self, *args, **kwargs):
-        await self._execute_page(self.get_page)
+    def get_status(self):
+        return self._status
 
-    def options(self, *args, **kwargs):
-        self.return_405()
+    def redirect(self, url: str, permanent: bool = False, status: Optional[int] = None):
+        if url.startswith('//'):
+            raise RuntimeError('403 cannot redirect path with two initial slashes')
+        self.log.info('redirecting to: %s', url)
+        if status is None:
+            status = 301 if permanent else 302
+        else:
+            assert isinstance(status, int) and 300 <= status <= 399
+        raise MyRedirectError(url, status)
 
-    async def _execute_page(self, page_handler_method: Callable[[], Coroutine[Any, Any, None]]) -> None:
-        self.stages_logger.commit_stage('prepare')
+    def finish(self, data: Optional[Union[str, bytes, dict]] = None) -> Future[None]:
+        raise MyFinishError(data)
 
-        returned_value: ReturnedValue = await execute_page_method_with_dependencies(self, page_handler_method)
-        for returned_value_handler in self.returned_value_handlers:
-            returned_value_handler(self, returned_value)
+    # @classmethod
+    # def add_callback(cls, callback: Callable, *args: Any, **kwargs: Any) -> None:
+    #     IOLoop.current().add_callback(callback, *args, **kwargs)
+    #
+    # @classmethod
+    # def add_timeout(cls, deadline: float, callback: Callable, *args: Any, **kwargs: Any) -> Any:
+    #     return IOLoop.current().add_timeout(deadline, callback, *args, **kwargs)
+    #
+    # @staticmethod
+    # def remove_timeout(timeout):
+    #     IOLoop.current().remove_timeout(timeout)
 
-        self._handler_finished_notification()
-        await self.finish_group.get_gathering_future()
-        await self.finish_group.get_finish_future()
-
-        render_result = await self._postprocess()
-        if render_result is not None:
-            self.write(render_result)
-
-    @router.get()
-    async def get_page(self):
-        """This method can be implemented in the subclass"""
-        self.return_405()
-
-    @router.post()
-    async def post_page(self):
-        """This method can be implemented in the subclass"""
-        self.return_405()
-
-    @router.put()
-    async def put_page(self):
-        """This method can be implemented in the subclass"""
-        self.return_405()
-
-    @router.delete()
-    async def delete_page(self):
-        """This method can be implemented in the subclass"""
-        self.return_405()
-
-    def return_405(self) -> None:
-        allowed_methods = [name for name in ('get', 'post', 'put', 'delete') if f'{name}_page' in vars(self.__class__)]
-        self.set_header('Allow', ', '.join(allowed_methods))
-        self.set_status(405)
-        self.finish()
+    def add_future(self, future: Future, callback: Callable) -> None:
+        task = asyncio.create_task(self.finish_group.get_finish_future())
+        task.add_done_callback(lambda _: self.finish_with_postprocessors())
 
     def get_page_fail_fast(self, request_result: RequestResult) -> None:
         self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
@@ -424,23 +547,12 @@ class PageHandler(RequestHandler):
     def is_finished(self) -> bool:
         return self._finished
 
-    def check_finished(self, callback: Callable) -> Callable:
-        @wraps(callback)
-        def wrapper(*args, **kwargs):
-            if self.is_finished():
-                self.log.warning('page was already finished, %s ignored', callback)
-            else:
-                return callback(*args, **kwargs)
-
-        return wrapper
-
     def finish_with_postprocessors(self) -> None:
         if not self.finish_group.get_finish_future().done():
             self.finish_group.abort()
 
         def _cb(future):
-            if future.result() is not None:
-                self.finish(future.result())
+            self.finish(future.result())
 
         asyncio.create_task(self._postprocess()).add_done_callback(_cb)
 
@@ -479,17 +591,17 @@ class PageHandler(RequestHandler):
         )
         return postprocessed_result
 
-    def on_connection_close(self):
-        with request_context.request_context(self.request, self.request_id):
-            super().on_connection_close()
-
-            self.finish_group.abort()
-            self.set_status(CLIENT_CLOSED_REQUEST, 'Client closed the connection: aborting request')
-
-            self.stages_logger.commit_stage('page')
-            self.stages_logger.flush_stages(self.get_status())
-
-            self.finish()
+    # def on_connection_close(self):
+    #     with request_context.request_context(self.request, self.request_id):
+    #         super().on_connection_close()
+    #
+    #         self.finish_group.abort()
+    #         self.set_status(CLIENT_CLOSED_REQUEST, 'Client closed the connection: aborting request')
+    #
+    #         self.stages_logger.commit_stage('page')
+    #         self.stages_logger.flush_stages(self.get_status())
+    #
+    #         self.finish()
 
     def on_finish(self):
         self.stages_logger.commit_stage('flush')
@@ -540,10 +652,10 @@ class PageHandler(RequestHandler):
                     self.__return_error(e.failed_result.status_code, error_info={'is_fail_fast': True})
 
             except Exception as exc:
-                super()._handle_request_exception(exc)
+                raise exc
 
         else:
-            super()._handle_request_exception(e)
+            raise e
 
     def send_error(self, status_code: int = 500, **kwargs: Any) -> None:
         """`send_error` is adapted to support `write_error` that can call
@@ -552,22 +664,18 @@ class PageHandler(RequestHandler):
 
         self.stages_logger.commit_stage('page')
 
-        if self._headers_written:
-            super().send_error(status_code, **kwargs)
-            return
-
-        reason = kwargs.get('reason')
+        self._reason = kwargs.get('reason')
         if 'exc_info' in kwargs:
             exception = kwargs['exc_info'][1]
             if isinstance(exception, tornado.web.HTTPError) and exception.reason:
-                reason = exception.reason
+                self._reason = exception.reason
         else:
             exception = None
 
         if not isinstance(exception, HTTPErrorWithPostprocessors):
-            self.clear()
+            self.set_default_headers()
 
-        self.set_status(status_code, reason=reason)
+        self.set_status(status_code, reason=self._reason)
 
         try:
             self.write_error(status_code, **kwargs)
@@ -577,10 +685,6 @@ class PageHandler(RequestHandler):
                 self.finish()
 
     def write_error(self, status_code: int = 500, **kwargs: Any) -> None:
-        """
-        `write_error` can call `finish` asynchronously if HTTPErrorWithPostprocessors is raised.
-        """
-
         exception = kwargs['exc_info'][1] if 'exc_info' in kwargs else None
 
         if isinstance(exception, HTTPErrorWithPostprocessors):
@@ -588,57 +692,18 @@ class PageHandler(RequestHandler):
             return
 
         self.set_header('Content-Type', media_types.TEXT_HTML)
-        super().write_error(status_code, **kwargs)
+        self.finish(
+            "<html><title>%(code)d: %(message)s</title>"
+            "<body>%(code)d: %(message)s</body></html>"
+            % {"code": status_code, "message": self._reason}
+        )
 
     def cleanup(self) -> None:
+        self._finished = True
         if hasattr(self, 'active_limit'):
             self.active_limit.release()
 
-    def finish(self, chunk: Optional[Union[str, bytes, dict]] = None) -> Future[None]:
-        self.stages_logger.commit_stage('postprocess')
-        for name, value in self._mandatory_headers.items():
-            self.set_header(name, value)
-
-        for args, kwargs in self._mandatory_cookies.values():
-            try:
-                self.set_cookie(*args, **kwargs)
-            except ValueError:
-                self.set_status(http.client.BAD_REQUEST)
-
-        if self._status_code in (204, 304) or (100 <= self._status_code < 200):
-            self._write_buffer = []
-            chunk = None
-
-        finish_future = super().finish(chunk)
-        self.cleanup()
-        return finish_future
-
-    # postprocessors
-
-    def set_mandatory_header(self, name: str, value: str) -> None:
-        self._mandatory_headers[name] = value
-
-    def set_mandatory_cookie(
-        self,
-        name: str,
-        value: str,
-        domain: Optional[str] = None,
-        expires: Optional[str] = None,
-        path: str = '/',
-        expires_days: Optional[int] = None,
-        **kwargs: Any,
-    ) -> None:
-        self._mandatory_cookies[name] = ((name, value, domain, expires, path, expires_days), kwargs)
-
-    def clear_header(self, name: str) -> None:
-        if name in self._mandatory_headers:
-            del self._mandatory_headers[name]
-        super().clear_header(name)
-
-    def clear_cookie(self, name: str, path: str = '/', domain: Optional[str] = None) -> None:  # type: ignore
-        if name in self._mandatory_cookies:
-            del self._mandatory_cookies[name]
-        super().clear_cookie(name, path=path, domain=domain)
+    # --- postprocessors ---
 
     async def _run_postprocessors(self, postprocessors: list) -> bool:
         for p in postprocessors:
@@ -672,12 +737,12 @@ class PageHandler(RequestHandler):
     def add_postprocessor(self, postprocessor: Any) -> None:
         self._postprocessors.append(postprocessor)
 
-    # Producers
+    # --- Producers ---
 
     async def _generic_producer(self):
         self.log.debug('finishing plaintext')
 
-        if self._headers.get('Content-Type') is None:
+        if self.get_my_header('Content-Type') is None:
             self.set_header('Content-Type', media_types.TEXT_HTML)
 
         return self.text, None
@@ -708,12 +773,12 @@ class PageHandler(RequestHandler):
             balanced_request.path = make_url(balanced_request.path, debug_timestamp=int(time.time()))
 
             for header_name in ('Authorization', DEBUG_AUTH_HEADER_NAME):
-                authorization = self.request.headers.get(header_name)
+                authorization = self.get_my_header(header_name)
                 if authorization is not None:
                     balanced_request.headers[header_name] = authorization
 
-    def group(self, futures: dict) -> Task:
-        return self.run_task(gather_dict(coro_dict=futures))
+    # def group(self, futures: dict) -> Task:
+    #     return self.run_task(gather_dict(coro_dict=futures))
 
     def get_url(
         self,
@@ -736,7 +801,7 @@ class PageHandler(RequestHandler):
     ) -> Future[RequestResult]:
         fail_fast = _fail_fast_policy(fail_fast, waited, host, path)
 
-        def client_method():
+        def client_method() -> Task:
             return self._http_client.get_url(
                 host,
                 path,
@@ -775,7 +840,7 @@ class PageHandler(RequestHandler):
     ) -> Future[RequestResult]:
         fail_fast = _fail_fast_policy(fail_fast, waited, host, path)
 
-        def client_method():
+        def client_method() -> Task:
             return self._http_client.head_url(
                 host,
                 path,
@@ -817,7 +882,7 @@ class PageHandler(RequestHandler):
     ) -> Future[RequestResult]:
         fail_fast = _fail_fast_policy(fail_fast, waited, host, path)
 
-        def client_method():
+        def client_method() -> Task:
             return self._http_client.post_url(
                 host,
                 path,
@@ -863,7 +928,7 @@ class PageHandler(RequestHandler):
     ) -> Future[RequestResult]:
         fail_fast = _fail_fast_policy(fail_fast, waited, host, path)
 
-        def client_method():
+        def client_method() -> Task:
             return self._http_client.put_url(
                 host,
                 path,
@@ -906,7 +971,7 @@ class PageHandler(RequestHandler):
     ) -> Future[RequestResult]:
         fail_fast = _fail_fast_policy(fail_fast, waited, host, path)
 
-        def client_method():
+        def client_method() -> Task:
             return self._http_client.delete_url(
                 host,
                 path,
@@ -932,24 +997,16 @@ class PageHandler(RequestHandler):
         path: str,
         client_method: Callable,
         waited: bool,
-    ) -> Future[RequestResult]:
-        if waited and (self.is_finished() or self.finish_group.is_finished()):
-            handler_logger.info(
-                'attempted to make waited http request to %s %s in finished handler, ignoring',
-                host,
-                path,
-            )
+    ) -> Task[RequestResult]:
+        if waited and self.is_finished():
+            raise RuntimeError(f'attempted to make waited http request to {host} {path} in finished handler, ignoring')
 
-            future: Future = Future()
-            future.set_exception(AbortAsyncGroup())
-            return future
-
-        future = client_method()
+        task = client_method()
 
         if waited:
-            self.finish_group.add_future(future)
+            self.finish_group.add_future(task)
 
-        return future
+        return task
 
 
 class ErrorHandler(PageHandler, tornado.web.ErrorHandler):
@@ -957,10 +1014,10 @@ class ErrorHandler(PageHandler, tornado.web.ErrorHandler):
 
 
 class RedirectHandler(PageHandler, tornado.web.RedirectHandler):
-    @router.get()
+    # @router.delete(qq_path(), cls=Page)
     def get_page(self):
         tornado.web.RedirectHandler.get(self)
 
 
 async def get_current_handler(request: Request) -> PageHandler:
-    return request['handler']
+    return request.state.handler

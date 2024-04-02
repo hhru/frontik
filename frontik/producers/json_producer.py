@@ -141,7 +141,7 @@ class JsonProducer:
 
     async def _finish_with_json(self) -> tuple[str, None]:
         self.log.debug('finishing without templating')
-        if self.handler._headers.get('Content-Type') is None:
+        if self.handler.get_header('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.APPLICATION_JSON)
 
         return self.json.to_string(), None

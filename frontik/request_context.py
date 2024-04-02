@@ -16,19 +16,19 @@ if TYPE_CHECKING:
 class _Context:
     __slots__ = ('handler_name', 'log_handler', 'request', 'request_id')
 
-    def __init__(self, request: Optional[HTTPServerRequest], request_id: Optional[str]) -> None:
+    def __init__(self, request: Optional[HTTPServerRequest], request_id: Optional[str], handler_name) -> None:
         self.request = request
         self.request_id = request_id
-        self.handler_name: Optional[str] = None
+        self.handler_name: str = handler_name
         self.log_handler: Optional[DebugBufferedHandler] = None
 
 
-_context = contextvars.ContextVar('context', default=_Context(None, None))
+_context = contextvars.ContextVar('context', default=_Context(None, None, None))
 
 
 @contextmanager
-def request_context(request: HTTPServerRequest, request_id: str) -> Iterator:
-    token = _context.set(_Context(request, request_id))
+def request_context(request: HTTPServerRequest, request_id: str, handler) -> Iterator:
+    token = _context.set(_Context(request, request_id, repr(handler)))
     try:
         yield
     finally:
@@ -45,15 +45,6 @@ def get_request_id() -> Optional[str]:
 
 def get_handler_name() -> Optional[str]:
     return _context.get().handler_name
-
-
-def set_handler_name(handler_name: str) -> None:
-    _context.get().handler_name = handler_name
-
-
-def set_handler(handler: PageHandler) -> None:
-    context = _context.get()
-    context.handler_name = repr(handler)
 
 
 def get_log_handler() -> Optional[DebugBufferedHandler]:

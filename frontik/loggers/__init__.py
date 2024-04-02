@@ -159,20 +159,20 @@ def bootstrap_logger(
     formatter: Optional[Formatter] = None,
 ) -> logging.Logger:
     if isinstance(logger_info, tuple):
-        logger, logger_name = logger_info
+        logger, logger_file_name = logger_info
     else:
-        logger, logger_name = logging.getLogger(logger_info), logger_info
+        logger, logger_file_name = logging.getLogger(logger_info), logger_info
 
     handlers = []
 
     if options.log_dir:
-        handlers.extend(_configure_file(logger_name, use_json_formatter, formatter))
+        handlers.extend(_configure_file(logger_file_name, use_json_formatter, formatter))
 
     if options.stderr_log:
         handlers.extend(_configure_stderr(formatter))
 
     if options.syslog:
-        handlers.extend(_configure_syslog(logger_name, use_json_formatter, formatter))
+        handlers.extend(_configure_syslog(logger_file_name, use_json_formatter, formatter))
 
     for handler in handlers:
         handler.setLevel(logger_level)
@@ -252,6 +252,7 @@ def bootstrap_core_logging(log_level: str, use_json: bool, suppressed_loggers: l
 
     bootstrap_logger((ROOT_LOGGER, 'service'), level, use_json_formatter=use_json)
     bootstrap_logger('server', level, use_json_formatter=use_json)
+    bootstrap_logger((logging.getLogger("uvicorn.error"), 'server'), level, use_json_formatter=use_json)
 
     if use_json:
         bootstrap_logger((JSON_REQUESTS_LOGGER, 'requests'), level, use_json_formatter=True)
@@ -260,3 +261,4 @@ def bootstrap_core_logging(log_level: str, use_json: bool, suppressed_loggers: l
         logging.getLogger(logger_name).setLevel(logging.WARNING)
 
     logging.captureWarnings(True)
+

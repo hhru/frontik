@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from collections import namedtuple
 from functools import partial
 from typing import TYPE_CHECKING, Optional
@@ -84,7 +85,7 @@ class TimeoutChecker:
         self,
         outer_caller: Optional[str],
         outer_timeout_ms: float,
-        time_since_outer_request_start_sec_supplier: Callable,
+        time_since_outer_request_start_sec_supplier: float,
         *,
         threshold_ms: float = 100,
     ) -> None:
@@ -95,7 +96,7 @@ class TimeoutChecker:
 
     def check(self, request: RequestBuilder) -> None:
         if self.outer_timeout_ms:
-            already_spent_time_ms = self.time_since_outer_request_start_sec_supplier() * 1000
+            already_spent_time_ms = (time.time() - self.time_since_outer_request_start_sec_supplier) * 1000
             expected_timeout_ms = self.outer_timeout_ms - already_spent_time_ms
             request_timeout_ms = request.request_time_left * 1000
             diff = request_timeout_ms - expected_timeout_ms
@@ -113,7 +114,7 @@ class TimeoutChecker:
 def get_timeout_checker(
     outer_caller: Optional[str],
     outer_timeout_ms: float,
-    time_since_outer_request_start_ms_supplier: Callable,
+    time_since_outer_request_start_ms_supplier: float,
     *,
     threshold_ms: float = 100,
 ) -> TimeoutChecker:

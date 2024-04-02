@@ -1,17 +1,13 @@
-from __future__ import annotations
-
 import asyncio
 import logging
 import time
 from functools import partial, wraps
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
-from tornado.concurrent import Future
-from tornado.ioloop import IOLoop
+from asyncio import Future, Task
+from collections.abc import Callable
+from typing import Any
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-    from typing import Any
 
 async_logger = logging.getLogger('frontik.futures')
 
@@ -44,6 +40,9 @@ class AsyncGroup:
         return self._finished
 
     def abort(self) -> None:
+        if self._finished:
+            return
+
         async_logger.info('aborting %s', self)
         self._finished = True
         if not self._future.done():
@@ -69,11 +68,6 @@ class AsyncGroup:
     def try_finish(self) -> None:
         if self._counter == 0:
             self.finish()
-
-    def try_finish_async(self):
-        """Executes finish_cb in next IOLoop iteration"""
-        if self._counter == 0:
-            IOLoop.current().add_callback(self.finish)
 
     def _inc(self) -> None:
         if self._finished:
@@ -122,10 +116,10 @@ class AsyncGroup:
         future.result()
         callback()
 
-    def add_future(self, future: Future) -> Future:
-        IOLoop.current().add_future(future, partial(self._handle_future, self.add_notification()))
-        self._futures.append(future)
-        return future
+    def add_future(self, task: Task) -> Future:
+        task.add_done_callback(partial(self._handle_future, self.add_notification()))
+        self._futures.append(task)
+        return task
 
     def get_finish_future(self) -> Future:
         return self._future

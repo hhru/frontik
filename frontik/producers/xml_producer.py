@@ -127,7 +127,7 @@ class XmlProducer:
 
     async def _finish_with_xml(self, escape_xmlns: bool = False) -> tuple[bytes, None]:
         self.log.debug('finishing without XSLT')
-        if self.handler._headers.get('Content-Type') is None:
+        if self.handler.get_my_header('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.APPLICATION_XML)
 
         if escape_xmlns:
