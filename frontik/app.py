@@ -95,11 +95,11 @@ class FrontikApplication(Application):
     def __init__(self, app_root: str, **settings: Any) -> None:
         self.start_time = time.time()
 
-        self.config = self.application_config()
-
         self.app = settings.get('app')
         self.app_module = settings.get('app_module')
         self.app_root = app_root
+
+        self.config = self.application_config()
 
         self.xml = frontik.producers.xml_producer.XMLProducerFactory(self)
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
