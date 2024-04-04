@@ -1,3 +1,9 @@
+-   name: 7.5.6
+    date: '2024-04-04T19:37:39.356168+03:00'
+    description: sentry унесен в extras-зависимости
+    instructions: ''
+    compatible: true
+
 -   name: 7.5.5
     date: '2024-04-03T14:58:24.749521+03:00'
     description: Поправил зависимости (aiokafka)
