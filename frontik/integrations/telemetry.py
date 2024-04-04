@@ -61,43 +61,43 @@ class TelemetryIntegration(Integration):
         SpanImpl.set_attribute = patched_set_attribute  # type: ignore
 
     def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
-        if not options.opentelemetry_enabled:
-            return None
-
-        integrations_logger.info('start telemetry')
-
-        resource = Resource(
-            attributes={
-                ResourceAttributes.SERVICE_NAME: options.app,  # type: ignore
-                ResourceAttributes.SERVICE_VERSION: app.application_version(),  # type: ignore
-                ResourceAttributes.HOST_NAME: options.node_name,
-                ResourceAttributes.CLOUD_REGION: http_client_options.datacenter,
-            },
-        )
-        otlp_exporter = OTLPSpanExporter(endpoint=options.opentelemetry_collector_url, insecure=True)
-
-        provider = TracerProvider(
-            resource=resource,
-            id_generator=FrontikIdGenerator(),
-            sampler=ParentBased(TraceIdRatioBased(options.opentelemetry_sampler_ratio)),
-        )
-
-        provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
-        trace.set_tracer_provider(provider)
-
-        self.aiohttp_instrumentor.instrument(request_hook=_client_request_hook, response_hook=_client_response_hook)
-
-        self.tornado_instrumentor.instrument(server_request_hook=_server_request_hook)
+        # if not options.opentelemetry_enabled:
+        #     return None
+        #
+        # integrations_logger.info('start telemetry')
+        #
+        # resource = Resource(
+        #     attributes={
+        #         ResourceAttributes.SERVICE_NAME: options.app,  # type: ignore
+        #         ResourceAttributes.SERVICE_VERSION: app.application_version(),  # type: ignore
+        #         ResourceAttributes.HOST_NAME: options.node_name,
+        #         ResourceAttributes.CLOUD_REGION: http_client_options.datacenter,
+        #     },
+        # )
+        # otlp_exporter = OTLPSpanExporter(endpoint=options.opentelemetry_collector_url, insecure=True)
+        #
+        # provider = TracerProvider(
+        #     resource=resource,
+        #     id_generator=FrontikIdGenerator(),
+        #     sampler=ParentBased(TraceIdRatioBased(options.opentelemetry_sampler_ratio)),
+        # )
+        #
+        # provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+        # trace.set_tracer_provider(provider)
+        #
+        # self.aiohttp_instrumentor.instrument(request_hook=_client_request_hook, response_hook=_client_response_hook)
+        #
+        # self.tornado_instrumentor.instrument(server_request_hook=_server_request_hook)
 
         return None
 
     def deinitialize_app(self, app: FrontikApplication) -> Optional[Future]:
-        if not options.opentelemetry_enabled:
-            return None
-
-        integrations_logger.info('stop telemetry')
-        self.aiohttp_instrumentor.uninstrument()
-        self.tornado_instrumentor.uninstrument()
+        # if not options.opentelemetry_enabled:
+        #     return None
+        #
+        # integrations_logger.info('stop telemetry')
+        # self.aiohttp_instrumentor.uninstrument()
+        # self.tornado_instrumentor.uninstrument()
         return None
 
     def initialize_handler(self, handler):

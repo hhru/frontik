@@ -5,6 +5,7 @@ import logging
 import time
 from functools import partial, wraps
 from typing import TYPE_CHECKING, Optional
+from asyncio import Task
 
 from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
@@ -44,6 +45,9 @@ class AsyncGroup:
         return self._finished
 
     def abort(self) -> None:
+        if self._finished:
+            return
+
         async_logger.info('aborting %s', self)
         self._finished = True
         if not self._future.done():
@@ -122,10 +126,9 @@ class AsyncGroup:
         future.result()
         callback()
 
-    def add_future(self, future: Future) -> Future:
-        IOLoop.current().add_future(future, partial(self._handle_future, self.add_notification()))
-        self._futures.append(future)
-        return future
+    def add_future(self, task: Task):
+        task.add_done_callback(partial(self._handle_future, self.add_notification()))
+        self._futures.append(task)
 
     def get_finish_future(self) -> Future:
         return self._future

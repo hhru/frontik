@@ -1,141 +1,112 @@
-from __future__ import annotations
-
-import importlib
 import logging
-import os
+from fastapi.routing import APIRouter
+from typing import Callable
 import re
-from inspect import isclass
-from typing import TYPE_CHECKING, Optional
+import inspect
+import importlib
+import pkgutil
 
-from tornado.routing import ReversibleRouter, Router
-from tornado.web import RequestHandler
-
-from frontik.handler import ErrorHandler
-from frontik.util import reverse_regex_named_groups
-
-if TYPE_CHECKING:
-    from typing import Any
-
-    from tornado.httputil import HTTPMessageDelegate, HTTPServerRequest
-
-    from frontik.app import FrontikApplication
 
 routing_logger = logging.getLogger('frontik.routing')
 
-MAX_MODULE_NAME_LENGTH = os.pathconf('/', 'PC_PATH_MAX') - 1
+routers = []
+normal_routes = {}
+regex_mapping = []
 
 
-class FileMappingRouter(Router):
-    def __init__(self, module: Any) -> None:
-        self.name = module.__name__
+class FrontikRouter(APIRouter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        routers.append(self)
+        self._cls = None
+        self._path = None
 
-    def find_handler(self, request: HTTPServerRequest, **kwargs: Any) -> Optional[HTTPMessageDelegate]:
-        url_parts = request.path.strip('/').split('/')
-        application = kwargs['application']
+    def get(self, path: str, cls, **kwargs) -> Callable:
+        self._path, self._cls = path, cls
+        return super().get(path, **kwargs)
 
-        if any('.' in part for part in url_parts):
-            routing_logger.info('url contains "." character, using 404 page')
-            return get_application_404_handler_delegate(application, request)
+    def post(self, path: str, cls, **kwargs) -> Callable:
+        self._path, self._cls = path, cls
+        return super().post(path, **kwargs)
 
-        page_name = '.'.join(filter(None, url_parts))
-        page_module_name = '.'.join(filter(None, (self.name, page_name)))
-        routing_logger.debug('page module: %s', page_module_name)
+    def put(self, path: str, cls, **kwargs) -> Callable:
+        self._path, self._cls = path, cls
+        return super().put(path, **kwargs)
 
-        if len(page_module_name) > MAX_MODULE_NAME_LENGTH:
-            routing_logger.info('page module name exceeds PATH_MAX (%s), using 404 page', MAX_MODULE_NAME_LENGTH)
-            return get_application_404_handler_delegate(application, request)
+    def delete(self, path: str, cls, **kwargs) -> Callable:
+        self._path, self._cls = path, cls
+        return super().delete(path, **kwargs)
 
-        def _handle_general_module_import_exception() -> HTTPMessageDelegate:
-            routing_logger.exception('error while importing %s module', page_module_name)
-            return _get_application_500_handler_delegate(application, request)
+    def add_api_route(self, *args, **kwargs):
+        super().add_api_route(*args, **kwargs)
+        route = self.routes[-1]
+        m = next(iter(route.methods), None)
+        normal_routes[(self._path, m)] = (route, self._cls)  # нам нужен дикт роутов, чтобы знать класс хендлера
+        self._cls, self._path = None, None
 
+
+class FrontikRegexRouter(APIRouter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        routers.append(self)
+        self._cls = None
+        self._path = None
+
+    def get(self, path: str, cls, **kwargs) -> Callable:
+        self._path, self._cls = path, cls
+        return super().get(path, **kwargs)
+
+    def post(self, path: str, cls, **kwargs) -> Callable:
+        self._path, self._cls = path, cls
+        return super().post(path, **kwargs)
+
+    def put(self, path: str, cls, **kwargs) -> Callable:
+        self._path, self._cls = path, cls
+        return super().put(path, **kwargs)
+
+    def delete(self, path: str, cls, **kwargs) -> Callable:
+        self._path, self._cls = path, cls
+        return super().delete(path, **kwargs)
+
+    def add_api_route(self, *args, **kwargs):
+        super().add_api_route(*args, **kwargs)
+
+        regex_mapping.append((
+            re.compile(self._path),
+            self.routes[-1],
+            self._cls
+        ))
+
+        self._cls, self._path = None, None
+
+
+def build_path() -> str:
+    curframe = inspect.currentframe()
+    calframe = inspect.getouterframes(curframe, 2)
+    page_file_path = calframe[1].filename
+    idx = page_file_path.find('/pages')
+    if idx == -1:
+        raise RuntimeError('cant generate url path')
+
+    return page_file_path[idx + 6:-3]
+
+
+def _import_submodules(package: str) -> None:
+    package = importlib.import_module(package)
+    for loader, name, is_pkg in pkgutil.walk_packages(package.__path__):
+        full_name = package.__name__ + '.' + name
         try:
-            page_module = importlib.import_module(page_module_name)
-            routing_logger.debug('using %s from %s', page_module_name, page_module.__file__)
-        except ModuleNotFoundError as module_not_found_error:
-            if not (
-                page_module_name == module_not_found_error.name
-                or page_module_name.startswith(module_not_found_error.name + '.')  # type: ignore
-            ):
-                return _handle_general_module_import_exception()
-            routing_logger.warning('%s module not found', (self.name, page_module_name))
-            return get_application_404_handler_delegate(application, request)
-        except Exception:
-            return _handle_general_module_import_exception()
-
-        if not hasattr(page_module, 'Page'):
-            routing_logger.error('%s.Page class not found', page_module_name)
-            return get_application_404_handler_delegate(application, request)
-
-        return application.get_handler_delegate(request, page_module.Page)
+            importlib.import_module(full_name)
+        except ModuleNotFoundError:
+            continue
+        except Exception as ex:
+            routing_logger.error('failed on import page %s %s', full_name, ex)
+            continue
+        if is_pkg:
+            _import_submodules(full_name)
 
 
-class FrontikRouter(ReversibleRouter):
-    def __init__(self, application: FrontikApplication) -> None:
-        self.application = application
-        self.handlers = []
-        self.handler_names: dict[str, Any] = {}
-
-        for handler_spec in application.application_urls():
-            if len(handler_spec) > 2:
-                pattern, handler, handler_name = handler_spec
-            else:
-                handler_name = None
-                pattern, handler = handler_spec
-
-            self.handlers.append((re.compile(pattern), handler))
-
-            if handler_name is not None:
-                self.handler_names[handler_name] = pattern
-
-    def find_handler(self, request: HTTPServerRequest, **kwargs: Any) -> HTTPMessageDelegate:
-        routing_logger.info('requested url: %s', request.uri)
-
-        for pattern, handler in self.handlers:
-            match = pattern.match(request.uri)
-            if match:
-                routing_logger.debug('using %r', handler)
-
-                if isclass(handler) and issubclass(handler, RequestHandler):
-                    _add_request_arguments_from_path(request, match)
-                    return self.application.get_handler_delegate(request, handler)
-
-                elif isinstance(handler, Router):
-                    delegate = handler.find_handler(request, application=self.application)
-                    if delegate is not None:
-                        return delegate
-
-                else:
-                    routing_logger.error('handler %r is of unknown type', handler)
-                    return _get_application_500_handler_delegate(self.application, request)
-
-        routing_logger.error('match for request url "%s" not found', request.uri)
-        return get_application_404_handler_delegate(self.application, request)
-
-    def reverse_url(self, name: str, *args: Any, **kwargs: Any) -> str:
-        if name not in self.handler_names:
-            raise KeyError('%s not found in named urls' % name)
-
-        return reverse_regex_named_groups(self.handler_names[name], *args, **kwargs)
-
-
-def get_application_404_handler_delegate(
-    application: FrontikApplication,
-    request: HTTPServerRequest,
-) -> HTTPMessageDelegate:
-    handler_class, handler_kwargs = application.application_404_handler(request)
-    return application.get_handler_delegate(request, handler_class, handler_kwargs)
-
-
-def _get_application_500_handler_delegate(
-    application: FrontikApplication,
-    request: HTTPServerRequest,
-) -> HTTPMessageDelegate:
-    return application.get_handler_delegate(request, ErrorHandler, {'status_code': 500})
-
-
-def _add_request_arguments_from_path(request: HTTPServerRequest, match: re.Match) -> None:
-    arguments = match.groupdict()
-    for name, value in arguments.items():
-        if value:
-            request.arguments.setdefault(name, []).append(value)
+def fill_router(app_module: str) -> None:
+    # import all pages on startup
+    package_name = f'{app_module}.pages'
+    _import_submodules(package_name)

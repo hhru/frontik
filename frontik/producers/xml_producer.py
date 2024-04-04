@@ -76,7 +76,7 @@ class XmlProducer:
     async def _finish_with_xslt(self) -> tuple[Optional[str], Optional[list[Any]]]:
         self.log.debug('finishing with XSLT')
 
-        if self.handler._headers.get('Content-Type') is None:
+        if self.handler.resp_headers.get('Content-Type', None) is None:
             self.handler.set_header('Content-Type', media_types.TEXT_HTML)
 
         def job():
@@ -127,7 +127,7 @@ class XmlProducer:
 
     async def _finish_with_xml(self, escape_xmlns: bool = False) -> tuple[bytes, None]:
         self.log.debug('finishing without XSLT')
-        if self.handler._headers.get('Content-Type') is None:
+        if self.handler.resp_headers.get('Content-Type', None) is None:
             self.handler.set_header('Content-Type', media_types.APPLICATION_XML)
 
         if escape_xmlns:
