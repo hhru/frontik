@@ -1919,7 +1919,10 @@ files = [
 docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
 testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy", "pytest-ruff (>=0.2.1)"]
 
+[extras]
+sentry = ["sentry-sdk"]
+
 [metadata]
 lock-version = "2.0"
 python-versions = "~=3.9"
-content-hash = "28dbdb9ce4b76b0d07ee3e5d674d554dd2be927e4cb07175a305ed121db7afaf"
+content-hash = "20521f4a610d3a0d28d8f58a2ccf21d8ed2094f447233d8d86f116a176f69915"
