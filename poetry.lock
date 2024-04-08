@@ -1921,8 +1921,9 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 
 [extras]
 sentry = ["sentry-sdk"]
+testing = ["aioresponses", "tornado-httpclient-mock"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "~=3.9"
-content-hash = "20521f4a610d3a0d28d8f58a2ccf21d8ed2094f447233d8d86f116a176f69915"
+content-hash = "3971c56a87814b276190342cf60ec3f5dac0fe78531bad88e0de215a1a7ef364"
