@@ -10,4 +10,4 @@ COPY tests /home/building/tests/
 COPY examples /home/building/examples/
 WORKDIR /home/building
 
-RUN --mount=type=ssh poetry install --no-root
+RUN --mount=type=ssh poetry install --no-root --all-extras
