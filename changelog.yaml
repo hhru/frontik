@@ -1,3 +1,9 @@
+-   name: 7.5.8
+    date: '2024-04-11T09:42:17.532559+03:00'
+    description: ''
+    instructions: ''
+    compatible: true
+
 -   name: 7.5.7
     date: '2024-04-08T23:28:33.067139+03:00'
     description: Добавлен testing extras
