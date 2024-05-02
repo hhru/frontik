@@ -17,7 +17,7 @@ async def get_page(handler=get_current_handler()):
     same_server = get_server(handler, 'normal')
     same_server.weight = 5
 
-    server_slow_start = Server('127.0.0.1:12345', weight=5, dc='Test')
+    server_slow_start = Server('127.0.0.1:12345', 'dest_host', weight=5, dc='Test')
 
     upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=0.1)}
     upstreams = handler.application.upstream_manager.get_upstreams()

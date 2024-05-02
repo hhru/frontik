@@ -5,11 +5,11 @@ from frontik.handler import PageHandler
 
 
 def get_server(handler: PageHandler, type: str) -> Server:
-    return Server(f'127.0.0.1:{handler.get_query_argument(type)}', dc='Test')
+    return Server(f'127.0.0.1:{handler.get_query_argument(type)}', 'dest_host', dc='Test')
 
 
 def get_server_with_port(port: int) -> Server:
-    return Server(f'127.0.0.1:{port}', dc='Test')
+    return Server(f'127.0.0.1:{port}', 'dest_host', dc='Test')
 
 
 def get_non_listening_server() -> Server:

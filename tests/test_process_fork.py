@@ -33,7 +33,11 @@ def prepare_upstreams():
             retry_policy={'403': {'idempotent': 'false'}, '500': {'idempotent': 'true'}},
         ),
     }
-    return {'upstream': Upstream('upstream', upstream_config, [Server('12.2.3.5'), Server('12.22.3.5')])}
+    return {
+        'upstream': Upstream(
+            'upstream', upstream_config, [Server('12.2.3.5', 'dest_host'), Server('12.22.3.5', 'dest_host')]
+        )
+    }
 
 
 def noop(*_args, **__kwargs):
@@ -124,7 +128,7 @@ class TestProcessFork:
         control_master_state['shared_data']['upstream2'] = Upstream(
             'upstream2',
             {},
-            [Server('12.2.3.5'), Server('12.22.3.5')],
+            [Server('12.2.3.5', 'dest_host'), Server('12.22.3.5', 'dest_host')],
         )
         control_master_state['upstream_cache'].send_updates()
         control_master_state['upstream_cache'].send_updates()
