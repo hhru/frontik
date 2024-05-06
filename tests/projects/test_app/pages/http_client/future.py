@@ -1,31 +1,33 @@
-import frontik.handler
-from frontik.handler import router
+import asyncio
 
-class Page(frontik.handler.PageHandler):
-    @router.get()
-    async def get_page(self):
-        state = {
-            'second_callback_must_be_async': True,
-        }
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
-        def second_additional_callback(future):
-            state['second_callback_must_be_async'] = False
 
-        def additional_callback(future):
-            assert future is request_future
+@router.get('/http_client/future', cls=PageHandler)
+async def get_page(handler: PageHandler = get_current_handler()):
+    state = {
+        'second_callback_must_be_async': True,
+    }
 
-            self.json.put({
-                'additional_callback_called': True
-            })
+    def second_additional_callback(future):
+        state['second_callback_must_be_async'] = False
 
-            self.add_future(request_future, self.finish_group.add(second_additional_callback))
-            assert state['second_callback_must_be_async']
+    def additional_callback(future):
+        assert future is request_future
 
-        request_future = self.post_url(self.request.host, self.request.path)
-        self.add_future(request_future, self.finish_group.add(additional_callback))
+        handler.json.put({'additional_callback_called': True})
 
-    @router.post()
-    async def post_page(self):
-        self.json.put({
-            'yay': 'yay'
-        })
+        request_future.add_done_callback(handler.finish_group.add(second_additional_callback))
+        assert state['second_callback_must_be_async']
+
+    async def make_request():
+        await handler.post_url(handler.get_header('host'), handler.path)
+
+    request_future = asyncio.create_task(make_request())
+    request_future.add_done_callback(handler.finish_group.add(additional_callback))
+
+
+@router.post('/http_client/future', cls=PageHandler)
+async def post_page(handler=get_current_handler()):
+    handler.json.put({'yay': 'yay'})

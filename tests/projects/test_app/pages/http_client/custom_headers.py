@@ -1,16 +1,19 @@
-import frontik.handler
-from frontik.handler import router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
-class Page(frontik.handler.PageHandler):
-    @router.get()
-    async def get_page(self):
-        result = await self.post_url(self.request.host, self.request.path)
-        self.json.put(result.data)
 
+class Page(PageHandler):
     def modify_http_client_request(self, balanced_request):
         super().modify_http_client_request(balanced_request)
         balanced_request.headers['X-Foo'] = 'Bar'
 
-    @router.post()
-    async def post_page(self):
-        self.json.put(self.request.headers)
+
+@router.get('/http_client/custom_headers', cls=Page)
+async def get_page(handler=get_current_handler()):
+    result = await handler.post_url(handler.get_header('host'), handler.path)
+    handler.json.put(result.data)
+
+
+@router.post('/http_client/custom_headers', cls=Page)
+async def post_page(handler: Page = get_current_handler()):
+    handler.json.put(handler.get_request_headers())

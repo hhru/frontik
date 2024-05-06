@@ -19,7 +19,7 @@ frontik.egg-info/
 
 asyncio
 tornado/
-http_client/
+/http_client
 
 *.log
 *.slog

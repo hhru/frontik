@@ -1,9 +1,9 @@
-from tornado.web import HTTPError
+from fastapi import HTTPException
 
-from frontik.handler import PageHandler, router
+from frontik.handler import PageHandler
+from frontik.routing import router
 
 
-class Page(PageHandler):
-    @router.put()
-    async def put_page(self):
-        raise HTTPError(503, 'broken, retry')
+@router.put('/retry_error', cls=PageHandler)
+async def put_page():
+    raise HTTPException(503, 'broken, retry')

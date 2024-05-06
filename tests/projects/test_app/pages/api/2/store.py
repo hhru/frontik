@@ -1,23 +1,30 @@
 import gzip
 import json
 
-import frontik.handler
-from frontik.handler import router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
-class Page(frontik.handler.PageHandler):
+class Page(PageHandler):
     exceptions = []
 
-    @router.post()
-    async def post_page(self):
-        message = gzip.decompress(self.request.body).decode('utf8')
-        sentry_event = json.loads(message.split('\n')[-1])
+
+@router.post('/api/2/envelope/', cls=Page)
+async def post_page(handler: Page = get_current_handler()):
+    messages = gzip.decompress(handler.body_bytes).decode('utf8')
+
+    for message in messages.split('\n'):
+        if message == "":
+            continue
+        sentry_event = json.loads(message)
         Page.exceptions.append(sentry_event)
 
-    @router.get()
-    async def get_page(self):
-        self.json.put({'exceptions': Page.exceptions})
 
-    @router.delete()
-    async def delete_page(self):
-        Page.exceptions = []
+@router.get('/api/2/envelope/', cls=Page)
+async def get_page(handler=get_current_handler()):
+    handler.json.put({'exceptions': Page.exceptions})
+
+
+@router.delete('/api/2/envelope/', cls=Page)
+async def delete_page():
+    Page.exceptions = []

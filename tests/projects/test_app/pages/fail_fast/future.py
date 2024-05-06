@@ -1,19 +1,19 @@
-from tornado.concurrent import Future
-from tornado.ioloop import IOLoop
+import asyncio
+from typing import Callable
 
-from frontik.handler import PageHandler, router
+from tornado.concurrent import Future
+
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 from frontik.util import gather_dict
 
 
+async def delayed(callback: Callable) -> None:
+    await asyncio.sleep(0.3)
+    callback()
+
+
 class Page(PageHandler):
-    @router.get()
-    async def get_page(self):
-        fail_future = self.get_argument('fail_future', 'false') == 'true'
-
-        results = await gather_dict({'future': self.get_future('future_result', exception=fail_future)})
-
-        self.json.put(results)
-
     def get_future(self, result: str, exception: bool = False) -> Future:
         future: Future = Future()
 
@@ -23,5 +23,14 @@ class Page(PageHandler):
             else:
                 future.set_result(result)
 
-        self.add_timeout(IOLoop.current().time() + 0.3, _finish_future)
+        asyncio.create_task(delayed(_finish_future))
         return future
+
+
+@router.get('/fail_fast/future', cls=Page)
+async def get_page(handler=get_current_handler()):
+    fail_future = handler.get_query_argument('fail_future', 'false') == 'true'
+
+    results = await gather_dict({'future': handler.get_future('future_result', exception=fail_future)})
+
+    handler.json.put(results)

@@ -20,18 +20,8 @@ class TestHttpError:
         assert result.status_code == 200
         assert result.content == b'resultresultresult'
 
-    def test_retry_connect_async(self):
-        result = frontik_balancer_app.get_page(self.make_url('retry_connect_async'))
-        assert result.status_code == 200
-        assert result.content == b'resultresultresult'
-
     def test_retry_connect_timeout(self):
         result = frontik_balancer_app.get_page(self.make_url('retry_connect_timeout'))
-        assert result.status_code == 200
-        assert result.content == b'resultresultresult'
-
-    def test_retry_connect_timeout_async(self):
-        result = frontik_balancer_app.get_page(self.make_url('retry_connect_timeout_async'))
         assert result.status_code == 200
         assert result.content == b'resultresultresult'
 
@@ -40,18 +30,8 @@ class TestHttpError:
         assert result.status_code == 200
         assert result.content == b'resultresultresult'
 
-    def test_retry_error_async(self):
-        result = frontik_balancer_app.get_page(self.make_url('retry_error_async'))
-        assert result.status_code == 200
-        assert result.content == b'resultresultresult'
-
     def test_no_retry_error(self):
         result = frontik_balancer_app.get_page(self.make_url('no_retry_error'))
-        assert result.status_code == 200
-        assert result.content == b'no retry error'
-
-    def test_no_retry_error_async(self):
-        result = frontik_balancer_app.get_page(self.make_url('no_retry_error_async'))
         assert result.status_code == 200
         assert result.content == b'no retry error'
 
@@ -60,18 +40,8 @@ class TestHttpError:
         assert result.status_code == 200
         assert result.content == b'no retry timeout'
 
-    def test_no_retry_timeout_async(self):
-        result = frontik_balancer_app.get_page(self.make_url('no_retry_timeout_async'))
-        assert result.status_code == 200
-        assert result.content == b'no retry timeout'
-
     def test_no_available_backend(self):
         result = frontik_balancer_app.get_page(self.make_url('no_available_backend'))
-        assert result.status_code == 200
-        assert result.content == b'no backend available'
-
-    def test_no_available_backend_async(self):
-        result = frontik_balancer_app.get_page(self.make_url('no_available_backend_async'))
         assert result.status_code == 200
         assert result.content == b'no backend available'
 
@@ -80,18 +50,8 @@ class TestHttpError:
         assert result.status_code == 200
         assert result.content == b'result'
 
-    def test_retry_on_timeout_async(self):
-        result = frontik_balancer_app.get_page(self.make_url('retry_on_timeout_async'))
-        assert result.status_code == 200
-        assert result.content == b'result'
-
     def test_retry_non_idempotent(self):
         result = frontik_balancer_app.get_page(self.make_url('retry_non_idempotent_503'))
-        assert result.status_code == 200
-        assert result.content == b'result'
-
-    def test_retry_non_idempotent_async(self):
-        result = frontik_balancer_app.get_page(self.make_url('retry_non_idempotent_503_async'))
         assert result.status_code == 200
         assert result.content == b'result'
 
@@ -100,18 +60,8 @@ class TestHttpError:
         assert result.status_code == 200
         assert result.content == b'no backend available'
 
-    def test_different_datacenter_async(self):
-        result = frontik_balancer_app.get_page(self.make_url('different_datacenter_async'))
-        assert result.status_code == 200
-        assert result.content == b'no backend available'
-
     def test_requests_count(self):
         result = frontik_balancer_app.get_page(self.make_url('requests_count'))
-        assert result.status_code == 200
-        assert result.content == b'3'
-
-    def test_requests_count_async(self):
-        result = frontik_balancer_app.get_page(self.make_url('requests_count_async'))
         assert result.status_code == 200
         assert result.content == b'3'
 
@@ -120,18 +70,8 @@ class TestHttpError:
         assert result.status_code == 200
         assert result.content == b'6'
 
-    def test_slow_start_async(self):
-        result = frontik_balancer_app.get_page(self.make_url('slow_start_async'))
-        assert result.status_code == 200
-        assert result.content == b'3'
-
     def test_retry_count_limit(self):
         result = frontik_balancer_app.get_page(self.make_url('retry_count_limit'))
-        assert result.status_code == 200
-        assert result.content == b'1'
-
-    def test_retry_count_limit_async(self):
-        result = frontik_balancer_app.get_page(self.make_url('retry_count_limit_async'))
         assert result.status_code == 200
         assert result.content == b'1'
 

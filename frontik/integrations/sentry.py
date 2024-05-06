@@ -3,9 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 import sentry_sdk
-from http_client.request_response import FailFastError
-from sentry_sdk.integrations.tornado import TornadoIntegration
-from tornado.web import HTTPError
+from sentry_sdk.integrations.fastapi import FastApiIntegration, StarletteIntegration
 
 from frontik.integrations import Integration, integrations_logger
 from frontik.options import options
@@ -27,8 +25,7 @@ class SentryIntegration(Integration):
             max_breadcrumbs=options.sentry_max_breadcrumbs,
             default_integrations=False,
             auto_enabling_integrations=False,
-            integrations=[TornadoIntegration()],
-            ignore_errors=[HTTPError, FailFastError],
+            integrations=[FastApiIntegration(), StarletteIntegration()],
         )
 
         return None

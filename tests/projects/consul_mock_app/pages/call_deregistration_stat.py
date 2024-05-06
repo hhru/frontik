@@ -1,17 +1,10 @@
-from __future__ import annotations
-
 import json
-from typing import TYPE_CHECKING
 
-from frontik.handler import PageHandler, router
-
-if TYPE_CHECKING:
-    from tests.projects.consul_mock_app import TestApplication
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
-class Page(PageHandler):
-    @router.get()
-    async def get_page(self):
-        self.set_status(200)
-        self.application: TestApplication
-        self.text = json.dumps(self.application.deregistration_call_counter)
+@router.get('/call_deregistration_stat', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    handler.set_status(200)
+    handler.text = json.dumps(handler.application.deregistration_call_counter)

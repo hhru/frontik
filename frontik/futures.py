@@ -44,6 +44,9 @@ class AsyncGroup:
         return self._finished
 
     def abort(self) -> None:
+        if self._finished:
+            return
+
         async_logger.info('aborting %s', self)
         self._finished = True
         if not self._future.done():
@@ -122,10 +125,9 @@ class AsyncGroup:
         future.result()
         callback()
 
-    def add_future(self, future: Future) -> Future:
-        IOLoop.current().add_future(future, partial(self._handle_future, self.add_notification()))
+    def add_future(self, future: Future) -> None:
+        future.add_done_callback(partial(self._handle_future, self.add_notification()))
         self._futures.append(future)
-        return future
 
     def get_finish_future(self) -> Future:
         return self._future

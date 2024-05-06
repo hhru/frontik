@@ -1,6 +1,7 @@
 from lxml import etree
 
-from frontik.handler import PageHandler, router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
 class Page(PageHandler):
@@ -8,8 +9,9 @@ class Page(PageHandler):
     def extract_metainfo_pp(handler, _, meta_info):
         return ','.join(meta_info)
 
-    @router.get()
-    async def get_page(self):
-        self.set_xsl('meta.xsl')
-        self.doc.put(etree.Element('ok', key=self.get_argument('meta_key', '')))
-        self.add_render_postprocessor(self.extract_metainfo_pp)
+
+@router.get('/postprocess_xsl', cls=Page)
+async def get_page(handler=get_current_handler()):
+    handler.set_xsl('meta.xsl')
+    handler.doc.put(etree.Element('ok', key=handler.get_query_argument('meta_key', '')))
+    handler.add_render_postprocessor(handler.extract_metainfo_pp)

@@ -8,8 +8,6 @@ from typing import TYPE_CHECKING
 from frontik import request_context
 
 if TYPE_CHECKING:
-    from tornado.httputil import HTTPServerRequest
-
     from frontik.integrations.statsd import StatsDClient, StatsDClientStub
 
 stages_logger = logging.getLogger('stages')
@@ -18,8 +16,8 @@ stages_logger = logging.getLogger('stages')
 class StagesLogger:
     Stage = namedtuple('Stage', ('name', 'delta', 'start_delta'))
 
-    def __init__(self, request: HTTPServerRequest, statsd_client: StatsDClient | StatsDClientStub) -> None:
-        self._last_stage_time = self._start_time = request._start_time
+    def __init__(self, request_start_time: float, statsd_client: StatsDClient | StatsDClientStub) -> None:
+        self._last_stage_time = self._start_time = request_start_time
         self._stages: list[StagesLogger.Stage] = []
         self._statsd_client = statsd_client
 

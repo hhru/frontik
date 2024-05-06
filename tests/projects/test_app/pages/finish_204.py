@@ -1,8 +1,8 @@
-from frontik.handler import PageHandler, router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
-class Page(PageHandler):
-    @router.get()
-    async def get_page(self):
-        self.write('data')
-        self.set_status(204)
+@router.get('/finish_204', cls=PageHandler)
+async def get_page(handler: PageHandler = get_current_handler()) -> None:
+    handler.text = 'data'
+    handler.set_status(204)

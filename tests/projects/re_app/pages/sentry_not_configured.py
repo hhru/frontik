@@ -1,8 +1,7 @@
-import frontik.handler
-from frontik.handler import router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
-class Page(frontik.handler.PageHandler):
-    @router.get()
-    async def get_page(self):
-        assert not hasattr(self, 'get_sentry_logger')
+@router.get('/sentry_not_configured', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    assert not hasattr(handler, 'get_sentry_logger')

@@ -27,16 +27,17 @@ python-consul2-hh = {git = 'https://github.com/hhru/python-consul2', tag = 'v0.2
 opentelemetry-sdk = '1.17.0'
 opentelemetry-api = '1.17.0'
 opentelemetry-exporter-otlp-proto-grpc = '1.17.0'
-opentelemetry-instrumentation-tornado = '0.38b0'
+opentelemetry-instrumentation-fastapi = '0.38b0'
 opentelemetry-instrumentation-aiohttp-client = '0.38b0'
 fastapi = '0.105.0'
 aiokafka = '0.8.1'
-sentry-sdk = '1.26.0'
+sentry-sdk = '2.1.1'
 aioresponses = '0.7.4'
 tornado-httpclient-mock = '0.2.3'
+uvicorn = '0.29.0'
 
 [tool.poetry.group.test.dependencies]
-pytest = '>=7.2.0'
+pytest = '8.1.1'
 pytest-asyncio = '0.21.1'
 pycodestyle = '>=2.5.0'
 requests = '>=2.0'
@@ -47,6 +48,7 @@ mypy = '1.8.0'
 ruff = '0.3.2'
 exceptiongroup = '1.2.0'
 tomli = '2.0.1'
+virtualenv = '<=20.26.0'
 
 [tool.poetry.extras]
 sentry = ["sentry-sdk"]
@@ -108,11 +110,11 @@ ignore = [
     'DTZ005','FURB101','F841','TRY401','S403','PLR2004','ARG001','BLE001','B009','B010','C901','PLR0912','PLR0911',
     'PLC0415','RUF003','TRY201','TRY300','S301','S102','S104','E721','PLW0603','RET503','PLR6201','PERF203',
     'TRY003','EM102','RUF006','PYI055','RET501','PLC1901','RET502','PLC2801','EM101','B028','A002','DTZ006',
-    'PLR0402','PYI024','PYI024','PLW2901','S701',
+    'PLR0402','PYI024','PYI024','PLW2901','S701','UP006','UP035',
     # should be ignored
     'ANN101','ANN102','D102','D101','CPY001','D100','D107','D106','B008','D103','D104','D105','D202',
     'RET505','RET506','RET504','RSE102','TCH003','TCH002',
-    'COM812', 'ISC001',
+    'COM812', 'ISC001', 'PT015',
 ]
 
 [tool.ruff.lint.isort]

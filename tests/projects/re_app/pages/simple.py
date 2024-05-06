@@ -1,11 +1,19 @@
 from lxml import etree
 
-import frontik.handler
-from frontik.handler import router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
-class Page(frontik.handler.PageHandler):
-    @router.get()
-    async def get_page(self):
-        self.set_xsl('simple.xsl')
-        self.doc.put(etree.Element('ok'))
+@router.get('/simple', cls=PageHandler)
+async def get_page1(handler=get_current_handler()):
+    return await get_page(handler)
+
+
+@router.get('/not_simple', cls=PageHandler)
+async def get_page2(handler: PageHandler = get_current_handler()) -> None:
+    return await get_page(handler)
+
+
+async def get_page(handler: PageHandler) -> None:
+    handler.set_xsl('simple.xsl')
+    handler.doc.put(etree.Element('ok'))

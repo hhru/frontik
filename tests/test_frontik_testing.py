@@ -1,91 +1,77 @@
-from __future__ import annotations
-
 import pytest
 from lxml import etree
-from tornado.ioloop import IOLoop
 
 from frontik.app import FrontikApplication
-from frontik.handler import PageHandler, router
-from frontik.options import options
-from frontik.testing import FrontikTestBase, FrontikTestCase
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
+from frontik.testing import FrontikTestBase
 from frontik.util import gather_list
 from tests import FRONTIK_ROOT
-from tests.projects.test_app.pages.handler import delete
+from tests.projects.test_app.pages.handler import delete  # noqa
 
 
-class AsyncHandler(PageHandler):
-    @router.get()
-    async def get_page(self):
-        self.result = 0
-        service_host = self.config.serviceHost  # type: ignore
+@router.get('/sum_values', cls=PageHandler)
+async def sum_values_page(handler=get_current_handler()):
+    handler.result = 0
+    service_host = handler.config.serviceHost
 
-        res1, res2 = await gather_list(self.get_url(service_host, '/val1/1'), self.get_url(service_host, '/val2/2'))
-        self.result += int(res1.data.findtext('val'))
-        self.result += int(res2.data.findtext('val'))
+    res1, res2 = await gather_list(handler.get_url(service_host, '/val1/1'), handler.get_url(service_host, '/val2/2'))
+    handler.result += int(res1.data.findtext('val'))
+    handler.result += int(res2.data.findtext('val'))
 
-        res = etree.Element('result')
-        res.text = str(self.result)
-        self.doc.put(res)
-        self.set_status(400)
-
-
-class CheckConfigHandler(PageHandler):
-    @router.get()
-    async def get_page(self):
-        self.text = self.config.config_param  # type: ignore
+    res = etree.Element('result')
+    res.text = str(handler.result)
+    handler.doc.put(res)
+    handler.set_status(400)
 
 
-class Application(FrontikApplication):
-    def application_urls(self) -> list[tuple]:
-        return [('/config', CheckConfigHandler), ('/sum_values', AsyncHandler), ('/delete', delete.Page)]
+@router.get('/config', cls=PageHandler)
+async def check_config_page(handler=get_current_handler()):
+    handler.text = handler.config.config_param
 
 
-class TestFrontikTestingOld(FrontikTestCase):
-    def setUp(self) -> None:
-        options.consul_enabled = False
-        super().setUp()
-        self.configure_app(serviceHost='http://service.host')
+class TestFrontikTestingOld(FrontikTestBase):
+    @pytest.fixture(scope='class')
+    def frontik_app(self) -> FrontikApplication:
+        return FrontikApplication(app='test_app', app_root=FRONTIK_ROOT)
 
-    def get_app(self) -> Application:
-        app = Application(app='test_app', app_root=FRONTIK_ROOT)
+    @pytest.fixture(scope='class')
+    def with_tornado_mocks(self):
+        return True
 
-        IOLoop.current().run_sync(app.init)
-
-        self.patch_app_http_client(app)
-
-        return app
-
-    def test_config(self):
+    async def test_config(self):
         self.configure_app(config_param='param_value')
-        response = self.fetch('/config')
+        response = await self.fetch('/config')
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.raw_body, b'param_value')
+        assert response.status_code == 200
+        assert response.raw_body == b'param_value'
 
-    def test_xml_stub(self):
+    async def test_xml_stub(self):
+        self.configure_app(serviceHost='http://service.host')
         self.set_stub('http://service.host/val1/$id', response_file=f'{FRONTIK_ROOT}/tests/stub.xml', id='1', val='2')
         self.set_stub('http://service.host/val2/2', response_file=f'{FRONTIK_ROOT}/tests/stub.xml', val='3')
 
-        doc = self.fetch_xml('/sum_values')
+        doc = await self.fetch_xml('/sum_values')
 
-        self.assertEqual(doc.findtext('result'), '5')
+        assert doc.findtext('result') == '5'
 
-    def test_json_stub(self):
+    async def test_json_stub(self):
+        self.configure_app(serviceHost='http://service.host')
         self.set_stub(
-            f'http://127.0.0.1:{self.get_http_port()}/delete',
+            f'http://127.0.0.1:{self.get_http_port()}/handler/delete',
             request_method='DELETE',
             response_file=f'{FRONTIK_ROOT}/tests/stub.json',
             param='param',
         )
 
-        json = self.fetch_json('/delete')
-        self.assertEqual(json, {'result': 'param'})
+        json = await self.fetch_json('/handler/delete')
+        assert json == {'result': 'param'}
 
 
 class TestFrontikTesting(FrontikTestBase):
     @pytest.fixture(scope='class')
-    def frontik_app(self) -> Application:
-        return Application(app='test_app', app_root=FRONTIK_ROOT)
+    def frontik_app(self) -> FrontikApplication:
+        return FrontikApplication(app='test_app', app_root=FRONTIK_ROOT)
 
     async def test_config(self):
         self.configure_app(config_param='param_value')
@@ -97,16 +83,17 @@ class TestFrontikTesting(FrontikTestBase):
     async def test_json_stub(self):
         self.configure_app(serviceHost='http://service.host')
         self.set_stub(
-            'http://backend/delete',
+            'http://backend/handler/delete',
             request_method='DELETE',
             response_file=f'{FRONTIK_ROOT}/tests/stub.json',
             param='param',
         )
 
-        json = await self.fetch_json('/delete', method='POST')
+        json = await self.fetch_json('/handler/delete', method='POST')
         assert json == {'result': 'param'}
 
     async def test_xml_stub(self):
+        self.configure_app(serviceHost='http://service.host')
         self.set_stub('http://service.host/val1/$id', response_file=f'{FRONTIK_ROOT}/tests/stub.xml', id='1', val='2')
         self.set_stub('http://service.host/val2/2', response_file=f'{FRONTIK_ROOT}/tests/stub.xml', val='3')
 

@@ -1,21 +1,14 @@
 import jinja2
 
 from frontik.app import FrontikApplication
+from frontik.handler import get_default_headers
 from frontik.options import options
 from frontik.util import get_abs_path
-from tests.projects.re_app import config
-from tests.projects.re_app.pages import handler_404
 
 
 class TestApplication(FrontikApplication):
-    def application_config(self):
-        return config
-
-    def application_urls(self):
-        return config.urls
-
-    def application_404_handler(self, request):
-        return handler_404.Page, {}
+    def application_404_handler(self):
+        return 404, get_default_headers(), b'404'
 
     def get_jinja_environment(self):
         env = jinja2.Environment(

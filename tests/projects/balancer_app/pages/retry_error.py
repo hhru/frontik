@@ -1,37 +1,40 @@
+from fastapi import HTTPException
 from http_client.balancing import Upstream
-from tornado.web import HTTPError
 
 from frontik import media_types
-from frontik.handler import PageHandler, router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 from frontik.util import gather_list
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_servers_were_occupied
 
 
-class Page(PageHandler):
-    @router.get()
-    async def get_page(self):
-        upstreams = self.application.upstream_manager.get_upstreams()
-        upstreams['retry_error'] = Upstream('retry_error', {}, [get_server(self, 'broken'), get_server(self, 'normal')])
+@router.get('/retry_error', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    upstreams = handler.application.upstream_manager.get_upstreams()
+    upstreams['retry_error'] = Upstream(
+        'retry_error', {}, [get_server(handler, 'broken'), get_server(handler, 'normal')]
+    )
 
-        self.text = ''
+    handler.text = ''
 
-        requests = [
-            self.put_url('retry_error', self.request.path),
-            self.put_url('retry_error', self.request.path),
-            self.put_url('retry_error', self.request.path),
-        ]
-        results = await gather_list(*requests)
+    requests = [
+        handler.put_url('retry_error', handler.path),
+        handler.put_url('retry_error', handler.path),
+        handler.put_url('retry_error', handler.path),
+    ]
+    results = await gather_list(*requests)
 
-        check_all_servers_were_occupied(self, 'retry_error')
+    check_all_servers_were_occupied(handler, 'retry_error')
 
-        for result in results:
-            if result.error or result.data is None:
-                raise HTTPError(500)
+    for result in results:
+        if result.error or result.data is None:
+            raise HTTPException(500)
 
-            self.text = self.text + result.data
+        handler.text = handler.text + result.data
 
-    @router.put()
-    async def put_page(self):
-        self.add_header('Content-Type', media_types.TEXT_PLAIN)
-        self.text = 'result'
+
+@router.put('/retry_error', cls=PageHandler)
+async def put_page(handler=get_current_handler()):
+    handler.set_header('Content-Type', media_types.TEXT_PLAIN)
+    handler.text = 'result'

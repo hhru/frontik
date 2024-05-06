@@ -1,15 +1,17 @@
-import frontik.handler
-from frontik.handler import router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
-class Page(frontik.handler.PageHandler):
+class Page(PageHandler):
     def _page_handler(self) -> None:
         self.text = self.get_body_argument('foo')
 
-    @router.post()
-    async def post_page(self):
-        return self._page_handler()
 
-    @router.put()
-    async def put_page(self):
-        return self._page_handler()
+@router.post('/handler/json', cls=Page)
+async def post_page(handler=get_current_handler()):
+    return handler._page_handler()
+
+
+@router.put('/handler/json', cls=Page)
+async def put_page(handler=get_current_handler()):
+    return handler._page_handler()

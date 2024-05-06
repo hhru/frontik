@@ -1,22 +1,22 @@
-from tornado.web import HTTPError
+from fastapi import HTTPException
 
-from frontik.handler import PageHandler, router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 from frontik.util import gather_list
 
 
-class Page(PageHandler):
-    @router.get()
-    async def get_page(self):
-        port = int(self.get_argument('port'))
+@router.get('/broken_workflow', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    port = int(handler.get_query_argument('port'))
 
-        @self.check_finished
-        def cb(*args, **kw):
-            raise HTTPError(400)
+    @handler.check_finished
+    def cb(*args, **kw):
+        raise HTTPException(400)
 
-        results = await gather_list(
-            self.get_url(f'http://localhost:{port}', '/page/simple/'),
-            self.get_url(f'http://localhost:{port}', '/page/simple/'),
-            self.get_url(f'http://localhost:{port}', '/page/simple/'),
-        )
-        for res in results:
-            cb(res)
+    results = await gather_list(
+        handler.get_url(f'http://localhost:{port}', '/page/simple/'),
+        handler.get_url(f'http://localhost:{port}', '/page/simple/'),
+        handler.get_url(f'http://localhost:{port}', '/page/simple/'),
+    )
+    for res in results:
+        cb(res)

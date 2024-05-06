@@ -53,7 +53,7 @@ class TestJsonResponse:
     def test_arg_validation_raises_for_default_of_incorrect_type(self) -> None:
         response = frontik_test_app.get_page('validate_arguments?str_arg=test', method=requests.put, notpl=True)
 
-        assert response.status_code == 500
+        assert response.status_code == 400
 
     def test_validation_model(self):
         self.query_args.update(int_arg=0)

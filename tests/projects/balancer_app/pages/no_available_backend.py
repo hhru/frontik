@@ -1,29 +1,32 @@
 from http_client.balancing import Upstream
 from http_client.request_response import NoAvailableServerException
 
-from frontik import handler, media_types
-from frontik.handler import router
+from frontik import media_types
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
-class Page(handler.PageHandler):
-    @router.get()
-    async def get_page(self):
-        upstreams = self.application.upstream_manager.get_upstreams()
-        upstreams['no_available_backend'] = Upstream('no_available_backend', {}, [])
+@router.get('/no_available_backend', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    upstreams = handler.application.upstream_manager.get_upstreams()
+    upstreams['no_available_backend'] = Upstream('no_available_backend', {}, [])
 
-        async def request_with_processing() -> None:
-            result = await self.post_url('no_available_backend', self.request.path)
-            if result.exc is not None and isinstance(result.exc, NoAvailableServerException):
-                self.text = 'no backend available'
-            else:
-                self.text = result.data
-            check_all_requests_done(self, 'no_available_backend')
+    request = handler.post_url('no_available_backend', handler.path)
+    check_all_requests_done(handler, 'no_available_backend')
 
-        self.run_task(request_with_processing())
-        check_all_requests_done(self, 'no_available_backend')
+    result = await request
 
-    @router.post()
-    async def post_page(self):
-        self.add_header('Content-Type', media_types.TEXT_PLAIN)
-        self.text = 'result'
+    if result.exc is not None and isinstance(result.exc, NoAvailableServerException):
+        handler.text = 'no backend available'
+        return
+
+    handler.text = result.text
+
+    check_all_requests_done(handler, 'no_available_backend')
+
+
+@router.post('/no_available_backend', cls=PageHandler)
+async def post_page(handler=get_current_handler()):
+    handler.set_header('Content-Type', media_types.TEXT_PLAIN)
+    handler.text = 'result'

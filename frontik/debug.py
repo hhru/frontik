@@ -21,11 +21,12 @@ from urllib.parse import parse_qs, urlparse
 
 import aiohttp
 import tornado
+from fastapi import Request
 from lxml import etree
 from lxml.builder import E
+from starlette.datastructures import Headers
 from tornado.escape import to_unicode, utf8
-from tornado.httputil import HTTPHeaders, HTTPServerRequest
-from tornado.web import OutputTransform
+from tornado.httputil import HTTPHeaders
 
 import frontik.util
 import frontik.xml_util
@@ -203,7 +204,7 @@ def _params_to_xml(url: str) -> etree.Element:
     return params
 
 
-def _headers_to_xml(request_or_response_headers: dict | HTTPHeaders) -> etree.Element:
+def _headers_to_xml(request_or_response_headers: dict | Headers) -> etree.Element:
     headers = etree.Element('headers')
     for name, value in request_or_response_headers.items():
         if name != 'Cookie':
@@ -365,52 +366,34 @@ DEBUG_HEADER_NAME = 'X-Hh-Debug'
 DEBUG_XSL = os.path.join(os.path.dirname(__file__), 'debug/debug.xsl')
 
 
-class DebugTransform(OutputTransform):
-    def __init__(self, application: FrontikApplication, request: HTTPServerRequest) -> None:
+class DebugTransform:
+    def __init__(self, application: FrontikApplication, request: Request) -> None:
         self.application = application
-        self.request = request
+        self.request: Request = request
 
     def is_enabled(self) -> bool:
-        return getattr(self.request, '_debug_enabled', False)
+        return getattr(self.request.state.handler, '_debug_enabled', False)
 
     def is_inherited(self) -> bool:
-        return getattr(self.request, '_debug_inherited', False)
+        return getattr(self.request.state.handler, '_debug_inherited', False)
 
-    def transform_first_chunk(self, status_code, headers, chunk, finishing):
+    def transform_chunk(self, status_code: int, original_headers: dict, chunk: bytes) -> tuple[int, dict, bytes]:
         if not self.is_enabled():
-            return status_code, headers, chunk
-
-        self.status_code = status_code
-        self.headers = headers
-        self.chunks = [chunk]
+            return status_code, original_headers, chunk
 
         if not self.is_inherited():
-            headers = HTTPHeaders({'Content-Type': media_types.TEXT_HTML})
+            wrap_headers = {'Content-Type': media_types.TEXT_HTML}
         else:
-            headers = HTTPHeaders({'Content-Type': media_types.APPLICATION_XML, DEBUG_HEADER_NAME: 'true'})
-
-        return 200, headers, self.produce_debug_body(finishing)
-
-    def transform_chunk(self, chunk: bytes, finishing: bool) -> bytes:
-        if not self.is_enabled():
-            return chunk
-
-        self.chunks.append(chunk)
-
-        return self.produce_debug_body(finishing)
-
-    def produce_debug_body(self, finishing: bool) -> bytes:
-        if not finishing:
-            return b''
+            wrap_headers = {'Content-Type': media_types.APPLICATION_XML, DEBUG_HEADER_NAME: 'true'}
 
         start_time = time.time()
 
         debug_log_data = request_context.get_log_handler().produce_all()  # type: ignore
-        debug_log_data.set('code', str(int(self.status_code)))
+        debug_log_data.set('code', str(int(status_code)))
         debug_log_data.set('handler-name', request_context.get_handler_name())
-        debug_log_data.set('started', _format_number(self.request._start_time))
-        debug_log_data.set('request-id', str(self.request.request_id))  # type: ignore
-        debug_log_data.set('stages-total', _format_number((time.time() - self.request._start_time) * 1000))
+        debug_log_data.set('started', _format_number(self.request.state.start_time))
+        debug_log_data.set('request-id', str(self.request.state.handler.request_id))
+        debug_log_data.set('stages-total', _format_number((time.time() - self.request.state.start_time) * 1000))
 
         try:
             debug_log_data.append(E.versions(_pretty_print_xml(get_frontik_and_apps_versions(self.application))))
@@ -427,23 +410,22 @@ class DebugTransform(OutputTransform):
         debug_log_data.append(
             E.request(
                 E.method(self.request.method),
-                _params_to_xml(self.request.uri),  # type: ignore
+                _params_to_xml(str(self.request.url)),
                 _headers_to_xml(self.request.headers),
                 _cookies_to_xml(self.request.headers),  # type: ignore
             ),
         )
 
-        debug_log_data.append(E.response(_headers_to_xml(self.headers), _cookies_to_xml(self.headers)))
+        debug_log_data.append(E.response(_headers_to_xml(original_headers), _cookies_to_xml(original_headers)))
 
-        response_buffer = b''.join(self.chunks)
         original_response = {
-            'buffer': base64.b64encode(response_buffer),
-            'headers': dict(self.headers),
-            'code': int(self.status_code),
+            'buffer': base64.b64encode(chunk),
+            'headers': dict(original_headers),
+            'code': int(status_code),
         }
 
         debug_log_data.append(dict_to_xml(original_response, 'original-response'))
-        debug_log_data.set('response-size', str(len(response_buffer)))
+        debug_log_data.set('response-size', str(len(chunk)))
         debug_log_data.set('generate-time', _format_number((time.time() - start_time) * 1000))
 
         for upstream in debug_log_data.xpath('//meta-info/upstream'):
@@ -451,7 +433,7 @@ class DebugTransform(OutputTransform):
             upstream.set('bgcolor', bgcolor)
             upstream.set('fgcolor', fgcolor)
 
-        if not getattr(self.request, '_debug_inherited', False):
+        if not getattr(self.request.state.handler, '_debug_inherited', False):
             try:
                 transform = etree.XSLT(etree.parse(DEBUG_XSL))
                 log_document = utf8(str(transform(debug_log_data)))
@@ -468,7 +450,7 @@ class DebugTransform(OutputTransform):
         else:
             log_document = etree.tostring(debug_log_data, encoding='UTF-8', xml_declaration=True)
 
-        return log_document
+        return 200, wrap_headers, log_document
 
 
 class DebugMode:
@@ -476,17 +458,18 @@ class DebugMode:
         debug_value = frontik.util.get_cookie_or_url_param_value(handler, 'debug')
 
         self.mode_values = debug_value.split(',') if debug_value is not None else ''
-        self.inherited = handler.request.headers.get(DEBUG_HEADER_NAME)
+        self.inherited = handler.get_header(DEBUG_HEADER_NAME, None)
+        self.pass_debug: bool = False
 
         if self.inherited:
             debug_log.debug('debug mode is inherited due to %s request header', DEBUG_HEADER_NAME)
-            handler.request._debug_inherited = True  # type: ignore
+            handler._debug_inherited = True  # type: ignore
 
         if debug_value is not None or self.inherited:
             handler.require_debug_access()
 
-            self.enabled = handler.request._debug_enabled = True  # type: ignore
-            self.pass_debug = 'nopass' not in self.mode_values or self.inherited
+            self.enabled = handler._debug_enabled = True  # type: ignore
+            self.pass_debug = 'nopass' not in self.mode_values or bool(self.inherited)
             self.profile_xslt = 'xslt' in self.mode_values
 
             request_context.set_log_handler(DebugBufferedHandler())
@@ -495,7 +478,6 @@ class DebugMode:
                 debug_log.debug('%s header will be passed to all requests', DEBUG_HEADER_NAME)
         else:
             self.enabled = False
-            self.pass_debug = False
             self.profile_xslt = False
 
 

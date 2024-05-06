@@ -1,27 +1,27 @@
 from lxml import etree
 
-import frontik.handler
 from frontik import media_types
 from frontik.doc import Doc
-from frontik.handler import router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
-class Page(frontik.handler.PageHandler):
-    @router.get()
-    async def get_page(self):
-        invalid_xml = self.get_argument('invalid', 'false')
+@router.get('/compose_doc', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    invalid_xml = handler.get_query_argument('invalid', 'false')
 
-        self.doc.put(etree.fromstring('<a>aaa</a>'))
-        result = await self.post_url(self.request.host, self.request.path, data={'invalid': invalid_xml})
-        self.doc.put(result.to_etree_element())
-        self.doc.put(Doc('c'))
+    handler.doc.put(etree.fromstring('<a>aaa</a>'))
+    result = await handler.post_url(handler.get_header('host'), handler.path, data={'invalid': invalid_xml})
+    handler.doc.put(result.to_etree_element())
+    handler.doc.put(Doc('c'))
 
-    @router.post()
-    async def post_page(self):
-        invalid_xml = self.get_argument('invalid', 'false') == 'true'
 
-        if not invalid_xml:
-            self.doc.root_node = etree.Element('bbb')
-        else:
-            self.set_header('Content-Type', media_types.APPLICATION_XML)
-            self.text = 'FAIL'
+@router.post('/compose_doc', cls=PageHandler)
+async def post_page(handler=get_current_handler()):
+    invalid_xml = handler.get_body_argument('invalid', 'false') == 'true'
+
+    if not invalid_xml:
+        handler.doc.root_node = etree.Element('bbb')
+    else:
+        handler.set_header('Content-Type', media_types.APPLICATION_XML)
+        handler.text = 'FAIL'

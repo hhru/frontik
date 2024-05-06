@@ -1,13 +1,12 @@
 import asyncio
 
-from tornado.web import HTTPError
+from fastapi import HTTPException
 
-from frontik import handler
-from frontik.handler import router
+from frontik.handler import PageHandler
+from frontik.routing import router
 
 
-class Page(handler.PageHandler):
-    @router.post()
-    async def post_page(self):
-        await asyncio.sleep(0.8)
-        raise HTTPError(500, 'broken')
+@router.post('/speculative_no_retry', cls=PageHandler)
+async def post_page():
+    await asyncio.sleep(0.8)
+    raise HTTPException(500, 'broken')

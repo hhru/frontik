@@ -1,19 +1,12 @@
-from tornado.web import Finish
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
-from frontik.handler import PageHandler, router
 
+@router.get('/finish', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    code = int(handler.get_query_argument('code', '200'))
 
-class Page(PageHandler):
-    @router.get()
-    async def get_page(self):
-        throw = self.get_argument('throw', 'true') == 'true'
-        code = int(self.get_argument('code', '200'))
+    handler.set_header('x-foo', 'Bar')
+    handler.set_status(code)
 
-        self.set_header('x-foo', 'Bar')
-        self.set_status(code)
-
-        if throw:
-            msg = 'success'
-            raise Finish(msg)
-        else:
-            self.finish('success')
+    handler.finish('success')

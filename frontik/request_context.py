@@ -4,19 +4,18 @@ import contextvars
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Optional
 
+from fastapi import Request
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from tornado.httputil import HTTPServerRequest
-
     from frontik.debug import DebugBufferedHandler
-    from frontik.handler import PageHandler
 
 
 class _Context:
     __slots__ = ('handler_name', 'log_handler', 'request', 'request_id')
 
-    def __init__(self, request: Optional[HTTPServerRequest], request_id: Optional[str]) -> None:
+    def __init__(self, request: Optional[Request], request_id: Optional[str]) -> None:
         self.request = request
         self.request_id = request_id
         self.handler_name: Optional[str] = None
@@ -27,7 +26,7 @@ _context = contextvars.ContextVar('context', default=_Context(None, None))
 
 
 @contextmanager
-def request_context(request: HTTPServerRequest, request_id: str) -> Iterator:
+def request_context(request: Request, request_id: str) -> Iterator:
     token = _context.set(_Context(request, request_id))
     try:
         yield
@@ -49,11 +48,6 @@ def get_handler_name() -> Optional[str]:
 
 def set_handler_name(handler_name: str) -> None:
     _context.get().handler_name = handler_name
-
-
-def set_handler(handler: PageHandler) -> None:
-    context = _context.get()
-    context.handler_name = repr(handler)
 
 
 def get_log_handler() -> Optional[DebugBufferedHandler]:

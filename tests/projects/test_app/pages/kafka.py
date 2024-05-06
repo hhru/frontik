@@ -1,19 +1,20 @@
 import asyncio
 
-from frontik.handler import PageHandler, router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
-class Page(PageHandler):
-    @router.get()
-    async def get_page(self):
-        request_engine_builder = self.application.http_client_factory.request_engine_builder
-        request_engine_builder.kafka_producer.enable_for_request_id(self.request_id)
+@router.get('/kafka', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    request_engine_builder = handler.application.http_client_factory.request_engine_builder
+    request_engine_builder.kafka_producer.enable_for_request_id(handler.request_id)
 
-        await self.post_url(self.request.host, self.request.uri)  # type: ignore
-        await asyncio.sleep(0.1)
+    await handler.post_url(handler.get_header('host'), handler.path)
+    await asyncio.sleep(0.1)
 
-        self.json.put(*request_engine_builder.kafka_producer.disable_and_get_data())
+    handler.json.put(*request_engine_builder.kafka_producer.disable_and_get_data())
 
-    @router.post()
-    async def post_page(self):
-        self.set_status(500)
+
+@router.post('/kafka', cls=PageHandler)
+async def post_page(handler=get_current_handler()):
+    handler.set_status(500)

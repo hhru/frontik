@@ -3,35 +3,37 @@ import asyncio
 from http_client.balancing import Upstream
 
 from frontik import media_types
-from frontik.handler import PageHandler, router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 from tests.projects.balancer_app import get_server
-from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_were_occupied
+from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_occupied
 
 
-class Page(PageHandler):
-    @router.get()
-    async def get_page(self):
-        upstreams = self.application.upstream_manager.get_upstreams()
-        upstreams['requests_count'] = Upstream('requests_count', {}, [get_server(self, 'normal')])
-        self.text = ''
+@router.get('/requests_count', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    upstreams = handler.application.upstream_manager.get_upstreams()
+    upstreams['requests_count_async'] = Upstream('requests_count_async', {}, [get_server(handler, 'normal')])
+    handler.text = ''
 
-        async def make_request() -> None:
-            await self.post_url('requests_count', self.request.path)
+    result1 = handler.post_url('requests_count_async', handler.path)
+    result2 = handler.post_url('requests_count_async', handler.path)
+    upstreams['requests_count_async'].update(Upstream('requests_count_async', {}, [get_server(handler, 'normal')]))
+    result3 = handler.post_url('requests_count_async', handler.path)
 
-        async def request_with_processing() -> None:
-            result = await self.post_url('requests_count', self.request.path)
-            self.text = result.data
-            check_all_requests_done(self, 'requests_count')
+    await asyncio.sleep(0)
 
-        self.run_task(make_request())
-        self.run_task(make_request())
-        upstreams['requests_count'] = Upstream('requests_count', {}, [get_server(self, 'normal')])
-        self.run_task(request_with_processing())
-        await asyncio.sleep(0.1)
-        check_all_servers_were_occupied(self, 'requests_count')
+    check_all_servers_occupied(handler, 'requests_count_async')
 
-    @router.post()
-    async def post_page(self):
-        self.add_header('Content-Type', media_types.TEXT_PLAIN)
-        upstreams = self.application.upstream_manager.get_upstreams()
-        self.text = str(upstreams['requests_count'].servers[0].stat_requests)
+    _, _, response = await asyncio.gather(result1, result2, result3)
+
+    handler.text = response.data
+
+    check_all_requests_done(handler, 'requests_count_async')
+
+
+@router.post('/requests_count', cls=PageHandler)
+async def post_page(handler=get_current_handler()):
+    handler.set_header('Content-Type', media_types.TEXT_PLAIN)
+    upstreams = handler.application.upstream_manager.get_upstreams()
+    servers = upstreams['requests_count_async'].servers
+    handler.text = str(servers[0].stat_requests)

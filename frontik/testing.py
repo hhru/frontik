@@ -1,6 +1,5 @@
 import asyncio
 import json
-import logging
 import re
 from collections.abc import Callable
 from typing import Any, Optional, Union
@@ -11,94 +10,15 @@ from http_client import AIOHttpClientWrapper
 from http_client.request_response import RequestBuilder, RequestResult
 from lxml import etree
 from tornado.escape import utf8
-from tornado.httpserver import HTTPServer
-from tornado.log import app_log
-from tornado.testing import AsyncHTTPTestCase, bind_unused_port
 from tornado_mock.httpclient import patch_http_client, set_stub
 from yarl import URL
 
 from frontik.app import FrontikApplication
-
-# noinspection PyUnresolvedReferences
-from frontik.loggers import bootstrap_logger
+from frontik.loggers import bootstrap_core_logging
 from frontik.media_types import APPLICATION_JSON, APPLICATION_PROTOBUF, APPLICATION_XML, TEXT_PLAIN
 from frontik.options import options
+from frontik.server import bind_socket, run_server
 from frontik.util import make_url, safe_template
-
-
-class FrontikTestCase(AsyncHTTPTestCase):
-    """Deprecated, use FrontikTestBase instead"""
-
-    def __init__(self, *args, **kwargs):
-        self._app: FrontikApplication
-        super().__init__(*args, **kwargs)
-
-    def get_http_client(self):
-        """Overrides `AsyncHTTPTestCase.get_http_client` to separate unit test HTTPClient
-        from application HTTPClient.
-
-        This allows mocking HTTP requests made by application in unit tests.
-        """
-        self.forced_client = AIOHttpClientWrapper()
-        return self.forced_client
-
-    def fetch(self, path: str, query: Optional[dict] = None, **kwargs: Any) -> RequestResult:  # type: ignore
-        """Extends `AsyncHTTPTestCase.fetch` method with `query` kwarg.
-        This argument accepts a `dict` of request query parameters that will be encoded
-        and added to request path.
-        Any additional kwargs will be passed to `AsyncHTTPTestCase.fetch`.
-        """
-        query = {} if query is None else query
-        return super().fetch(make_url(path, **query), **kwargs)
-
-    def fetch_xml(self, path: str, query: Optional[dict] = None, **kwargs: Any) -> etree.Element:
-        """Fetch the request and parse xml document from response body."""
-        return etree.fromstring(utf8(self.fetch(path, query, **kwargs).raw_body))
-
-    def fetch_json(self, path: str, query: Optional[dict] = None, **kwargs: Any) -> Any:
-        """Fetch the request and parse JSON tree from response body."""
-        return json.loads(self.fetch(path, query, **kwargs).raw_body)
-
-    def patch_app_http_client(self, app: FrontikApplication) -> None:
-        """Patches application HTTPClient to enable requests stubbing."""
-        patch_http_client(app.tornado_http_client)
-
-    def set_stub(
-        self,
-        url: str,
-        request_method: str = 'GET',
-        response_function: Optional[Callable] = None,
-        response_file: Optional[str] = None,
-        response_body: Any = '',
-        response_code: int = 200,
-        response_headers: Any = None,
-        response_body_processor: Callable = safe_template,
-        **kwargs: Any,
-    ) -> None:
-        set_stub(
-            self._app.tornado_http_client,
-            url,
-            request_method,
-            response_function,
-            response_file,
-            response_body,
-            response_code,
-            response_headers,
-            response_body_processor,
-            **kwargs,
-        )
-
-    def tearDown(self) -> None:
-        if self._app.tornado_http_client is not None:
-            self.io_loop.run_sync(self._app.tornado_http_client.client_session.close)
-        if self.forced_client is not None:
-            self.io_loop.run_sync(self.forced_client.client_session.close)
-        super().tearDown()
-
-    def configure_app(self, **kwargs: Any) -> None:
-        """Updates or adds options to application config."""
-        for name, val in kwargs.items():
-            setattr(self._app.config, name, val)
 
 
 class FrontikTestBase:
@@ -110,44 +30,41 @@ class FrontikTestBase:
         loop.close()
 
     @pytest.fixture(scope='class', autouse=True)
-    def _enable_consul(self):
-        options.consul_enabled = False
-
-    @pytest.fixture(scope='class', autouse=True)
-    async def inited_test_app(self, frontik_app, _enable_consul):
-        await frontik_app.init()
-        return frontik_app
-
-    @pytest.fixture(scope='class', autouse=True)
-    async def test_server_port(self, frontik_app):
-        sock, port = bind_unused_port()
-        http_server = HTTPServer(frontik_app)
-        http_server.add_sockets([sock])
-
+    async def _run_server(self, frontik_app):
         options.stderr_log = True
-        bootstrap_logger(app_log.name, logging.INFO)
+        options.consul_enabled = False
+        bootstrap_core_logging(options.log_level, options.log_json, options.suppressed_loggers)
 
-        yield port
+        sock = bind_socket(options.host, 0)
+        options.port = sock.getsockname()[1]
 
-        http_server.stop()
-        await asyncio.wait_for(http_server.close_all_connections(), timeout=5)
+        await frontik_app.init()
 
-    @pytest.fixture(scope='class', autouse=True)
-    async def app_client(self):
-        http_client = AIOHttpClientWrapper()
-        yield http_client
-        await asyncio.wait_for(http_client.client_session.close(), timeout=5)
+        async def _server_coro() -> None:
+            await run_server(frontik_app, sock)
+
+        server_task = asyncio.create_task(_server_coro())
+        yield
+        server_task.cancel()
+        await asyncio.wait_for(frontik_app.http_client.client_session.close(), timeout=5)
+
+    @pytest.fixture(scope='class')
+    def with_tornado_mocks(self):
+        return False
 
     @pytest.fixture(autouse=True)
-    def _setup_client_server(
+    async def _finish_server_setup(
         self,
-        inited_test_app: FrontikApplication,
-        test_server_port: int,
-        app_client: AIOHttpClientWrapper,
+        frontik_app: FrontikApplication,
+        _run_server: None,
+        with_tornado_mocks: bool,
     ) -> None:
-        self.app = inited_test_app
-        self.port = test_server_port
-        self.http_client = app_client
+        self.app = frontik_app
+        self.port = options.port
+        self.http_client: AIOHttpClientWrapper = frontik_app.http_client
+        self.use_tornado_mocks = with_tornado_mocks
+        if with_tornado_mocks:
+            patch_http_client(self.http_client, fail_on_unknown=False)
 
     @pytest.fixture(autouse=True)
     def setup_mock_client(self, passthrow_hosts):
@@ -158,6 +75,9 @@ class FrontikTestBase:
     @pytest.fixture()
     def passthrow_hosts(self):
         return ['http://127.0.0.1', 'http://localhost']
+
+    def get_http_port(self) -> int:
+        return self.port
 
     async def fetch(
         self,
@@ -198,8 +118,62 @@ class FrontikTestBase:
 
     def set_stub(
         self,
+        url: str,
+        request_method: str = 'GET',
+        response_function: Optional[Callable] = None,
+        response_file: Optional[str] = None,
+        response_body: Any = '',
+        response_code: int = 200,
+        response_headers: Any = None,
+        response_body_processor: Callable = safe_template,
+        repeat: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        _set_stub = self.set_stub_old if self.use_tornado_mocks else self.set_stub_new
+        _set_stub(  # type: ignore
+            url,
+            request_method,
+            response_function,
+            response_file,
+            response_body,
+            response_code,
+            response_headers,
+            response_body_processor,
+            repeat,
+            **kwargs,
+        )
+
+    def set_stub_old(
+        self,
+        url: str,
+        request_method: str = 'GET',
+        response_function: Optional[Callable] = None,
+        response_file: Optional[str] = None,
+        response_body: Any = '',
+        response_code: int = 200,
+        response_headers: Any = None,
+        response_body_processor: Callable = safe_template,
+        repeat: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        set_stub(
+            self.http_client,
+            url,
+            request_method,
+            response_function,
+            response_file,
+            response_body,
+            response_code,
+            response_headers,
+            response_body_processor,
+            **kwargs,
+        )
+
+    def set_stub_new(
+        self,
         url: Union[URL, str, re.Pattern],
         request_method: str = 'GET',
+        response_function: None = None,
         response_file: Optional[str] = None,
         response_body: Any = '',
         response_code: int = 200,
