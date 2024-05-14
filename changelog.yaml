@@ -1,3 +1,16 @@
+-   name: 8.0.0
+    date: '2024-05-14T15:41:15.402974+03:00'
+    description: Заменил торнадо сервер на ювикорн/фастапи
+    instructions: "Изменился роутинг, подробнее в /docs\r\nхендлеры теперь выглядят\
+        \ так\r\n```python\r\n@router('/my_user', cls=PageHandler, depenedencies=[fetch_session])\r\
+        \nasync def get_page(user_id: int, self=get_current_handler()):\r\n    self.json.put({user_id:\
+        \ 'qqq'})\r\n```\r\n\r\nвместо старых:\r\n```python\r\nclass Page(PageHandler):\r\
+        \n    @router(depenedencies=[fetch_session])\r\n    async def get_page(self):\r\
+        \n        user_id = self.get_argument('user_id')\r\n        self.json.put({user_id:\
+        \ 'qqq'})\r\n```\r\n\r\nвместо self.get_argument следует использовать аргументы\
+        \ хенделера\r\nhttps://fastapi.tiangolo.com/tutorial/query-params/"
+    compatible: false
+
 -   name: 7.5.8
     date: '2024-04-11T09:42:17.532559+03:00'
     description: ''
