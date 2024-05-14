@@ -1,8 +1,7 @@
-import frontik.handler
-from frontik.handler import router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
-class Page(frontik.handler.PageHandler):
-    @router.get()
-    async def get_page(self):
-        self.doc.put(self.xml_from_file('aaa.xml'))
+@router.get('/include_xml', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    handler.doc.put(handler.xml_from_file('aaa.xml'))

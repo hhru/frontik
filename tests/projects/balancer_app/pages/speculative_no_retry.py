@@ -1,36 +1,37 @@
 from http_client.balancing import Upstream
 
 from frontik import media_types
-from frontik.handler import PageHandler, router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 from tests.projects.balancer_app import get_server
 
 
-class Page(PageHandler):
-    @router.get()
-    async def get_page(self):
-        upstreams = self.application.upstream_manager.get_upstreams()
-        upstreams['speculative_no_retry'] = Upstream(
-            'speculative_no_retry',
-            {},
-            [get_server(self, 'broken'), get_server(self, 'normal')],
-        )
+@router.get('/speculative_no_retry', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    upstreams = handler.application.upstream_manager.get_upstreams()
+    upstreams['speculative_no_retry'] = Upstream(
+        'speculative_no_retry',
+        {},
+        [get_server(handler, 'broken'), get_server(handler, 'normal')],
+    )
 
-        result = await self.post_url(
-            'speculative_no_retry',
-            self.request.path,
-            connect_timeout=0.1,
-            request_timeout=0.5,
-            max_timeout_tries=1,
-            speculative_timeout_pct=0.10,
-        )
+    result = await handler.post_url(
+        'speculative_no_retry',
+        handler.path,
+        connect_timeout=0.1,
+        request_timeout=0.5,
+        max_timeout_tries=1,
+        speculative_timeout_pct=0.10,
+    )
 
-        if result.failed or result.status_code == 500:
-            self.text = 'no retry'
-            return
+    if result.failed or result.status_code == 500:
+        handler.text = 'no retry'
+        return
 
-        self.text = result.data
+    handler.text = result.data
 
-    @router.post()
-    async def post_page(self):
-        self.add_header('Content-Type', media_types.TEXT_PLAIN)
-        self.text = 'result'
+
+@router.post('/speculative_no_retry', cls=PageHandler)
+async def post_page(handler=get_current_handler()):
+    handler.set_header('Content-Type', media_types.TEXT_PLAIN)
+    handler.text = 'result'

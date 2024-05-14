@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import base64
 import json
+import random
 import socket
 import subprocess
 import sys
 import time
+from itertools import chain
 from typing import TYPE_CHECKING, Optional
 
 import requests
@@ -34,7 +36,9 @@ def _run_command(command: str, port: int) -> subprocess.Popen:
 
 
 def find_free_port(from_port: int = 9000, to_port: int = 10000) -> int:
-    for port in range(from_port, to_port):
+    random_start = random.randint(from_port, to_port)
+
+    for port in chain(range(random_start, to_port), range(from_port, random_start)):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             s.bind(('', port))

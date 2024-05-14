@@ -1,8 +1,7 @@
-import frontik.handler
-from frontik.handler import router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
-class Page(frontik.handler.PageHandler):
-    @router.get()
-    async def get_page(self):
-        self.text = str(self.application.worker_state.init_workers_count_down.value)
+@router.get('/check_workers_count_down', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    handler.text = str(handler.application.worker_state.init_workers_count_down.value)

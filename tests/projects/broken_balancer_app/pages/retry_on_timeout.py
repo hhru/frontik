@@ -1,14 +1,13 @@
-import time
+import asyncio
 
-from frontik import handler, media_types
-from frontik.handler import router
+from frontik import media_types
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
-class Page(handler.PageHandler):
-    @router.delete()
-    async def delete_page(self):
-        self.add_timeout(time.time() + 2, self.finish_group.add(self.check_finished(self.timeout_callback)))
+@router.delete('/retry_on_timeout', cls=PageHandler)
+async def delete_page(handler=get_current_handler()):
+    await asyncio.sleep(2)
 
-    def timeout_callback(self):
-        self.add_header('Content-Type', media_types.TEXT_PLAIN)
-        self.text = 'result'
+    handler.set_header('Content-Type', media_types.TEXT_PLAIN)
+    handler.text = 'result'

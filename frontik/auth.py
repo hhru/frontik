@@ -18,7 +18,7 @@ class DebugUnauthorizedError(Finish):
 
 
 def passed_basic_auth(handler: PageHandler, login: Optional[str], passwd: Optional[str]) -> bool:
-    auth_header = handler.request.headers.get('Authorization')
+    auth_header = handler.get_header('Authorization')
     if auth_header and auth_header.startswith('Basic '):
         method, auth_b64 = auth_header.split(' ')
         try:
@@ -35,17 +35,16 @@ def check_debug_auth(handler: PageHandler, login: Optional[str], password: Optio
     :type handler: tornado.web.RequestHandler
     :return: None or tuple(http_code, headers)
     """
-    header_name = DEBUG_AUTH_HEADER_NAME
-    debug_auth_header = handler.request.headers.get(header_name)
+    debug_auth_header = handler.get_header(DEBUG_AUTH_HEADER_NAME)
     if debug_auth_header is not None:
         debug_access = debug_auth_header == f'{login}:{password}'
         if not debug_access:
-            handler.set_header('WWW-Authenticate', f'{header_name}-Header realm="Secure Area"')
+            handler.set_header('WWW-Authenticate', f'{DEBUG_AUTH_HEADER_NAME}-Header realm="Secure Area"')
             handler.set_status(http.client.UNAUTHORIZED)
-            raise DebugUnauthorizedError()
+            handler.finish()
     else:
         debug_access = passed_basic_auth(handler, login, password)
         if not debug_access:
             handler.set_header('WWW-Authenticate', 'Basic realm="Secure Area"')
             handler.set_status(http.client.UNAUTHORIZED)
-            raise DebugUnauthorizedError()
+            handler.finish()

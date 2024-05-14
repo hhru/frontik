@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from tornado.web import HTTPError
+from fastapi import HTTPException
 
 from frontik.options import options
 
@@ -25,7 +25,7 @@ class ActiveHandlersLimit:
         if ActiveHandlersLimit.count > options.max_active_handlers:
             handlers_count_logger.warning('dropping request: too many active handlers (%s)', ActiveHandlersLimit.count)
 
-            raise HTTPError(503)
+            raise HTTPException(503)
 
         elif ActiveHandlersLimit.count > self._high_watermark:
             handlers_count_logger.warning(

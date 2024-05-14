@@ -1,11 +1,10 @@
 import lxml.etree as etree
 
-import frontik.handler
-from frontik.handler import router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import regex_router
 
 
-class Page(frontik.handler.PageHandler):
-    @router.get()
-    async def get_page(self):
-        self.set_xsl('id_param.xsl')
-        self.doc.put(etree.Element('id', value=self.get_argument('id', 'wrong')))
+@regex_router.get('/id/(?P<id>[^/]+)', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    handler.set_xsl('id_param.xsl')
+    handler.doc.put(etree.Element('id', value=handler.get_path_argument('id', 'wrong')))

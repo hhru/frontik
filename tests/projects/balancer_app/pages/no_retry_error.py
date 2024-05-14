@@ -1,26 +1,27 @@
 from http_client.balancing import Upstream
 
-from frontik import handler, media_types
-from frontik.handler import router
+from frontik import media_types
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
-class Page(handler.PageHandler):
-    @router.get()
-    async def get_page(self):
-        upstreams = self.application.upstream_manager.get_upstreams()
-        upstreams['no_retry_error'] = Upstream('no_retry_error', {}, [get_server(self, 'broken')])
+@router.get('/no_retry_error', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    upstreams = handler.application.upstream_manager.get_upstreams()
+    upstreams['no_retry_error'] = Upstream('no_retry_error', {}, [get_server(handler, 'broken')])
 
-        result = await self.post_url('no_retry_error', self.request.path)
-        if result.error and result.status_code == 500:
-            self.text = 'no retry error'
-        else:
-            self.text = result.data
+    result = await handler.post_url('no_retry_error', handler.path)
+    if result.error and result.status_code == 500:
+        handler.text = 'no retry error'
+    else:
+        handler.text = result.data
 
-        check_all_requests_done(self, 'no_retry_error')
+    check_all_requests_done(handler, 'no_retry_error')
 
-    @router.post()
-    async def post_page(self):
-        self.add_header('Content-Type', media_types.TEXT_PLAIN)
-        self.text = 'result'
+
+@router.post('/no_retry_error', cls=PageHandler)
+async def post_page(handler=get_current_handler()):
+    handler.set_header('Content-Type', media_types.TEXT_PLAIN)
+    handler.text = 'result'

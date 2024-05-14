@@ -1,5 +1,4 @@
 import socket
-import unittest
 
 from tornado.escape import to_unicode
 
@@ -10,7 +9,7 @@ FRONTIK_RUN = f'{FRONTIK_ROOT}/frontik-test'
 TEST_PROJECTS = f'{FRONTIK_ROOT}/tests/projects'
 
 
-class TestStatsdIntegration(unittest.TestCase):
+class TestStatsdIntegration:
     def test_send_to_statsd(self):
         statsd_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         statsd_socket.settimeout(0.1)
@@ -39,6 +38,6 @@ class TestStatsdIntegration(unittest.TestCase):
 
         metrics = '\n'.join(metrics).split('\n')
 
-        self.assertIn('count_metric.tag1_is_tag1.tag2_is_tag2.app_is_tests-projects-test_app:10|c', metrics)
-        self.assertIn('gauge_metric.tag_is_tag3.app_is_tests-projects-test_app:100|g', metrics)
-        self.assertIn('time_metric.tag_is_tag4.app_is_tests-projects-test_app:1000|ms', metrics)
+        assert 'count_metric.tag1_is_tag1.tag2_is_tag2.app_is_tests-projects-test_app:10|c' in metrics
+        assert 'gauge_metric.tag_is_tag3.app_is_tests-projects-test_app:100|g' in metrics
+        assert 'time_metric.tag_is_tag4.app_is_tests-projects-test_app:1000|ms' in metrics

@@ -1,36 +1,37 @@
+from fastapi import HTTPException
 from http_client.balancing import Upstream
-from tornado.web import HTTPError
 
 from frontik import media_types
-from frontik.handler import PageHandler, router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 from tests.projects.balancer_app import get_server
 
 
-class Page(PageHandler):
-    @router.get()
-    async def get_page(self):
-        upstreams = self.application.upstream_manager.get_upstreams()
-        upstreams['speculative_retry'] = Upstream(
-            'speculative_retry',
-            {},
-            [get_server(self, 'broken'), get_server(self, 'normal')],
-        )
+@router.get('/speculative_retry', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    upstreams = handler.application.upstream_manager.get_upstreams()
+    upstreams['speculative_retry'] = Upstream(
+        'speculative_retry',
+        {},
+        [get_server(handler, 'broken'), get_server(handler, 'normal')],
+    )
 
-        result = await self.put_url(
-            'speculative_retry',
-            self.request.path,
-            connect_timeout=0.1,
-            request_timeout=0.5,
-            max_timeout_tries=1,
-            speculative_timeout_pct=0.1,
-        )
+    result = await handler.put_url(
+        'speculative_retry',
+        handler.path,
+        connect_timeout=0.1,
+        request_timeout=0.5,
+        max_timeout_tries=1,
+        speculative_timeout_pct=0.1,
+    )
 
-        if result.failed or result.data is None:
-            raise HTTPError(500)
+    if result.failed or result.data is None:
+        raise HTTPException(500)
 
-        self.text = result.data
+    handler.text = result.data
 
-    @router.put()
-    async def put_page(self):
-        self.add_header('Content-Type', media_types.TEXT_PLAIN)
-        self.text = 'result'
+
+@router.put('/speculative_retry', cls=PageHandler)
+async def put_page(handler=get_current_handler()):
+    handler.set_header('Content-Type', media_types.TEXT_PLAIN)
+    handler.text = 'result'

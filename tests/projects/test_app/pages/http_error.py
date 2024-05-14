@@ -1,10 +1,10 @@
-from tornado.web import HTTPError
+from fastapi import HTTPException
 
-from frontik.handler import PageHandler, router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
-class Page(PageHandler):
-    @router.get()
-    async def get_page(self):
-        code = int(self.get_argument('code', '200'))
-        raise HTTPError(code)
+@router.get('/http_error', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    code = int(handler.get_query_argument('code', '200'))
+    raise HTTPException(code)

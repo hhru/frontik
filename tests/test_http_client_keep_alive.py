@@ -16,8 +16,7 @@ class TestHTTPClientKeepAlive:
         self.backend = Backend()
         frontik_test_app.start()
         if frontik_test_app.port is None:
-            msg = 'app port can not be None'
-            raise Exception(msg)
+            raise Exception('app port can not be None')
         self.client = Client(frontik_test_app.port)
 
     def teardown_method(self):
@@ -80,7 +79,11 @@ class Client:
         self.socket.send(b'\r\n')
 
     def get_response(self) -> Any:
-        return self.socket.recv(1024).decode()
+        headers = self.socket.recv(1024)
+        if headers.endswith(b'\r\n'):
+            body = self.socket.recv(1024)
+            return headers.decode() + body.decode()
+        return headers.decode()
 
     def close(self) -> None:
         self.socket.close()

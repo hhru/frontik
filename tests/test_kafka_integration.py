@@ -1,4 +1,4 @@
-import unittest
+import pytest
 
 try:
     has_kafka = True
@@ -8,15 +8,15 @@ except Exception:
 from tests.instances import frontik_test_app
 
 
-@unittest.skipIf(not has_kafka, 'aiokafka library not found')
-class TestKafkaIntegration(unittest.TestCase):
+@pytest.mark.skipif(not has_kafka, reason='aiokafka library not found')
+class TestKafkaIntegration:
     def test_kafka(self):
         response_json = frontik_test_app.get_page_json('kafka')
 
-        self.assertEqual(response_json['metrics_requests']['app'], 'tests.projects.test_app')
-        self.assertEqual(response_json['metrics_requests']['dc'], 'externalRequest')
-        self.assertTrue('hostname' in response_json['metrics_requests'])
-        self.assertTrue('requestId' in response_json['metrics_requests'])
-        self.assertEqual(response_json['metrics_requests']['status'], 500)
-        self.assertTrue('ts' in response_json['metrics_requests'])
-        self.assertTrue('upstream' in response_json['metrics_requests'])
+        assert response_json['metrics_requests']['app'] == 'tests.projects.test_app'
+        assert response_json['metrics_requests']['dc'] == 'externalRequest'
+        assert 'hostname' in response_json['metrics_requests']
+        assert 'requestId' in response_json['metrics_requests']
+        assert response_json['metrics_requests']['status'] == 500
+        assert 'ts' in response_json['metrics_requests']
+        assert 'upstream' in response_json['metrics_requests']

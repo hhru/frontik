@@ -1,38 +1,39 @@
+from fastapi import HTTPException
 from http_client.balancing import Upstream
-from tornado.web import HTTPError
 
 from frontik import media_types
-from frontik.handler import PageHandler, router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
-class Page(PageHandler):
-    @router.get()
-    async def get_page(self):
-        upstreams = self.application.upstream_manager.get_upstreams()
-        upstreams['retry_on_timeout'] = Upstream(
-            'retry_on_timeout',
-            {},
-            [get_server(self, 'broken'), get_server(self, 'normal')],
-        )
+@router.get('/retry_on_timeout', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    upstreams = handler.application.upstream_manager.get_upstreams()
+    upstreams['retry_on_timeout'] = Upstream(
+        'retry_on_timeout',
+        {},
+        [get_server(handler, 'broken'), get_server(handler, 'normal')],
+    )
 
-        result = await self.delete_url(
-            'retry_on_timeout',
-            self.request.path,
-            connect_timeout=0.1,
-            request_timeout=0.3,
-            max_timeout_tries=2,
-        )
+    result = await handler.delete_url(
+        'retry_on_timeout',
+        handler.path,
+        connect_timeout=0.1,
+        request_timeout=0.3,
+        max_timeout_tries=2,
+    )
 
-        if result.error or result.data is None:
-            raise HTTPError(500)
+    if result.error or result.data is None:
+        raise HTTPException(500)
 
-        self.text = result.data
+    handler.text = result.data
 
-        check_all_requests_done(self, 'retry_on_timeout')
+    check_all_requests_done(handler, 'retry_on_timeout')
 
-    @router.delete()
-    async def delete_page(self):
-        self.add_header('Content-Type', media_types.TEXT_PLAIN)
-        self.text = 'result'
+
+@router.delete('/retry_on_timeout', cls=PageHandler)
+async def delete_page(handler=get_current_handler()):
+    handler.set_header('Content-Type', media_types.TEXT_PLAIN)
+    handler.text = 'result'

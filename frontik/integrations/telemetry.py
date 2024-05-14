@@ -9,17 +9,16 @@ from http_client import client_request_context, response_status_code_context
 from http_client.options import options as http_client_options
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation import aiohttp_client, tornado
+from opentelemetry.instrumentation import aiohttp_client, fastapi
 from opentelemetry.propagate import set_global_textmap
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import IdGenerator, TracerProvider
-from opentelemetry.sdk.trace import Span as SpanImpl
+from opentelemetry.sdk.trace import IdGenerator, ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import SpanKind
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
-from opentelemetry.util.http import ExcludeList
 
 from frontik import request_context
 from frontik.integrations import Integration, integrations_logger
@@ -31,34 +30,30 @@ if TYPE_CHECKING:
     import aiohttp
     from http_client.request_response import RequestBuilder
     from opentelemetry.trace import Span
-    from opentelemetry.util import types
 
     from frontik.app import FrontikApplication
 
 log = logging.getLogger('telemetry')
-# change log-level, because mainly detach context produce exception on Tornado 5. Will be deleted, when up Tornado to 6
-logging.getLogger('opentelemetry.context').setLevel(logging.CRITICAL)
 set_global_textmap(TraceContextTextMapPropagator())
 
-tornado._excluded_urls = ExcludeList([*list(tornado._excluded_urls._excluded_urls), '/status'])
-excluded_span_attributes = ['tornado.handler']
+
+class FrontikSpanProcessor(BatchSpanProcessor):
+    def on_end(self, span: ReadableSpan) -> None:
+        if (
+            span.kind == SpanKind.INTERNAL
+            and span.attributes
+            and (
+                span.attributes.get('type', None)
+                in ('http.request', 'http.response.start', 'http.disconnect', 'http.response.body')
+            )
+        ):
+            return
+        super().on_end(span=span)
 
 
 class TelemetryIntegration(Integration):
     def __init__(self):
         self.aiohttp_instrumentor = aiohttp_client.AioHttpClientInstrumentor()
-        self.tornado_instrumentor = tornado.TornadoInstrumentor()
-        TelemetryIntegration.patch_span_impl()
-
-    @staticmethod
-    def patch_span_impl() -> None:
-        set_attribute = SpanImpl.set_attribute
-
-        def patched_set_attribute(self: SpanImpl, key: str, value: types.AttributeValue) -> None:
-            if key not in excluded_span_attributes:
-                return set_attribute(self, key, value)
-
-        SpanImpl.set_attribute = patched_set_attribute  # type: ignore
 
     def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
         if not options.opentelemetry_enabled:
@@ -82,12 +77,14 @@ class TelemetryIntegration(Integration):
             sampler=ParentBased(TraceIdRatioBased(options.opentelemetry_sampler_ratio)),
         )
 
-        provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+        provider.add_span_processor(FrontikSpanProcessor(otlp_exporter))
         trace.set_tracer_provider(provider)
 
         self.aiohttp_instrumentor.instrument(request_hook=_client_request_hook, response_hook=_client_response_hook)
 
-        self.tornado_instrumentor.instrument(server_request_hook=_server_request_hook)
+        fastapi.FastAPIInstrumentor.instrument_app(
+            app.fastapi_app, server_request_hook=_server_request_hook, excluded_urls='/status'
+        )
 
         return None
 
@@ -97,21 +94,15 @@ class TelemetryIntegration(Integration):
 
         integrations_logger.info('stop telemetry')
         self.aiohttp_instrumentor.uninstrument()
-        self.tornado_instrumentor.uninstrument()
+        fastapi.FastAPIInstrumentor.uninstrument_app(app.fastapi_app)
         return None
 
     def initialize_handler(self, handler):
         pass
 
 
-def _server_request_hook(span, handler):
-    method_name = f'{handler.request.method.lower()}_page'
-    method_path = f'{request_context.get_handler_name()}'
-
-    span.update_name(f'{method_path}.{method_name}')
-    span.set_attribute(SpanAttributes.CODE_FUNCTION, method_name)
-    span.set_attribute(SpanAttributes.CODE_NAMESPACE, method_path)
-    span.set_attribute(SpanAttributes.HTTP_TARGET, handler.request.uri)
+def _server_request_hook(span: Span, scope: dict) -> None:
+    span.set_attribute(SpanAttributes.HTTP_TARGET, scope['path'])
 
 
 def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams) -> None:

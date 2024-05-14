@@ -1,17 +1,13 @@
-import frontik.handler
-from frontik.handler import router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
-async def some_async_function(handler: frontik.handler.PageHandler) -> float:
-    await handler.post_url(handler.request.host, handler.request.path)
+@router.get('/error_yield', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    await handler.post_url(handler.get_header('host'), handler.path)
     return 1 / 0
 
 
-class Page(frontik.handler.PageHandler):
-    @router.get()
-    async def get_page(self):
-        self.finish_group.add_future(some_async_function(self))  # type: ignore
-
-    @router.post()
-    async def post_page(self):
-        self.text = 'result'
+@router.post('/error_yield', cls=PageHandler)
+async def post_page(handler=get_current_handler()):
+    handler.text = 'result'

@@ -1,24 +1,24 @@
 from lxml import etree
 
-import frontik.handler
-from frontik.handler import router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 CDATA_XML = b'<root><![CDATA[test<ba//d>]]></root>'
 
 
-class Page(frontik.handler.PageHandler):
-    @router.get()
-    async def get_page(self):
-        result = await self.post_url(self.request.host, self.request.path)
+@router.get('/cdata', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    result = await handler.post_url(handler.get_header('host'), handler.path)
 
-        xpath = result.data.xpath('/doc/*')
-        assert len(xpath) == 1
-        assert etree.tostring(xpath[0]) == CDATA_XML
+    xpath = result.data.xpath('/doc/*')
+    assert len(xpath) == 1
+    assert etree.tostring(xpath[0]) == CDATA_XML
 
-        self.doc.put(xpath)
+    handler.doc.put(xpath)
 
-    @router.post()
-    async def post_page(self):
-        parser = etree.XMLParser(encoding='UTF-8', strip_cdata=False)
-        root = etree.XML(CDATA_XML, parser)
-        self.doc.put(root)
+
+@router.post('/cdata', cls=PageHandler)
+async def post_page(handler=get_current_handler()):
+    parser = etree.XMLParser(encoding='UTF-8', strip_cdata=False)
+    root = etree.XML(CDATA_XML, parser)
+    handler.doc.put(root)

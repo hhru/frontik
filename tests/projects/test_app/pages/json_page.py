@@ -1,11 +1,14 @@
-from frontik import handler, media_types
-from frontik.handler import router
+from fastapi import Request
+
+from frontik import media_types
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 from frontik.util import gather_dict
 
 
-class Page(handler.PageHandler):
+class Page(PageHandler):
     def prepare(self):
-        if self.get_argument('custom_render', 'false') == 'true':
+        if self.get_query_argument('custom_render', 'false') == 'true':
 
             def jinja_context_provider(handler):
                 return {'req1': {'result': 'custom1'}, 'req2': {'result': 'custom2'}}
@@ -14,28 +17,32 @@ class Page(handler.PageHandler):
 
         super().prepare()
 
-    @router.get()
-    async def get_page(self):
-        invalid_json = self.get_argument('invalid', 'false')
 
-        requests = {
-            'req1': self.post_url(self.request.host, self.request.path, data={'param': 1}),
-            'req2': self.post_url(self.request.host, self.request.path, data={'param': 2, 'invalid': invalid_json}),
-        }
-        data = await gather_dict(requests)
+@router.get('/json_page', cls=Page)
+async def get_page(request: Request, handler: Page = get_current_handler()) -> None:
+    invalid_json = handler.get_query_argument('invalid', 'false')
 
-        if self.get_argument('template_error', 'false') == 'true':
-            del data['req1']
+    requests = {
+        'req1': handler.post_url(request.headers.get('host', ''), handler.path, data={'param': 1}),
+        'req2': handler.post_url(
+            request.headers.get('host', ''), handler.path, data={'param': 2, 'invalid': invalid_json}
+        ),
+    }
+    data = await gather_dict(requests)
 
-        self.set_template(self.get_argument('template', 'jinja.html'))
-        self.json.put(data)
+    if handler.get_query_argument('template_error', 'false') == 'true':
+        del data['req1']
 
-    @router.post()
-    async def post_page(self):
-        invalid_json = self.get_argument('invalid', 'false') == 'true'
+    handler.set_template(handler.get_query_argument('template', 'jinja.html'))
+    handler.json.put(data)
 
-        if not invalid_json:
-            self.json.put({'result': self.get_argument('param')})
-        else:
-            self.set_header('Content-Type', media_types.APPLICATION_JSON)
-            self.text = '{"result": FAIL}'
+
+@router.post('/json_page', cls=Page)
+async def post_page(handler=get_current_handler()):
+    invalid_json = handler.get_body_argument('invalid', 'false') == 'true'
+
+    if not invalid_json:
+        handler.json.put({'result': handler.get_body_argument('param')})
+    else:
+        handler.set_header('Content-Type', media_types.APPLICATION_JSON)
+        handler.text = '{"result": FAIL}'

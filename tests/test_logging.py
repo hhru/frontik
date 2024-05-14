@@ -79,7 +79,7 @@ class TestSyslog:
                     'lvl': 'ERROR',
                     'logger': r'handler',
                     'msg': 'error',
-                    'exception': r".*self\.log\.error\('error', stack_info=True\)",
+                    'exception': r".*handler\.log\.error\('error', stack_info=True\)",
                 },
             },
             {'priority': '10', 'message': {'lvl': 'CRITICAL', 'logger': r'handler', 'msg': 'critical'}},
@@ -113,7 +113,7 @@ class TestSyslog:
             {
                 'priority': '10',
                 'message': r'\[\d+\] [\d-]+ [\d:,]+ CRITICAL '
-                r'custom_logger\.tests\.projects\.test_app\.pages\.log\.Page\.\w+: fatal',
+                r'custom_logger\.tests\.projects\.test_app\.pages\.log\.get_page\.\w+: fatal',
             },
         ]
 

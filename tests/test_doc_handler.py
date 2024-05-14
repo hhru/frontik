@@ -1,24 +1,20 @@
-import unittest
-
-from lxml_asserts.testcase import LxmlTestCaseMixin
-
 from tests.instances import frontik_test_app
 
 
-class TestDoc(unittest.TestCase, LxmlTestCaseMixin):
+class TestDoc:
     def test_doc_page(self):
         xml = frontik_test_app.get_page_xml('compose_doc')
 
-        self.assertIsNotNone(xml.find('a'))
-        self.assertEqual(xml.findtext('a'), 'aaa')
+        assert xml.find('a') is not None
+        assert xml.findtext('a') == 'aaa'
 
-        self.assertIsNotNone(xml.find('bbb'))
+        assert xml.find('bbb') is not None
 
-        self.assertIsNotNone(xml.find('c'))
-        self.assertIn(xml.findtext('c'), (None, ''))
+        assert xml.find('c') is not None
+        assert xml.findtext('c') in (None, '')
 
     def test_doc_invalid_xml(self):
         xml = frontik_test_app.get_page_xml('compose_doc?invalid=true')
 
-        self.assertIsNotNone(xml.find('error'))
-        self.assertEqual(xml.find('error').get('reason'), 'invalid xml')
+        assert xml.find('error') is not None
+        assert xml.find('error').get('reason') == 'invalid xml'

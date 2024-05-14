@@ -1,22 +1,13 @@
-import time
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
-import frontik.handler
-from frontik.handler import router
 
-class Page(frontik.handler.PageHandler):
-    @router.get()
-    async def get_page(self):
-        result = await self.post_url(self.request.host, self.request.path, request_timeout=0.5)
-        self.request_callback(result.data, result.failed)
-
+class Page(PageHandler):
     def request_callback(self, xml: str, error: bool) -> None:
         self.json.put({'error_received': bool(error)})
 
-    @router.post()
-    async def post_page(self):
-        self.add_timeout(
-            time.time() + 2, self.finish_group.add(self.check_finished(self.timeout_callback))
-        )
 
-    def timeout_callback(self):
-        self.json.put({'timeout_callback': True})
+@router.get('/http_client/long_page_request', cls=Page)
+async def get_page(handler=get_current_handler()):
+    result = await handler.post_url(handler.get_header('host'), handler.path, request_timeout=0.5)
+    handler.request_callback(result.data, result.failed)

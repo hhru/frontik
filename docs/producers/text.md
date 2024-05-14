@@ -3,10 +3,10 @@
 Assign any string value to `self.text` to write it directly to the response.
 
 ```python
-class Page(frontik.PageHandler):
-    def get_page(self):
-        self.text = 'OK'
-        self.set_header('Content-Type', media_types.TEXT_PLAIN)
+@router.get('/some_page', cls=PageHandler)
+async def get_page(handler=get_current_handler()):
+    handler.text = 'OK'
+    handler.set_header('Content-Type', media_types.TEXT_PLAIN)
 ```
 
 This producer is used by default if `self.text` value is not `None`.

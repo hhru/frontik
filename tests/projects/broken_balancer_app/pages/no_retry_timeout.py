@@ -1,13 +1,11 @@
-import time
+import asyncio
 
-import frontik.handler
-from frontik.handler import router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
-class Page(frontik.handler.PageHandler):
-    @router.post()
-    async def post_page(self):
-        self.add_timeout(time.time() + 2, self.finish_group.add(self.check_finished(self.timeout_callback)))
+@router.post('/no_retry_timeout', cls=PageHandler)
+async def post_page(handler=get_current_handler()):
+    await asyncio.sleep(2)
 
-    def timeout_callback(self):
-        self.text = 'result'
+    handler.text = 'result'

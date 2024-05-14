@@ -1,6 +1,7 @@
-import frontik.handler
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
-class Page(frontik.handler.PageHandler):
-    def get_page(self):
-        self.json.put({'text': 'Hello, world!'})
+@router.get('/tpl', cls=PageHandler)
+def get_page(handler: PageHandler = get_current_handler()) -> None:
+    handler.json.put({'text': 'Hello, world!'})

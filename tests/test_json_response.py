@@ -1,22 +1,21 @@
 import json
-import unittest
 
 from tests.instances import frontik_test_app
 
 
-class TestJsonResponse(unittest.TestCase):
+class TestJsonResponse:
     def test_json(self):
         response = frontik_test_app.get_page('json_page', notpl=True)
-        self.assertTrue(response.headers['content-type'].startswith('application/json'))
+        assert response.headers['content-type'].startswith('application/json') is True
 
         data = json.loads(response.content)
-        self.assertEqual(data['req1']['result'], '1')
-        self.assertEqual(data['req2']['result'], '2')
+        assert data['req1']['result'] == '1'
+        assert data['req2']['result'] == '2'
 
     def test_invalid_json(self):
         response = frontik_test_app.get_page('json_page?invalid=true', notpl=True)
-        self.assertTrue(response.headers['content-type'].startswith('application/json'))
+        assert response.headers['content-type'].startswith('application/json') is True
 
         data = json.loads(response.content)
-        self.assertEqual(data['req1']['result'], '1')
-        self.assertEqual(data['req2']['error']['reason'], 'invalid json')
+        assert data['req1']['result'] == '1'
+        assert data['req2']['error']['reason'] == 'invalid json'

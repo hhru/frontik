@@ -1,22 +1,25 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import http.client
+import json
 import logging
 import re
+import sys
 import time
 from asyncio import Task
 from asyncio.futures import Future
-from functools import wraps
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Type, TypeVar, Union, overload
 
 import tornado.httputil
 import tornado.web
-from fastapi import Request
+from fastapi import Depends, HTTPException, Request, Response
+from fastapi.routing import APIRoute
 from http_client.request_response import USER_AGENT_HEADER, FailFastError, RequestBuilder, RequestResult
 from pydantic import BaseModel, ValidationError
-from tornado.ioloop import IOLoop
-from tornado.web import Finish, RequestHandler
+from starlette.datastructures import Headers, QueryParams
+from tornado.httputil import format_timestamp, parse_body_arguments
 
 import frontik.auth
 import frontik.handler_active_limit
@@ -25,15 +28,15 @@ import frontik.producers.xml_producer
 import frontik.util
 from frontik import media_types, request_context
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
-from frontik.debug import DEBUG_HEADER_NAME, DebugMode
-from frontik.dependency_manager import APIRouter, execute_page_method_with_dependencies
+from frontik.debug import DEBUG_HEADER_NAME, DebugMode, DebugTransform
 from frontik.futures import AbortAsyncGroup, AsyncGroup
-from frontik.http_status import ALLOWED_STATUSES, CLIENT_CLOSED_REQUEST
+from frontik.http_status import ALLOWED_STATUSES
 from frontik.json_builder import FrontikJsonDecodeError, json_decode
+from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.loggers.stages import StagesLogger
 from frontik.options import options
 from frontik.timeout_tracking import get_timeout_checker
-from frontik.util import gather_dict, make_url
+from frontik.util import make_url
 from frontik.validator import BaseValidationModel, Validators
 from frontik.version import version as frontik_version
 
@@ -41,10 +44,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
 
     from http_client import HttpClient
-    from tornado.httputil import HTTPServerRequest
 
     from frontik.app import FrontikApplication
-    from frontik.handler_return_values import ReturnedValue, ReturnedValueHandlers
     from frontik.integrations.statsd import StatsDClient, StatsDClientStub
 
 
@@ -53,30 +54,45 @@ class FinishWithPostprocessors(Exception):
         self.wait_finish_group = wait_finish_group
 
 
-class HTTPErrorWithPostprocessors(tornado.web.HTTPError):
+class HTTPErrorWithPostprocessors(HTTPException):
     pass
 
 
-class TypedArgumentError(tornado.web.HTTPError):
+class TypedArgumentError(HTTPException):
     pass
 
 
-class JSONBodyParseError(tornado.web.HTTPError):
+class JSONBodyParseError(HTTPException):
     def __init__(self) -> None:
         super().__init__(400, 'Failed to parse json in request body')
 
 
-class DefaultValueError(Exception):
-    def __init__(self, *args: object) -> None:
+class DefaultValueError(HTTPException):
+    def __init__(self, arg_name: str) -> None:
+        super().__init__(400, 'Missing argument %s' % arg_name)
+        self.arg_name = arg_name
+
+
+class FinishPageSignal(Exception):
+    def __init__(self, data: Any = None, *args: object) -> None:
         super().__init__(*args)
+        self.data = data
 
 
-_ARG_DEFAULT = object()
+class RedirectPageSignal(Exception):
+    def __init__(self, url: str, status: int, *args: object) -> None:
+        super().__init__(*args)
+        self.url = url
+        self.status = status
+
+
+_ARG_DEFAULT = ''
 MEDIA_TYPE_PARAMETERS_SEPARATOR_RE = r' *; *'
 OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
+_remove_control_chars_regex = re.compile(r'[\x00-\x08\x0e-\x1f]')
+_T = TypeVar('_T')
 
 handler_logger = logging.getLogger('handler')
-router = APIRouter()
 
 
 def _fail_fast_policy(fail_fast: bool, waited: bool, host: str, path: str) -> bool:
@@ -91,56 +107,82 @@ def _fail_fast_policy(fail_fast: bool, waited: bool, host: str, path: str) -> bo
     return fail_fast
 
 
-class PageHandler(RequestHandler):
-    returned_value_handlers: ReturnedValueHandlers = []
+class PageHandler:
+    def __init__(
+        self,
+        application: FrontikApplication,
+        query_params: QueryParams,
+        cookie_params: dict[str, str],
+        header_params: Headers,
+        body_bytes: bytes,
+        request_start_time: float,
+        path: str,
+        path_params: dict,
+        remote_ip: str,
+        method: str,
+    ) -> None:  # request: Request
+        self.application = application
+        self.query_params = query_params
+        self.cookie_params = cookie_params or {}
+        self.header_params: Headers = header_params
+        self.body_bytes = body_bytes
+        self.request_start_time = request_start_time
+        self.path = path
+        self.path_params = path_params
+        self.remote_ip = remote_ip
+        self.method = method
 
-    def __init__(self, application: FrontikApplication, request: HTTPServerRequest, **kwargs: Any) -> None:
-        self.name = self.__class__.__name__
+        self._json_body = None
+        self.body_arguments: dict[str, Any] = {}
+        self.files: dict = {}
+        self.parse_body_bytes()
+
         self.request_id: str = request_context.get_request_id()  # type: ignore
-        request.request_id = self.request_id  # type: ignore
         self.config = application.config
         self.log = handler_logger
         self.text: Any = None
 
-        super().__init__(application, request, **kwargs)
+        self._finished = False
 
         self.statsd_client: StatsDClient | StatsDClientStub
 
         for integration in application.available_integrations:
             integration.initialize_handler(self)
 
-        if not self.returned_value_handlers:
-            self.returned_value_handlers = list(application.returned_value_handlers)
-
-        self.stages_logger = StagesLogger(request, self.statsd_client)
+        self.stages_logger = StagesLogger(request_start_time, self.statsd_client)
 
         self._debug_access: Optional[bool] = None
         self._render_postprocessors: list = []
         self._postprocessors: list = []
 
-        self._mandatory_cookies: dict = {}
-        self._mandatory_headers = tornado.httputil.HTTPHeaders()
-
         self._validation_model: type[BaseValidationModel | BaseModel] = BaseValidationModel
 
         self.timeout_checker = None
         self.use_adaptive_strategy = False
-        outer_timeout = request.headers.get(OUTER_TIMEOUT_MS_HEADER)
+        outer_timeout = header_params.get(OUTER_TIMEOUT_MS_HEADER)
         if outer_timeout:
             self.timeout_checker = get_timeout_checker(
-                request.headers.get(USER_AGENT_HEADER),
+                header_params.get(USER_AGENT_HEADER),
                 float(outer_timeout),
-                request.request_time,
+                request_start_time,
             )
+
+        self._status = 200
+        self._reason: Optional[str] = None
 
     def __repr__(self):
         return f'{self.__module__}.{self.__class__.__name__}'
 
     def prepare(self) -> None:
-        self.application: FrontikApplication
-        self.active_limit = frontik.handler_active_limit.ActiveHandlersLimit(self.statsd_client)
-        self.debug_mode = DebugMode(self)
+        self.resp_headers = get_default_headers()
+        self.resp_cookies: dict[str, dict] = {}
+
         self.finish_group = AsyncGroup(lambda: None, name='finish')
+        self._handler_finished_notification = self.finish_group.add_notification()
+
+        self.active_limit = frontik.handler_active_limit.ActiveHandlersLimit(self.statsd_client)
+
+        self.debug_mode = DebugMode(self)
 
         self.json_producer = self.application.json.get_producer(self)
         self.json = self.json_producer.json
@@ -154,101 +196,64 @@ class PageHandler(RequestHandler):
             self.use_adaptive_strategy,
         )
 
-        self._handler_finished_notification = self.finish_group.add_notification()
+    # Simple getters and setters
 
-        super().prepare()
+    def get_request_headers(self) -> Headers:
+        return self.header_params
 
-    def require_debug_access(self, login: Optional[str] = None, passwd: Optional[str] = None) -> None:
-        if self._debug_access is None:
-            if options.debug:
-                debug_access = True
-            else:
-                check_login = login if login is not None else options.debug_login
-                check_passwd = passwd if passwd is not None else options.debug_password
-                frontik.auth.check_debug_auth(self, check_login, check_passwd)
-                debug_access = True
+    def get_path_argument(self, name, default=_ARG_DEFAULT):
+        value = self.path_params.get(name, None)
+        if value is None:
+            if default is _ARG_DEFAULT:
+                raise DefaultValueError(name)
+            return default
+        value = _remove_control_chars_regex.sub(' ', value)
+        return value
 
-            self._debug_access = debug_access
-
-    def set_default_headers(self):
-        self._headers = tornado.httputil.HTTPHeaders({
-            'Server': f'Frontik/{frontik_version}',
-            'X-Request-Id': self.request_id,
-        })
-
-    def decode_argument(self, value: bytes, name: Optional[str] = None) -> str:
-        try:
-            return super().decode_argument(value, name)
-        except (UnicodeError, tornado.web.HTTPError):
-            self.log.warning('cannot decode utf-8 query parameter, trying other charsets')
-
-        try:
-            return frontik.util.decode_string_from_charset(value)
-        except UnicodeError:
-            self.log.exception('cannot decode argument, ignoring invalid chars')
-            return value.decode('utf-8', 'ignore')
-
-    def get_body_argument(self, name: str, default: Any = _ARG_DEFAULT, strip: bool = True) -> Optional[str]:
-        if self._get_request_mime_type(self.request) == media_types.APPLICATION_JSON:
-            if name not in self.json_body and default == _ARG_DEFAULT:
-                raise tornado.web.MissingArgumentError(name)
-
-            result = self.json_body.get(name, default)
-
-            if strip and isinstance(result, str):
-                return result.strip()
-
-            return result
-
-        if default == _ARG_DEFAULT:
-            return super().get_body_argument(name, strip=strip)
-        return super().get_body_argument(name, default, strip)
-
-    def set_validation_model(self, model: type[Union[BaseValidationModel, BaseModel]]) -> None:
-        if issubclass(model, BaseModel):
-            self._validation_model = model
-        else:
-            msg = 'model is not subclass of BaseClass'
-            raise TypeError(msg)
-
-    def get_validated_argument(
+    def get_query_argument(
         self,
         name: str,
-        validation: Validators,
-        default: Any = _ARG_DEFAULT,
-        from_body: bool = False,
-        array: bool = False,
+        default: Union[str, _T] = _ARG_DEFAULT,
         strip: bool = True,
-    ) -> Any:
-        validator = validation.value
-        if default is not _ARG_DEFAULT and default is not None:
-            try:
-                params = {validator: default}
-                validated_default = self._validation_model(**params).model_dump().get(validator)
-            except ValidationError:
-                raise DefaultValueError()
-        else:
-            validated_default = default
-
-        value: Any
-        if array and from_body:
-            value = self.get_body_arguments(name, strip)
-        elif from_body:
-            value = self.get_body_argument(name, validated_default, strip)
-        elif array:
-            value = self.get_arguments(name, strip)
-        else:
-            value = self.get_argument(name, validated_default, strip)
-
-        try:
-            params = {validator: value}
-            validated_value = self._validation_model(**params).model_dump().get(validator)
-        except ValidationError:
+    ) -> Union[str, _T]:
+        args = self._get_arguments(name, strip=strip)
+        if not args:
             if default is _ARG_DEFAULT:
-                raise TypedArgumentError(http.client.BAD_REQUEST, f'"{name}" argument is invalid')
+                raise DefaultValueError(name)
             return default
+        return args[-1]
 
-        return validated_value
+    def get_query_arguments(self, name: Optional[str] = None, strip: bool = True) -> Union[list[str], dict[str, str]]:
+        if name is None:
+            return self._get_all_query_arguments(strip)
+        return self._get_arguments(name, strip)
+
+    def _get_all_query_arguments(self, strip: bool = True) -> dict[str, str]:
+        qargs_list = self.query_params.multi_items()
+        values = {}
+        for qarg_k, qarg_v in qargs_list:
+            v = _remove_control_chars_regex.sub(' ', qarg_v)
+            if strip:
+                v = v.strip()
+            values[qarg_k] = v
+
+        return values
+
+    def _get_arguments(self, name: str, strip: bool = True) -> list[str]:
+        qargs_list = self.query_params.multi_items()
+        values = []
+        for qarg_k, qarg_v in qargs_list:
+            if qarg_k != name:
+                continue
+
+            # Get rid of any weird control chars (unless decoding gave
+            # us bytes, in which case leave it alone)
+            v = _remove_control_chars_regex.sub(' ', qarg_v)
+            if strip:
+                v = v.strip()
+            values.append(v)
+
+        return values
 
     def get_str_argument(
         self,
@@ -285,164 +290,282 @@ class PageHandler(RequestHandler):
     ) -> Optional[Union[float, list[float]]]:
         return self.get_validated_argument(name, Validators.FLOAT, default=default, **kwargs)
 
-    def _get_request_mime_type(self, request: HTTPServerRequest) -> str:
-        content_type = request.headers.get('Content-Type', '')
-        return re.split(MEDIA_TYPE_PARAMETERS_SEPARATOR_RE, content_type)[0]
+    def set_validation_model(self, model: type[Union[BaseValidationModel, BaseModel]]) -> None:
+        if issubclass(model, BaseModel):
+            self._validation_model = model
+        else:
+            raise TypeError('model is not subclass of BaseClass')
 
-    def set_status(self, status_code: int, reason: Optional[str] = None) -> None:
-        status_code = status_code if status_code in ALLOWED_STATUSES else http.client.SERVICE_UNAVAILABLE
-        super().set_status(status_code, reason=reason)
+    def get_validated_argument(
+        self,
+        name: str,
+        validation: Validators,
+        default: Any = _ARG_DEFAULT,
+        from_body: bool = False,
+        array: bool = False,
+        strip: bool = True,
+    ) -> Any:
+        validator = validation.value
+        if default is not _ARG_DEFAULT and default is not None:
+            try:
+                params = {validator: default}
+                validated_default = self._validation_model(**params).model_dump().get(validator)
+            except ValidationError:
+                raise DefaultValueError(name)
+        else:
+            validated_default = default
 
-    def redirect(self, url, *args, allow_protocol_relative=False, **kwargs):
-        if not allow_protocol_relative and url.startswith('//'):
-            # A redirect with two initial slashes is a "protocol-relative" URL.
-            # This means the next path segment is treated as a hostname instead
-            # of a part of the path, making this effectively an open redirect.
-            # Reject paths starting with two slashes to prevent this.
-            # This is only reachable under certain configurations.
-            raise tornado.web.HTTPError(403, 'cannot redirect path with two initial slashes')
-        self.log.info('redirecting to: %s', url)
-        return super().redirect(url, *args, **kwargs)
+        value: Any
+        if array and from_body:
+            value = self.get_body_arguments(name, strip)
+        elif from_body:
+            value = self.get_body_argument(name, validated_default, strip)
+        elif array:
+            value = self.get_query_arguments(name, strip)
+        else:
+            value = self.get_query_argument(name, validated_default, strip)
 
-    def reverse_url(self, name: str, *args: Any, **kwargs: Any) -> str:
-        return self.application.reverse_url(name, *args, **kwargs)
+        try:
+            params = {validator: value}
+            validated_value = self._validation_model(**params).model_dump().get(validator)
+        except ValidationError:
+            if default is _ARG_DEFAULT:
+                raise TypedArgumentError(http.client.BAD_REQUEST, f'"{name}" argument is invalid')
+            return default
+
+        return validated_value
+
+    def get_body_arguments(
+        self, name: Optional[str] = None, strip: bool = True
+    ) -> Union[list[str], dict[str, list[str]]]:
+        if name is None:
+            return self._get_all_body_arguments(strip)
+        return self._get_body_arguments(name, strip)
+
+    def _get_all_body_arguments(self, strip: bool) -> dict[str, list[str]]:
+        result: dict[str, list[str]] = {}
+        for key, values in self.body_arguments.items():
+            result[key] = []
+            for v in values:
+                s = self.decode_argument(v)
+                if isinstance(s, str):
+                    s = _remove_control_chars_regex.sub(' ', s)
+                if strip:
+                    s = s.strip()
+                result[key].append(s)
+        return result
+
+    def get_body_argument(self, name: str, default: Any = _ARG_DEFAULT, strip: bool = True) -> Optional[str]:
+        if self._get_request_mime_type() == media_types.APPLICATION_JSON:
+            if name not in self.json_body and default is _ARG_DEFAULT:
+                raise DefaultValueError(name)
+
+            result = self.json_body.get(name, default)
+
+            if strip and isinstance(result, str):
+                return result.strip()
+
+            return result
+
+        if default is _ARG_DEFAULT:
+            return self._get_body_argument(name, strip=strip)
+        return self._get_body_argument(name, default, strip)
+
+    def _get_body_argument(
+        self,
+        name: str,
+        default: Any = _ARG_DEFAULT,
+        strip: bool = True,
+    ) -> Optional[str]:
+        args = self._get_body_arguments(name, strip=strip)
+        if not args:
+            if default is _ARG_DEFAULT:
+                raise DefaultValueError(name)
+            return default
+        return args[-1]
+
+    def _get_body_arguments(self, name: str, strip: bool = True) -> list[str]:
+        values = []
+        for v in self.body_arguments.get(name, []):
+            s = self.decode_argument(v, name=name)
+            if isinstance(s, str):
+                s = _remove_control_chars_regex.sub(' ', s)
+            if strip:
+                s = s.strip()
+            values.append(s)
+        return values
+
+    def parse_body_bytes(self) -> None:
+        if self._get_request_mime_type() == media_types.APPLICATION_JSON:
+            return
+        else:
+            parse_body_arguments(
+                self.get_header('Content-Type', ''),
+                self.body_bytes,
+                self.body_arguments,
+                self.files,
+                self.header_params,  # type: ignore
+            )
 
     @property
     def json_body(self):
-        if not hasattr(self, '_json_body'):
+        if self._json_body is None:
             self._json_body = self._get_json_body()
         return self._json_body
 
     def _get_json_body(self) -> Any:
         try:
-            return json_decode(self.request.body)
+            return json_decode(self.body_bytes)
         except FrontikJsonDecodeError as _:
             raise JSONBodyParseError()
 
-    @classmethod
-    def add_callback(cls, callback: Callable, *args: Any, **kwargs: Any) -> None:
-        IOLoop.current().add_callback(callback, *args, **kwargs)
+    def decode_argument(self, value: bytes, name: Optional[str] = None) -> str:
+        try:
+            return value.decode('utf-8')
+        except UnicodeError:
+            self.log.warning('cannot decode utf-8 body parameter %s, trying other charsets', name)
 
-    @classmethod
-    def add_timeout(cls, deadline: float, callback: Callable, *args: Any, **kwargs: Any) -> Any:
-        return IOLoop.current().add_timeout(deadline, callback, *args, **kwargs)
+        try:
+            return frontik.util.decode_string_from_charset(value)
+        except UnicodeError:
+            self.log.exception('cannot decode body parameter %s, ignoring invalid chars', name)
+            return value.decode('utf-8', 'ignore')
 
-    @staticmethod
-    def remove_timeout(timeout):
-        IOLoop.current().remove_timeout(timeout)
+    @overload
+    def get_header(self, param_name: str, default: None = None) -> Optional[str]: ...
 
-    @classmethod
-    def add_future(cls, future: Future, callback: Callable) -> None:
-        IOLoop.current().add_future(future, callback)
+    @overload
+    def get_header(self, param_name: str, default: str) -> str: ...
+
+    def get_header(self, param_name: str, default: Optional[str] = None) -> Optional[str]:
+        return self.header_params.get(param_name.lower(), default)
+
+    def set_header(self, k: str, v: str) -> None:
+        self.resp_headers[k] = v
+
+    def _get_request_mime_type(self) -> str:
+        content_type = self.get_header('Content-Type', '')
+        return re.split(MEDIA_TYPE_PARAMETERS_SEPARATOR_RE, content_type)[0]
+
+    def clear_header(self, name: str) -> None:
+        if name in self.resp_headers:
+            del self.resp_headers[name]
+
+    def clear_cookie(self, name: str, path: str = '/', domain: Optional[str] = None) -> None:
+        expires = datetime.datetime.now() - datetime.timedelta(days=365)
+        self.set_cookie(name, value='', expires=expires, path=path, domain=domain)
+
+    def get_cookie(self, param_name: str, default: Optional[str]) -> Optional[str]:
+        return self.cookie_params.get(param_name, default)
+
+    def set_cookie(
+        self,
+        name: str,
+        value: Union[str, bytes],
+        domain: Optional[str] = None,
+        expires: Optional[Union[float, tuple, datetime.datetime]] = None,
+        path: str = '/',
+        expires_days: Optional[float] = None,
+        # Keyword-only args start here for historical reasons.
+        *,
+        max_age: Optional[int] = None,
+        httponly: bool = False,
+        secure: bool = False,
+        samesite: Optional[str] = None,
+    ) -> None:
+        name = str(name)
+        value = str(value)
+        if re.search(r'[\x00-\x20]', name + value):
+            # Don't let us accidentally inject bad stuff
+            raise ValueError('Invalid cookie %s: %s', name, value)
+
+        if name in self.resp_cookies:
+            del self.resp_cookies[name]
+        self.resp_cookies[name] = {'value': value}
+        morsel = self.resp_cookies[name]
+        if domain:
+            morsel['domain'] = domain
+        if expires_days is not None and not expires:
+            expires = datetime.datetime.now() + datetime.timedelta(days=expires_days)
+        if expires:
+            morsel['expires'] = format_timestamp(expires)
+        if path:
+            morsel['path'] = path
+        if max_age:
+            # Note change from _ to -.
+            morsel['max_age'] = str(max_age)
+        if httponly:
+            # Note that SimpleCookie ignores the value here. The presense of an
+            # httponly (or secure) key is treated as true.
+            morsel['httponly'] = True
+        if secure:
+            morsel['secure'] = True
+        if samesite:
+            morsel['samesite'] = samesite
 
     # Requests handling
 
-    async def _execute(self, transforms, *args, **kwargs):
-        request_context.set_handler(self)
-        try:
-            return await super()._execute(transforms, *args, **kwargs)
-        except Exception as ex:
-            self._handle_request_exception(ex)
-            return True
+    def require_debug_access(self, login: Optional[str] = None, passwd: Optional[str] = None) -> None:
+        if self._debug_access is None:
+            if options.debug:
+                debug_access = True
+            else:
+                check_login = login if login is not None else options.debug_login
+                check_passwd = passwd if passwd is not None else options.debug_password
+                frontik.auth.check_debug_auth(self, check_login, check_passwd)
+                debug_access = True
 
-    async def get(self, *args, **kwargs):
-        await self._execute_page(self.get_page)
+            self._debug_access = debug_access
 
-    async def post(self, *args, **kwargs):
-        await self._execute_page(self.post_page)
+    def set_status(self, status_code: int, reason: Optional[str] = None) -> None:
+        status_code = status_code if status_code in ALLOWED_STATUSES else http.client.SERVICE_UNAVAILABLE
 
-    async def put(self, *args, **kwargs):
-        await self._execute_page(self.put_page)
+        self._status = status_code
+        self._reason = reason
 
-    async def delete(self, *args, **kwargs):
-        await self._execute_page(self.delete_page)
+    def get_status(self) -> int:
+        return self._status
 
-    async def head(self, *args, **kwargs):
-        await self._execute_page(self.get_page)
+    def redirect(self, url: str, permanent: bool = False, status: Optional[int] = None) -> None:
+        if url.startswith('//'):
+            raise RuntimeError('403 cannot redirect path with two initial slashes')
+        self.log.info('redirecting to: %s', url)
+        if status is None:
+            status = 301 if permanent else 302
+        else:
+            assert isinstance(status, int)
+            assert 300 <= status <= 399
+        raise RedirectPageSignal(url, status)
 
-    def options(self, *args, **kwargs):
-        self.return_405()
+    def finish(self, data: Optional[Union[str, bytes, dict]] = None) -> None:
+        raise FinishPageSignal(data)
 
-    async def _execute_page(self, page_handler_method: Callable[[], Coroutine[Any, Any, None]]) -> None:
-        self.stages_logger.commit_stage('prepare')
+    async def get_page_fail_fast(self, request_result: RequestResult) -> tuple[int, dict, Any]:
+        return await self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
 
-        returned_value: ReturnedValue = await execute_page_method_with_dependencies(self, page_handler_method)
-        for returned_value_handler in self.returned_value_handlers:
-            returned_value_handler(self, returned_value)
+    async def post_page_fail_fast(self, request_result: RequestResult) -> tuple[int, dict, Any]:
+        return await self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
 
-        self._handler_finished_notification()
-        await self.finish_group.get_gathering_future()
-        await self.finish_group.get_finish_future()
+    async def put_page_fail_fast(self, request_result: RequestResult) -> tuple[int, dict, Any]:
+        return await self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
 
-        render_result = await self._postprocess()
-        if render_result is not None:
-            self.write(render_result)
+    async def delete_page_fail_fast(self, request_result: RequestResult) -> tuple[int, dict, Any]:
+        return await self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
 
-    @router.get()
-    async def get_page(self):
-        """This method can be implemented in the subclass"""
-        self.return_405()
-
-    @router.post()
-    async def post_page(self):
-        """This method can be implemented in the subclass"""
-        self.return_405()
-
-    @router.put()
-    async def put_page(self):
-        """This method can be implemented in the subclass"""
-        self.return_405()
-
-    @router.delete()
-    async def delete_page(self):
-        """This method can be implemented in the subclass"""
-        self.return_405()
-
-    def return_405(self) -> None:
-        allowed_methods = [name for name in ('get', 'post', 'put', 'delete') if f'{name}_page' in vars(self.__class__)]
-        self.set_header('Allow', ', '.join(allowed_methods))
-        self.set_status(405)
-        self.finish()
-
-    def get_page_fail_fast(self, request_result: RequestResult) -> None:
-        self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
-
-    def post_page_fail_fast(self, request_result: RequestResult) -> None:
-        self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
-
-    def put_page_fail_fast(self, request_result: RequestResult) -> None:
-        self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
-
-    def delete_page_fail_fast(self, request_result: RequestResult) -> None:
-        self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
-
-    def __return_error(self, response_code: int, **kwargs: Any) -> None:
-        self.send_error(response_code if 300 <= response_code < 500 else 502, **kwargs)
+    async def __return_error(self, response_code: int, **kwargs: Any) -> tuple[int, dict, Any]:
+        return await self.send_error(response_code if 300 <= response_code < 500 else 502, **kwargs)
 
     # Finish page
 
     def is_finished(self) -> bool:
         return self._finished
 
-    def check_finished(self, callback: Callable) -> Callable:
-        @wraps(callback)
-        def wrapper(*args, **kwargs):
-            if self.is_finished():
-                self.log.warning('page was already finished, %s ignored', callback)
-            else:
-                return callback(*args, **kwargs)
-
-        return wrapper
-
-    def finish_with_postprocessors(self) -> None:
+    async def finish_with_postprocessors(self) -> tuple[int, dict, Any]:
         if not self.finish_group.get_finish_future().done():
             self.finish_group.abort()
 
-        def _cb(future):
-            if future.result() is not None:
-                self.finish(future.result())
-
-        asyncio.create_task(self._postprocess()).add_done_callback(_cb)
+        content = await self._postprocess()
+        return self.get_status(), self.resp_headers, content
 
     def run_task(self: PageHandler, coro: Coroutine) -> Task:
         task = asyncio.create_task(coro)
@@ -479,42 +602,40 @@ class PageHandler(RequestHandler):
         )
         return postprocessed_result
 
-    def on_connection_close(self):
-        with request_context.request_context(self.request, self.request_id):
-            super().on_connection_close()
-
-            self.finish_group.abort()
-            self.set_status(CLIENT_CLOSED_REQUEST, 'Client closed the connection: aborting request')
-
-            self.stages_logger.commit_stage('page')
-            self.stages_logger.flush_stages(self.get_status())
-
-            self.finish()
-
-    def on_finish(self):
+    def on_finish(self, status: int) -> None:
         self.stages_logger.commit_stage('flush')
-        self.stages_logger.flush_stages(self.get_status())
+        self.stages_logger.flush_stages(status)
 
-    def _handle_request_exception(self, e: BaseException) -> None:
-        if isinstance(e, AbortAsyncGroup):
-            self.log.info('page was aborted, skipping postprocessing')
-            return
+    async def handle_request_exception(self, ex: BaseException) -> tuple[int, dict, Any]:
+        if isinstance(ex, FinishPageSignal):
+            self._handler_finished_notification()
+            chunk = _data_to_chunk(ex.data, self.resp_headers)
+            return self.get_status(), self.resp_headers, chunk
 
-        if isinstance(e, FinishWithPostprocessors):
-            if e.wait_finish_group:
+        if isinstance(ex, RedirectPageSignal):
+            self._handler_finished_notification()
+            self.set_header('Location', ex.url)
+            return ex.status, self.resp_headers, None
+
+        if isinstance(ex, FinishWithPostprocessors):
+            if ex.wait_finish_group:
                 self._handler_finished_notification()
-                self.add_future(self.finish_group.get_finish_future(), lambda _: self.finish_with_postprocessors())
-            else:
-                self.finish_with_postprocessors()
-            return
+                await self.finish_group.get_finish_future()
+            return await self.finish_with_postprocessors()
 
-        if self._finished and not isinstance(e, Finish):
-            # tornado will handle Finish by itself
-            # any other errors can't complete after handler is finished
-            return
+        if isinstance(ex, HTTPErrorWithPostprocessors):
+            self.set_status(ex.status_code)
+            return await self.finish_with_postprocessors()
 
-        if isinstance(e, FailFastError):
-            request = e.failed_result.request
+        if isinstance(ex, HTTPException):
+            self.resp_cookies = {}
+            if ex.headers is None:
+                ex.headers = {'Content-Type': media_types.TEXT_PLAIN}
+
+            return ex.status_code, {**ex.headers, **get_default_headers()}, ex.detail
+
+        if isinstance(ex, FailFastError):
+            request = ex.failed_result.request
 
             if self.log.isEnabledFor(logging.WARNING):
                 _max_uri_length = 24
@@ -528,117 +649,37 @@ class PageHandler(RequestHandler):
                 self.log.warning(
                     'FailFastError: request %s failed with %s code',
                     request_name,
-                    e.failed_result.status_code,
+                    ex.failed_result.status_code,
                 )
 
-            try:
-                error_method_name = f'{self.request.method.lower()}_page_fail_fast'  # type: ignore
-                method = getattr(self, error_method_name, None)
-                if callable(method):
-                    method(e.failed_result)
-                else:
-                    self.__return_error(e.failed_result.status_code, error_info={'is_fail_fast': True})
-
-            except Exception as exc:
-                super()._handle_request_exception(exc)
+            error_method_name = f'{self.method.lower()}_page_fail_fast'
+            method = getattr(self, error_method_name, None)
+            if callable(method):
+                return await method(ex.failed_result)
+            else:
+                return await self.__return_error(ex.failed_result.status_code, error_info={'is_fail_fast': True})
 
         else:
-            super()._handle_request_exception(e)
+            raise ex
 
-    def send_error(self, status_code: int = 500, **kwargs: Any) -> None:
-        """`send_error` is adapted to support `write_error` that can call
-        `finish` asynchronously.
-        """
-
+    async def send_error(self, status_code: int = 500, **kwargs: Any) -> tuple[int, dict, Any]:
         self.stages_logger.commit_stage('page')
 
-        if self._headers_written:
-            super().send_error(status_code, **kwargs)
-            return
-
-        reason = kwargs.get('reason')
+        self._reason = kwargs.get('reason')
         if 'exc_info' in kwargs:
             exception = kwargs['exc_info'][1]
             if isinstance(exception, tornado.web.HTTPError) and exception.reason:
-                reason = exception.reason
-        else:
-            exception = None
+                self._reason = exception.reason
 
-        if not isinstance(exception, HTTPErrorWithPostprocessors):
-            self.clear()
-
-        self.set_status(status_code, reason=reason)
-
-        try:
-            self.write_error(status_code, **kwargs)
-        except Exception:
-            self.log.exception('Uncaught exception in write_error')
-            if not self._finished:
-                self.finish()
-
-    def write_error(self, status_code: int = 500, **kwargs: Any) -> None:
-        """
-        `write_error` can call `finish` asynchronously if HTTPErrorWithPostprocessors is raised.
-        """
-
-        exception = kwargs['exc_info'][1] if 'exc_info' in kwargs else None
-
-        if isinstance(exception, HTTPErrorWithPostprocessors):
-            self.finish_with_postprocessors()
-            return
-
-        self.set_header('Content-Type', media_types.TEXT_HTML)
-        super().write_error(status_code, **kwargs)
+        self.set_status(status_code, reason=self._reason)
+        return build_error_data(status_code, self._reason)
 
     def cleanup(self) -> None:
+        self._finished = True
         if hasattr(self, 'active_limit'):
             self.active_limit.release()
 
-    def finish(self, chunk: Optional[Union[str, bytes, dict]] = None) -> Future[None]:
-        self.stages_logger.commit_stage('postprocess')
-        for name, value in self._mandatory_headers.items():
-            self.set_header(name, value)
-
-        for args, kwargs in self._mandatory_cookies.values():
-            try:
-                self.set_cookie(*args, **kwargs)
-            except ValueError:
-                self.set_status(http.client.BAD_REQUEST)
-
-        if self._status_code in (204, 304) or (100 <= self._status_code < 200):
-            self._write_buffer = []
-            chunk = None
-
-        finish_future = super().finish(chunk)
-        self.cleanup()
-        return finish_future
-
     # postprocessors
-
-    def set_mandatory_header(self, name: str, value: str) -> None:
-        self._mandatory_headers[name] = value
-
-    def set_mandatory_cookie(
-        self,
-        name: str,
-        value: str,
-        domain: Optional[str] = None,
-        expires: Optional[str] = None,
-        path: str = '/',
-        expires_days: Optional[int] = None,
-        **kwargs: Any,
-    ) -> None:
-        self._mandatory_cookies[name] = ((name, value, domain, expires, path, expires_days), kwargs)
-
-    def clear_header(self, name: str) -> None:
-        if name in self._mandatory_headers:
-            del self._mandatory_headers[name]
-        super().clear_header(name)
-
-    def clear_cookie(self, name: str, path: str = '/', domain: Optional[str] = None) -> None:  # type: ignore
-        if name in self._mandatory_cookies:
-            del self._mandatory_cookies[name]
-        super().clear_cookie(name, path=path, domain=domain)
 
     async def _run_postprocessors(self, postprocessors: list) -> bool:
         for p in postprocessors:
@@ -677,7 +718,7 @@ class PageHandler(RequestHandler):
     async def _generic_producer(self):
         self.log.debug('finishing plaintext')
 
-        if self._headers.get('Content-Type') is None:
+        if self.resp_headers.get('Content-Type') is None:
             self.set_header('Content-Type', media_types.TEXT_HTML)
 
         return self.text, None
@@ -708,12 +749,9 @@ class PageHandler(RequestHandler):
             balanced_request.path = make_url(balanced_request.path, debug_timestamp=int(time.time()))
 
             for header_name in ('Authorization', DEBUG_AUTH_HEADER_NAME):
-                authorization = self.request.headers.get(header_name)
+                authorization = self.get_header(header_name)
                 if authorization is not None:
                     balanced_request.headers[header_name] = authorization
-
-    def group(self, futures: dict) -> Task:
-        return self.run_task(gather_dict(coro_dict=futures))
 
     def get_url(
         self,
@@ -951,16 +989,120 @@ class PageHandler(RequestHandler):
 
         return future
 
+    def log_request(self, request: Request) -> None:
+        request_time = int(1000.0 * (time.time() - self.request_start_time))
+        extra = {
+            'ip': request.client.host if request.client else None,
+            'rid': request_context.get_request_id(),
+            'status': self.get_status(),
+            'time': request_time,
+            'method': request.method,
+            'uri': request.url.path,
+        }
 
-class ErrorHandler(PageHandler, tornado.web.ErrorHandler):
-    pass
+        handler_name = request_context.get_handler_name()
+        if handler_name:
+            extra['controller'] = handler_name
+
+        JSON_REQUESTS_LOGGER.info('', extra={CUSTOM_JSON_EXTRA: extra})
 
 
-class RedirectHandler(PageHandler, tornado.web.RedirectHandler):
-    @router.get()
-    def get_page(self):
-        tornado.web.RedirectHandler.get(self)
+PageHandlerT = TypeVar('PageHandlerT', bound=PageHandler)
 
 
-async def get_current_handler(request: Request) -> PageHandler:
-    return request['handler']
+def get_current_handler(_: Union[PageHandlerT, Type[PageHandler]] = PageHandler) -> PageHandlerT:
+    async def handler_getter(request: Request) -> PageHandlerT:
+        return request.state.handler
+
+    return Depends(handler_getter)
+
+
+def get_default_headers() -> dict[str, str]:
+    request_id = request_context.get_request_id() or ''
+    return {
+        'Server': f'Frontik/{frontik_version}',
+        'X-Request-Id': request_id,
+    }
+
+
+def build_error_data(status_code: int = 500, message: Optional[str] = 'Internal Server Error') -> tuple[int, dict, Any]:
+    headers = get_default_headers()
+    headers['Content-Type'] = media_types.TEXT_HTML
+    content = f'<html><title>{status_code}: {message}</title><body>{status_code}: {message}</body></html>'
+    return status_code, headers, content
+
+
+def _data_to_chunk(data: Any, headers: dict) -> bytes:
+    result: bytes = b''
+    if data is None:
+        return result
+    if isinstance(data, str):
+        result = data.encode('utf-8')
+    elif isinstance(data, dict):
+        chunk = json.dumps(data).replace('</', '<\\/')
+        result = chunk.encode('utf-8')
+        headers['Content-Type'] = 'application/json; charset=UTF-8'
+    elif isinstance(data, bytes):
+        result = data
+    else:
+        raise TypeError(f'unexpected type of chunk - {type(data)}')
+    return result
+
+
+async def process_request(request: Request, call_next: Callable, route: APIRoute) -> Response:
+    handler = request.state.handler
+
+    try:
+        request_context.set_handler_name(f'{route.endpoint.__module__}.{route.endpoint.__name__}')
+
+        handler.prepare()
+        handler.stages_logger.commit_stage('prepare')
+        _response = await call_next(request)
+
+        handler._handler_finished_notification()
+        await handler.finish_group.get_gathering_future()
+        await handler.finish_group.get_finish_future()
+        handler.stages_logger.commit_stage('page')
+
+        content = await handler._postprocess()
+        headers = handler.resp_headers
+        status = handler.get_status()
+
+        handler.stages_logger.commit_stage('postprocess')
+
+    except Exception as ex:
+        try:
+            status, headers, content = await handler.handle_request_exception(ex)
+        except Exception as exc:
+            if getattr(handler, '_debug_enabled', False):
+                status, headers, content = build_error_data()
+            elif hasattr(handler, 'write_error'):
+                status, headers, content = await handler.write_error(exc_info=sys.exc_info())
+            else:
+                handler_logger.exception('request processing has failed: %s', exc)
+                raise
+
+    finally:
+        handler.cleanup()
+
+    if status in (204, 304) or (100 <= status < 200):
+        for h in ('Content-Encoding', 'Content-Language', 'Content-Type'):
+            if h in headers:
+                headers.pop(h)
+        content = None
+
+    if getattr(handler, '_debug_enabled', False):
+        chunk = _data_to_chunk(content, headers)
+        debug_transform = DebugTransform(request.app.frontik_app, request)
+        status, headers, content = debug_transform.transform_chunk(status, headers, chunk)
+
+    response = Response(status_code=status, headers=headers, content=content)
+
+    for key, values in handler.resp_cookies.items():
+        response.set_cookie(key, **values)
+
+    handler.finish_group.abort()
+    handler.log_request(request)
+    handler.on_finish(status)
+
+    return response

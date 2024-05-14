@@ -1,6 +1,7 @@
-from tornado.web import HTTPError
+from fastapi import HTTPException
 
-from frontik.handler import PageHandler, router
+from frontik.handler import PageHandler, get_current_handler
+from frontik.routing import router
 
 
 class ContentPostprocessor:
@@ -9,27 +10,9 @@ class ContentPostprocessor:
 
 
 class Page(PageHandler):
-    @router.get()
-    async def get_page(self):
-        if self.get_argument('raise_error', None) is not None:
-            self.add_postprocessor(self._pp_1)
-
-        if self.get_argument('finish', None) is not None:
-            self.add_postprocessor(self._pp_2)
-
-        if self.get_argument('header', None) is not None:
-            self.add_render_postprocessor(Page._header_pp)
-
-        if self.get_argument('content', None) is not None:
-            content_postprocessor = ContentPostprocessor()
-            self.add_render_postprocessor(content_postprocessor.postprocessor)
-
-        self.set_template('postprocess.html')
-        self.json.put({'content': '%%content%%'})
-
     @staticmethod
     def _pp_1(handler):
-        raise HTTPError(400)
+        raise HTTPException(400)
 
     @staticmethod
     def _pp_2(handler):
@@ -37,3 +20,22 @@ class Page(PageHandler):
 
     def _header_pp(self, tpl, meta_info):
         return tpl.replace('%%header%%', 'HEADER')
+
+
+@router.get('/postprocess/', cls=Page)
+async def get_page(handler: Page = get_current_handler()) -> None:
+    if handler.get_query_argument('raise_error', None) is not None:
+        handler.add_postprocessor(handler._pp_1)
+
+    if handler.get_query_argument('finish', None) is not None:
+        handler.add_postprocessor(handler._pp_2)
+
+    if handler.get_query_argument('header', None) is not None:
+        handler.add_render_postprocessor(Page._header_pp)
+
+    if handler.get_query_argument('content', None) is not None:
+        content_postprocessor = ContentPostprocessor()
+        handler.add_render_postprocessor(content_postprocessor.postprocessor)
+
+    handler.set_template('postprocess.html')
+    handler.json.put({'content': '%%content%%'})
