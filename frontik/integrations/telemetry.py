@@ -114,13 +114,17 @@ def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams) ->
         return
 
     upstream_datacenter = getattr(request, 'upstream_datacenter', None)
+    upstream_hostname = getattr(request, 'upstream_hostname', None)
     upstream_name = getattr(request, 'upstream_name', None)
     if upstream_name is None:
         upstream_name = get_netloc(request.url)
+    if upstream_hostname is None:
+        upstream_hostname = 'unknown'
 
     span.update_name(' '.join(el for el in [request.method, upstream_name] if el))
     span.set_attribute(SpanAttributes.PEER_SERVICE, upstream_name)
     span.set_attribute('http.request.timeout', request.request_timeout * 1000)
+    span.set_attribute('destination.address', upstream_hostname)
     if upstream_datacenter is not None:
         span.set_attribute('http.request.cloud.region', upstream_datacenter)
 
