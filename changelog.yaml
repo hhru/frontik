@@ -1,3 +1,9 @@
+-   name: 8.0.1
+    date: '2024-05-16T14:00:49.986260+03:00'
+    description: add destination host
+    instructions: ''
+    compatible: true
+
 -   name: 8.0.0
     date: '2024-05-14T15:41:15.402974+03:00'
     description: Заменил торнадо сервер на ювикорн/фастапи
