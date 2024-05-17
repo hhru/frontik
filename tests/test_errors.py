@@ -10,15 +10,15 @@ class TestHttpError:
     def test_raise_200(self):
         response = frontik_test_app.get_page('http_error?code=200')
         assert response.status_code == 200
-        assert response.headers.get('content-type') == media_types.TEXT_PLAIN
-        assert response.content == b'OK'
+        assert response.headers.get('content-type') == media_types.TEXT_HTML
+        assert response.content == b'<html><title>200: OK</title><body>200: OK</body></html>'
 
     def test_raise_401(self):
         response = frontik_test_app.get_page('http_error?code=401')
         assert response.status_code == 401
         assert response.raw.reason == 'Unauthorized'
-        assert response.headers['content-type'] == media_types.TEXT_PLAIN
-        assert response.content == b'Unauthorized'
+        assert response.headers['content-type'] == media_types.TEXT_HTML
+        assert response.content == b'<html><title>401: Unauthorized</title><body>401: Unauthorized</body></html>'
 
     def test_405(self):
         response = frontik_test_app.get_page('http_error', method=requests.put)

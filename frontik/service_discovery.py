@@ -76,6 +76,7 @@ class UpstreamManager:
         upstreams_lock: Optional[Lock],
         send_to_all_workers: Optional[Callable],
         with_consul: bool,
+        app_name: str,
     ) -> None:
         self.with_consul: bool = with_consul
         self._upstreams_config: dict[str, dict] = {}
@@ -94,7 +95,7 @@ class UpstreamManager:
             port=options.consul_port,
             client_event_callback=ConsulMetricsTracker(statsd_client),
         )
-        self._service_name = options.app
+        self._service_name = app_name
         self.hostname = _get_hostname_or_raise(options.node_name)
         self.service_id = _make_service_id(options, service_name=self._service_name, hostname=self.hostname)
         self.address = _get_service_address(options)

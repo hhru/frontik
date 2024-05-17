@@ -1,8 +1,8 @@
 import logging
 from typing import Optional
 
+from fastapi import HTTPException
 from http_client import HttpClientFactory
-from tornado.httpclient import HTTPError
 
 from frontik import request_context
 from frontik.loggers.logleveloverride.log_level_override_extension import LogLevelOverride, LogLevelOverrideExtension
@@ -37,7 +37,7 @@ class HttpLogLevelOverrideExtension(LogLevelOverrideExtension):
         result = await self.http_client_factory.get_http_client().get_url(self.host, self.uri, headers=headers)
         if result.failed:
             logger.error('some problem with fetching log level overrides: %s', result.failed)
-            raise HTTPError(result.status_code)
+            raise HTTPException(result.status_code)
 
         log_level_overrides = parse_result_to_log_level_overrides_dto(result.data)
         return log_level_overrides

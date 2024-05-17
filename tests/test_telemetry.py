@@ -17,7 +17,6 @@ from frontik.integrations.telemetry import FrontikIdGenerator, FrontikSpanProces
 from frontik.options import options
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
-from tests import FRONTIK_ROOT
 
 dummy_request = Request({'type': 'http'})
 
@@ -137,7 +136,7 @@ class TestFrontikTesting(FrontikTestBase):
         provider.add_span_processor(batch_span_processor)
         trace.set_tracer_provider(provider)
 
-        app = FrontikApplication(app='test_app', app_root=FRONTIK_ROOT)
+        app = FrontikApplication()
         BATCH_SPAN_PROCESSOR.append(batch_span_processor)
 
         return app

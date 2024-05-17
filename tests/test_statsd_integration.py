@@ -18,7 +18,7 @@ class TestStatsdIntegration:
         port = statsd_socket.getsockname()[1]
 
         test_app = FrontikTestInstance(
-            f'{FRONTIK_RUN} --app=tests.projects.test_app --config={TEST_PROJECTS}/frontik_debug.cfg '
+            f'{FRONTIK_RUN} --app=tests.projects.test_app.TestApplication --config={TEST_PROJECTS}/frontik_debug.cfg '
             f'--statsd_host=127.0.0.1 --consul_enabled=False --statsd_port={port}',
         )
 

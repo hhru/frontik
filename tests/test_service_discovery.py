@@ -8,7 +8,7 @@ TEST_PROJECTS = f'{FRONTIK_ROOT}/tests/projects'
 class TestServiceDiscovery:
     def setup_method(self) -> None:
         self.consul_mock = FrontikTestInstance(
-            f'{FRONTIK_RUN} --app=tests.projects.consul_mock_app {common_frontik_start_options} '
+            f'{FRONTIK_RUN} --app=tests.projects.consul_mock_app.TestApplication {common_frontik_start_options} '
             f' --config={TEST_PROJECTS}/frontik_consul_mock.cfg',
         )
         self.consul_mock.start()
