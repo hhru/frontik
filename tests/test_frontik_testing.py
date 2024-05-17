@@ -33,7 +33,7 @@ async def check_config_page(handler=get_current_handler()):
 class TestFrontikTestingOld(FrontikTestBase):
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
-        return FrontikApplication(app='test_app', app_root=FRONTIK_ROOT)
+        return FrontikApplication()
 
     @pytest.fixture(scope='class')
     def with_tornado_mocks(self):
@@ -71,7 +71,7 @@ class TestFrontikTestingOld(FrontikTestBase):
 class TestFrontikTesting(FrontikTestBase):
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
-        return FrontikApplication(app='test_app', app_root=FRONTIK_ROOT)
+        return FrontikApplication()
 
     async def test_config(self):
         self.configure_app(config_param='param_value')

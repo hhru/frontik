@@ -1,7 +1,7 @@
 import asyncio
-from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
+from typing import Any
 
 from fastapi import Request
 
@@ -10,7 +10,7 @@ from frontik.handler import PageHandler, get_current_handler
 from frontik.routing import router
 
 
-def _callback(name, handler, *args):
+async def _callback(name: str, handler: PageHandler) -> None:
     handler.json.put({name: request_context.get_handler_name()})
 
 
@@ -28,15 +28,17 @@ class Page(PageHandler):
 
 @router.get('/request_context', cls=Page)
 async def get_page(request: Request, handler: Page = get_current_handler()) -> None:
-    def _waited_callback(name: str) -> Callable:
-        return handler.finish_group.add(partial(_callback, name, handler))
+    def _waited_callback(name: str, _task: Any) -> None:
+        task = asyncio.create_task(_callback(name, handler))
+        handler.finish_group.add_future(task)
 
     handler.json.put({'page': request_context.get_handler_name()})
 
     dumb_task = asyncio.create_task(asyncio.sleep(0))
-    dumb_task.add_done_callback(_waited_callback('callback'))
+    dumb_task.add_done_callback(partial(_waited_callback, 'callback'))
+    await dumb_task
 
-    ThreadPoolExecutor(1).submit(_waited_callback('executor'))
+    ThreadPoolExecutor(1).submit(_waited_callback, 'executor', None)
 
     handler.run_task(handler.run_coroutine(request.headers.get('host', '')))
 
@@ -44,7 +46,7 @@ async def get_page(request: Request, handler: Page = get_current_handler()) -> N
         await handler.post_url(request.headers.get('host', ''), handler.path)
 
     future = asyncio.create_task(make_request())
-    future.add_done_callback(_waited_callback('future'))
+    future.add_done_callback(partial(_waited_callback, 'future'))
 
 
 @router.post('/request_context', cls=Page)

@@ -43,7 +43,7 @@ class TestUpstreamCaches:
             },
         ]
 
-        upstream_cache = UpstreamManager({}, StatsDClientStub(), None, None, False)
+        upstream_cache = UpstreamManager({}, StatsDClientStub(), None, None, False, 'test')
         upstream_cache._update_upstreams_service('app', value_one_dc)
         upstream_cache._update_upstreams_service('app', value_another_dc)
 
@@ -66,7 +66,7 @@ class TestUpstreamCaches:
             },
         ]
 
-        upstream_cache = UpstreamManager({}, StatsDClientStub(), None, None, False)
+        upstream_cache = UpstreamManager({}, StatsDClientStub(), None, None, False, 'test')
         upstream_cache._update_upstreams_service('app', value_one_dc)
         upstream_cache._update_upstreams_service('app', value_one_dc)
 
@@ -102,7 +102,7 @@ class TestUpstreamCaches:
             },
         ]
 
-        upstream_cache = UpstreamManager({}, StatsDClientStub(), None, None, False)
+        upstream_cache = UpstreamManager({}, StatsDClientStub(), None, None, False, 'test')
         upstream_cache._update_upstreams_service('app', value_one_dc)
         upstream_cache._update_upstreams_service('app', value_another_dc)
         upstream_cache._update_upstreams_service('app', value_another_dc)
@@ -163,7 +163,7 @@ class TestUpstreamCaches:
             },
         ]
 
-        upstream_cache = UpstreamManager({}, StatsDClientStub(), None, None, False)
+        upstream_cache = UpstreamManager({}, StatsDClientStub(), None, None, False, 'test')
         upstream_cache._update_upstreams_service('app', value_test_dc)
         upstream_cache._update_upstreams_service('app', value_another_dc)
 

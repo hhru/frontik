@@ -3,15 +3,12 @@ import contextlib
 import gc
 import importlib
 import logging
-import os.path
-import re
 import signal
 import socket
 import sys
 from asyncio import Future
 from collections.abc import Awaitable, Coroutine
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict
 from datetime import timedelta
 from functools import partial
 from threading import Lock
@@ -21,7 +18,6 @@ import anyio
 import tornado.autoreload
 import uvicorn
 from http_client.balancing import Upstream
-from http_client.options import options as http_client_options
 from starlette.middleware import Middleware
 
 from frontik.app import FrontikApplication
@@ -43,32 +39,27 @@ def main(config_file: Optional[str] = None) -> None:
 
     log.info('starting application %s', options.app)
 
-    app_class_name: Optional[str]
     try:
-        if options.app_class is not None and re.match(r'^\w+\.', options.app_class):
-            app_module_name, app_class_name = options.app_class.rsplit('.', 1)
-        else:
-            app_module_name = options.app
-            app_class_name = options.app_class
+        app_module = importlib.import_module(options.app)
+        app_class_name = None
+        app_module_name = options.app
+    except Exception:
+        try:
+            app_module_name, app_class_name = options.app.rsplit('.', 1)
+            app_module = importlib.import_module(app_module_name)
+        except Exception as e:
+            log.exception('failed to import application module "%s": %s', options.app, e)
 
-        module = importlib.import_module(app_module_name)
-    except Exception as e:
-        log.exception('failed to import application module "%s": %s', options.app, e)
+            sys.exit(1)
 
-        sys.exit(1)
-
-    if app_class_name is not None and not hasattr(module, app_class_name):
+    if app_class_name is not None and not hasattr(app_module, app_class_name):
         log.exception('application class "%s" not found', options.app_class)
         sys.exit(1)
 
-    application = getattr(module, app_class_name) if app_class_name is not None else FrontikApplication
+    application = getattr(app_module, app_class_name) if app_class_name is not None else FrontikApplication
 
     try:
-        app = application(
-            app_root=os.path.dirname(str(module.__file__)),
-            app_module=app_module_name,
-            **{**asdict(options), **asdict(http_client_options)},
-        )
+        app = application(app_module_name)
 
         gc.disable()
         gc.collect()
@@ -158,7 +149,7 @@ def run_server(frontik_app: FrontikApplication, sock: Optional[socket.socket] = 
     log.info('starting server on %s:%s', options.host, options.port)
 
     anyio.to_thread.run_sync = anyio_noop
-    import_all_pages(frontik_app.app_module)
+    import_all_pages(frontik_app.app_module_name)
     fastapi_app = frontik_app.fastapi_app
     setattr(fastapi_app, 'frontik_app', frontik_app)
     for router in routers:
@@ -214,13 +205,13 @@ def run_server(frontik_app: FrontikApplication, sock: Optional[socket.socket] = 
     return server_task
 
 
-async def _init_app(app: FrontikApplication) -> None:
-    await app.init()
-    server_task = run_server(app)
-    log.info('Successfully inited application %s', app.app)
-    with app.worker_state.count_down_lock:
-        app.worker_state.init_workers_count_down.value -= 1
-        log.info('worker is up, remaining workers = %s', app.worker_state.init_workers_count_down.value)
+async def _init_app(frontik_app: FrontikApplication) -> None:
+    await frontik_app.init()
+    server_task = run_server(frontik_app)
+    log.info('Successfully inited application %s', frontik_app.app_name)
+    with frontik_app.worker_state.count_down_lock:
+        frontik_app.worker_state.init_workers_count_down.value -= 1
+        log.info('worker is up, remaining workers = %s', frontik_app.worker_state.init_workers_count_down.value)
     await server_task
 
 

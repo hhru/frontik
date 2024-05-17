@@ -7,23 +7,14 @@ from tests.projects.test_app import config
 
 
 class TestApplication(FrontikApplication):
-    def __init__(self, **settings):
-        # options.sentry_dsn = 'http://secret@127.0.0.1:{}/2'.format(settings['port'])
-
+    def __init__(self, app_module_name: str):
         bootstrap_logger('custom_logger', logging.DEBUG, False)
-
-        super().__init__(**settings)
+        super().__init__(app_module_name)
 
     async def init(self):
         await super().init()
 
         self.http_client_factory.request_engine_builder.kafka_producer = TestKafkaProducer()
-
-    # def application_urls(self):
-    #     return [
-    #         ('^/redirect', RedirectRouter()),
-    #         *super().application_urls()
-    #     ]
 
     def application_config(self):
         return config
@@ -49,19 +40,3 @@ class TestKafkaProducer:
     def disable_and_get_data(self):
         self.request_id = None
         return self.data
-
-
-# class RedirectRouter(tornado.routing.Router):
-#     PERMANENT_REDIRECT_PATTERN = re.compile(r'^/redirect/permanent')
-#     TEMPORARY_REDIRECT_PATTERN = re.compile(r'^/redirect/temporary')
-#
-#     def find_handler(self, request, **kwargs):
-#         application = kwargs['application']
-#         if self.PERMANENT_REDIRECT_PATTERN.match(request.uri):
-#             permanent = True
-#         elif self.TEMPORARY_REDIRECT_PATTERN.match(request.uri):
-#             permanent = False
-#         else:
-#             return get_application_404_handler_delegate(application, request)
-#         redirect_arguments = {'url': '/finish?foo=bar', 'permanent': permanent}
-#         return application.get_handler_delegate(request, RedirectHandler, redirect_arguments)
