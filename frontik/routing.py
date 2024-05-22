@@ -113,7 +113,7 @@ def _iter_submodules(path: MutableSequence[str], prefix: str = '') -> Generator:
         yield from _iter_submodules(paths, name + '.')
 
 
-def import_all_pages(app_module: str) -> None:
+def import_all_pages(app_module: Optional[str]) -> None:
     """Import all pages on startup"""
 
     if app_module is None:

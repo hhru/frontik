@@ -13,8 +13,8 @@ TEST_PROJECTS = f'{FRONTIK_ROOT}/tests/projects'
 class TestIntegrations(unittest.TestCase):
     def setUp(self):
         self.frontik_multiple_worker_app = FrontikTestInstance(
-            f'{FRONTIK_RUN} --app=tests.projects.broken_integration.target_app {common_frontik_start_options} '
-            f' --config={TEST_PROJECTS}/frontik_consul_mock.cfg --workers=3',
+            f'{FRONTIK_RUN} --app=tests.projects.broken_integration.target_app.TestApplication '
+            f'{common_frontik_start_options} --config={TEST_PROJECTS}/frontik_consul_mock.cfg --workers=3',
         )
 
     def tearDown(self):

@@ -1,19 +1,20 @@
 import asyncio
+import importlib
 import logging
 import multiprocessing
+import os
 import time
 from collections.abc import Callable
 from ctypes import c_bool, c_int
 from threading import Lock
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 from aiokafka import AIOKafkaProducer
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from http_client import AIOHttpClientWrapper, HttpClientFactory
 from http_client import options as http_client_options
 from http_client.balancing import RequestBalancerBuilder, Upstream
 from lxml import etree
-from tornado.web import HTTPError
 
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
@@ -49,14 +50,18 @@ class FrontikApplication:
     class DefaultConfig:
         pass
 
-    def __init__(self, app_root: str, **settings: Any) -> None:
+    def __init__(self, app_module_name: Optional[str] = None) -> None:
         self.start_time = time.time()
 
         self.fastapi_app = FastAPI()
 
-        self.app = settings.get('app')
-        self.app_module: str = settings.get('app_module')  # type: ignore
-        self.app_root = app_root
+        self.app_module_name: Optional[str] = app_module_name
+        if app_module_name is None:
+            app_module = importlib.import_module(self.__class__.__module__)
+        else:
+            app_module = importlib.import_module(app_module_name)
+        self.app_root = os.path.dirname(str(app_module.__file__))
+        self.app_name = app_module.__name__
 
         self.config = self.application_config()
 
@@ -87,6 +92,7 @@ class FrontikApplication:
             upstreams_lock,
             send_to_all_workers,
             with_consul,
+            self.app_name,
         )
 
         self.upstream_manager.send_updates()  # initial full state sending
@@ -122,7 +128,7 @@ class FrontikApplication:
             statsd_client=self.statsd_client,
             kafka_producer=kafka_producer,
         )
-        self.http_client_factory = HttpClientFactory(self.app, self.http_client, request_balancer_builder)
+        self.http_client_factory = HttpClientFactory(self.app_name, self.http_client, request_balancer_builder)
         if self.worker_state.single_worker_mode:
             self.worker_state.master_done.value = True
 
@@ -141,7 +147,7 @@ class FrontikApplication:
         not_started_workers = self.worker_state.init_workers_count_down.value
         master_done = self.worker_state.master_done.value
         if not_started_workers > 0 or not master_done:
-            raise HTTPError(
+            raise HTTPException(
                 500,
                 f'some workers are not started not_started_workers={not_started_workers}, master_done={master_done}',
             )

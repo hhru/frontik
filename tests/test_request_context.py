@@ -10,8 +10,6 @@ class TestRequestContext:
         assert json == {
             'page': controller,
             'callback': controller,
-            'executor': None,
-            'future': controller,
             'coroutine_before_yield': controller,
             'coroutine_after_yield': controller,
         }

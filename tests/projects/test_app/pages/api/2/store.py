@@ -14,7 +14,7 @@ async def post_page(handler: Page = get_current_handler()):
     messages = gzip.decompress(handler.body_bytes).decode('utf8')
 
     for message in messages.split('\n'):
-        if message == "":
+        if message == '':
             continue
         sentry_event = json.loads(message)
         Page.exceptions.append(sentry_event)

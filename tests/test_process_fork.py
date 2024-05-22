@@ -72,7 +72,7 @@ class TestProcessFork:
 
         def master_function(shared_data, upstreams_lock, send_to_all_workers):
             shared_data.update(upstreams)
-            upstream_cache = UpstreamManager(shared_data, None, upstreams_lock, send_to_all_workers, False)
+            upstream_cache = UpstreamManager(shared_data, None, upstreams_lock, send_to_all_workers, False, 'test')
             control_master_state['shared_data'] = shared_data
             control_master_state['upstream_cache'] = upstream_cache
             control_master_state['master_func_done'].put(True)

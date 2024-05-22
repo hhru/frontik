@@ -14,11 +14,7 @@ class TestServiceStart(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         service.stop()
 
-    def test_with_only_app(self) -> None:
-        self.app_run(f'{FRONTIK_RUN} --app=tests.projects.test_app --syslog=false --consul_enabled=False')
-
-    def test_with_app_class(self) -> None:
+    def test_app(self) -> None:
         self.app_run(
-            f'{FRONTIK_RUN} --app=test-app --app_class=tests.projects.test_app.TestApplication'
-            f' --syslog=false --consul_enabled=False',
+            f'{FRONTIK_RUN} --app=tests.projects.test_app.TestApplication --syslog=false --consul_enabled=False',
         )

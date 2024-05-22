@@ -32,7 +32,6 @@ import frontik.util
 import frontik.xml_util
 from frontik import media_types, request_context
 from frontik.loggers import BufferedHandler
-from frontik.options import options
 from frontik.version import version as frontik_version
 from frontik.xml_util import dict_to_xml
 
@@ -492,6 +491,6 @@ def get_frontik_and_apps_versions(application: FrontikApplication) -> etree.Elem
     etree.SubElement(versions, 'aiohttp').text = aiohttp.__version__
     etree.SubElement(versions, 'python').text = sys.version.replace('\n', '')
     etree.SubElement(versions, 'event_loop').text = str(type(asyncio.get_event_loop())).split("'")[1]
-    etree.SubElement(versions, 'application', name=options.app).extend(application.application_version_xml())
+    etree.SubElement(versions, 'application', name=application.app_name).extend(application.application_version_xml())
 
     return versions

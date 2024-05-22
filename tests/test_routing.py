@@ -15,11 +15,7 @@ class TestRouting:
         assert 'ok' in html
 
     def test_extra_slash_in_mapping(self):
-        assert frontik_re_app.get_page('//not_simple').status_code == 404
-
-    # def test_module_name_too_large(self):
-    #     MAX_MODULE_NAME_LENGTH = 1000500
-    #     assert frontik_test_app.get_page('/' + 'a' * (MAX_MODULE_NAME_LENGTH + 1)).status_code == 404
+        assert frontik_re_app.get_page('//not_simple').status_code == 200
 
     def test_rewrite_single(self):
         html = frontik_re_app.get_page_text('id/some')

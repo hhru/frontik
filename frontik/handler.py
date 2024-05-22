@@ -12,8 +12,6 @@ from asyncio import Task
 from asyncio.futures import Future
 from typing import TYPE_CHECKING, Any, Optional, Type, TypeVar, Union, overload
 
-import tornado.httputil
-import tornado.web
 from fastapi import Depends, HTTPException, Request, Response
 from fastapi.routing import APIRoute
 from http_client.request_response import USER_AGENT_HEADER, FailFastError, RequestBuilder, RequestResult
@@ -86,7 +84,7 @@ class RedirectPageSignal(Exception):
         self.status = status
 
 
-_ARG_DEFAULT = ''
+_ARG_DEFAULT = object()
 MEDIA_TYPE_PARAMETERS_SEPARATOR_RE = r' *; *'
 OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
 _remove_control_chars_regex = re.compile(r'[\x00-\x08\x0e-\x1f]')
@@ -177,8 +175,7 @@ class PageHandler:
         self.resp_headers = get_default_headers()
         self.resp_cookies: dict[str, dict] = {}
 
-        self.finish_group = AsyncGroup(lambda: None, name='finish')
-        self._handler_finished_notification = self.finish_group.add_notification()
+        self.finish_group = AsyncGroup(name='finish')
 
         self.active_limit = frontik.handler_active_limit.ActiveHandlersLimit(self.statsd_client)
 
@@ -213,7 +210,7 @@ class PageHandler:
     def get_query_argument(
         self,
         name: str,
-        default: Union[str, _T] = _ARG_DEFAULT,
+        default: Union[str, _T] = _ARG_DEFAULT,  # type: ignore
         strip: bool = True,
     ) -> Union[str, _T]:
         args = self._get_arguments(name, strip=strip)
@@ -561,7 +558,8 @@ class PageHandler:
         return self._finished
 
     async def finish_with_postprocessors(self) -> tuple[int, dict, Any]:
-        if not self.finish_group.get_finish_future().done():
+        if self.finish_group.pending():
+            self.log.error('finish_with_postprocessors before finish group done')
             self.finish_group.abort()
 
         content = await self._postprocess()
@@ -608,19 +606,16 @@ class PageHandler:
 
     async def handle_request_exception(self, ex: BaseException) -> tuple[int, dict, Any]:
         if isinstance(ex, FinishPageSignal):
-            self._handler_finished_notification()
             chunk = _data_to_chunk(ex.data, self.resp_headers)
             return self.get_status(), self.resp_headers, chunk
 
         if isinstance(ex, RedirectPageSignal):
-            self._handler_finished_notification()
             self.set_header('Location', ex.url)
             return ex.status, self.resp_headers, None
 
         if isinstance(ex, FinishWithPostprocessors):
             if ex.wait_finish_group:
-                self._handler_finished_notification()
-                await self.finish_group.get_finish_future()
+                await self.finish_group.finish()
             return await self.finish_with_postprocessors()
 
         if isinstance(ex, HTTPErrorWithPostprocessors):
@@ -632,7 +627,12 @@ class PageHandler:
             if ex.headers is None:
                 ex.headers = {'Content-Type': media_types.TEXT_PLAIN}
 
-            return ex.status_code, {**ex.headers, **get_default_headers()}, ex.detail
+            self.log.error('HTTPException with code: %s, reason: %s', ex.status_code, ex.detail)
+
+            if hasattr(self, 'write_error'):
+                return await self.write_error(ex.status_code, exc_info=sys.exc_info())
+
+            return build_error_data(ex.status_code, ex.detail)
 
         if isinstance(ex, FailFastError):
             request = ex.failed_result.request
@@ -646,7 +646,7 @@ class PageHandler:
                 if request.name:
                     request_name = f'{request_name} ({request.name})'
 
-                self.log.warning(
+                self.log.error(
                     'FailFastError: request %s failed with %s code',
                     request_name,
                     ex.failed_result.status_code,
@@ -666,10 +666,6 @@ class PageHandler:
         self.stages_logger.commit_stage('page')
 
         self._reason = kwargs.get('reason')
-        if 'exc_info' in kwargs:
-            exception = kwargs['exc_info'][1]
-            if isinstance(exception, tornado.web.HTTPError) and exception.reason:
-                self._reason = exception.reason
 
         self.set_status(status_code, reason=self._reason)
         return build_error_data(status_code, self._reason)
@@ -971,7 +967,7 @@ class PageHandler:
         client_method: Callable,
         waited: bool,
     ) -> Future[RequestResult]:
-        if waited and (self.is_finished() or self.finish_group.is_finished()):
+        if waited and (self.is_finished() or self.finish_group.done()):
             handler_logger.info(
                 'attempted to make waited http request to %s %s in finished handler, ignoring',
                 host,
@@ -979,7 +975,7 @@ class PageHandler:
             )
 
             future: Future = Future()
-            future.set_exception(AbortAsyncGroup())
+            future.set_exception(AbortAsyncGroup('attempted to make waited http request is finished handler'))
             return future
 
         future = client_method()
@@ -1050,7 +1046,7 @@ def _data_to_chunk(data: Any, headers: dict) -> bytes:
 
 
 async def process_request(request: Request, call_next: Callable, route: APIRoute) -> Response:
-    handler = request.state.handler
+    handler: PageHandler = request.state.handler
 
     try:
         request_context.set_handler_name(f'{route.endpoint.__module__}.{route.endpoint.__name__}')
@@ -1059,9 +1055,7 @@ async def process_request(request: Request, call_next: Callable, route: APIRoute
         handler.stages_logger.commit_stage('prepare')
         _response = await call_next(request)
 
-        handler._handler_finished_notification()
-        await handler.finish_group.get_gathering_future()
-        await handler.finish_group.get_finish_future()
+        await handler.finish_group.finish()
         handler.stages_logger.commit_stage('page')
 
         content = await handler._postprocess()
@@ -1074,12 +1068,12 @@ async def process_request(request: Request, call_next: Callable, route: APIRoute
         try:
             status, headers, content = await handler.handle_request_exception(ex)
         except Exception as exc:
+            handler_logger.error('request processing has failed: %s', exc)
             if getattr(handler, '_debug_enabled', False):
                 status, headers, content = build_error_data()
             elif hasattr(handler, 'write_error'):
                 status, headers, content = await handler.write_error(exc_info=sys.exc_info())
             else:
-                handler_logger.exception('request processing has failed: %s', exc)
                 raise
 
     finally:

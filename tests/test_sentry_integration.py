@@ -11,7 +11,6 @@ from frontik.handler import PageHandler, get_current_handler
 from frontik.options import options
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
-from tests import FRONTIK_ROOT
 from tests.instances import frontik_re_app, frontik_test_app
 
 
@@ -48,7 +47,7 @@ class TestSentryIntegration(FrontikTestBase):
     def frontik_app(self) -> FrontikApplication:
         frontik_test_app.start()
         options.sentry_dsn = f'http://secret@127.0.0.1:{frontik_test_app.port}/2'
-        return FrontikApplication(app='test_app', app_root=FRONTIK_ROOT)
+        return FrontikApplication()
 
     async def test_sentry_exception(self):
         frontik_test_app.get_page('api/2/envelope/', method=requests.delete)
