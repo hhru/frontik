@@ -136,6 +136,13 @@ regex_router = FrontikRegexRouter()
 routers.extend((router, regex_router))
 
 
+def _get_remote_ip(request: Request) -> str:
+    ip = request.headers.get('X-Real-Ip', None) or request.headers.get('X-Forwarded-For', None)
+    if ip is None and request.client:
+        ip = request.client.host
+    return ip or ''
+
+
 def _setup_page_handler(request: Request, cls: Type[PageHandler]) -> None:
     # create legacy PageHandler and put to request
     handler = cls(
@@ -147,7 +154,7 @@ def _setup_page_handler(request: Request, cls: Type[PageHandler]) -> None:
         request.state.start_time,
         request.url.path,
         request.state.path_params,
-        request.client.host if request.client else '',
+        _get_remote_ip(request),
         request.method,
     )
 
