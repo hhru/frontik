@@ -191,7 +191,7 @@ def make_not_found_response(frontik_app, path):
 
 
 class RoutingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, _call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, _ignored_call_next: Callable) -> Response:
         request.state.start_time = time.time()
 
         routing_logger.info('requested url: %s', request.url.path)
@@ -201,8 +201,6 @@ class RoutingMiddleware(BaseHTTPMiddleware):
             check_request_id(request_id)
 
         with request_context.request_context(request, request_id):
-            request.state.body_bytes = await request.body()
-
             route: APIRoute
             route, page_cls = _plain_routes.get((request.url.path, request.method), (None, None))
             request.state.path_params = {}
@@ -215,6 +213,7 @@ class RoutingMiddleware(BaseHTTPMiddleware):
                 routing_logger.error('match for request url %s "%s" not found', request.method, request.url.path)
                 return make_not_found_response(request.app.frontik_app, request.url.path)
 
+            request.state.body_bytes = await request.body()
             _setup_page_handler(request, page_cls)
 
             response = await process_request(request, route.get_route_handler(), route)

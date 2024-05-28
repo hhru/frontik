@@ -155,8 +155,9 @@ def run_server(frontik_app: FrontikApplication, sock: Optional[socket.socket] = 
     for router in routers:
         fastapi_app.include_router(router)
 
-    fastapi_app.user_middleware.insert(1, Middleware(RoutingMiddleware))
+    # because on idx=0 we have OpenTelemetryMiddleware
     fastapi_app.user_middleware.insert(1, Middleware(RequestCancelledMiddleware))
+    fastapi_app.user_middleware.insert(1, Middleware(RoutingMiddleware))  # should be last, because it ignores call_next
 
     config = uvicorn.Config(
         fastapi_app,
