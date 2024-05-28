@@ -5,6 +5,7 @@ import random
 from typing import TYPE_CHECKING, Optional
 from urllib.parse import urlparse
 
+import opentelemetry.instrumentation.fastapi
 from http_client import client_request_context, response_status_code_context
 from http_client.options import options as http_client_options
 from opentelemetry import trace
@@ -19,6 +20,7 @@ from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from starlette.types import Scope
 
 from frontik import request_context
 from frontik.integrations import Integration, integrations_logger
@@ -51,6 +53,15 @@ class FrontikSpanProcessor(BatchSpanProcessor):
         super().on_end(span=span)
 
 
+def monkey_patch_route_details(scope: Scope) -> tuple:
+    route = scope['path']
+    span_name = route or scope.get('method', '')
+    attributes = {}
+    if route:
+        attributes[SpanAttributes.HTTP_ROUTE] = route
+    return span_name, attributes
+
+
 class TelemetryIntegration(Integration):
     def __init__(self):
         self.aiohttp_instrumentor = aiohttp_client.AioHttpClientInstrumentor()
@@ -58,6 +69,8 @@ class TelemetryIntegration(Integration):
     def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
         if not options.opentelemetry_enabled:
             return None
+
+        opentelemetry.instrumentation.fastapi._get_route_details = monkey_patch_route_details
 
         integrations_logger.info('start telemetry')
 
