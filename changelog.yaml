@@ -1,3 +1,9 @@
+-   name: 8.0.3
+    date: '2024-05-28T18:23:00.837524+03:00'
+    description: ''
+    instructions: ''
+    compatible: true
+
 -   name: 8.0.1
     date: '2024-05-16T14:00:49.986260+03:00'
     description: add destination host
