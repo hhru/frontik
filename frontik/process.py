@@ -90,10 +90,12 @@ def fork_workers(
         time.sleep(0.1)
     _master_function_wrapper(worker_state, master_function)
     worker_state.master_done.value = True
-    _supervise_workers(worker_state, worker_function_wrapped)
+    _supervise_workers(worker_state, worker_function_wrapped, master_before_shutdown_action)
 
 
-def _supervise_workers(worker_state: WorkerState, worker_function: Callable) -> None:
+def _supervise_workers(
+    worker_state: WorkerState, worker_function: Callable, master_before_shutdown_action: Callable
+) -> None:
     while worker_state.children:
         try:
             pid, status = os.wait()
@@ -114,6 +116,14 @@ def _supervise_workers(worker_state: WorkerState, worker_function: Callable) -> 
 
         if os.WIFSIGNALED(status):
             log.warning('child %d (pid %d) killed by signal %d, restarting', worker_id, pid, os.WTERMSIG(status))
+
+            # TODO remove this block  # noqa
+            worker_state.terminating = True
+            master_before_shutdown_action()
+            for pid, worker_id in worker_state.children.items():
+                log.info('sending %s to child %d (pid %d)', signal.Signals(os.WTERMSIG(status)).name, worker_id, pid)
+                os.kill(pid, signal.SIGTERM)
+
         elif os.WEXITSTATUS(status) != 0:
             log.warning('child %d (pid %d) exited with status %d, restarting', worker_id, pid, os.WEXITSTATUS(status))
         else:

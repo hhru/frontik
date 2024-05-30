@@ -76,7 +76,7 @@ class TelemetryIntegration(Integration):
 
         resource = Resource(
             attributes={
-                ResourceAttributes.SERVICE_NAME: options.app,  # type: ignore
+                ResourceAttributes.SERVICE_NAME: app.app_name,
                 ResourceAttributes.SERVICE_VERSION: app.application_version(),  # type: ignore
                 ResourceAttributes.HOST_NAME: options.node_name,
                 ResourceAttributes.CLOUD_REGION: http_client_options.datacenter,

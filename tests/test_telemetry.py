@@ -142,7 +142,7 @@ class TestFrontikTesting(FrontikTestBase):
         return app
 
     async def test_parent_span(self, frontik_app: FrontikApplication) -> None:
-        await self.fetch_json('/page_a')
+        await self.fetch('/page_a')
         BATCH_SPAN_PROCESSOR[0].force_flush()
         assert len(SPAN_STORAGE) == 4
         client_a_span = find_span('http.request.cloud.region', 'externalRequest')
