@@ -117,12 +117,14 @@ def _supervise_workers(
         if os.WIFSIGNALED(status):
             log.warning('child %d (pid %d) killed by signal %d, restarting', worker_id, pid, os.WTERMSIG(status))
 
-            # TODO remove this block  # noqa
-            worker_state.terminating = True
+            # TODO remove this block # noqa
             master_before_shutdown_action()
             for pid, worker_id in worker_state.children.items():
                 log.info('sending %s to child %d (pid %d)', signal.Signals(os.WTERMSIG(status)).name, worker_id, pid)
                 os.kill(pid, signal.SIGTERM)
+            log.info('all children terminated, exiting')
+            time.sleep(options.stop_timeout)
+            sys.exit(0)
 
         elif os.WEXITSTATUS(status) != 0:
             log.warning('child %d (pid %d) exited with status %d, restarting', worker_id, pid, os.WEXITSTATUS(status))
