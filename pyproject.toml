@@ -114,7 +114,7 @@ ignore = [
     # should be ignored
     'ANN101','ANN102','D102','D101','CPY001','D100','D107','D106','B008','D103','D104','D105','D202',
     'RET505','RET506','RET504','RSE102','TCH003','TCH002',
-    'COM812', 'ISC001', 'PT015',
+    'COM812', 'ISC001', 'PT015', 'FIX002',
 ]
 
 [tool.ruff.lint.isort]
