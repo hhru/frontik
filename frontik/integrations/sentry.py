@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Optional
 
 import sentry_sdk
@@ -28,26 +27,33 @@ class SentryIntegration(Integration):
             integrations_logger.info('sentry integration is disabled: sentry_dsn option is not configured')
             return None
 
+        integrations = [
+            AioHttpIntegration(),
+            FastApiIntegration(),
+            StarletteIntegration(),
+            AtexitIntegration(),
+            DedupeIntegration(),
+            ModulesIntegration(),
+            StdlibIntegration(),
+        ]
+
+        if options.sentry_exception_integration:
+            integrations.append(ExcepthookIntegration())
+
+        if options.sentry_logging_integration:
+            integrations.append(LoggingIntegration())
+
         sentry_sdk.init(
             dsn=options.sentry_dsn,
             max_breadcrumbs=options.sentry_max_breadcrumbs,
             default_integrations=False,
             auto_enabling_integrations=False,
-            integrations=[
-                AioHttpIntegration(),
-                FastApiIntegration(),
-                StarletteIntegration(),
-                AtexitIntegration(),
-                DedupeIntegration(),
-                ExcepthookIntegration(),
-                ModulesIntegration(),
-                StdlibIntegration(),
-                LoggingIntegration(level=None, event_level=logging.WARNING),
-            ],
+            integrations=integrations,
             sample_rate=options.sentry_sample_rate,
             enable_tracing=options.sentry_enable_tracing,
             traces_sample_rate=options.sentry_traces_sample_rate,
             in_app_include=list(filter(None, options.sentry_in_app_include.split(','))),
+            profiles_sample_rate=options.sentry_profiles_sample_rate,
         )
 
         return None
