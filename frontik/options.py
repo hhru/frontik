@@ -79,6 +79,10 @@ class Options:
 
     sentry_dsn: Optional[str] = None
     sentry_max_breadcrumbs: int = 0
+    sentry_sample_rate: float = 1.0
+    sentry_enable_tracing: Optional[bool] = None
+    sentry_traces_sample_rate: Optional[float] = None
+    sentry_in_app_include: str = ''
 
     send_timeout_stats_interval_ms: int = 60000
 
