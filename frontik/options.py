@@ -83,6 +83,9 @@ class Options:
     sentry_enable_tracing: Optional[bool] = None
     sentry_traces_sample_rate: Optional[float] = None
     sentry_in_app_include: str = ''
+    sentry_exception_integration: bool = False
+    sentry_logging_integration: bool = False
+    sentry_profiles_sample_rate: Optional[float] = None
 
     send_timeout_stats_interval_ms: int = 60000
 
