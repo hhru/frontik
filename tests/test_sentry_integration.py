@@ -20,7 +20,7 @@ class Page(PageHandler):
 
 
 @router.get('/sentry_error', cls=Page)
-async def get_page(handler: Page = get_current_handler()):
+async def get_page(handler: Page = get_current_handler()) -> None:
     ip = handler.get_query_argument('ip', None)
     extra = handler.get_query_argument('extra_key', None)
     a = 155
@@ -84,7 +84,7 @@ class TestSentryIntegration(FrontikTestBase):
 
         event = sentry_events[0]
         assert len(event['breadcrumbs']['values']) == 0
-        assert event.get('modules') is None
+        assert event.get('modules') is not None
         assert event['request']['url'].endswith('/sentry_error') is True
         assert event['request']['method'] == 'PUT'
         assert event['request']['headers']['maheaderkey'] == 'MaHeaderValue'
