@@ -14,6 +14,7 @@ from functools import partial
 from threading import Lock
 from typing import Any, Callable, Optional, Union
 
+import aiomonitor
 import anyio
 import tornado.autoreload
 import uvicorn
@@ -78,7 +79,7 @@ def main(config_file: Optional[str] = None) -> None:
         else:
             # run in single process mode
             gc.enable()
-            _run_worker(app)
+            _run_worker(app, 0)
     except Exception as e:
         log.exception('frontik application exited with exception: %s', e)
         sys.exit(1)
@@ -98,15 +99,8 @@ def _worker_listener_handler(app: FrontikApplication, data: list[Upstream]) -> N
     app.upstream_manager.update_upstreams(data)
 
 
-def _run_worker(app: FrontikApplication) -> None:
+def _run_worker(app: FrontikApplication, w_id) -> None:
     MDC.init('worker')
-
-    try:
-        import uvloop
-    except ImportError:
-        log.info('There is no installed uvloop; use asyncio event loop')
-    else:
-        uvloop.install()
 
     loop = asyncio.get_event_loop()
     executor = ThreadPoolExecutor(options.common_executor_pool_size)
@@ -118,7 +112,11 @@ def _run_worker(app: FrontikApplication) -> None:
             loop.stop()
 
     initialize_application_task.add_done_callback(initialize_application_task_result_handler)
-    loop.run_forever()
+    if w_id == 0:
+        with aiomonitor.start_monitor(loop=loop):
+            loop.run_forever()
+    else:
+        loop.run_forever()
     # to raise init exception if any
     initialize_application_task.result()
 
