@@ -4,8 +4,6 @@ import contextvars
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Optional
 
-from fastapi import Request
-
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
@@ -13,29 +11,24 @@ if TYPE_CHECKING:
 
 
 class _Context:
-    __slots__ = ('handler_name', 'log_handler', 'request', 'request_id')
+    __slots__ = ('handler_name', 'log_handler', 'request_id')
 
-    def __init__(self, request: Optional[Request], request_id: Optional[str]) -> None:
-        self.request = request
+    def __init__(self, request_id: Optional[str]) -> None:
         self.request_id = request_id
         self.handler_name: Optional[str] = None
         self.log_handler: Optional[DebugBufferedHandler] = None
 
 
-_context = contextvars.ContextVar('context', default=_Context(None, None))
+_context = contextvars.ContextVar('context', default=_Context(None))
 
 
 @contextmanager
-def request_context(request: Request, request_id: str) -> Iterator:
-    token = _context.set(_Context(request, request_id))
+def request_context(request_id: str) -> Iterator:
+    token = _context.set(_Context(request_id))
     try:
         yield
     finally:
         _context.reset(token)
-
-
-def get_request():
-    return _context.get().request
 
 
 def get_request_id() -> Optional[str]:
