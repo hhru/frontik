@@ -20,6 +20,10 @@ from frontik.options import options
 from frontik.server import bind_socket, run_server
 from frontik.util import make_url, safe_template
 
+import multiprocessing
+from ctypes import c_bool, c_int
+from frontik.process import WorkerState
+
 
 class FrontikTestBase:
     @pytest.fixture(scope='session')
@@ -38,6 +42,11 @@ class FrontikTestBase:
         sock = bind_socket(options.host, 0)
         options.port = sock.getsockname()[1]
 
+        init_workers_count_down = multiprocessing.Value(c_int, options.workers)
+        master_done = multiprocessing.Value(c_bool, False)
+        count_down_lock = multiprocessing.Lock()
+        worker_state = WorkerState(init_workers_count_down, master_done, count_down_lock)  # type: ignore
+        frontik_app.worker_state = worker_state
         await frontik_app.init()
 
         async def _server_coro() -> None:

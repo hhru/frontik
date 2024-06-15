@@ -13,6 +13,10 @@ from datetime import timedelta
 from functools import partial
 from threading import Lock
 from typing import Any, Callable, Optional, Union
+import multiprocessing
+from ctypes import c_bool, c_int
+import pickle
+import os
 
 import anyio
 import tornado.autoreload
@@ -24,10 +28,13 @@ from frontik.app import FrontikApplication
 from frontik.config_parser import parse_configs
 from frontik.loggers import MDC
 from frontik.options import options
-from frontik.process import fork_workers
+from frontik.process import fork_workers, WorkerState
 from frontik.routing import RoutingMiddleware, import_all_pages, routers
+from frontik.options import set_opts
+from frontik.loggers import bootstrap_core_logging
 
 log = logging.getLogger('server')
+LISTENER_TASK = set()  # save task from garbage collector
 
 
 def main(config_file: Optional[str] = None) -> None:
@@ -56,60 +63,149 @@ def main(config_file: Optional[str] = None) -> None:
         log.exception('application class "%s" not found', options.app_class)
         sys.exit(1)
 
-    application = getattr(app_module, app_class_name) if app_class_name is not None else FrontikApplication
+    app_t = app_module_name, app_class_name
+
+    init_workers_count_down = multiprocessing.Value(c_int, options.workers)
+    master_done = multiprocessing.Value(c_bool, False)
+    count_down_lock = multiprocessing.Lock()
+    worker_state = WorkerState(init_workers_count_down, master_done, count_down_lock)  # type: ignore
 
     try:
-        app = application(app_module_name)
+        # app = application(app_module_name)
 
         gc.disable()
         gc.collect()
         gc.freeze()
-        if options.workers != 1:
+        if options.workers != 1 or True:
             fork_workers(
-                worker_state=app.worker_state,
+                worker_state=worker_state,
                 num_workers=options.workers,
-                master_function=partial(_multi_worker_master_function, app),
-                master_before_shutdown_action=lambda: app.upstream_manager.deregister_service_and_close(),  # noqa PLW0108
-                worker_function=partial(_run_worker, app),
-                worker_listener_handler=partial(_worker_listener_handler, app),
+                master_function=partial(_multi_worker_master_function, app_t),
+                master_before_shutdown_action=_master_before_shutdown_action,
+                worker_function=partial(_run_worker, app_t),
             )
         else:
             # run in single process mode
             gc.enable()
-            _run_worker(app)
+            _run_worker(app_t, options, worker_state)
     except Exception as e:
         log.exception('frontik application exited with exception: %s', e)
         sys.exit(1)
 
 
+app_refs: list[FrontikApplication] = []
+ready_for_serve = asyncio.Future()
+
+
 def _multi_worker_master_function(
-    app: FrontikApplication,
+    app_t: tuple,
     upstreams: dict[str, Upstream],
     upstreams_lock: Lock,
     send_to_all_workers: Callable,
 ) -> None:
+    log.info('master function: create app')
+    app_module_name, app_class_name = app_t
+    app_module = importlib.import_module(app_module_name)
+    application = getattr(app_module, app_class_name) if app_class_name is not None else FrontikApplication
+    app = application(app_module_name)
+    if len(app_refs) == 0:
+        app_refs.append(app)
+    else:
+        raise RuntimeError('(master) app instantiation got race condition')
+
+    log.info('master function: app created, create upstream manager')
     app.create_upstream_manager(upstreams, upstreams_lock, send_to_all_workers, with_consul=options.consul_enabled)
+    log.info('master function: upstream manager created, register in consul')
     app.upstream_manager.register_service()
 
 
-def _worker_listener_handler(app: FrontikApplication, data: list[Upstream]) -> None:
-    app.upstream_manager.update_upstreams(data)
+def _master_before_shutdown_action():
+    if len(app_refs) == 0:
+        return
+    app_refs[0].upstream_manager.deregister_service_and_close()
 
 
-def _run_worker(app: FrontikApplication) -> None:
-    MDC.init('worker')
+async def _worker_listener() -> None:
+    while not os.path.exists('/tmp/my_consul'):
+        await asyncio.sleep(0.1)
+
+    while len(app_refs) == 0:
+        await asyncio.sleep(0.1)
+
+    while len(os.listdir('/tmp/my_consul')) == 0:
+        await asyncio.sleep(0.1)
+
+    last_fn: float = None
+    log.info(f'start watching consul data')
 
     try:
-        import uvloop
-    except ImportError:
-        log.info('There is no installed uvloop; use asyncio event loop')
-    else:
-        uvloop.install()
+        while True:
+            await asyncio.sleep(0.1)
+
+            file_list: list[float] = [float(fn) for fn in os.listdir('/tmp/my_consul')]
+            if len(file_list) == 0:
+                continue
+
+            file_list.sort()
+            if last_fn == file_list[-1]:
+                if not ready_for_serve.done():
+                    ready_for_serve.set_result(True)
+                continue
+
+            fn = None
+            try:
+                for fn in file_list:
+                    if last_fn and fn <= last_fn:
+                        continue
+
+                    if fn == file_list[-1]:
+                        await asyncio.sleep(0.1)
+
+                    log.info(f'read new consul data from /tmp/my_consul/{fn}')
+                    with open('/tmp/my_consul/' + str(fn), 'rb') as c_file:
+                        data = pickle.load(c_file)
+
+                    log.info(f'received data from /tmp/my_consul/{fn}')
+                    _worker_listener_handler(data)
+                    last_fn = fn
+            except Exception as exc:
+                log.info(f'something went wrong with reading /tmp/my_consul/{fn} ----- {type(exc)} {exc}')
+                continue
+    except Exception as ex:
+        log.exception(f'fatal error with reading consul ----- {type(ex)} {ex}')
+        raise
+
+
+def _worker_listener_handler(data: list[Upstream]) -> None:
+    if len(app_refs) == 0:
+        return
+    app_refs[0].upstream_manager.update_upstreams(data)
+
+
+def _run_worker(app_t: tuple, options2, worker_state) -> None:
+    gc.enable()
+    MDC.init('worker')
+
+    worker_state.is_master = False
+    set_opts(options2)
+    bootstrap_core_logging(options.log_level, options.log_json, options.suppressed_loggers)
 
     loop = asyncio.get_event_loop()
+
+    app_module_name, app_class_name = app_t
+    app_module = importlib.import_module(app_module_name)
+    application = getattr(app_module, app_class_name) if app_class_name is not None else FrontikApplication
+    app = application(app_module_name)
+
+    app.worker_state = worker_state
+
     executor = ThreadPoolExecutor(options.common_executor_pool_size)
     loop.set_default_executor(executor)
     init_task = loop.create_task(_init_app(app))
+
+    log.info(f'create listener task loop={id(loop)}')
+    task11 = loop.create_task(_worker_listener())
+    LISTENER_TASK.add(task11)
 
     def initialize_application_task_result_handler(task):
         if task.exception():
@@ -208,11 +304,18 @@ def run_server(frontik_app: FrontikApplication, sock: Optional[socket.socket] = 
 
 async def _init_app(frontik_app: FrontikApplication) -> None:
     await frontik_app.init()
+
+    if len(app_refs) == 0:
+        app_refs.append(frontik_app)
+    else:
+        raise RuntimeError('(worker) app instantiation got race condition')
+
     server_task = run_server(frontik_app)
     log.info('Successfully inited application %s', frontik_app.app_name)
     with frontik_app.worker_state.count_down_lock:
         frontik_app.worker_state.init_workers_count_down.value -= 1
         log.info('worker is up, remaining workers = %s', frontik_app.worker_state.init_workers_count_down.value)
+    await ready_for_serve
     await server_task
 
 

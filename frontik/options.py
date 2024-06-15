@@ -130,3 +130,8 @@ def parse_config_file(path: str) -> None:
             new_value = int(new_value)
 
         setattr(options, attr.name, new_value)
+
+
+def set_opts(options2):
+    for attr in fields(Options):
+        setattr(options, attr.name, getattr(options2, attr.name))
