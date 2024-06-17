@@ -23,7 +23,7 @@ pydantic = '^2.3.0'
 tornado = '6.3.2'
 orjson = '*'
 http-client = {git = 'https://github.com/hhru/balancing-http-client.git', tag = '2.1.12'}
-python-consul2-hh = {git = 'https://github.com/hhru/python-consul2', tag = 'v0.2.9'}
+python-consul2-hh = {git = 'https://github.com/hhru/python-consul2', tag = 'v0.2.10'}
 opentelemetry-sdk = '1.17.0'
 opentelemetry-api = '1.17.0'
 opentelemetry-exporter-otlp-proto-grpc = '1.17.0'

@@ -200,7 +200,7 @@ class RoutingMiddleware(BaseHTTPMiddleware):
         if options.validate_request_id:
             check_request_id(request_id)
 
-        with request_context.request_context(request, request_id):
+        with request_context.request_context(request_id):
             route: APIRoute
             route, page_cls = _plain_routes.get((request.url.path, request.method), (None, None))
             request.state.path_params = {}
