@@ -4,11 +4,10 @@ from tests.instances import find_free_port, frontik_balancer_app, frontik_broken
 class TestHttpError:
     free_port = None
 
-    @classmethod
-    def setup_class(cls) -> None:
+    def setup_method(self) -> None:
         frontik_balancer_app.start()
         frontik_broken_balancer_app.start()
-        cls.free_port = find_free_port(from_port=10000, to_port=20000)
+        self.free_port = find_free_port(from_port=10000, to_port=20000)
 
     def make_url(self, url: str) -> str:
         return (

@@ -44,10 +44,11 @@ async def put_page():
 
 class TestSentryIntegration(FrontikTestBase):
     @pytest.fixture(scope='class')
-    def frontik_app(self) -> FrontikApplication:
+    def frontik_app(self) -> Any:
         frontik_test_app.start()
         options.sentry_dsn = f'http://secret@127.0.0.1:{frontik_test_app.port}/2'
-        return FrontikApplication()
+        yield FrontikApplication()
+        options.sentry_dsn = None
 
     async def test_sentry_exception(self):
         frontik_test_app.get_page('api/2/envelope/', method=requests.delete)
