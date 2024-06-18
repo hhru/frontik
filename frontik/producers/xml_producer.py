@@ -172,7 +172,7 @@ class XMLProducerFactory(ProducerFactory):
             options.xsl_cache_step,
         )
 
-        self.executor = ThreadPoolExecutor(options.xsl_executor_pool_size)
+        self.executor = ThreadPoolExecutor(options.xsl_executor_pool_size, thread_name_prefix='xsl_shit')
 
     def get_producer(self, handler: PageHandler) -> XmlProducer:
         return XmlProducer(handler, xml_cache=self.xml_cache, xsl_cache=self.xsl_cache, executor=self.executor)

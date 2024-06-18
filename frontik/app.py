@@ -74,10 +74,10 @@ class FrontikApplication:
 
         self.statsd_client: Union[StatsDClient, StatsDClientStub] = create_statsd_client(options, self)
 
-        init_workers_count_down = multiprocessing.Value(c_int, options.workers)
-        master_done = multiprocessing.Value(c_bool, False)
-        count_down_lock = multiprocessing.Lock()
-        self.worker_state = WorkerState(init_workers_count_down, master_done, count_down_lock)  # type: ignore
+        # init_workers_count_down = multiprocessing.Value(c_int, options.workers)
+        # master_done = multiprocessing.Value(c_bool, False)
+        # count_down_lock = multiprocessing.Lock()
+        # self.worker_state = WorkerState(init_workers_count_down, master_done, count_down_lock)  # type: ignore
 
     def create_upstream_manager(
         self,
