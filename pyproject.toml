@@ -31,6 +31,7 @@ opentelemetry-instrumentation-fastapi = '0.38b0'  # check monkey patches on upda
 opentelemetry-instrumentation-aiohttp-client = '0.38b0'
 fastapi = '0.105.0'
 aiokafka = '0.8.1'
+granian = '1.4.3'
 sentry-sdk = '2.1.1'
 aioresponses = '0.7.4'
 tornado-httpclient-mock = '0.2.3'
