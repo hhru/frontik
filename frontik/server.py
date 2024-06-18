@@ -13,6 +13,7 @@ from datetime import timedelta
 from functools import partial
 from threading import Lock
 from typing import Any, Callable, Optional, Union
+import aiomonitor
 
 import anyio
 import tornado.autoreload
@@ -76,7 +77,7 @@ def main(config_file: Optional[str] = None) -> None:
         else:
             # run in single process mode
             gc.enable()
-            _run_worker(app)
+            _run_worker(app, 0)
     except Exception as e:
         log.exception('frontik application exited with exception: %s', e)
         sys.exit(1)
@@ -96,7 +97,7 @@ def _worker_listener_handler(app: FrontikApplication, data: list[Upstream]) -> N
     app.upstream_manager.update_upstreams(data)
 
 
-def _run_worker(app: FrontikApplication) -> None:
+def _run_worker(app: FrontikApplication, worker_id) -> None:
     MDC.init('worker')
 
     try:
@@ -109,7 +110,7 @@ def _run_worker(app: FrontikApplication) -> None:
     loop = asyncio.get_event_loop()
     executor = ThreadPoolExecutor(options.common_executor_pool_size)
     loop.set_default_executor(executor)
-    init_task = loop.create_task(_init_app(app))
+    init_task = loop.create_task(_init_app(app, worker_id))
 
     def initialize_application_task_result_handler(task):
         if task.exception():
@@ -206,7 +207,16 @@ def run_server(frontik_app: FrontikApplication, sock: Optional[socket.socket] = 
     return server_task
 
 
-async def _init_app(frontik_app: FrontikApplication) -> None:
+async def _init_app(frontik_app: FrontikApplication, worker_id) -> None:
+    if worker_id == 0:
+        log.info('Apply aiomonitor for worker 0')
+        with aiomonitor.start_monitor(asyncio.get_event_loop()):
+            await _init_app_original(frontik_app)
+    else:
+        await _init_app_original(frontik_app)
+
+
+async def _init_app_original(frontik_app: FrontikApplication) -> None:
     await frontik_app.init()
     server_task = run_server(frontik_app)
     log.info('Successfully inited application %s', frontik_app.app_name)

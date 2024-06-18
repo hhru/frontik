@@ -192,7 +192,7 @@ def _worker_function_wrapper(worker_function, worker_listener_handler, read_fd, 
 
     task = loop.create_task(_worker_listener(read_fd, worker_listener_handler))
     LISTENER_TASK.add(task)
-    worker_function()
+    worker_function(worker_id)
 
 
 async def _worker_listener(read_fd: int, worker_listener_handler: Callable) -> None:
