@@ -18,6 +18,7 @@ from http_client.request_response import USER_AGENT_HEADER, FailFastError, Reque
 from pydantic import BaseModel, ValidationError
 from starlette.datastructures import Headers, QueryParams
 from tornado.httputil import format_timestamp, parse_body_arguments
+from tornado import httputil
 
 import frontik.auth
 import frontik.handler_active_limit
@@ -166,7 +167,7 @@ class PageHandler:
             )
 
         self._status = 200
-        self._reason: Optional[str] = None
+        self._reason: str = httputil.responses[200]
 
     def __repr__(self):
         return f'{self.__module__}.{self.__class__.__name__}'
@@ -518,7 +519,7 @@ class PageHandler:
         status_code = status_code if status_code in ALLOWED_STATUSES else http.client.SERVICE_UNAVAILABLE
 
         self._status = status_code
-        self._reason = reason
+        self._reason = reason or httputil.responses.get(status_code, "Unknown")
 
     def get_status(self) -> int:
         return self._status
@@ -1045,7 +1046,7 @@ def _data_to_chunk(data: Any, headers: dict) -> bytes:
     return result
 
 
-async def process_request(request: Request, call_next: Callable, route: APIRoute) -> Response:
+async def process_request(request: Request, call_next: Callable, route: APIRoute) -> tuple[Response, str]:
     handler: PageHandler = request.state.handler
 
     try:
@@ -1099,4 +1100,4 @@ async def process_request(request: Request, call_next: Callable, route: APIRoute
     handler.log_request(request)
     handler.on_finish(status)
 
-    return response
+    return response, handler._reason

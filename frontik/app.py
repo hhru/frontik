@@ -24,8 +24,14 @@ from frontik.handler import PageHandler, get_current_handler
 from frontik.integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
 from frontik.options import options
 from frontik.process import WorkerState
-from frontik.routing import router
+from frontik.routing import router, RoutingMiddleware, process_request, make_not_found_response, make_fastapi_request
 from frontik.service_discovery import UpstreamManager
+from tornado.web import Application
+from tornado import httputil
+from frontik.util import check_request_id, generate_uniq_timestamp_request_id
+from frontik import request_context
+from fastapi import Response
+from tornado.httputil import HTTPHeaders
 
 app_logger = logging.getLogger('app_logger')
 
@@ -44,7 +50,7 @@ async def get_status(handler: PageHandler = get_current_handler()) -> None:
     handler.finish(handler.application.get_current_status())
 
 
-class FrontikApplication:
+class FrontikApplication(Application):
     request_id = ''
 
     class DefaultConfig:
@@ -53,7 +59,8 @@ class FrontikApplication:
     def __init__(self, app_module_name: Optional[str] = None) -> None:
         self.start_time = time.time()
 
-        self.fastapi_app = FastAPI()
+        super().__init__()
+        # self.fastapi_app = FastAPI()
 
         self.app_module_name: Optional[str] = app_module_name
         if app_module_name is None:
@@ -78,6 +85,21 @@ class FrontikApplication:
         master_done = multiprocessing.Value(c_bool, False)
         count_down_lock = multiprocessing.Lock()
         self.worker_state = WorkerState(init_workers_count_down, master_done, count_down_lock)  # type: ignore
+
+        # self.router = FrontikRouter(self)
+        #
+        # core_handlers: list[Any] = [
+        #     (r'/version/?', VersionHandler),
+        #     (r'/status/?', StatusHandler),
+        #     (r'.*', self.router),
+        # ]
+        # for router in routers:
+        #     fastapi_app.include_router(router) это вообще не нужно
+
+        self.routing = RoutingMiddleware(None)
+
+    def find_handler(self, tornado_request: httputil.HTTPServerRequest, **kwargs):
+        return BadAssDelegate(self, tornado_request)
 
     def create_upstream_manager(
         self,
@@ -164,3 +186,54 @@ class FrontikApplication:
 
     def get_kafka_producer(self, producer_name: str) -> Optional[AIOKafkaProducer]:  # pragma: no cover
         pass
+
+
+class BadAssDelegate:
+    def __init__(self, frontik_app, tornado_request):
+        self.chunks = []
+        self.frontik_app = frontik_app
+        self.tornado_request = tornado_request
+
+        request_id = tornado_request.headers.get('X-Request-Id') or generate_uniq_timestamp_request_id()
+        if options.validate_request_id:
+            check_request_id(request_id)
+
+        self.request_id = request_id
+
+    def headers_received(self, start_line, headers):
+        pass
+
+    def data_received(self, chunk):
+        self.chunks.append(chunk)
+
+    def finish(self):
+        with request_context.request_context(self.request_id):
+            async def tornado_badass():
+                route, page_cls, path_params = self.frontik_app.routing.find_route(self.tornado_request.path,
+                                                                                   self.tornado_request.method)
+
+                if route is None:
+                    response = make_not_found_response(self, self.tornado_request.path)
+                    reason = 'Not Found'
+                else:
+                    body_bytes = b"".join(self.chunks)
+                    fastapi_request = make_fastapi_request(self.frontik_app, self.tornado_request, page_cls,
+                                                           path_params, body_bytes)
+                    response, reason = await process_request(fastapi_request, route.get_route_handler(), route)
+
+                assert self.tornado_request.connection is not None
+                self.tornado_request.connection.set_close_callback(None)
+
+                start_line = httputil.ResponseStartLine("", response.status_code, reason)
+                future = self.tornado_request.connection.write_headers(
+                    start_line, HTTPHeaders(response.headers), response.body
+                )
+                self.tornado_request.connection.finish()
+                return future
+
+            task = asyncio.create_task(tornado_badass())
+            return task
+
+
+    def on_connection_close(self):
+        self.chunks = None

@@ -10,11 +10,13 @@ from typing import Any, Callable, MutableSequence, Optional, Type, Union
 from fastapi import APIRouter, Request, Response
 from fastapi.routing import APIRoute
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.datastructures import Headers, QueryParams, URL, Address
 
 from frontik import request_context
 from frontik.handler import PageHandler, build_error_data, get_default_headers, process_request
 from frontik.options import options
 from frontik.util import check_request_id, generate_uniq_timestamp_request_id
+from tornado.httputil import HTTPServerRequest, split_host_and_port
 
 routing_logger = logging.getLogger('frontik.routing')
 
@@ -161,10 +163,34 @@ def _setup_page_handler(request: Request, cls: Type[PageHandler]) -> None:
     request.state.handler = handler
 
 
-def _find_regex_route(request: Request) -> Union[tuple[APIRoute, Type[PageHandler], dict], tuple[None, None, None]]:
+class TipaFastApi:
+    def __init__(self, frontik_app):
+        self.frontik_app = frontik_app
+
+
+def make_fastapi_request(frontik_app, request: HTTPServerRequest, cls: Type[PageHandler], path_params, body_bytes) -> Request:
+    fastapi_header = Headers(request.headers)
+    fastapi_request = Request({
+        'type': 'http',
+        'query_string': QueryParams(request.query),
+        'headers': fastapi_header,
+        'app': TipaFastApi(frontik_app),
+        'method': request.method,
+        'client': Address(*split_host_and_port(request.host.lower())),
+    })
+    fastapi_request._url = URL(request.full_url())
+    fastapi_request._headers = fastapi_header
+    fastapi_request.state.body_bytes = body_bytes
+    fastapi_request.state.start_time = request._start_time
+    fastapi_request.state.path_params = path_params
+    _setup_page_handler(fastapi_request, cls)
+    return fastapi_request
+
+
+def _find_regex_route(path: str, method: str) -> Union[tuple[APIRoute, Type[PageHandler], dict], tuple[None, None, None]]:
     for pattern, route, cls in _regex_mapping:
-        match = pattern.match(request.url.path)
-        if match and next(iter(route.methods), None) == request.method:
+        match = pattern.match(path)
+        if match and next(iter(route.methods), None) == method:
             return route, cls, match.groupdict()
 
     return None, None, None
@@ -191,30 +217,16 @@ def make_not_found_response(frontik_app, path):
 
 
 class RoutingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, _ignored_call_next: Callable) -> Response:
-        request.state.start_time = time.time()
+    def find_route(self, path: str, method: str) -> tuple[APIRoute, type, dict]:
+        route: APIRoute
+        route, page_cls = _plain_routes.get((path, method), (None, None))
+        path_params = {}
 
-        routing_logger.info('requested url: %s', request.url.path)
+        if route is None:
+            route, page_cls, path_params = _find_regex_route(path, method)
 
-        request_id = request.headers.get('X-Request-Id') or generate_uniq_timestamp_request_id()
-        if options.validate_request_id:
-            check_request_id(request_id)
+        if route is None:
+            routing_logger.error('match for request url %s "%s" not found', method, path)
+            return None, None, None
 
-        with request_context.request_context(request_id):
-            route: APIRoute
-            route, page_cls = _plain_routes.get((request.url.path, request.method), (None, None))
-            request.state.path_params = {}
-
-            if route is None:
-                route, page_cls, path_params = _find_regex_route(request)
-                request.state.path_params = path_params
-
-            if route is None:
-                routing_logger.error('match for request url %s "%s" not found', request.method, request.url.path)
-                return make_not_found_response(request.app.frontik_app, request.url.path)
-
-            request.state.body_bytes = await request.body()
-            _setup_page_handler(request, page_cls)
-
-            response = await process_request(request, route.get_route_handler(), route)
-            return response
+        return route, page_cls, path_params
