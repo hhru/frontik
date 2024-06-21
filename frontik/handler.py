@@ -599,7 +599,8 @@ class PageHandler(RequestHandler):
         for name, value in self._mandatory_headers.items():
             self.set_header(name, value)
 
-        self.set_header('X-Frontik-Execution-Time', str(self.request.request_time()))
+        self.set_header(
+            'Server-Timing', f'frontik;desc="frontik execution time";dur={str(self.request.request_time())}')
 
         for args, kwargs in self._mandatory_cookies.values():
             try:
