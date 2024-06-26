@@ -10,6 +10,7 @@ import sys
 import time
 from asyncio import Task
 from asyncio.futures import Future
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, Optional, Type, TypeVar, Union, overload
 
 from fastapi import Depends, HTTPException, Request, Response
@@ -28,7 +29,7 @@ from frontik import media_types, request_context
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.debug import DEBUG_HEADER_NAME, DebugMode, DebugTransform
 from frontik.futures import AbortAsyncGroup, AsyncGroup
-from frontik.http_status import ALLOWED_STATUSES
+from frontik.http_status import ALLOWED_STATUSES, NON_CRITICAL_BAD_GATEWAY
 from frontik.json_builder import FrontikJsonDecodeError, json_decode
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.loggers.stages import StagesLogger
@@ -550,7 +551,9 @@ class PageHandler:
         return await self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
 
     async def __return_error(self, response_code: int, **kwargs: Any) -> tuple[int, dict, Any]:
-        return await self.send_error(response_code if 300 <= response_code < 500 else 502, **kwargs)
+        if 300 <= response_code < 500 or response_code == NON_CRITICAL_BAD_GATEWAY:
+            return await self.send_error(response_code, **kwargs)
+        return await self.send_error(HTTPStatus.BAD_GATEWAY, **kwargs)
 
     # Finish page
 
