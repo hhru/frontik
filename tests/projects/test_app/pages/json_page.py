@@ -1,5 +1,3 @@
-from fastapi import Request
-
 from frontik import media_types
 from frontik.handler import PageHandler, get_current_handler
 from frontik.routing import router
@@ -19,13 +17,13 @@ class Page(PageHandler):
 
 
 @router.get('/json_page', cls=Page)
-async def get_page(request: Request, handler: Page = get_current_handler()) -> None:
+async def get_page(handler: Page = get_current_handler()) -> None:
     invalid_json = handler.get_query_argument('invalid', 'false')
 
     requests = {
-        'req1': handler.post_url(request.headers.get('host', ''), handler.path, data={'param': 1}),
+        'req1': handler.post_url(handler.request.headers.get('host', ''), handler.path, data={'param': 1}),
         'req2': handler.post_url(
-            request.headers.get('host', ''), handler.path, data={'param': 2, 'invalid': invalid_json}
+            handler.request.headers.get('host', ''), handler.path, data={'param': 2, 'invalid': invalid_json}
         ),
     }
     data = await gather_dict(requests)
@@ -33,7 +31,7 @@ async def get_page(request: Request, handler: Page = get_current_handler()) -> N
     if handler.get_query_argument('template_error', 'false') == 'true':
         del data['req1']
 
-    handler.set_template(handler.get_query_argument('template', 'jinja.html'))
+    handler.set_template(handler.get_query_argument('template', 'jinja.html'))  # type: ignore
     handler.json.put(data)
 
 

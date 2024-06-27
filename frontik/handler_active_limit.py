@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
-
-from fastapi import HTTPException
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Iterator, Union
 
 from frontik.options import options
 
@@ -18,14 +17,13 @@ class ActiveHandlersLimit:
     high_watermark_ratio = 0.75
 
     def __init__(self, statsd_client: StatsDClient | StatsDClientStub) -> None:
-        self._acquired = False
+        self.acquired = False
         self._statsd_client = statsd_client
         self._high_watermark = int(options.max_active_handlers * self.high_watermark_ratio)
 
         if ActiveHandlersLimit.count > options.max_active_handlers:
             handlers_count_logger.warning('dropping request: too many active handlers (%s)', ActiveHandlersLimit.count)
-
-            raise HTTPException(503)
+            return
 
         elif ActiveHandlersLimit.count > self._high_watermark:
             handlers_count_logger.warning(
@@ -38,13 +36,22 @@ class ActiveHandlersLimit:
         self.acquire()
 
     def acquire(self) -> None:
-        if not self._acquired:
+        if not self.acquired:
             ActiveHandlersLimit.count += 1
-            self._acquired = True
+            self.acquired = True
             self._statsd_client.gauge('handler.active_count', ActiveHandlersLimit.count)
 
     def release(self) -> None:
-        if self._acquired:
+        if self.acquired:
             ActiveHandlersLimit.count -= 1
-            self._acquired = False
+            self.acquired = False
             self._statsd_client.gauge('handler.active_count', ActiveHandlersLimit.count)
+
+
+@contextmanager
+def request_limiter(statsd_client: Union[StatsDClient, StatsDClientStub]) -> Iterator:
+    active_limit = ActiveHandlersLimit(statsd_client)
+    try:
+        yield active_limit.acquired
+    finally:
+        active_limit.release()

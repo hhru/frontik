@@ -10,6 +10,7 @@ from jinja2.utils import concat
 from tornado.escape import to_unicode
 
 from frontik import json_builder, media_types
+from frontik.auth import check_debug_auth_or_finish
 from frontik.options import options
 from frontik.producers import ProducerFactory
 from frontik.util import get_abs_path, get_cookie_or_url_param_value
@@ -39,7 +40,7 @@ class JsonProducer:
 
     def __call__(self):
         if get_cookie_or_url_param_value(self.handler, 'notpl') is not None:
-            self.handler.require_debug_access()
+            check_debug_auth_or_finish(self.handler)
             self.log.debug('ignoring templating because notpl parameter is passed')
             return self._finish_with_json()
 
@@ -108,7 +109,7 @@ class JsonProducer:
             msg = 'Cannot apply template, no Jinja2 environment configured'
             raise Exception(msg)
 
-        if self.handler.resp_headers.get('Content-Type', None) is None:
+        if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.TEXT_HTML)
 
         try:
@@ -141,7 +142,7 @@ class JsonProducer:
 
     async def _finish_with_json(self) -> tuple[str, None]:
         self.log.debug('finishing without templating')
-        if self.handler.resp_headers.get('Content-Type', None) is None:
+        if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.APPLICATION_JSON)
 
         return self.json.to_string(), None

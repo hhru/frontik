@@ -1,5 +1,5 @@
-from fastapi import HTTPException
 from http_client.balancing import Upstream
+from tornado.web import HTTPError
 
 from frontik import media_types
 from frontik.handler import PageHandler, get_current_handler
@@ -26,7 +26,7 @@ async def get_page(handler=get_current_handler()):
     )
 
     if result.failed or result.data is None:
-        raise HTTPException(500)
+        raise HTTPError(500)
 
     handler.text = result.data
 

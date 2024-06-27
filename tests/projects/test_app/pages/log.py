@@ -12,8 +12,7 @@ async def get_page(handler=get_current_handler()):
     handler.log.info('info')
 
     try:
-        msg = 'test'
-        raise Exception(msg)
+        raise Exception('test')
     except Exception:
         handler.log.exception('exception')
         handler.log.error('error', stack_info=True)

@@ -15,7 +15,7 @@ class Page(PageHandler):
 
     @classmethod
     async def _pp(cls, handler):
-        if handler.method != 'POST':
+        if handler.request.method != 'POST':
             handler.counter += 1
             cls.counter_static = handler.counter
 

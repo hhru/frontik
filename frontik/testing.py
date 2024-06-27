@@ -10,6 +10,7 @@ from http_client import AIOHttpClientWrapper
 from http_client.request_response import RequestBuilder, RequestResult
 from lxml import etree
 from tornado.escape import utf8
+from tornado.httpserver import HTTPServer
 from tornado_mock.httpclient import patch_http_client, set_stub
 from yarl import URL
 
@@ -17,8 +18,7 @@ from frontik.app import FrontikApplication
 from frontik.loggers import bootstrap_core_logging
 from frontik.media_types import APPLICATION_JSON, APPLICATION_PROTOBUF, APPLICATION_XML, TEXT_PLAIN
 from frontik.options import options
-from frontik.server import bind_socket, run_server
-from frontik.util import make_url, safe_template
+from frontik.util import bind_socket, make_url, safe_template
 
 
 class FrontikTestBase:
@@ -40,13 +40,13 @@ class FrontikTestBase:
 
         await frontik_app.init()
 
-        async def _server_coro() -> None:
-            await run_server(frontik_app, sock)
+        http_server = HTTPServer(frontik_app)
+        http_server.add_sockets([sock])
 
-        server_task = asyncio.create_task(_server_coro())
         yield
-        server_task.cancel()
-        await asyncio.wait_for(frontik_app.http_client.client_session.close(), timeout=5)
+
+        http_server.stop()
+        await asyncio.wait_for(http_server.close_all_connections(), timeout=5)
 
     @pytest.fixture(scope='class')
     def with_tornado_mocks(self):

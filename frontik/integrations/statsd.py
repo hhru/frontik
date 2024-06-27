@@ -27,7 +27,7 @@ class StatsdIntegration(Integration):
         return None
 
     def initialize_handler(self, handler):
-        handler.statsd_client = self.statsd_client
+        pass
 
 
 def _convert_tag(name: str, value: Any) -> str:

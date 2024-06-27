@@ -1,5 +1,5 @@
-from fastapi import HTTPException
 from http_client.balancing import Upstream, UpstreamConfig
+from tornado.web import HTTPError
 
 from frontik import media_types
 from frontik.handler import PageHandler, get_current_handler
@@ -30,11 +30,11 @@ async def get_page(handler=get_current_handler()):
     )
 
     if res1.error or res1.data is None:
-        raise HTTPException(500)
+        raise HTTPError(500)
     handler.text = res1.data
 
     if res2.status_code != 503:
-        raise HTTPException(500)
+        raise HTTPError(500)
 
     check_all_requests_done(handler, 'retry_non_idempotent_503')
     check_all_requests_done(handler, 'do_not_retry_non_idempotent_503')

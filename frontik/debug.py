@@ -21,17 +21,19 @@ from urllib.parse import parse_qs, urlparse
 
 import aiohttp
 import tornado
-from fastapi import Request
 from lxml import etree
 from lxml.builder import E
-from starlette.datastructures import Headers
+from tornado import httputil
 from tornado.escape import to_unicode, utf8
 from tornado.httputil import HTTPHeaders
 
 import frontik.util
 import frontik.xml_util
 from frontik import media_types, request_context
+from frontik.auth import check_debug_auth
 from frontik.loggers import BufferedHandler
+from frontik.options import options
+from frontik.util import get_cookie_or_param_from_request
 from frontik.version import version as frontik_version
 from frontik.xml_util import dict_to_xml
 
@@ -41,7 +43,6 @@ if TYPE_CHECKING:
     from http_client.request_response import RequestBuilder, RequestResult
 
     from frontik.app import FrontikApplication
-    from frontik.handler import PageHandler
 
 debug_log = logging.getLogger('frontik.debug')
 
@@ -203,7 +204,7 @@ def _params_to_xml(url: str) -> etree.Element:
     return params
 
 
-def _headers_to_xml(request_or_response_headers: dict | Headers) -> etree.Element:
+def _headers_to_xml(request_or_response_headers: HTTPHeaders) -> etree.Element:
     headers = etree.Element('headers')
     for name, value in request_or_response_headers.items():
         if name != 'Cookie':
@@ -212,7 +213,7 @@ def _headers_to_xml(request_or_response_headers: dict | Headers) -> etree.Elemen
     return headers
 
 
-def _cookies_to_xml(request_or_response_headers: dict) -> etree.Element:
+def _cookies_to_xml(request_or_response_headers: HTTPHeaders) -> etree.Element:
     cookies = etree.Element('cookies')
     if 'Cookie' in request_or_response_headers:
         _cookies: SimpleCookie = SimpleCookie(request_or_response_headers['Cookie'])
@@ -365,18 +366,39 @@ DEBUG_HEADER_NAME = 'X-Hh-Debug'
 DEBUG_XSL = os.path.join(os.path.dirname(__file__), 'debug/debug.xsl')
 
 
+def _data_to_chunk(data: Any, headers: HTTPHeaders) -> bytes:
+    result: bytes = b''
+    if data is None:
+        return result
+    if isinstance(data, str):
+        result = data.encode('utf-8')
+    elif isinstance(data, dict):
+        chunk = json.dumps(data).replace('</', '<\\/')
+        result = chunk.encode('utf-8')
+        headers['Content-Type'] = 'application/json; charset=UTF-8'
+    elif isinstance(data, bytes):
+        result = data
+    else:
+        raise TypeError(f'unexpected type of chunk - {type(data)}')
+    return result
+
+
 class DebugTransform:
-    def __init__(self, application: FrontikApplication, request: Request) -> None:
+    def __init__(self, application: FrontikApplication, debug_mode: DebugMode) -> None:
         self.application = application
-        self.request: Request = request
+        self.debug_mode = debug_mode
 
     def is_enabled(self) -> bool:
-        return getattr(self.request.state.handler, '_debug_enabled', False)
+        return self.debug_mode.enabled
 
     def is_inherited(self) -> bool:
-        return getattr(self.request.state.handler, '_debug_inherited', False)
+        return self.debug_mode.inherited
 
-    def transform_chunk(self, status_code: int, original_headers: dict, chunk: bytes) -> tuple[int, dict, bytes]:
+    def transform_chunk(
+        self, tornado_request: httputil.HTTPServerRequest, status_code: int, original_headers: HTTPHeaders, data: bytes
+    ) -> tuple[int, HTTPHeaders, bytes]:
+        chunk = _data_to_chunk(data, original_headers)
+
         if not self.is_enabled():
             return status_code, original_headers, chunk
 
@@ -390,9 +412,9 @@ class DebugTransform:
         debug_log_data = request_context.get_log_handler().produce_all()  # type: ignore
         debug_log_data.set('code', str(int(status_code)))
         debug_log_data.set('handler-name', request_context.get_handler_name())
-        debug_log_data.set('started', _format_number(self.request.state.start_time))
-        debug_log_data.set('request-id', str(self.request.state.handler.request_id))
-        debug_log_data.set('stages-total', _format_number((time.time() - self.request.state.start_time) * 1000))
+        debug_log_data.set('started', _format_number(tornado_request._start_time))
+        debug_log_data.set('request-id', str(tornado_request.request_id))  # type: ignore
+        debug_log_data.set('stages-total', _format_number((time.time() - tornado_request._start_time) * 1000))
 
         try:
             debug_log_data.append(E.versions(_pretty_print_xml(get_frontik_and_apps_versions(self.application))))
@@ -408,10 +430,10 @@ class DebugTransform:
 
         debug_log_data.append(
             E.request(
-                E.method(self.request.method),
-                _params_to_xml(str(self.request.url)),
-                _headers_to_xml(self.request.headers),
-                _cookies_to_xml(self.request.headers),  # type: ignore
+                E.method(tornado_request.method),
+                _params_to_xml(str(tornado_request.uri)),
+                _headers_to_xml(tornado_request.headers),
+                _cookies_to_xml(tornado_request.headers),
             ),
         )
 
@@ -432,7 +454,7 @@ class DebugTransform:
             upstream.set('bgcolor', bgcolor)
             upstream.set('fgcolor', fgcolor)
 
-        if not getattr(self.request.state.handler, '_debug_inherited', False):
+        if not self.debug_mode.inherited:
             try:
                 transform = etree.XSLT(etree.parse(DEBUG_XSL))
                 log_document = utf8(str(transform(debug_log_data)))
@@ -449,35 +471,43 @@ class DebugTransform:
         else:
             log_document = etree.tostring(debug_log_data, encoding='UTF-8', xml_declaration=True)
 
-        return 200, wrap_headers, log_document
+        return 200, HTTPHeaders(wrap_headers), log_document
 
 
 class DebugMode:
-    def __init__(self, handler: PageHandler) -> None:
-        debug_value = frontik.util.get_cookie_or_url_param_value(handler, 'debug')
-
-        self.mode_values = debug_value.split(',') if debug_value is not None else ''
-        self.inherited = handler.get_header(DEBUG_HEADER_NAME, None)
-        self.pass_debug: bool = False
+    def __init__(self, tornado_request: httputil.HTTPServerRequest) -> None:
+        self.debug_value = get_cookie_or_param_from_request(tornado_request, 'debug')
+        self.mode_values = self.debug_value.split(',') if self.debug_value is not None else ''
+        self.inherited = tornado_request.headers.get(DEBUG_HEADER_NAME, None)
+        self.pass_debug = False
+        self.enabled = False
+        self.profile_xslt = False
+        self.failed_auth_header = None
 
         if self.inherited:
             debug_log.debug('debug mode is inherited due to %s request header', DEBUG_HEADER_NAME)
-            handler._debug_inherited = True  # type: ignore
 
-        if debug_value is not None or self.inherited:
-            handler.require_debug_access()
+        if self.debug_value is not None or self.inherited:
+            if options.debug:
+                self.on_auth_ok()
+                return
 
-            self.enabled = handler._debug_enabled = True  # type: ignore
-            self.pass_debug = 'nopass' not in self.mode_values or bool(self.inherited)
-            self.profile_xslt = 'xslt' in self.mode_values
+            self.failed_auth_header = check_debug_auth(tornado_request, options.debug_login, options.debug_password)
+            if not self.failed_auth_header:
+                self.on_auth_ok()
 
-            request_context.set_log_handler(DebugBufferedHandler())
+    def on_auth_ok(self) -> None:
+        self.enabled = True
+        self.pass_debug = 'nopass' not in self.mode_values or bool(self.inherited)
+        self.profile_xslt = 'xslt' in self.mode_values
 
-            if self.pass_debug:
-                debug_log.debug('%s header will be passed to all requests', DEBUG_HEADER_NAME)
-        else:
-            self.enabled = False
-            self.profile_xslt = False
+        request_context.set_log_handler(DebugBufferedHandler())
+
+        if self.pass_debug:
+            debug_log.debug('%s header will be passed to all requests', DEBUG_HEADER_NAME)
+
+    def auth_failed(self) -> bool:
+        return self.failed_auth_header is not None
 
 
 def get_frontik_and_apps_versions(application: FrontikApplication) -> etree.Element:

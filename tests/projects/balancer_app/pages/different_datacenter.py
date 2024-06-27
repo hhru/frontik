@@ -1,6 +1,6 @@
-from fastapi import HTTPException
 from http_client.balancing import Upstream
 from http_client.request_response import NoAvailableServerException
+from tornado.web import HTTPError
 
 from frontik import media_types
 from frontik.handler import PageHandler, get_current_handler
@@ -21,7 +21,7 @@ async def get_page(handler=get_current_handler()):
     result = await handler.post_url('different_datacenter', handler.path)
     for server in upstream.servers:
         if server.stat_requests != 0:
-            raise HTTPException(500)
+            raise HTTPError(500)
 
     if result.exc is not None and isinstance(result.exc, NoAvailableServerException):
         handler.text = 'no backend available'

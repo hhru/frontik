@@ -1,7 +1,5 @@
 import asyncio
 
-from fastapi import Request
-
 from frontik.handler import AbortAsyncGroup, PageHandler, get_current_handler
 from frontik.routing import router
 
@@ -24,10 +22,10 @@ class Page(PageHandler):
 
 
 @router.get('/async_group/not_waited_requests', cls=Page)
-async def get_page(request: Request, handler: Page = get_current_handler()) -> None:
+async def get_page(handler: Page = get_current_handler()) -> None:
     if not handler.data:
         handler.json.put({'get': True})
-        asyncio.create_task(handler.coro(request.headers.get('host', '')))
+        asyncio.create_task(handler.coro(handler.request.headers.get('host', '')))
     else:
         while not all(x in handler.data for x in ('post_made', 'delete_cancelled')):
             await asyncio.sleep(0.05)

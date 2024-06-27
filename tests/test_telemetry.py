@@ -6,14 +6,14 @@ from fastapi import Request
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import ReadableSpan, SpanExporter, SpanExportResult
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ReadableSpan, SpanExporter, SpanExportResult
 from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 from opentelemetry.semconv.resource import ResourceAttributes
 
 from frontik import request_context
 from frontik.app import FrontikApplication
 from frontik.handler import PageHandler, get_current_handler
-from frontik.integrations.telemetry import FrontikIdGenerator, FrontikSpanProcessor, get_netloc
+from frontik.integrations.telemetry import FrontikIdGenerator, get_netloc
 from frontik.options import options
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
@@ -98,7 +98,7 @@ def make_otel_provider() -> TracerProvider:
 
 
 SPAN_STORAGE: list[ReadableSpan] = []
-BATCH_SPAN_PROCESSOR: list[FrontikSpanProcessor] = []
+BATCH_SPAN_PROCESSOR: list[BatchSpanProcessor] = []
 
 
 def find_span(attr: str, value: Any) -> Optional[ReadableSpan]:
@@ -126,7 +126,7 @@ class TestFrontikTesting(FrontikTestBase):
 
         test_exporter = TestExporter()
         provider = make_otel_provider()
-        batch_span_processor = FrontikSpanProcessor(test_exporter)
+        batch_span_processor = BatchSpanProcessor(test_exporter)
         provider.add_span_processor(batch_span_processor)
         trace.set_tracer_provider(provider)
 

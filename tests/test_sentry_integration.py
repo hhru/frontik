@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 import requests
 import sentry_sdk
-from fastapi import HTTPException
+from tornado.web import HTTPError
 
 from frontik.app import FrontikApplication
 from frontik.handler import PageHandler, get_current_handler
@@ -33,7 +33,7 @@ async def get_page(handler: Page = get_current_handler()) -> None:
 
 @router.post('/sentry_error', cls=Page)
 async def post_page():
-    raise HTTPException(500, 'my_HTTPError')
+    raise HTTPError(500, 'my_HTTPError')
 
 
 @router.put('/sentry_error', cls=Page)
@@ -88,7 +88,7 @@ class TestSentryIntegration(FrontikTestBase):
         assert event.get('modules') is not None
         assert event['request']['url'].endswith('/sentry_error') is True
         assert event['request']['method'] == 'PUT'
-        assert event['request']['headers']['maheaderkey'] == 'MaHeaderValue'
+        assert event['request']['headers']['Maheaderkey'] == 'MaHeaderValue'
         assert event['extra']['extra_key'] == 'extra_value'
         assert event['user']['id'] == '123456'
 

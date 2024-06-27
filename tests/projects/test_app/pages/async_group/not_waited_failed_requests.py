@@ -1,5 +1,3 @@
-from fastapi import Request
-
 from frontik.handler import PageHandler, get_current_handler
 from frontik.routing import router
 
@@ -14,13 +12,14 @@ class Page(PageHandler):
 
 
 @router.get('/async_group/not_waited_failed_requests', cls=Page)
-async def get_page(request: Request, handler: Page = get_current_handler()) -> None:
+async def get_page(handler: Page = get_current_handler()) -> None:
     if not handler.data:
+        host = handler.request.headers.get('host', '')
         # HTTP request with waited=False and fail_fast=True should not influence responses to client
-        await handler.head_url(request.headers.get('host', ''), handler.path, waited=False, fail_fast=True)
-        await handler.post_url(request.headers.get('host', ''), handler.path, waited=False, fail_fast=True)
-        await handler.put_url(request.headers.get('host', ''), handler.path, waited=False, fail_fast=True)
-        await handler.delete_url(request.headers.get('host', ''), handler.path, waited=False, fail_fast=True)
+        await handler.head_url(host, handler.path, waited=False, fail_fast=True)
+        await handler.post_url(host, handler.path, waited=False, fail_fast=True)
+        await handler.put_url(host, handler.path, waited=False, fail_fast=True)
+        await handler.delete_url(host, handler.path, waited=False, fail_fast=True)
 
         handler.json.put({'get': True})
     else:

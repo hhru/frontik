@@ -34,7 +34,7 @@ async def get_page(handler=get_current_handler()):
 @router.post('/http_client/post_url', cls=PageHandler)
 async def post_page(handler: PageHandler = get_current_handler()):
     errors_count = 0
-    body_parts = handler.body_bytes.split(b'\r\n--')
+    body_parts = handler.request.body.split(b'\r\n--')
 
     for part in body_parts:
         field_part = re.search(rb'name="(?P<name>.+)"\r\n\r\n(?P<value>.*)', part)

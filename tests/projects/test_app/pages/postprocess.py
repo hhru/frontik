@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from tornado.web import HTTPError
 
 from frontik.handler import PageHandler, get_current_handler
 from frontik.routing import router
@@ -12,7 +12,7 @@ class ContentPostprocessor:
 class Page(PageHandler):
     @staticmethod
     def _pp_1(handler):
-        raise HTTPException(400)
+        raise HTTPError(400)
 
     @staticmethod
     def _pp_2(handler):

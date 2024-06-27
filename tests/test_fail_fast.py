@@ -24,7 +24,7 @@ class TestFailFast:
 
     def test_fail_fast_without_done(self):
         response = frontik_test_app.get_page('fail_fast/fail_fast_without_done')
-        assert response.status_code == 500
+        assert response.status_code == 401
 
     def test_fail_fast_default(self):
         response = frontik_test_app.get_page('fail_fast?fail_fast_default=true&code=400', method=requests.post)
@@ -48,5 +48,5 @@ class TestFailFast:
         assert response.status_code == 500
 
     def test_fail_fast_with_producer(self):
-        response = frontik_test_app.get_page('fail_fast/with_postprocessors')
-        assert response.status_code == 500
+        response = frontik_test_app.get_page_json('fail_fast/with_postprocessors')
+        assert response['error'] == 'some_error'

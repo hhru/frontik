@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from tornado.web import HTTPError
 
 from frontik.handler import PageHandler
 from frontik.routing import router
@@ -6,4 +6,4 @@ from frontik.routing import router
 
 @router.put('/profile_with_retry', cls=PageHandler)
 async def put_page():
-    raise HTTPException(503, 'broken')
+    raise HTTPError(503, 'broken')

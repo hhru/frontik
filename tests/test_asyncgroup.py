@@ -1,42 +1,125 @@
-import asyncio
 import logging
+import unittest
+from functools import partial
 
-import pytest
+from tornado.concurrent import Future
+from tornado.testing import ExpectLog
 
-from frontik.futures import AsyncGroup
+from frontik.futures import AsyncGroup, async_logger
 
 logging.root.setLevel(logging.NOTSET)
 
 
-class TestAsyncGroup:
-    async def test_exception_in_first(self) -> None:
-        async def callback1() -> None:
-            raise Exception('callback1 error')
+class TestAsyncGroup(unittest.TestCase):
+    async def test_callbacks(self):
+        data = []
 
-        async def callback2() -> None:
-            await asyncio.sleep(0)
+        def callback2():
+            data.append(2)
 
-        ag = AsyncGroup(name='test_group')
-        ag.add_future(asyncio.create_task(callback1()))
-        ag.add_future(asyncio.create_task(callback2()))
+        def finish_callback():
+            self.assertEqual(data, [1, 2])
+            data.append(3)
 
-        with pytest.raises(Exception, match='callback1 error'):
-            await ag.finish()
+        ag = AsyncGroup(finish_callback)
+        cb1 = ag.add(partial(data.append, 1))
+        cb2 = ag.add(callback2)
 
-        assert ag.done() is True
+        self.assertEqual(ag._finished, False)
 
-    async def test_exception_in_last(self) -> None:
-        async def callback1() -> None:
-            await asyncio.sleep(0)
+        ag.try_finish()
 
-        async def callback2() -> None:
-            raise Exception('callback2 error')
+        self.assertEqual(ag._finished, False)
 
-        ag = AsyncGroup(name='test_group')
-        ag.add_future(asyncio.create_task(callback1()))
-        ag.add_future(asyncio.create_task(callback2()))
+        cb1()
 
-        with pytest.raises(Exception, match='callback2 error'):
-            await ag.finish()
+        self.assertEqual(ag._finished, False)
 
-        assert ag.done() is True
+        cb2()
+
+        self.assertEqual(ag._finished, True)
+        self.assertEqual(data, [1, 2, 3])
+
+    def test_notifications(self) -> None:
+        f: Future = Future()
+        ag = AsyncGroup(partial(f.set_result, True))
+        not1 = ag.add_notification()
+        not2 = ag.add_notification()
+
+        self.assertEqual(ag._finished, False)
+
+        not1()
+
+        self.assertEqual(ag._finished, False)
+
+        not2('params', are='ignored')
+
+        self.assertEqual(ag._finished, True)
+        self.assertEqual(f.result(), True)
+
+        with ExpectLog(async_logger, r'.*trying to finish already finished AsyncGroup\(name=None, finished=True\)'):
+            ag.finish()
+
+    def test_finish(self) -> None:
+        f: Future = Future()
+        ag = AsyncGroup(partial(f.set_result, True))
+
+        self.assertEqual(ag._finished, False)
+
+        ag.add_notification()
+        ag.finish()
+
+        self.assertEqual(ag._finished, True)
+        self.assertEqual(f.result(), True)
+
+    def test_exception_in_first(self) -> None:
+        def callback1():
+            msg = 'callback1 error'
+            raise Exception(msg)
+
+        def callback2():
+            self.fail('callback2 should not be called')
+
+        def finish_callback():
+            self.fail('finish_callback should not be called')
+
+        ag = AsyncGroup(finish_callback, name='test_group')
+        cb1 = ag.add(callback1)
+        cb2 = ag.add(callback2)
+
+        self.assertRaises(Exception, cb1)
+        self.assertEqual(ag._finished, True)
+
+        with ExpectLog(async_logger, r'.*ignoring executing callback in AsyncGroup\(name=test_group, finished=True\)'):
+            cb2()
+
+        self.assertEqual(ag._finished, True)
+
+    def test_exception_in_last(self) -> None:
+        def callback2():
+            msg = 'callback1 error'
+            raise Exception(msg)
+
+        def finish_callback():
+            self.fail('finish_callback should not be called')
+
+        ag = AsyncGroup(finish_callback, name='test_group')
+        cb1 = ag.add(lambda: None)
+        cb2 = ag.add(callback2)
+
+        cb1()
+
+        with ExpectLog(async_logger, r'.*aborting AsyncGroup\(name=test_group, finished=False\)'):
+            self.assertRaises(Exception, cb2)
+
+        self.assertEqual(ag._finished, True)
+
+    def test_exception_in_final(self) -> None:
+        def finish_callback():
+            msg = 'callback1 error'
+            raise Exception(msg)
+
+        ag = AsyncGroup(finish_callback)
+
+        self.assertRaises(Exception, ag.try_finish)
+        self.assertEqual(ag._finished, True)

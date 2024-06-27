@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 import sentry_sdk
+from http_client.request_response import FailFastError
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from sentry_sdk.integrations.atexit import AtexitIntegration
 from sentry_sdk.integrations.dedupe import DedupeIntegration
@@ -11,6 +12,8 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration, StarletteIntegra
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.integrations.modules import ModulesIntegration
 from sentry_sdk.integrations.stdlib import StdlibIntegration
+from sentry_sdk.integrations.tornado import TornadoIntegration
+from tornado.web import HTTPError
 
 from frontik.integrations import Integration, integrations_logger
 from frontik.options import options
@@ -35,6 +38,7 @@ class SentryIntegration(Integration):
             DedupeIntegration(),
             ModulesIntegration(),
             StdlibIntegration(),
+            TornadoIntegration(),
         ]
 
         if options.sentry_exception_integration:
@@ -54,6 +58,7 @@ class SentryIntegration(Integration):
             traces_sample_rate=options.sentry_traces_sample_rate,
             in_app_include=list(filter(None, options.sentry_in_app_include.split(','))),
             profiles_sample_rate=options.sentry_profiles_sample_rate,
+            ignore_errors=[HTTPError, FailFastError],
         )
 
         return None
