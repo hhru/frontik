@@ -1,5 +1,5 @@
-from fastapi import HTTPException
 from lxml import etree
+from tornado.web import HTTPError
 
 from frontik.handler import FinishWithPostprocessors, PageHandler, get_current_handler
 from frontik.routing import router
@@ -21,7 +21,7 @@ async def get_page(handler=get_current_handler()):
 
     async def fail_request() -> None:
         await handler.post_url(handler.get_header('host'), handler.path)
-        raise HTTPException(500)
+        raise HTTPError(500)
 
     handler.run_task(fail_request())
 

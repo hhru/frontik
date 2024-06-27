@@ -55,7 +55,7 @@ class TestHttpError:
     def test_write_error_exception(self) -> None:
         response = frontik_test_app.get_page('write_error?fail_write_error=true')
         assert response.status_code == 500
-        assert response.content == b'Internal Server Error'
+        assert response.content == b''
 
     def test_write_error_405(self):
         response = frontik_test_app.get_page('write_error', method=requests.put)

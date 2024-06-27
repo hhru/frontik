@@ -25,7 +25,7 @@ class TestHandler:
 
     def test_delete_post_arguments(self):
         response = frontik_test_app.get_page('handler/delete', method=requests.delete)
-        assert response.status_code == 400
+        assert response.status_code == 422
 
     def test_204(self):
         response = frontik_test_app.get_page('finish_204')

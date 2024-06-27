@@ -112,7 +112,7 @@ class TimeoutChecker:
 def get_timeout_checker(
     outer_caller: Optional[str],
     outer_timeout_ms: float,
-    time_since_outer_request_start_ms_supplier: float,
+    request_start_time: float,
     *,
     threshold_ms: float = 100,
 ) -> TimeoutChecker:
@@ -120,6 +120,6 @@ def get_timeout_checker(
     return TimeoutChecker(
         outer_caller,
         outer_timeout_ms,
-        time_since_outer_request_start_ms_supplier,
+        request_start_time,
         threshold_ms=threshold_ms,
     )

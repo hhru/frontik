@@ -14,6 +14,7 @@ from tornado.ioloop import IOLoop
 import frontik.doc
 import frontik.util
 from frontik import file_cache, media_types
+from frontik.auth import check_debug_auth_or_finish
 from frontik.options import options
 from frontik.producers import ProducerFactory
 from frontik.util import get_abs_path
@@ -49,7 +50,7 @@ class XmlProducer:
 
     def __call__(self):
         if any(frontik.util.get_cookie_or_url_param_value(self.handler, p) is not None for p in ('noxsl', 'notpl')):
-            self.handler.require_debug_access()
+            check_debug_auth_or_finish(self.handler)
             self.log.debug('ignoring XSLT because noxsl/notpl parameter is passed')
             return self._finish_with_xml(escape_xmlns=True)
 
@@ -76,7 +77,7 @@ class XmlProducer:
     async def _finish_with_xslt(self) -> tuple[Optional[str], Optional[list[Any]]]:
         self.log.debug('finishing with XSLT')
 
-        if self.handler.resp_headers.get('Content-Type', None) is None:
+        if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.TEXT_HTML)
 
         def job():
@@ -127,7 +128,7 @@ class XmlProducer:
 
     async def _finish_with_xml(self, escape_xmlns: bool = False) -> tuple[bytes, None]:
         self.log.debug('finishing without XSLT')
-        if self.handler.resp_headers.get('Content-Type', None) is None:
+        if self.handler._headers.get('Content-Type') is None:
             self.handler.set_header('Content-Type', media_types.APPLICATION_XML)
 
         if escape_xmlns:

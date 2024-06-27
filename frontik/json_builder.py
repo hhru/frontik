@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional, Union
+from typing import Annotated, Any, Callable, Optional, Union
 
 import orjson
+from fastapi import Depends, Request
 from pydantic import BaseModel
 from tornado.concurrent import Future
 
@@ -60,8 +61,12 @@ def _encode_value(value: Any) -> Any:
     raise TypeError
 
 
+def json_encode_bytes(obj: Any, default: Callable = _encode_value) -> bytes:
+    return orjson.dumps(obj, default=default, option=orjson.OPT_NON_STR_KEYS)
+
+
 def json_encode(obj: Any, default: Callable = _encode_value) -> str:
-    return orjson.dumps(obj, default=default, option=orjson.OPT_NON_STR_KEYS).decode('utf-8')
+    return json_encode_bytes(obj, default).decode('utf-8')
 
 
 def json_decode(value: Union[str, bytes]) -> Any:
@@ -120,3 +125,13 @@ class JsonBuilder:
             return json_encode(self._concat_chunks())
 
         return json_encode(self._concat_chunks(), default=self._encoder)
+
+    def to_bytes(self) -> bytes:
+        return json_encode_bytes(self._concat_chunks())
+
+
+def get_json_builder(request: Request) -> JsonBuilder:
+    return request['json_builder']
+
+
+JsonBuilderT = Annotated[JsonBuilder, Depends(get_json_builder)]

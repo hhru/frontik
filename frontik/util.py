@@ -6,9 +6,11 @@ import logging
 import os.path
 import random
 import re
+import socket
+import sys
 from string import Template
 from typing import TYPE_CHECKING, Optional
-from urllib.parse import parse_qs, urlencode
+from urllib.parse import urlencode
 from uuid import uuid4
 
 from http_client.util import any_to_bytes, any_to_unicode, to_unicode
@@ -16,6 +18,8 @@ from tornado.escape import utf8
 
 if TYPE_CHECKING:
     from typing import Any
+
+    from tornado.web import httputil
 
     from frontik.handler import PageHandler
 
@@ -82,7 +86,19 @@ def choose_boundary():
 
 
 def get_cookie_or_url_param_value(handler: PageHandler, param_name: str) -> Optional[str]:
-    return handler.get_query_argument(param_name, handler.get_cookie(param_name, None))
+    return handler.get_argument(param_name, handler.get_cookie(param_name, None))
+
+
+def get_cookie_or_param_from_request(tornado_request: httputil.HTTPServerRequest, param_name: str) -> Optional[str]:
+    query = tornado_request.query_arguments.get(param_name)
+    if query:
+        return query[-1].decode()
+
+    cookie = tornado_request.cookies.get('debug', None)
+    if cookie:
+        return cookie.value
+
+    return None
 
 
 def reverse_regex_named_groups(pattern: str, *args: Any, **kwargs: Any) -> str:
@@ -149,11 +165,18 @@ async def gather_dict(coro_dict: dict) -> dict:
     return dict(zip(coro_dict.keys(), results))
 
 
-def tornado_parse_qs_bytes(
-    qs: bytes, keep_blank_values: bool = False, strict_parsing: bool = False
-) -> dict[str, list[bytes]]:
-    result = parse_qs(qs.decode('latin1'), keep_blank_values, strict_parsing, encoding='latin1', errors='strict')
-    encoded = {}
-    for key, values in result.items():
-        encoded[key] = [item.encode('latin1') for item in values]
-    return encoded
+def bind_socket(host: str, port: int) -> socket.socket:
+    sock = socket.socket(family=socket.AF_INET)
+    sock.setblocking(False)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+
+    try:
+        sock.bind((host, port))
+    except OSError as exc:
+        logger.error(exc)
+        sys.exit(1)
+
+    sock.set_inheritable(True)
+    sock.listen()
+    return sock
