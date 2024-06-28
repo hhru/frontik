@@ -8,6 +8,7 @@ from collections.abc import Callable
 from ctypes import c_bool, c_int
 from threading import Lock
 from typing import Awaitable, Optional, Union
+from asyncio import Future
 
 from aiokafka import AIOKafkaProducer
 from fastapi import FastAPI, HTTPException
@@ -67,12 +68,11 @@ async def get_status(handler: PageHandler = get_current_handler()) -> None:
     handler.finish(handler.application.get_current_status())
 
 
+class DefaultConfig:
+    pass
+
+
 class FrontikApplication:
-    request_id = ''
-
-    class DefaultConfig:
-        pass
-
     def __init__(self, app_module_name: Optional[str] = None) -> None:
         self.start_time = time.time()
 
@@ -114,8 +114,30 @@ class FrontikApplication:
         if options.validate_request_id:
             check_request_id(request_id)
 
-        task = asyncio.create_task(execute_page(self, tornado_request, request_id, self.app))
-        return task
+        res_future = Future()
+
+        def cbcb(future: Future):
+            if (ex := future.exception()) is not None:
+                res_future.set_exception(ex)
+                return
+
+            res_future.set_result(future.result())
+
+        async def suka():
+            status, reason, headers, data = await execute_page(self, tornado_request, request_id, self.app)
+
+            assert tornado_request.connection is not None
+            tornado_request.connection.set_close_callback(None)  # type: ignore
+            start_line = httputil.ResponseStartLine('', status, reason)
+            future = tornado_request.connection.write_headers(start_line, headers, data)
+            tornado_request.connection.finish()
+
+            future.add_done_callback(cbcb)
+
+        asyncio.create_task(suka())
+
+        return res_future
+
 
     def create_upstream_manager(
         self,
@@ -171,7 +193,7 @@ class FrontikApplication:
             self.worker_state.master_done.value = True
 
     def application_config(self) -> DefaultConfig:
-        return FrontikApplication.DefaultConfig()
+        return DefaultConfig()
 
     def application_version_xml(self) -> list[etree.Element]:
         version = etree.Element('version')
@@ -201,7 +223,4 @@ class FrontikApplication:
         return {'uptime': uptime_value, 'datacenter': http_client_options.datacenter}
 
     def get_kafka_producer(self, producer_name: str) -> Optional[AIOKafkaProducer]:  # pragma: no cover
-        pass
-
-    def log_request(self, tornado_handler: PageHandler) -> None:
         pass

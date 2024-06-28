@@ -24,7 +24,7 @@ log = logging.getLogger('handler')
 
 async def execute_page(
     frontik_app: FrontikApplication, tornado_request: httputil.HTTPServerRequest, request_id: str, app: FrontikAsgiApp
-) -> None:
+) -> tuple[int, str, HTTPHeaders, bytes]:
     with request_context.request_context(request_id), request_limiter(frontik_app.statsd_client) as accepted:
         log.info('requested url: %s', tornado_request.uri)
         tornado_request.request_id = request_id  # type: ignore
@@ -75,13 +75,7 @@ async def execute_page(
 
         log_request(tornado_request, status)
 
-        assert tornado_request.connection is not None
-        tornado_request.connection.set_close_callback(None)  # type: ignore
-
-        start_line = httputil.ResponseStartLine('', status, reason)
-        future = tornado_request.connection.write_headers(start_line, headers, data)
-        tornado_request.connection.finish()
-        await future
+        return status, reason, headers, data
 
 
 def make_not_found_response(frontik_app: FrontikApplication, path: str) -> tuple[int, str, HTTPHeaders, bytes]:

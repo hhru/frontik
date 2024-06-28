@@ -607,11 +607,37 @@ class PageHandler(RequestHandler):
             self._write_buffer = []
             chunk = None
 
-        finish_future = super().finish(chunk)
-        return finish_future
+        if self._finished:
+            raise RuntimeError("finish() called twice")
+
+        if chunk is not None:
+            self.write(chunk)
+
+        if not self._headers_written:
+            if (
+                self._status_code == 200
+                and self.request.method in ("GET", "HEAD")
+                and "Etag" not in self._headers
+            ):
+                self.set_etag_header()
+                if self.check_etag_header():
+                    self._write_buffer = []
+                    self.set_status(304)
+            if self._status_code in (204, 304) or (100 <= self._status_code < 200):
+                assert not self._write_buffer, (
+                        "Cannot send body with %s" % self._status_code
+                )
+                self._clear_representation_headers()
+            elif "Content-Length" not in self._headers:
+                content_length = sum(len(part) for part in self._write_buffer)
+                self.set_header("Content-Length", content_length)
+
+        future = self.flush(include_footers=True)
+        self._finished = True
+        self.on_finish()
+        return future
 
     def flush(self, include_footers: bool = False) -> Future[None]:
-        assert self.request.connection is not None
         chunk = b''.join(self._write_buffer)
         self._write_buffer = []
         self._headers_written = True
