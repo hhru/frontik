@@ -4,28 +4,23 @@ import gc
 import importlib
 import logging
 import signal
-import socket
 import sys
 from asyncio import Future
-from collections.abc import Awaitable, Coroutine
+from collections.abc import Coroutine
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
 from functools import partial
 from threading import Lock
 from typing import Any, Callable, Optional, Union
 
-import anyio
 import tornado.autoreload
-import uvicorn
 from http_client.balancing import Upstream
-from starlette.middleware import Middleware
+from tornado.httpserver import HTTPServer
 
 from frontik.app import FrontikApplication
 from frontik.config_parser import parse_configs
 from frontik.loggers import MDC
 from frontik.options import options
 from frontik.process import fork_workers
-from frontik.routing import RoutingMiddleware, import_all_pages, routers
 
 log = logging.getLogger('server')
 
@@ -109,79 +104,28 @@ def _run_worker(app: FrontikApplication) -> None:
     loop = asyncio.get_event_loop()
     executor = ThreadPoolExecutor(options.common_executor_pool_size)
     loop.set_default_executor(executor)
-    init_task = loop.create_task(_init_app(app))
+    initialize_application_task = loop.create_task(_init_app(app))
 
-    def initialize_application_task_result_handler(task):
-        if task.exception():
+    def initialize_application_task_result_handler(future):
+        if future.exception():
             loop.stop()
 
-    init_task.add_done_callback(initialize_application_task_result_handler)
+    initialize_application_task.add_done_callback(initialize_application_task_result_handler)
     loop.run_forever()
-
-    if init_task.done() and init_task.exception():
-        raise RuntimeError('worker failed') from init_task.exception()
-
-
-async def periodic_task(callback: Callable, check_timedelta: timedelta) -> None:
-    while True:
-        await asyncio.sleep(check_timedelta.total_seconds())
-        callback()
+    # to raise init exception if any
+    initialize_application_task.result()
 
 
-def bind_socket(host: str, port: int) -> socket.socket:
-    sock = socket.socket(family=socket.AF_INET)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-
-    try:
-        sock.bind((host, port))
-    except OSError as exc:
-        log.error(exc)
-        sys.exit(1)
-
-    sock.set_inheritable(True)
-    return sock
-
-
-def run_server(frontik_app: FrontikApplication, sock: Optional[socket.socket] = None) -> Awaitable:
+def run_server(app: FrontikApplication) -> None:
     """Starts Frontik server for an application"""
     loop = asyncio.get_event_loop()
     log.info('starting server on %s:%s', options.host, options.port)
-
-    anyio.to_thread.run_sync = anyio_noop
-    import_all_pages(frontik_app.app_module_name)
-    fastapi_app = frontik_app.fastapi_app
-    setattr(fastapi_app, 'frontik_app', frontik_app)
-    for router in routers:
-        fastapi_app.include_router(router)
-
-    # because on idx=0 we have OpenTelemetryMiddleware
-    fastapi_app.user_middleware.insert(1, Middleware(RequestCancelledMiddleware))
-    fastapi_app.user_middleware.insert(1, Middleware(RoutingMiddleware))  # should be last, because it ignores call_next
-
-    config = uvicorn.Config(
-        fastapi_app,
-        host=options.host,
-        port=options.port,
-        log_level='critical',
-        loop='none',
-        log_config=None,
-        access_log=False,
-        server_header=False,
-        lifespan='off',
-    )
-    server = uvicorn.Server(config)
+    http_server = HTTPServer(app, xheaders=options.xheaders)
+    http_server.bind(options.port, options.host, reuse_port=options.reuse_port)
+    http_server.start()
 
     if options.autoreload:
-        check_timedelta = timedelta(milliseconds=500)
-        modify_times: dict[str, float] = {}
-        reload = partial(tornado.autoreload._reload_on_update, modify_times)
-
-        server_task = asyncio.gather(server._serve(), periodic_task(reload, check_timedelta))
-    else:
-        if sock is None:
-            sock = bind_socket(options.host, options.port)
-        server_task = loop.create_task(server._serve([sock]))  # type: ignore
+        tornado.autoreload.start(1000)
 
     def worker_sigterm_handler(_signum, _frame):
         log.info('requested shutdown, shutting down server on %s:%d', options.host, options.port)
@@ -189,42 +133,35 @@ def run_server(frontik_app: FrontikApplication, sock: Optional[socket.socket] = 
             loop.call_soon_threadsafe(server_stop)
 
     def server_stop():
-        log.info('going down in %s seconds', options.stop_timeout)
+        deinit_task = loop.create_task(_deinit_app(app))
+        http_server.stop()
 
-        def ioloop_stop(_deinit_task):
-            if loop.is_running():
-                log.info('stopping IOLoop')
-                loop.stop()
-                log.info('stopped')
+        if loop.is_running():
+            log.info('going down in %s seconds', options.stop_timeout)
 
-        deinit_task = loop.create_task(_deinit_app(frontik_app, server))
-        deinit_task.add_done_callback(ioloop_stop)
+            def ioloop_stop(_deinit_task):
+                if loop.is_running():
+                    log.info('stopping IOLoop')
+                    loop.stop()
+                    log.info('stopped')
+
+            deinit_task.add_done_callback(ioloop_stop)
 
     signal.signal(signal.SIGTERM, worker_sigterm_handler)
     signal.signal(signal.SIGINT, worker_sigterm_handler)
 
-    return server_task
-
 
 async def _init_app(frontik_app: FrontikApplication) -> None:
     await frontik_app.init()
-    server_task = run_server(frontik_app)
+    run_server(frontik_app)
     log.info('Successfully inited application %s', frontik_app.app_name)
     with frontik_app.worker_state.count_down_lock:
         frontik_app.worker_state.init_workers_count_down.value -= 1
         log.info('worker is up, remaining workers = %s', frontik_app.worker_state.init_workers_count_down.value)
-    await server_task
 
 
-async def kill_server(app: FrontikApplication, server: uvicorn.Server) -> None:
-    await asyncio.sleep(options.stop_timeout)
-    if app.http_client is not None:
-        await app.http_client.client_session.close()
-    server.should_exit = True
-
-
-async def _deinit_app(app: FrontikApplication, server: uvicorn.Server) -> None:
-    deinit_futures: list[Optional[Union[Future, Coroutine]]] = [kill_server(app, server)]
+async def _deinit_app(app: FrontikApplication) -> None:
+    deinit_futures: list[Optional[Union[Future, Coroutine]]] = []
     deinit_futures.extend([integration.deinitialize_app(app) for integration in app.available_integrations])
 
     app.upstream_manager.deregister_service_and_close()

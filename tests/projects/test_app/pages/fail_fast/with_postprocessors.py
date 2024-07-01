@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from tornado.web import HTTPError
 
 from frontik.handler import HTTPErrorWithPostprocessors, PageHandler, get_current_handler
 from frontik.routing import router
@@ -18,4 +18,4 @@ async def get_page(handler=get_current_handler()):
 
 @router.post('/fail_fast/with_postprocessors', cls=Page)
 async def post_page():
-    raise HTTPException(403)
+    raise HTTPError(403)

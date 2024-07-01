@@ -16,4 +16,4 @@ async def get_page(handler=get_current_handler()):
 
 @router.post('/http_client/custom_headers', cls=Page)
 async def post_page(handler: Page = get_current_handler()):
-    handler.json.put(handler.get_request_headers())
+    handler.json.put(handler.request.headers)

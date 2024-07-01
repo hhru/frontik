@@ -61,7 +61,7 @@ class TestSyslog:
                 parsed_logs[tag].append({'priority': priority, 'message': message})
 
         expected_service_logs = [
-            {'priority': '14', 'message': {'lvl': 'INFO', 'logger': r'frontik\.routing', 'msg': 'requested url: /log'}},
+            {'priority': '14', 'message': {'lvl': 'INFO', 'logger': r'handler', 'msg': 'requested url: /log'}},
             {'priority': '15', 'message': {'lvl': 'DEBUG', 'logger': r'handler', 'msg': 'debug'}},
             {'priority': '14', 'message': {'lvl': 'INFO', 'logger': r'handler', 'msg': 'info'}},
             {

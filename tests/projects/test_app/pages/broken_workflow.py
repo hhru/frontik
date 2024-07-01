@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from tornado.web import HTTPError
 
 from frontik.handler import PageHandler, get_current_handler
 from frontik.routing import router
@@ -11,7 +11,7 @@ async def get_page(handler=get_current_handler()):
 
     @handler.check_finished
     def cb(*args, **kw):
-        raise HTTPException(400)
+        raise HTTPError(400)
 
     results = await gather_list(
         handler.get_url(f'http://localhost:{port}', '/page/simple/'),

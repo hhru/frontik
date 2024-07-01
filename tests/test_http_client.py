@@ -42,7 +42,7 @@ class TestHttpClient:
 
     def test_custom_headers(self):
         json = frontik_test_app.get_page_json('http_client/custom_headers')
-        assert json['x-foo'] == 'Bar'
+        assert json['X-Foo'] == 'Bar'
 
     def test_http_client_method_future(self):
         json = frontik_test_app.get_page_json('http_client/future')
