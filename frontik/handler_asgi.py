@@ -23,7 +23,10 @@ log = logging.getLogger('handler')
 
 
 async def execute_page(
-    frontik_app: FrontikApplication, tornado_request: httputil.HTTPServerRequest, request_id: str, app: FrontikAsgiApp
+    frontik_app: FrontikApplication,
+    tornado_request: httputil.HTTPServerRequest,
+    request_id: str,
+    asgi_app: FrontikAsgiApp,
 ) -> tuple[int, str, HTTPHeaders, bytes]:
     with request_context.request_context(request_id), request_limiter(frontik_app.statsd_client) as accepted:
         log.info('requested url: %s', tornado_request.uri)
@@ -40,7 +43,7 @@ async def execute_page(
             assert debug_mode.failed_auth_header is not None
             status, reason, headers, data = make_debug_auth_failed_response(debug_mode.failed_auth_header)
         elif route is None:
-            status, reason, headers, data = make_not_found_response(frontik_app, tornado_request.path)
+            status, reason, headers, data = await make_not_found_response(frontik_app, tornado_request)
         else:
             request_context.set_handler_name(f'{route.endpoint.__module__}.{route.endpoint.__name__}')
 
@@ -53,7 +56,7 @@ async def execute_page(
                 scope, receive, send = convert_tornado_request_to_asgi(
                     frontik_app, tornado_request, route, path_params, debug_mode, result
                 )
-                await app(scope, receive, send)
+                await asgi_app(scope, receive, send)
 
                 status = result['status']
                 reason = httputil.responses.get(status, 'Unknown')
@@ -78,18 +81,22 @@ async def execute_page(
         return status, reason, headers, data
 
 
-def make_not_found_response(frontik_app: FrontikApplication, path: str) -> tuple[int, str, HTTPHeaders, bytes]:
-    allowed_methods = get_allowed_methods(path)
+async def make_not_found_response(
+    frontik_app: FrontikApplication, tornado_request: httputil.HTTPServerRequest
+) -> tuple[int, str, HTTPHeaders, bytes]:
+    allowed_methods = get_allowed_methods(tornado_request.path.strip('/'))
+    default_headers = get_default_headers()
 
     if allowed_methods:
         status = 405
-        headers = get_default_headers()
-        headers['Allow'] = ', '.join(allowed_methods)
+        headers = {'Allow': ', '.join(allowed_methods)}
         data = b''
     elif hasattr(frontik_app, 'application_404_handler'):
-        status, headers, data = frontik_app.application_404_handler()
+        status, headers, data = await frontik_app.application_404_handler(tornado_request)
     else:
         status, headers, data = build_error_data(404, 'Not Found')
+
+    default_headers.update(headers)
 
     reason = httputil.responses.get(status, 'Unknown')
     return status, reason, HTTPHeaders(headers), data
@@ -114,8 +121,7 @@ def make_not_accepted_response() -> tuple[int, str, HTTPHeaders, bytes]:
 def build_error_data(
     status_code: int = 500, message: Optional[str] = 'Internal Server Error'
 ) -> tuple[int, dict, bytes]:
-    headers = get_default_headers()
-    headers['Content-Type'] = media_types.TEXT_HTML
+    headers = {'Content-Type': media_types.TEXT_HTML}
     data = f'<html><title>{status_code}: {message}</title><body>{status_code}: {message}</body></html>'.encode()
     return status_code, headers, data
 
@@ -129,7 +135,7 @@ async def legacy_process_request(
     debug_mode: DebugMode,
 ) -> tuple[int, str, HTTPHeaders, bytes]:
     handler: PageHandler = page_cls(frontik_app, tornado_request, route, debug_mode, path_params)
-    return await handler.my_execute()
+    return await handler.execute()
 
 
 def convert_tornado_request_to_asgi(

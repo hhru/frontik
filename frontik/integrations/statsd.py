@@ -210,6 +210,6 @@ def create_statsd_client(options: Options, app: FrontikApplication) -> Union[Sta
             options.statsd_port,
             options.statsd_default_periodic_send_interval_sec,
             options.statsd_max_udp_size,
-            app=app.app_name,
+            app=app.app_module_name,
         )
     return statsd_client

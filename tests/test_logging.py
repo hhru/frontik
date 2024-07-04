@@ -26,9 +26,9 @@ class TestSyslog:
         port = cls.s.getsockname()[1]
 
         cls.test_app = FrontikTestInstance(
-            f'{FRONTIK_RUN} --app=tests.projects.test_app.TestApplication --config={TEST_PROJECTS}/frontik_debug.cfg '
-            f'--syslog=true --consul_enabled=False --syslog_host=127.0.0.1 --syslog_tag=test'
-            f' --log_level=debug --syslog_port={port}',
+            f'{FRONTIK_RUN} --app_class=tests.projects.test_app.TestApplication '
+            f'--config={TEST_PROJECTS}/frontik_debug.cfg --syslog=true --consul_enabled=False --syslog_host=127.0.0.1 '
+            f'--syslog_tag=test --log_level=debug --syslog_port={port}',
         )
 
     @classmethod

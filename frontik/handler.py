@@ -33,6 +33,7 @@ from frontik.http_status import ALLOWED_STATUSES, CLIENT_CLOSED_REQUEST, NON_CRI
 from frontik.json_builder import FrontikJsonDecodeError, json_decode
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.loggers.stages import StagesLogger
+from frontik.options import options
 from frontik.timeout_tracking import get_timeout_checker
 from frontik.util import gather_dict, make_url
 from frontik.validator import BaseValidationModel, Validators
@@ -45,12 +46,21 @@ if TYPE_CHECKING:
     from tornado.httputil import HTTPHeaders, HTTPServerRequest
 
     from frontik.app import FrontikApplication
+    from frontik.handler_return_values import ReturnedValue, ReturnedValueHandlers
     from frontik.integrations.statsd import StatsDClient, StatsDClientStub
 
 
 class FinishWithPostprocessors(Exception):
     def __init__(self, wait_finish_group: bool = False) -> None:
         self.wait_finish_group = wait_finish_group
+
+
+class RedirectSignal(Exception):
+    pass
+
+
+class FinishSignal(Exception):
+    pass
 
 
 class HTTPErrorWithPostprocessors(tornado.web.HTTPError):
@@ -92,6 +102,8 @@ def _fail_fast_policy(fail_fast: bool, waited: bool, host: str, path: str) -> bo
 
 
 class PageHandler(RequestHandler):
+    returned_value_handlers: ReturnedValueHandlers = []
+
     def __init__(
         self,
         application: FrontikApplication,
@@ -109,6 +121,9 @@ class PageHandler(RequestHandler):
         self.route = route
         self.debug_mode = debug_mode
         self.path_params = path_params
+        for _name, _value in path_params.items():
+            if _value:
+                request.arguments.setdefault(_name, []).append(_value)  # type: ignore
 
         super().__init__(application, request)  # type: ignore
 
@@ -116,6 +131,9 @@ class PageHandler(RequestHandler):
 
         for integration in application.available_integrations:
             integration.initialize_handler(self)
+
+        if not self.returned_value_handlers:
+            self.returned_value_handlers = list(application.returned_value_handlers)
 
         self.stages_logger = StagesLogger(request._start_time, self.statsd_client)
 
@@ -314,7 +332,8 @@ class PageHandler(RequestHandler):
             # This is only reachable under certain configurations.
             raise tornado.web.HTTPError(403, 'cannot redirect path with two initial slashes')
         self.log.info('redirecting to: %s', url)
-        return super().redirect(url, *args, **kwargs)
+        super().redirect(url, *args, **kwargs)
+        raise RedirectSignal()
 
     @property
     def json_body(self):
@@ -346,12 +365,25 @@ class PageHandler(RequestHandler):
 
     # Requests handling
 
-    async def my_execute(self) -> tuple[int, str, HTTPHeaders, bytes]:
+    async def execute(self) -> tuple[int, str, HTTPHeaders, bytes]:
+        if (
+            self.request.method
+            not in (
+                'GET',
+                'HEAD',
+                'OPTIONS',
+            )
+            and options.xsrf_cookies
+        ):
+            self.check_xsrf_cookie()
+        await super()._execute([], b'', b'')
+
         try:
-            await super()._execute([], b'', b'')
-        except Exception as ex:
-            self._handle_request_exception(ex)
-        return await self.handler_result_future  # status, reason, headers, chunk
+            return await asyncio.wait_for(self.handler_result_future, timeout=5.0)
+        except TimeoutError:
+            self.log.error('handler was never finished')
+            self.send_error()
+            return self.handler_result_future.result()
 
     async def get(self, *args, **kwargs):
         await self._execute_page()
@@ -367,9 +399,6 @@ class PageHandler(RequestHandler):
 
     async def head(self, *args, **kwargs):
         await self._execute_page()
-
-    def options(self, *args, **kwargs):
-        self.return_405()
 
     async def _execute_page(self) -> None:
         self.stages_logger.commit_stage('prepare')
@@ -388,7 +417,10 @@ class PageHandler(RequestHandler):
             raise RuntimeError(f'dependency solving failed: {errors}')
 
         assert self.route.dependant.call is not None
-        await self.route.dependant.call(**values)
+        returned_value: ReturnedValue = await self.route.dependant.call(**values)
+
+        for returned_value_handler in self.returned_value_handlers:
+            returned_value_handler(self, returned_value)
 
         self._handler_finished_notification()
         await self.finish_group.get_gathering_future()
@@ -397,12 +429,6 @@ class PageHandler(RequestHandler):
         render_result = await self._postprocess()
         if render_result is not None:
             self.write(render_result)
-
-    def return_405(self) -> None:
-        allowed_methods = [name for name in ('get', 'post', 'put', 'delete') if f'{name}_page' in vars(self.__class__)]
-        self.set_header('Allow', ', '.join(allowed_methods))
-        self.set_status(405)
-        self.finish()
 
     def get_page_fail_fast(self, request_result: RequestResult) -> None:
         self.__return_error(request_result.status_code, error_info={'is_fail_fast': True})
@@ -517,6 +543,10 @@ class PageHandler(RequestHandler):
         if self._finished and not isinstance(e, Finish):
             return
 
+        if isinstance(e, FinishSignal):
+            # Not an error; request was finished explicitly
+            return
+
         if isinstance(e, FailFastError):
             request = e.failed_result.request
 
@@ -626,12 +656,12 @@ class PageHandler(RequestHandler):
                 content_length = sum(len(part) for part in self._write_buffer)
                 self.set_header('Content-Length', content_length)
 
-        future = self.flush(include_footers=True)
+        self._flush()
         self._finished = True
         self.on_finish()
-        return future
+        raise FinishSignal()
 
-    def flush(self, include_footers: bool = False) -> Future[None]:
+    def _flush(self) -> None:
         assert self.request.connection is not None
         chunk = b''.join(self._write_buffer)
         self._write_buffer = []
@@ -645,10 +675,6 @@ class PageHandler(RequestHandler):
                 self.add_header('Set-Cookie', cookie.OutputString(None))
 
         self.handler_result_future.set_result((self._status_code, self._reason, self._headers, chunk))
-
-        future = Future()  # type: Future[None]
-        future.set_result(None)
-        return future
 
     # postprocessors
 

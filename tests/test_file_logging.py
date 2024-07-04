@@ -14,7 +14,7 @@ class TestLogToFile(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp_log_dir = tempfile.mkdtemp()
         self.service = FrontikTestInstance(
-            f'{FRONTIK_RUN} --app=tests.projects.consul_mock_app.TestApplication {common_frontik_start_options} '
+            f'{FRONTIK_RUN} --app_class=tests.projects.consul_mock_app.TestApplication {common_frontik_start_options} '
             f' --config={TEST_PROJECTS}/frontik_consul_mock.cfg --log_dir={self.tmp_log_dir} --log_level=debug',
             allow_to_create_log_files=True,
         )

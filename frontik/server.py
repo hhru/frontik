@@ -10,8 +10,9 @@ from collections.abc import Coroutine
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from threading import Lock
-from typing import Any, Callable, Optional, Union
+from typing import Callable, Optional, Union
 
+import anyio
 import tornado.autoreload
 from http_client.balancing import Upstream
 from tornado.httpserver import HTTPServer
@@ -28,33 +29,23 @@ log = logging.getLogger('server')
 def main(config_file: Optional[str] = None) -> None:
     parse_configs(config_files=config_file)
 
-    if options.app is None:
-        log.exception('no frontik application present (`app` option is not specified)')
+    if options.app_class is None:
+        log.exception('no frontik application present (`app_class` option is not specified)')
         sys.exit(1)
 
-    log.info('starting application %s', options.app)
+    log.info('starting application %s', options.app_class)
 
     try:
-        app_module = importlib.import_module(options.app)
-        app_class_name = None
-        app_module_name = options.app
-    except Exception:
-        try:
-            app_module_name, app_class_name = options.app.rsplit('.', 1)
-            app_module = importlib.import_module(app_module_name)
-        except Exception as e:
-            log.exception('failed to import application module "%s": %s', options.app, e)
-
-            sys.exit(1)
-
-    if app_class_name is not None and not hasattr(app_module, app_class_name):
-        log.exception('application class "%s" not found', options.app_class)
+        app_module_name, app_class_name = options.app_class.rsplit('.', 1)
+        app_module = importlib.import_module(app_module_name)
+    except Exception as e:
+        log.exception('failed to import application "%s": %s', options.app_class, e)
         sys.exit(1)
 
     application = getattr(app_module, app_class_name) if app_class_name is not None else FrontikApplication
 
     try:
-        app = application(app_module_name)
+        app = application()
 
         gc.disable()
         gc.collect()
@@ -173,38 +164,8 @@ async def _deinit_app(app: FrontikApplication) -> None:
         log.exception('failed to deinit, deinit returned: %s', e)
 
 
-class RequestCancelledMiddleware:
-    # https://github.com/tiangolo/fastapi/discussions/11360
-    def __init__(self, app):
-        self.app = app
-
-    async def __call__(self, scope, receive, send):
-        if scope['type'] != 'http':
-            await self.app(scope, receive, send)
-            return
-
-        queue: asyncio.Queue = asyncio.Queue()
-
-        async def message_poller(_sentinel: Any, _handler_task: Any) -> Any:
-            nonlocal queue
-            while True:
-                message = await receive()
-                if message['type'] == 'http.disconnect':
-                    _handler_task.cancel()
-                    return _sentinel
-
-                await queue.put(message)
-
-        sentinel = object()
-        handler_task = asyncio.create_task(self.app(scope, queue.get, send))
-        poller_task = asyncio.create_task(message_poller(sentinel, handler_task))
-        poller_task.done()
-
-        try:
-            return await handler_task
-        except asyncio.CancelledError:
-            pass
-
-
 def anyio_noop(*_args, **_kwargs):
-    raise RuntimeError(f'trying to use {_args[0]}')
+    raise RuntimeError(f'trying to use non async {_args[0]}')
+
+
+anyio.to_thread.run_sync = anyio_noop

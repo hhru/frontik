@@ -4,7 +4,7 @@ from frontik.app import FrontikApplication
 
 
 class TestApplication(FrontikApplication):
-    def __init__(self, app_module_name: str):
-        super().__init__(app_module_name)
+    def __init__(self):
+        super().__init__()
         self.registration_call_counter: Counter = Counter()
         self.deregistration_call_counter: Counter = Counter()
