@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
 
       - name: Install python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         id: pinstall
         with:
           python-version-file: pyproject.toml
