@@ -971,7 +971,8 @@ class PageHandler(RequestHandler):
     ) -> Future[RequestResult]:
         if waited and (self.is_finished() or self.finish_group.is_finished()):
             handler_logger.info(
-                'attempted to make waited http request to %s %s in finished handler, ignoring',
+                'attempted to make waited http request to %s %s in finished handler, '
+                'ignoring. change "waited" method parameter to send it',
                 host,
                 path,
             )
