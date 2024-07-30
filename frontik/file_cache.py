@@ -7,6 +7,9 @@ from typing import Any, Optional, Union
 from frontik.options import options
 
 
+qqlog = logging.getLogger('server')
+
+
 # This implementation is broken in so many ways
 class LimitedDict(dict):
     def __init__(self, max_len: Optional[int] = None, step: Optional[int] = None, deepcopy: bool = False) -> None:
@@ -64,12 +67,16 @@ class FileCache:
         if self.max_len == 0:
             return
 
+        qqlog.error(f'START POPULATE')
         for filename in filenames:
             self._load(filename, log)
+
+        qqlog.error(f'END POPULATE')
 
         self.frozen = freeze and self.max_len is None
 
     def load(self, filename: str, log: logging.Logger) -> Any:
+        qqlog.error(f'ISHEM V CACHE max_len:{self.max_len} frozen:{self.frozen} -- in_cache:{filename in self.cache} -- fn:{filename}')
         if filename in self.cache:
             log.debug('got %s file from cache (%s cache size: %s)', filename, self.cache_name, len(self.cache))
             return self.cache[filename]
@@ -85,6 +92,8 @@ class FileCache:
         log.info('reading file "%s"', real_filename)
         result = self.load_fn(real_filename, log)
         self.cache[filename] = result
+
+        qqlog.error(f'filename: {filename}, real_filename: {real_filename}')
 
         return result
 
