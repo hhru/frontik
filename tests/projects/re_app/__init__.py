@@ -7,7 +7,7 @@ from frontik.util import get_abs_path
 
 
 class TestApplication(FrontikApplication):
-    def application_404_handler(self):
+    async def application_404_handler(self, _request):
         return 404, get_default_headers(), b'404'
 
     def get_jinja_environment(self):

@@ -11,6 +11,7 @@ from http_client.request_response import RequestBuilder, RequestResult
 from lxml import etree
 from tornado.escape import utf8
 from tornado.httpserver import HTTPServer
+from tornado.testing import AsyncHTTPTestCase
 from tornado_mock.httpclient import patch_http_client, set_stub
 from yarl import URL
 
@@ -227,3 +228,78 @@ class FrontikTestBase:
         if file_name.endswith('.proto'):
             return {'Content-Type': APPLICATION_PROTOBUF}
         return {}
+
+
+class FrontikTestCase(AsyncHTTPTestCase):
+    """Deprecated, use FrontikTestBase instead"""
+
+    def __init__(self, *args, **kwargs):
+        self._app: FrontikApplication  # type: ignore
+        super().__init__(*args, **kwargs)
+
+    def get_http_client(self):
+        """Overrides `AsyncHTTPTestCase.get_http_client` to separate unit test HTTPClient
+        from application HTTPClient.
+
+        This allows mocking HTTP requests made by application in unit tests.
+        """
+        self.forced_client = AIOHttpClientWrapper()
+        return self.forced_client
+
+    def fetch(self, path: str, query: Optional[dict] = None, **kwargs: Any) -> RequestResult:  # type: ignore
+        """Extends `AsyncHTTPTestCase.fetch` method with `query` kwarg.
+        This argument accepts a `dict` of request query parameters that will be encoded
+        and added to request path.
+        Any additional kwargs will be passed to `AsyncHTTPTestCase.fetch`.
+        """
+        query = {} if query is None else query
+        return super().fetch(make_url(path, **query), **kwargs)
+
+    def fetch_xml(self, path: str, query: Optional[dict] = None, **kwargs: Any) -> etree.Element:
+        """Fetch the request and parse xml document from response body."""
+        return etree.fromstring(utf8(self.fetch(path, query, **kwargs).raw_body))
+
+    def fetch_json(self, path: str, query: Optional[dict] = None, **kwargs: Any) -> Any:
+        """Fetch the request and parse JSON tree from response body."""
+        return json.loads(self.fetch(path, query, **kwargs).raw_body)
+
+    def patch_app_http_client(self, app: FrontikApplication) -> None:
+        """Patches application HTTPClient to enable requests stubbing."""
+        patch_http_client(app.http_client)
+
+    def set_stub(
+        self,
+        url: str,
+        request_method: str = 'GET',
+        response_function: Optional[Callable] = None,
+        response_file: Optional[str] = None,
+        response_body: Any = '',
+        response_code: int = 200,
+        response_headers: Any = None,
+        response_body_processor: Callable = safe_template,
+        **kwargs: Any,
+    ) -> None:
+        set_stub(
+            self._app.http_client,
+            url,
+            request_method,
+            response_function,
+            response_file,
+            response_body,
+            response_code,
+            response_headers,
+            response_body_processor,
+            **kwargs,
+        )
+
+    def tearDown(self) -> None:
+        if self._app.http_client is not None:
+            self.io_loop.run_sync(self._app.http_client.client_session.close)
+        if self.forced_client is not None:
+            self.io_loop.run_sync(self.forced_client.client_session.close)
+        super().tearDown()
+
+    def configure_app(self, **kwargs: Any) -> None:
+        """Updates or adds options to application config."""
+        for name, val in kwargs.items():
+            setattr(self._app.config, name, val)

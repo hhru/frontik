@@ -83,7 +83,7 @@ async def get_page_b(handler=get_current_handler()):
 def make_otel_provider() -> TracerProvider:
     resource = Resource(
         attributes={
-            ResourceAttributes.SERVICE_NAME: options.app,  # type: ignore
+            ResourceAttributes.SERVICE_NAME: options.service_name,  # type: ignore
             ResourceAttributes.SERVICE_VERSION: '1.2.3',
             ResourceAttributes.HOST_NAME: options.node_name,
             ResourceAttributes.CLOUD_REGION: 'test',

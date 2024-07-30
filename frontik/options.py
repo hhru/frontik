@@ -8,7 +8,6 @@ STDERR_LOG_OPTION_NAME = 'stderr_log'
 
 @dataclass
 class Options:
-    app: Optional[str] = None
     app_class: Optional[str] = None
     workers: int = 1
     init_workers_timeout_sec: int = 60
@@ -17,6 +16,7 @@ class Options:
     reuse_port: bool = True
     xheaders: bool = False
     validate_request_id: bool = False
+    xsrf_cookies: bool = False
 
     config: Optional[str] = None
     host: str = '0.0.0.0'
@@ -90,6 +90,7 @@ class Options:
     send_timeout_stats_interval_ms: int = 60000
 
     # consul options
+    service_name: Optional[str] = None
     consul_enabled: bool = True
     consul_host: str = '127.0.0.1'
     consul_port: Optional[int] = None

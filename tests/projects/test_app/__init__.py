@@ -7,9 +7,9 @@ from tests.projects.test_app import config
 
 
 class TestApplication(FrontikApplication):
-    def __init__(self, app_module_name: str):
+    def __init__(self):
         bootstrap_logger('custom_logger', logging.DEBUG, False)
-        super().__init__(app_module_name)
+        super().__init__()
 
     async def init(self):
         await super().init()

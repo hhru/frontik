@@ -22,77 +22,77 @@ _regex_mapping: list[tuple[re.Pattern, APIRoute, Type[PageHandler]]] = []
 
 
 class FrontikRouter(APIRouter):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, *, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
         routers.append(self)
         self._cls: Optional[Type[PageHandler]] = None
-        self._path: Optional[str] = None
+        self._base_cls: Optional[Type[PageHandler]] = cls
 
     def get(self, path: str, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> Callable:
-        self._path, self._cls = path, cls
+        self._cls = self._base_cls or cls
         return super().get(path, **kwargs)
 
     def post(self, path: str, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> Callable:
-        self._path, self._cls = path, cls
+        self._cls = self._base_cls or cls
         return super().post(path, **kwargs)
 
     def put(self, path: str, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> Callable:
-        self._path, self._cls = path, cls
+        self._cls = self._base_cls or cls
         return super().put(path, **kwargs)
 
     def delete(self, path: str, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> Callable:
-        self._path, self._cls = path, cls
+        self._cls = self._base_cls or cls
         return super().delete(path, **kwargs)
 
     def head(self, path: str, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> Callable:
-        self._path, self._cls = path, cls
+        self._cls = self._base_cls or cls
         return super().head(path, **kwargs)
 
     def add_api_route(self, *args, **kwargs):
         super().add_api_route(*args, **kwargs)
         route: APIRoute = self.routes[-1]  # type: ignore
         method = next(iter(route.methods), None)
+        path = route.path.strip('/')
 
-        if _plain_routes.get((self._path, method), None) is not None:
-            raise RuntimeError(f'route for {method} {self._path} exists')
+        if _plain_routes.get((path, method), None) is not None:
+            raise RuntimeError(f'route for {method} {path} already exists')
 
-        _plain_routes[(self._path, method)] = (route, self._cls)  # we need our routing, for get route object
-        self._cls, self._path = None, None
+        _plain_routes[(path, method)] = (route, self._cls)  # we need our routing, for get route object
 
 
 class FrontikRegexRouter(APIRouter):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, *, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
         routers.append(self)
         self._cls: Optional[Type[PageHandler]] = None
-        self._path: Optional[str] = None
+        self._base_cls: Optional[Type[PageHandler]] = cls
 
     def get(self, path: str, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> Callable:
-        self._path, self._cls = path, cls
+        self._cls = self._base_cls or cls
         return super().get(path, **kwargs)
 
     def post(self, path: str, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> Callable:
-        self._path, self._cls = path, cls
+        self._cls = self._base_cls or cls
         return super().post(path, **kwargs)
 
     def put(self, path: str, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> Callable:
-        self._path, self._cls = path, cls
+        self._cls = self._base_cls or cls
         return super().put(path, **kwargs)
 
     def delete(self, path: str, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> Callable:
-        self._path, self._cls = path, cls
+        self._cls = self._base_cls or cls
         return super().delete(path, **kwargs)
 
     def head(self, path: str, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> Callable:
-        self._path, self._cls = path, cls
+        self._cls = self._base_cls or cls
         return super().head(path, **kwargs)
 
-    def add_api_route(self, *args, **kwargs):
+    def add_api_route(self, *args: Any, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> None:
         super().add_api_route(*args, **kwargs)
+        self._cls = self._base_cls or cls or self._cls
+        route = self.routes[-1]
 
-        _regex_mapping.append((re.compile(self._path), self.routes[-1], self._cls))  # type: ignore
-
-        self._cls, self._path = None, None
+        _regex_mapping.append((re.compile(route.path), route, self._cls))  # type: ignore
 
 
 def _iter_submodules(path: MutableSequence[str], prefix: str = '') -> Generator:
@@ -111,13 +111,15 @@ def _iter_submodules(path: MutableSequence[str], prefix: str = '') -> Generator:
         yield from _iter_submodules(paths, name + '.')
 
 
-def import_all_pages(app_module: Optional[str]) -> None:
+def import_all_pages(app_module: str) -> None:
     """Import all pages on startup"""
 
-    if app_module is None:
+    try:
+        pages_package = importlib.import_module(f'{app_module}.pages')
+    except ModuleNotFoundError:
+        routing_logger.warning('There is no pages module')
         return
 
-    pages_package = importlib.import_module(f'{app_module}.pages')
     for _, name, __ in _iter_submodules(pages_package.__path__):
         full_name = pages_package.__name__ + '.' + name
         try:
@@ -125,8 +127,7 @@ def import_all_pages(app_module: Optional[str]) -> None:
         except ModuleNotFoundError:
             continue
         except Exception as ex:
-            routing_logger.error('failed on import page %s %s', full_name, ex)
-            continue
+            raise RuntimeError('failed on import page %s %s', full_name, ex)
 
 
 router = FrontikRouter()
@@ -147,23 +148,23 @@ def _find_regex_route(
 
 def find_route(path: str, method: str) -> tuple[APIRoute, type, dict]:
     route: APIRoute
-    route, page_cls = _plain_routes.get((path, method), (None, None))
-    path_params: dict = {}
+    route, page_cls, path_params = _find_regex_route(path, method)  # type: ignore
 
     if route is None:
-        route, page_cls, path_params = _find_regex_route(path, method)
+        route, page_cls = _plain_routes.get((path.strip('/'), method), (None, None))
+        path_params = {}
 
     if route is None:
         routing_logger.error('match for request url %s "%s" not found', method, path)
         return None, None, None
 
-    return route, page_cls, path_params
+    return route, page_cls, path_params  # type: ignore
 
 
 def get_allowed_methods(path: str) -> list[str]:
     allowed_methods = []
     for method in ('GET', 'POST', 'PUT', 'DELETE', 'HEAD'):
-        route, page_cls = _plain_routes.get((path, method), (None, None))
+        route, _ = _plain_routes.get((path, method), (None, None))
         if route is not None:
             allowed_methods.append(method)
 

@@ -23,6 +23,7 @@ from frontik import integrations, media_types
 from frontik.debug import get_frontik_and_apps_versions
 from frontik.handler import PageHandler, get_current_handler
 from frontik.handler_asgi import execute_page
+from frontik.handler_return_values import ReturnedValueHandlers, get_default_returned_value_handlers
 from frontik.integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
 from frontik.options import options
 from frontik.process import WorkerState
@@ -73,16 +74,15 @@ class FrontikApplication:
     class DefaultConfig:
         pass
 
-    def __init__(self, app_module_name: Optional[str] = None) -> None:
+    def __init__(self) -> None:
         self.start_time = time.time()
 
-        self.app_module_name: Optional[str] = app_module_name
-        if app_module_name is None:  # for tests
-            app_module = importlib.import_module(self.__class__.__module__)
-        else:
-            app_module = importlib.import_module(app_module_name)
+        self.app_module_name: str = self.__class__.__module__
+        app_module = importlib.import_module(self.app_module_name)
         self.app_root = os.path.dirname(str(app_module.__file__))
-        self.app_name = app_module.__name__
+        if options.service_name is None:
+            options.service_name = self.app_module_name.rsplit('.', 1)[-1]
+        self.app_name = options.service_name
 
         self.config = self.application_config()
 
@@ -99,14 +99,15 @@ class FrontikApplication:
         master_done = multiprocessing.Value(c_bool, False)
         count_down_lock = multiprocessing.Lock()
         self.worker_state = WorkerState(init_workers_count_down, master_done, count_down_lock)  # type: ignore
+        self.returned_value_handlers: ReturnedValueHandlers = get_default_returned_value_handlers()
 
-        import_all_pages(app_module_name)
+        import_all_pages(self.app_module_name)
 
         self.ui_methods: dict = {}
         self.ui_modules: dict = {}
         self.settings: dict = {}
 
-        self.app = FrontikAsgiApp()
+        self.asgi_app = FrontikAsgiApp()
 
     def __call__(self, tornado_request: httputil.HTTPServerRequest) -> Optional[Awaitable[None]]:
         # for making more asgi, reimplement tornado.http1connection._server_request_loop and ._read_message
@@ -118,9 +119,9 @@ class FrontikApplication:
             frontik_app: FrontikApplication,
             _tornado_request: httputil.HTTPServerRequest,
             _request_id: str,
-            app: FrontikAsgiApp,
+            asgi_app: FrontikAsgiApp,
         ) -> None:
-            status, reason, headers, data = await execute_page(frontik_app, _tornado_request, _request_id, app)
+            status, reason, headers, data = await execute_page(frontik_app, _tornado_request, _request_id, asgi_app)
 
             assert _tornado_request.connection is not None
             _tornado_request.connection.set_close_callback(None)  # type: ignore
@@ -130,7 +131,7 @@ class FrontikApplication:
             _tornado_request.connection.finish()
             return await future
 
-        return asyncio.create_task(_serve_tornado_request(self, tornado_request, request_id, self.app))
+        return asyncio.create_task(_serve_tornado_request(self, tornado_request, request_id, self.asgi_app))
 
     def create_upstream_manager(
         self,

@@ -2,15 +2,6 @@ from collections.abc import Iterator
 
 import pytest
 
-# @pytest.fixture(scope='session')
-# def event_loop():
-#     loop = asyncio.new_event_loop()
-#     asyncio.set_event_loop(loop)
-#     yield loop
-#     loop.close()
-
-# pytest_asyncio.plugin.event_loop = event_loop
-
 
 @pytest.fixture(scope='session', autouse=True)
 def _teardown_module() -> Iterator[None]:
@@ -35,12 +26,3 @@ def _teardown_module() -> Iterator[None]:
     frontik_balancer_app.stop()
     frontik_broken_balancer_app.stop()
     frontik_consul_mock_app.stop()
-
-
-# def pytest_addoption(parser):
-#     parser.addoption('--files_for_lint', action='store', default='')
-#
-#
-# @pytest.fixture(scope='session')
-# def files_for_lint(pytestconfig):
-#     return pytestconfig.getoption('files_for_lint')

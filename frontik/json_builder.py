@@ -130,7 +130,7 @@ class JsonBuilder:
         return json_encode_bytes(self._concat_chunks())
 
 
-def get_json_builder(request: Request) -> JsonBuilder:
+async def get_json_builder(request: Request) -> JsonBuilder:
     return request['json_builder']
 
 

@@ -8,18 +8,18 @@ TEST_PROJECTS = f'{FRONTIK_ROOT}/tests/projects'
 class TestServiceDiscovery:
     def setup_method(self) -> None:
         self.consul_mock = FrontikTestInstance(
-            f'{FRONTIK_RUN} --app=tests.projects.consul_mock_app.TestApplication {common_frontik_start_options} '
+            f'{FRONTIK_RUN} --app_class=tests.projects.consul_mock_app.TestApplication {common_frontik_start_options} '
             f' --config={TEST_PROJECTS}/frontik_consul_mock.cfg',
         )
         self.consul_mock.start()
         self.frontik_single_worker_app = FrontikTestInstance(
-            f'{FRONTIK_RUN} --app=tests.projects.no_debug_app {common_frontik_start_options} '
+            f'{FRONTIK_RUN} --app_class=tests.projects.no_debug_app.TestApplication {common_frontik_start_options} '
             f' --config={TEST_PROJECTS}/frontik_no_debug.cfg --consul_port={self.consul_mock.port} '
             f' --consul_enabled=True'
             f' --fail_start_on_empty_upstream=False',
         )
         self.frontik_multiple_worker_app = FrontikTestInstance(
-            f'{FRONTIK_RUN} --app=tests.projects.no_debug_app {common_frontik_start_options} '
+            f'{FRONTIK_RUN} --app_class=tests.projects.no_debug_app.TestApplication {common_frontik_start_options} '
             f' --config={TEST_PROJECTS}/frontik_no_debug.cfg --consul_port={self.consul_mock.port} --workers=3'
             f' --consul_enabled=True'
             f' --fail_start_on_empty_upstream=False',
