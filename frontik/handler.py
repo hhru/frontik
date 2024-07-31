@@ -631,9 +631,10 @@ class PageHandler(RequestHandler):
         if self.debug_mode.enabled:
             return self.__debug_finish(chunk)
 
-        finish_future = super().finish(chunk)
+        super().finish(chunk)
         self.handler_result_future.set_result((self._status_code, None, None, None))  # type: ignore
-        return finish_future
+
+        return None
 
     def __debug_finish(self, chunk: Optional[Union[str, bytes, dict]] = None) -> Future[None]:
         if self._finished:
