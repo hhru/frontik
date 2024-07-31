@@ -17,7 +17,7 @@ from fastapi.dependencies.utils import solve_dependencies
 from fastapi.routing import APIRoute
 from http_client.request_response import USER_AGENT_HEADER, FailFastError, RequestBuilder, RequestResult
 from pydantic import BaseModel, ValidationError
-from tornado import httputil
+from tornado.httputil import HTTPHeaders, HTTPServerRequest
 from tornado.ioloop import IOLoop
 from tornado.web import Finish, RequestHandler
 
@@ -43,7 +43,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
 
     from http_client import HttpClient
-    from tornado.httputil import HTTPHeaders, HTTPServerRequest
 
     from frontik.app import FrontikApplication
     from frontik.handler_return_values import ReturnedValue, ReturnedValueHandlers
@@ -53,10 +52,6 @@ if TYPE_CHECKING:
 class FinishWithPostprocessors(Exception):
     def __init__(self, wait_finish_group: bool = False) -> None:
         self.wait_finish_group = wait_finish_group
-
-
-class RedirectSignal(Exception):
-    pass
 
 
 class FinishSignal(Exception):
@@ -141,7 +136,7 @@ class PageHandler(RequestHandler):
         self._postprocessors: list = []
 
         self._mandatory_cookies: dict = {}
-        self._mandatory_headers = httputil.HTTPHeaders()
+        self._mandatory_headers = HTTPHeaders()
 
         self._validation_model: type[BaseValidationModel | BaseModel] = BaseValidationModel
 
@@ -179,10 +174,7 @@ class PageHandler(RequestHandler):
         super().prepare()
 
     def set_default_headers(self):
-        self._headers = httputil.HTTPHeaders({
-            'Server': f'Frontik/{frontik_version}',
-            'X-Request-Id': self.request_id,
-        })
+        self._headers = HTTPHeaders(get_default_headers())
 
     @property
     def path(self) -> str:
@@ -332,8 +324,7 @@ class PageHandler(RequestHandler):
             # This is only reachable under certain configurations.
             raise tornado.web.HTTPError(403, 'cannot redirect path with two initial slashes')
         self.log.info('redirecting to: %s', url)
-        super().redirect(url, *args, **kwargs)
-        raise RedirectSignal()
+        return super().redirect(url, *args, **kwargs)
 
     @property
     def json_body(self):
@@ -637,6 +628,14 @@ class PageHandler(RequestHandler):
             self._write_buffer = []
             chunk = None
 
+        if self.debug_mode.enabled:
+            return self.__debug_finish(chunk)
+
+        finish_future = super().finish(chunk)
+        self.handler_result_future.set_result((self._status_code, None, None, None))  # type: ignore
+        return finish_future
+
+    def __debug_finish(self, chunk: Optional[Union[str, bytes, dict]] = None) -> Future[None]:
         if self._finished:
             raise RuntimeError('finish() called twice')
 
@@ -656,12 +655,12 @@ class PageHandler(RequestHandler):
                 content_length = sum(len(part) for part in self._write_buffer)
                 self.set_header('Content-Length', content_length)
 
-        self._flush()
+        self.__debug_flush()
         self._finished = True
         self.on_finish()
         raise FinishSignal()
 
-    def _flush(self) -> None:
+    def __debug_flush(self) -> None:
         assert self.request.connection is not None
         chunk = b''.join(self._write_buffer)
         self._write_buffer = []
@@ -997,8 +996,7 @@ class PageHandler(RequestHandler):
     ) -> Future[RequestResult]:
         if waited and (self.is_finished() or self.finish_group.is_finished()):
             handler_logger.info(
-                'attempted to make waited http request to %s %s in finished handler, '
-                'ignoring. change "waited" method parameter to send it',
+                'attempted to make waited http request to %s %s in finished handler, ignoring',
                 host,
                 path,
             )
@@ -1015,7 +1013,7 @@ class PageHandler(RequestHandler):
         return future
 
 
-def log_request(tornado_request: httputil.HTTPServerRequest, status_code: int) -> None:
+def log_request(tornado_request: HTTPServerRequest, status_code: int) -> None:
     request_time = int(1000.0 * tornado_request.request_time())
     extra = {
         'ip': tornado_request.remote_ip,

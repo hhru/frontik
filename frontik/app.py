@@ -122,6 +122,8 @@ class FrontikApplication:
             asgi_app: FrontikAsgiApp,
         ) -> None:
             status, reason, headers, data = await execute_page(frontik_app, _tornado_request, _request_id, asgi_app)
+            if headers is None and data is None:
+                return
 
             assert _tornado_request.connection is not None
             _tornado_request.connection.set_close_callback(None)  # type: ignore
