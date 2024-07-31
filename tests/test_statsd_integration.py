@@ -39,6 +39,6 @@ class TestStatsdIntegration:
 
         metrics = '\n'.join(metrics).split('\n')
 
-        assert 'count_metric.tag1_is_tag1.tag2_is_tag2.app_is_tests-projects-test_app:10|c' in metrics
-        assert 'gauge_metric.tag_is_tag3.app_is_tests-projects-test_app:100|g' in metrics
-        assert 'time_metric.tag_is_tag4.app_is_tests-projects-test_app:1000|ms' in metrics
+        assert 'count_metric.tag1_is_tag1.tag2_is_tag2.app_is_test_app:10|c' in metrics
+        assert 'gauge_metric.tag_is_tag3.app_is_test_app:100|g' in metrics
+        assert 'time_metric.tag_is_tag4.app_is_test_app:1000|ms' in metrics
