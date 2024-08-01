@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 routing_logger = logging.getLogger('frontik.routing')
 
 routers: list[APIRouter] = []
-_plain_routes: dict[tuple, tuple] = {}
+_plain_routes: dict[tuple[str, str], tuple[APIRoute, type[PageHandler] | None]] = {}
 _regex_mapping: list[tuple[re.Pattern, APIRoute, Type[PageHandler]]] = []
 
 
@@ -48,16 +48,22 @@ class FrontikRouter(APIRouter):
         self._cls = self._base_cls or cls
         return super().head(path, **kwargs)
 
-    def add_api_route(self, *args, **kwargs):
+    def options(self, path: str, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> Callable:
+        self._cls = self._base_cls or cls
+        return super().options(path, **kwargs)
+
+    def add_api_route(self, *args: Any, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> None:
         super().add_api_route(*args, **kwargs)
+        self._cls = self._base_cls or cls or self._cls
         route: APIRoute = self.routes[-1]  # type: ignore
         method = next(iter(route.methods), None)
+        assert method is not None
         path = route.path.strip('/')
 
         if _plain_routes.get((path, method), None) is not None:
             raise RuntimeError(f'route for {method} {path} already exists')
 
-        _plain_routes[(path, method)] = (route, self._cls)  # we need our routing, for get route object
+        _plain_routes[(path, method)] = (route, self._cls)  # we need our routing, for getting route object
 
 
 class FrontikRegexRouter(APIRouter):
@@ -86,6 +92,10 @@ class FrontikRegexRouter(APIRouter):
     def head(self, path: str, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> Callable:
         self._cls = self._base_cls or cls
         return super().head(path, **kwargs)
+
+    def options(self, path: str, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> Callable:
+        self._cls = self._base_cls or cls
+        return super().options(path, **kwargs)
 
     def add_api_route(self, *args: Any, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> None:
         super().add_api_route(*args, **kwargs)
@@ -131,6 +141,8 @@ def import_all_pages(app_module: str) -> None:
 
 
 router = FrontikRouter()
+not_found_router = FrontikRouter()
+method_not_allowed_router = FrontikRouter()
 regex_router = FrontikRegexRouter()
 routers.extend((router, regex_router))
 
@@ -146,7 +158,7 @@ def _find_regex_route(
     return None, None, None
 
 
-def find_route(path: str, method: str) -> tuple[APIRoute, type, dict]:
+def find_route(path: str, method: str) -> tuple[APIRoute, type[PageHandler], dict]:
     route: APIRoute
     route, page_cls, path_params = _find_regex_route(path, method)  # type: ignore
 
@@ -164,7 +176,10 @@ def find_route(path: str, method: str) -> tuple[APIRoute, type, dict]:
 def get_allowed_methods(path: str) -> list[str]:
     allowed_methods = []
     for method in ('GET', 'POST', 'PUT', 'DELETE', 'HEAD'):
-        route, _ = _plain_routes.get((path, method), (None, None))
+        route, _ = _plain_routes.get((path.strip('/'), method), (None, None))
+        if route is None:
+            route, _, _ = _find_regex_route(path, method)
+
         if route is not None:
             allowed_methods.append(method)
 

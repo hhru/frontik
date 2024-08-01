@@ -194,7 +194,9 @@ class PageHandler(RequestHandler):
             if default is _ARG_DEFAULT:
                 raise DefaultValueError(name)
             return default
-        value = _remove_control_chars_regex.sub(' ', value)
+
+        if isinstance(value, str):
+            value = _remove_control_chars_regex.sub(' ', value)
         return value
 
     @overload
@@ -398,6 +400,9 @@ class PageHandler(RequestHandler):
         await self._execute_page()
 
     async def head(self, *args, **kwargs):
+        await self._execute_page()
+
+    async def options(self, *args, **kwargs):
         await self._execute_page()
 
     async def _execute_page(self) -> None:
@@ -604,7 +609,10 @@ class PageHandler(RequestHandler):
 
         try:
             self.write_error(status_code, **kwargs)
-        except Exception:
+        except Exception as exc:
+            if isinstance(exc, FinishSignal):
+                return
+
             self.log.exception('Uncaught exception in write_error')
             if not self._finished:
                 self.finish()
