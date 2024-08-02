@@ -20,7 +20,7 @@ class TestFailFast:
 
     def test_fail_fast_unknown_method(self):
         response = frontik_test_app.get_page('fail_fast?fail_fast=true', method=requests.head)
-        assert response.status_code == 405
+        assert response.status_code == 401
 
     def test_fail_fast_without_done(self):
         response = frontik_test_app.get_page('fail_fast/fail_fast_without_done')

@@ -6,14 +6,14 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from fastapi.routing import APIRoute
 from tornado import httputil
-from tornado.httputil import HTTPHeaders
+from tornado.httputil import HTTPHeaders, HTTPServerRequest
 
 from frontik import media_types, request_context
 from frontik.debug import DebugMode, DebugTransform
 from frontik.handler import PageHandler, get_default_headers, log_request
 from frontik.handler_active_limit import request_limiter
 from frontik.json_builder import JsonBuilder
-from frontik.routing import find_route, get_allowed_methods
+from frontik.routing import find_route, get_allowed_methods, method_not_allowed_router, not_found_router
 
 if TYPE_CHECKING:
     from frontik.app import FrontikApplication, FrontikAsgiApp
@@ -22,54 +22,39 @@ CHARSET = 'utf-8'
 log = logging.getLogger('handler')
 
 
-async def execute_page(
+async def serve_request(
     frontik_app: FrontikApplication,
-    tornado_request: httputil.HTTPServerRequest,
-    request_id: str,
+    tornado_request: HTTPServerRequest,
     asgi_app: FrontikAsgiApp,
 ) -> tuple[int, str, HTTPHeaders, bytes]:
-    with request_context.request_context(request_id), request_limiter(frontik_app.statsd_client) as accepted:
+    with request_limiter(frontik_app.statsd_client) as accepted:
         log.info('requested url: %s', tornado_request.uri)
-        tornado_request.request_id = request_id  # type: ignore
-        assert tornado_request.method is not None
-        route, page_cls, path_params = find_route(tornado_request.path, tornado_request.method)
+        if not accepted:
+            log_request(tornado_request, http.client.SERVICE_UNAVAILABLE)
+            return make_not_accepted_response()
 
         debug_mode = DebugMode(tornado_request)
+        if debug_mode.auth_failed():
+            assert debug_mode.failed_auth_header is not None
+            log_request(tornado_request, http.client.UNAUTHORIZED)
+            return make_debug_auth_failed_response(debug_mode.failed_auth_header)
+
+        assert tornado_request.method is not None
+
+        route, page_cls, path_params = find_route(tornado_request.path, tornado_request.method)
+        if route is None and tornado_request.method == 'HEAD':
+            route, page_cls, path_params = find_route(tornado_request.path, 'GET')
+
         data: bytes
 
-        if not accepted:
-            status, reason, headers, data = make_not_accepted_response()
-        elif debug_mode.auth_failed():
-            assert debug_mode.failed_auth_header is not None
-            status, reason, headers, data = make_debug_auth_failed_response(debug_mode.failed_auth_header)
-        elif route is None:
-            status, reason, headers, data = await make_not_found_response(frontik_app, tornado_request)
+        if route is None:
+            status, reason, headers, data = await make_not_found_response(
+                frontik_app, asgi_app, tornado_request, debug_mode
+            )
         else:
-            request_context.set_handler_name(f'{route.endpoint.__module__}.{route.endpoint.__name__}')
-
-            if page_cls is not None:
-                status, reason, headers, data = await legacy_process_request(
-                    frontik_app, tornado_request, route, page_cls, path_params, debug_mode
-                )
-            else:
-                result = {'headers': get_default_headers()}
-                scope, receive, send = convert_tornado_request_to_asgi(
-                    frontik_app, tornado_request, route, path_params, debug_mode, result
-                )
-                await asgi_app(scope, receive, send)
-
-                status = result['status']
-                reason = httputil.responses.get(status, 'Unknown')
-                headers = HTTPHeaders(result['headers'])
-                data = result['data']
-
-                if not scope['json_builder'].is_empty():
-                    if data != b'null':
-                        raise RuntimeError('Cant have return and json.put at the same time')
-
-                    headers['Content-Type'] = media_types.APPLICATION_JSON
-                    data = scope['json_builder'].to_bytes()
-                    headers['Content-Length'] = str(len(data))
+            status, reason, headers, data = await execute_page(
+                frontik_app, asgi_app, tornado_request, route, page_cls, path_params, debug_mode
+            )
 
         if debug_mode.enabled:
             debug_transform = DebugTransform(frontik_app, debug_mode)
@@ -77,22 +62,79 @@ async def execute_page(
             reason = httputil.responses.get(status, 'Unknown')
 
         log_request(tornado_request, status)
-
         return status, reason, headers, data
 
 
-async def make_not_found_response(
-    frontik_app: FrontikApplication, tornado_request: httputil.HTTPServerRequest
+async def execute_page(
+    frontik_app: FrontikApplication,
+    asgi_app: FrontikAsgiApp,
+    tornado_request: HTTPServerRequest,
+    route: APIRoute,
+    page_cls: type[PageHandler] | None,
+    path_params: dict,
+    debug_mode: DebugMode,
 ) -> tuple[int, str, HTTPHeaders, bytes]:
-    allowed_methods = get_allowed_methods(tornado_request.path.strip('/'))
-    default_headers = get_default_headers()
+    request_context.set_handler_name(f'{route.endpoint.__module__}.{route.endpoint.__name__}')
 
-    if allowed_methods:
+    if page_cls is not None:
+        return await execute_tornado_page(frontik_app, tornado_request, route, page_cls, path_params, debug_mode)
+
+    result: dict = {'headers': get_default_headers()}
+    scope, receive, send = convert_tornado_request_to_asgi(
+        frontik_app, tornado_request, route, path_params, debug_mode, result
+    )
+    await asgi_app(scope, receive, send)
+
+    status: int = result['status']
+    reason = httputil.responses.get(status, 'Unknown')
+    headers = HTTPHeaders(result['headers'])
+    data = result['data']
+
+    if not scope['json_builder'].is_empty():
+        if data != b'null':
+            raise RuntimeError('Cant have "return" and "json.put" at the same time')
+
+        headers['Content-Type'] = media_types.APPLICATION_JSON
+        data = scope['json_builder'].to_bytes()
+        headers['Content-Length'] = str(len(data))
+
+    return status, reason, headers, data
+
+
+async def make_not_found_response(
+    frontik_app: FrontikApplication,
+    asgi_app: FrontikAsgiApp,
+    tornado_request: httputil.HTTPServerRequest,
+    debug_mode: DebugMode,
+) -> tuple[int, str, HTTPHeaders, bytes]:
+    allowed_methods = get_allowed_methods(tornado_request.path)
+    default_headers = get_default_headers()
+    headers: Any
+
+    if allowed_methods and len(method_not_allowed_router.routes) != 0:
+        status, _, headers, data = await execute_page(
+            frontik_app,
+            asgi_app,
+            tornado_request,
+            method_not_allowed_router.routes[0],  # type: ignore
+            method_not_allowed_router._cls,
+            {'allowed_methods': allowed_methods},
+            debug_mode,
+        )
+    elif allowed_methods:
         status = 405
         headers = {'Allow': ', '.join(allowed_methods)}
         data = b''
-    elif hasattr(frontik_app, 'application_404_handler'):
-        status, headers, data = await frontik_app.application_404_handler(tornado_request)
+    elif len(not_found_router.routes) != 0:
+        status, _, headers, data = await execute_page(
+            frontik_app,
+            asgi_app,
+            tornado_request,
+            not_found_router.routes[0],  # type: ignore
+            not_found_router._cls,
+            {},
+            debug_mode,
+        )
     else:
         status, headers, data = build_error_data(404, 'Not Found')
 
@@ -126,7 +168,7 @@ def build_error_data(
     return status_code, headers, data
 
 
-async def legacy_process_request(
+async def execute_tornado_page(
     frontik_app: FrontikApplication,
     tornado_request: httputil.HTTPServerRequest,
     route: APIRoute,

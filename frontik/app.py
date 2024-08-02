@@ -19,15 +19,15 @@ from tornado import httputil
 
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
-from frontik import integrations, media_types
+from frontik import integrations, media_types, request_context
 from frontik.debug import get_frontik_and_apps_versions
 from frontik.handler import PageHandler, get_current_handler
-from frontik.handler_asgi import execute_page
+from frontik.handler_asgi import serve_request
 from frontik.handler_return_values import ReturnedValueHandlers, get_default_returned_value_handlers
 from frontik.integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
 from frontik.options import options
 from frontik.process import WorkerState
-from frontik.routing import import_all_pages, router
+from frontik.routing import import_all_pages, method_not_allowed_router, not_found_router, router
 from frontik.service_discovery import UpstreamManager
 from frontik.util import check_request_id, generate_uniq_timestamp_request_id
 
@@ -102,6 +102,8 @@ class FrontikApplication:
         self.returned_value_handlers: ReturnedValueHandlers = get_default_returned_value_handlers()
 
         import_all_pages(self.app_module_name)
+        assert len(not_found_router.routes) < 2
+        assert len(method_not_allowed_router.routes) < 2
 
         self.ui_methods: dict = {}
         self.ui_modules: dict = {}
@@ -114,14 +116,14 @@ class FrontikApplication:
         request_id = tornado_request.headers.get('X-Request-Id') or generate_uniq_timestamp_request_id()
         if options.validate_request_id:
             check_request_id(request_id)
+        tornado_request.request_id = request_id  # type: ignore
 
         async def _serve_tornado_request(
             frontik_app: FrontikApplication,
             _tornado_request: httputil.HTTPServerRequest,
-            _request_id: str,
             asgi_app: FrontikAsgiApp,
         ) -> None:
-            status, reason, headers, data = await execute_page(frontik_app, _tornado_request, _request_id, asgi_app)
+            status, reason, headers, data = await serve_request(frontik_app, _tornado_request, asgi_app)
 
             assert _tornado_request.connection is not None
             _tornado_request.connection.set_close_callback(None)  # type: ignore
@@ -131,7 +133,8 @@ class FrontikApplication:
             _tornado_request.connection.finish()
             return await future
 
-        return asyncio.create_task(_serve_tornado_request(self, tornado_request, request_id, self.asgi_app))
+        with request_context.request_context(request_id):
+            return asyncio.create_task(_serve_tornado_request(self, tornado_request, self.asgi_app))
 
     def create_upstream_manager(
         self,
