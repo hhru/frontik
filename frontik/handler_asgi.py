@@ -33,7 +33,7 @@ async def serve_request(
             log_request(tornado_request, http.client.SERVICE_UNAVAILABLE)
             return make_not_accepted_response()
 
-        debug_mode = DebugMode(tornado_request)
+        debug_mode = make_debug_mode(frontik_app, tornado_request)
         if debug_mode.auth_failed():
             assert debug_mode.failed_auth_header is not None
             log_request(tornado_request, http.client.UNAUTHORIZED)
@@ -142,6 +142,12 @@ async def make_not_found_response(
 
     reason = httputil.responses.get(status, 'Unknown')
     return status, reason, HTTPHeaders(headers), data
+
+
+def make_debug_mode(frontik_app: FrontikApplication, tornado_request: HTTPServerRequest) -> DebugMode:
+    if hasattr(frontik_app, 'make_debug_mode'):
+        return frontik_app.make_debug_mode(tornado_request)
+    return DebugMode(tornado_request)
 
 
 def make_debug_auth_failed_response(auth_header: str) -> tuple[int, str, HTTPHeaders, bytes]:

@@ -27,7 +27,7 @@ from frontik.handler_return_values import ReturnedValueHandlers, get_default_ret
 from frontik.integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
 from frontik.options import options
 from frontik.process import WorkerState
-from frontik.routing import import_all_pages, method_not_allowed_router, not_found_router, router
+from frontik.routing import import_all_pages, method_not_allowed_router, not_found_router, regex_router, router
 from frontik.service_discovery import UpstreamManager
 from frontik.util import check_request_id, generate_uniq_timestamp_request_id
 
@@ -55,6 +55,7 @@ class FrontikAsgiApp(FastAPI):
 
 
 @router.get('/version', cls=PageHandler)
+@regex_router.get('/version', cls=PageHandler)
 async def get_version(handler: PageHandler = get_current_handler()) -> None:
     handler.set_header('Content-Type', 'text/xml')
     handler.finish(
@@ -63,6 +64,7 @@ async def get_version(handler: PageHandler = get_current_handler()) -> None:
 
 
 @router.get('/status', cls=PageHandler)
+@regex_router.get('/status', cls=PageHandler)
 async def get_status(handler: PageHandler = get_current_handler()) -> None:
     handler.set_header('Content-Type', media_types.APPLICATION_JSON)
     handler.finish(handler.application.get_current_status())
@@ -74,10 +76,10 @@ class FrontikApplication:
     class DefaultConfig:
         pass
 
-    def __init__(self) -> None:
+    def __init__(self, app_module_name: Optional[str] = None) -> None:
         self.start_time = time.time()
 
-        self.app_module_name: str = self.__class__.__module__
+        self.app_module_name: str = app_module_name or self.__class__.__module__
         app_module = importlib.import_module(self.app_module_name)
         self.app_root = os.path.dirname(str(app_module.__file__))
         if options.service_name is None:

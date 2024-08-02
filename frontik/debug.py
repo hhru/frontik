@@ -38,7 +38,7 @@ from frontik.version import version as frontik_version
 from frontik.xml_util import dict_to_xml
 
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, Optional
 
     from http_client.request_response import RequestBuilder, RequestResult
 
@@ -475,7 +475,7 @@ class DebugTransform:
 
 
 class DebugMode:
-    def __init__(self, tornado_request: httputil.HTTPServerRequest) -> None:
+    def __init__(self, tornado_request: httputil.HTTPServerRequest, auth_failed: Optional[bool] = None) -> None:
         self.debug_value = get_cookie_or_param_from_request(tornado_request, 'debug')
         self.mode_values = self.debug_value.split(',') if self.debug_value is not None else ''
         self.inherited = tornado_request.headers.get(DEBUG_HEADER_NAME, None)
@@ -488,8 +488,12 @@ class DebugMode:
             debug_log.debug('debug mode is inherited due to %s request header', DEBUG_HEADER_NAME)
 
         if self.debug_value is not None or self.inherited:
-            if options.debug:
+            if options.debug or auth_failed is False:
                 self.on_auth_ok()
+                return
+
+            if auth_failed is True:
+                self.failed_auth_header = 'Basic realm="Secure Area"'
                 return
 
             self.failed_auth_header = check_debug_auth(tornado_request, options.debug_login, options.debug_password)
