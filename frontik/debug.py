@@ -488,12 +488,12 @@ class DebugMode:
             debug_log.debug('debug mode is inherited due to %s request header', DEBUG_HEADER_NAME)
 
         if self.debug_value is not None or self.inherited:
-            if options.debug or auth_failed is False:
-                self.on_auth_ok()
-                return
-
             if auth_failed is True:
                 self.failed_auth_header = 'Basic realm="Secure Area"'
+                return
+
+            if options.debug or auth_failed is False:
+                self.on_auth_ok()
                 return
 
             self.failed_auth_header = check_debug_auth(tornado_request, options.debug_login, options.debug_password)
