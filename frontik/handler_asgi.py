@@ -145,9 +145,17 @@ async def make_not_found_response(
 
 
 def make_debug_mode(frontik_app: FrontikApplication, tornado_request: HTTPServerRequest) -> DebugMode:
-    if hasattr(frontik_app, 'make_debug_mode'):
-        return frontik_app.make_debug_mode(tornado_request)
-    return DebugMode(tornado_request)
+    debug_mode = DebugMode(tornado_request)
+
+    if not debug_mode.need_auth:
+        return debug_mode
+
+    if hasattr(frontik_app, 'require_debug_access'):
+        frontik_app.require_debug_access(debug_mode, tornado_request)
+    else:
+        debug_mode.require_debug_access(tornado_request)
+
+    return debug_mode
 
 
 def make_debug_auth_failed_response(auth_header: str) -> tuple[int, str, HTTPHeaders, bytes]:
