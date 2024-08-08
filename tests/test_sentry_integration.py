@@ -59,6 +59,7 @@ class TestSentryIntegration(FrontikTestBase):
 
         assert len(sentry_events) == 1
         event = sentry_events[0]
+        assert event['transaction'] == 'frontik.handler.PageHandler.get'
         assert len(event['breadcrumbs']['values']) == 0
         assert event.get('modules') is not None
         assert event['request']['query_string'] == 'ip=127.0.0.77&extra_key=extra_val'

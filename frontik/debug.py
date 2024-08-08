@@ -25,7 +25,7 @@ from lxml import etree
 from lxml.builder import E
 from tornado import httputil
 from tornado.escape import to_unicode, utf8
-from tornado.httputil import HTTPHeaders
+from tornado.httputil import HTTPHeaders, HTTPServerRequest
 
 import frontik.util
 import frontik.xml_util
@@ -475,30 +475,31 @@ class DebugTransform:
 
 
 class DebugMode:
-    def __init__(self, tornado_request: httputil.HTTPServerRequest, auth_failed: Optional[bool] = None) -> None:
+    def __init__(self, tornado_request: HTTPServerRequest) -> None:
         self.debug_value = get_cookie_or_param_from_request(tornado_request, 'debug')
         self.mode_values = self.debug_value.split(',') if self.debug_value is not None else ''
         self.inherited = tornado_request.headers.get(DEBUG_HEADER_NAME, None)
         self.pass_debug = False
         self.enabled = False
         self.profile_xslt = False
-        self.failed_auth_header = None
+        self.failed_auth_header: Optional[str] = None
+        self.need_auth = self.debug_value is not None or self.inherited
 
         if self.inherited:
             debug_log.debug('debug mode is inherited due to %s request header', DEBUG_HEADER_NAME)
 
-        if self.debug_value is not None or self.inherited:
-            if auth_failed is True:
-                self.failed_auth_header = 'Basic realm="Secure Area"'
-                return
+    def require_debug_access(self, tornado_request: HTTPServerRequest, auth_failed: Optional[bool] = None) -> None:
+        if auth_failed is True:
+            self.failed_auth_header = 'Basic realm="Secure Area"'
+            return
 
-            if options.debug or auth_failed is False:
-                self.on_auth_ok()
-                return
+        if options.debug or auth_failed is False:
+            self.on_auth_ok()
+            return
 
-            self.failed_auth_header = check_debug_auth(tornado_request, options.debug_login, options.debug_password)
-            if not self.failed_auth_header:
-                self.on_auth_ok()
+        self.failed_auth_header = check_debug_auth(tornado_request, options.debug_login, options.debug_password)
+        if not self.failed_auth_header:
+            self.on_auth_ok()
 
     def on_auth_ok(self) -> None:
         self.enabled = True
