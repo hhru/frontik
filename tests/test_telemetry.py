@@ -15,7 +15,7 @@ from frontik.app import FrontikApplication
 from frontik.handler import PageHandler, get_current_handler
 from frontik.integrations.telemetry import FrontikIdGenerator, get_netloc
 from frontik.options import options
-from frontik.routing import router
+from frontik.routing import plain_router
 from frontik.testing import FrontikTestBase
 
 dummy_request = Request({'type': 'http'})
@@ -69,13 +69,13 @@ class TestTelemetry:
         assert 'ftp:' == get_netloc('ftp://hh.ru')
 
 
-@router.get('/page_a', cls=PageHandler)
+@plain_router.get('/page_a', cls=PageHandler)
 async def get_page_a(handler=get_current_handler()):
     res = await handler.get_url(handler.get_header('host'), '/page_b')
     handler.json.put(res)
 
 
-@router.get('/page_b', cls=PageHandler)
+@plain_router.get('/page_b', cls=PageHandler)
 async def get_page_b(handler=get_current_handler()):
     handler.json.put({})
 

@@ -1,5 +1,7 @@
 ## Page generation process
 
+Deprecated, works only in routes with `cls=PageHandler`. Use fastapi dependencies/middleware in new code
+
 ![Page generation scheme](/docs/page-generation.png)
 
 Typically page generation process is split into several steps:

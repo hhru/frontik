@@ -4,7 +4,7 @@ from typing import Callable
 from tornado.concurrent import Future
 
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 from frontik.util import gather_dict
 
 
@@ -27,7 +27,7 @@ class Page(PageHandler):
         return future
 
 
-@router.get('/fail_fast/future', cls=Page)
+@plain_router.get('/fail_fast/future', cls=Page)
 async def get_page(handler=get_current_handler()):
     fail_future = handler.get_query_argument('fail_future', 'false') == 'true'
 

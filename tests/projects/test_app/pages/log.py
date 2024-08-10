@@ -1,12 +1,12 @@
 import logging
 
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 custom_logger = logging.getLogger('custom_logger')
 
 
-@router.get('/log', cls=PageHandler)
+@plain_router.get('/log', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     handler.log.debug('debug')
     handler.log.info('info')

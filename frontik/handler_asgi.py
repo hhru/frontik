@@ -4,7 +4,6 @@ import http.client
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
-from fastapi.routing import APIRoute
 from tornado import httputil
 from tornado.httputil import HTTPHeaders, HTTPServerRequest
 
@@ -13,7 +12,9 @@ from frontik.debug import DebugMode, DebugTransform
 from frontik.handler import PageHandler, get_default_headers, log_request
 from frontik.handler_active_limit import request_limiter
 from frontik.json_builder import JsonBuilder
+from frontik.options import options
 from frontik.routing import find_route, get_allowed_methods, method_not_allowed_router, not_found_router
+from frontik.util import check_request_id, generate_uniq_timestamp_request_id
 
 if TYPE_CHECKING:
     from frontik.app import FrontikApplication, FrontikAsgiApp
@@ -22,66 +23,86 @@ CHARSET = 'utf-8'
 log = logging.getLogger('handler')
 
 
-async def serve_request(
+async def serve_tornado_request(
     frontik_app: FrontikApplication,
-    tornado_request: HTTPServerRequest,
     asgi_app: FrontikAsgiApp,
-) -> tuple[int, str, HTTPHeaders, bytes]:
-    with request_limiter(frontik_app.statsd_client) as accepted:
+    tornado_request: httputil.HTTPServerRequest,
+) -> None:
+    request_id = tornado_request.headers.get('X-Request-Id') or generate_uniq_timestamp_request_id()
+    if options.validate_request_id:
+        check_request_id(request_id)
+    tornado_request.request_id = request_id  # type: ignore
+
+    with request_context.request_context(request_id):
         log.info('requested url: %s', tornado_request.uri)
-        if not accepted:
-            log_request(tornado_request, http.client.SERVICE_UNAVAILABLE)
-            return make_not_accepted_response()
 
-        debug_mode = make_debug_mode(frontik_app, tornado_request)
-        if debug_mode.auth_failed():
-            assert debug_mode.failed_auth_header is not None
-            log_request(tornado_request, http.client.UNAUTHORIZED)
-            return make_debug_auth_failed_response(debug_mode.failed_auth_header)
-
-        assert tornado_request.method is not None
-
-        route, page_cls, path_params = find_route(tornado_request.path, tornado_request.method)
-        if route is None and tornado_request.method == 'HEAD':
-            route, page_cls, path_params = find_route(tornado_request.path, 'GET')
-
-        data: bytes
-
-        if route is None:
-            status, reason, headers, data = await make_not_found_response(
-                frontik_app, asgi_app, tornado_request, debug_mode
-            )
-        else:
-            status, reason, headers, data = await execute_page(
-                frontik_app, asgi_app, tornado_request, route, page_cls, path_params, debug_mode
-            )
-
-        if debug_mode.enabled:
-            debug_transform = DebugTransform(frontik_app, debug_mode)
-            status, headers, data = debug_transform.transform_chunk(tornado_request, status, headers, data)
-            reason = httputil.responses.get(status, 'Unknown')
+        with request_limiter(frontik_app.statsd_client) as accepted:
+            if not accepted:
+                status, reason, headers, data = make_not_accepted_response()
+            else:
+                status, reason, headers, data = await process_request(frontik_app, asgi_app, tornado_request)
 
         log_request(tornado_request, status)
-        return status, reason, headers, data
+
+        assert tornado_request.connection is not None
+        tornado_request.connection.set_close_callback(None)  # type: ignore
+
+        start_line = httputil.ResponseStartLine('', status, reason)
+        future = tornado_request.connection.write_headers(start_line, headers, data)
+        tornado_request.connection.finish()
+        return await future
 
 
-async def execute_page(
+async def process_request(
     frontik_app: FrontikApplication,
     asgi_app: FrontikAsgiApp,
     tornado_request: HTTPServerRequest,
-    route: APIRoute,
-    page_cls: type[PageHandler] | None,
-    path_params: dict,
+) -> tuple[int, str, HTTPHeaders, bytes]:
+    debug_mode = make_debug_mode(frontik_app, tornado_request)
+    if debug_mode.auth_failed():
+        assert debug_mode.failed_auth_header is not None
+        return make_debug_auth_failed_response(debug_mode.failed_auth_header)
+
+    assert tornado_request.method is not None
+    assert tornado_request.protocol == 'http'
+
+    scope = find_route(tornado_request.path, tornado_request.method)
+    data: bytes
+
+    if scope['route'] is None:
+        status, reason, headers, data = await make_not_found_response(frontik_app, tornado_request, debug_mode)
+    elif scope['page_cls'] is not None:
+        status, reason, headers, data = await execute_tornado_page(frontik_app, tornado_request, scope, debug_mode)
+    else:
+        status, reason, headers, data = await execute_asgi_page(
+            asgi_app,
+            tornado_request,
+            scope,
+            debug_mode,
+        )
+
+    if debug_mode.enabled:
+        debug_transform = DebugTransform(frontik_app, debug_mode)
+        status, headers, data = debug_transform.transform_chunk(tornado_request, status, headers, data)
+        reason = httputil.responses.get(status, 'Unknown')
+
+    return status, reason, headers, data
+
+
+async def execute_asgi_page(
+    asgi_app: FrontikAsgiApp,
+    tornado_request: HTTPServerRequest,
+    scope: dict,
     debug_mode: DebugMode,
 ) -> tuple[int, str, HTTPHeaders, bytes]:
-    request_context.set_handler_name(f'{route.endpoint.__module__}.{route.endpoint.__name__}')
-
-    if page_cls is not None:
-        return await execute_tornado_page(frontik_app, tornado_request, route, page_cls, path_params, debug_mode)
-
+    request_context.set_handler_name(scope['route'])
     result: dict = {'headers': get_default_headers()}
     scope, receive, send = convert_tornado_request_to_asgi(
-        frontik_app, tornado_request, route, path_params, debug_mode, result
+        asgi_app,
+        tornado_request,
+        scope,
+        debug_mode,
+        result,
     )
     await asgi_app(scope, receive, send)
 
@@ -103,7 +124,6 @@ async def execute_page(
 
 async def make_not_found_response(
     frontik_app: FrontikApplication,
-    asgi_app: FrontikAsgiApp,
     tornado_request: httputil.HTTPServerRequest,
     debug_mode: DebugMode,
 ) -> tuple[int, str, HTTPHeaders, bytes]:
@@ -112,13 +132,14 @@ async def make_not_found_response(
     headers: Any
 
     if allowed_methods and len(method_not_allowed_router.routes) != 0:
-        status, _, headers, data = await execute_page(
+        status, _, headers, data = await execute_tornado_page(
             frontik_app,
-            asgi_app,
             tornado_request,
-            method_not_allowed_router.routes[0],  # type: ignore
-            method_not_allowed_router._cls,
-            {'allowed_methods': allowed_methods},
+            {
+                'route': method_not_allowed_router.routes[0],
+                'page_cls': method_not_allowed_router._cls,
+                'path_params': {'allowed_methods': allowed_methods},
+            },
             debug_mode,
         )
     elif allowed_methods:
@@ -126,13 +147,10 @@ async def make_not_found_response(
         headers = {'Allow': ', '.join(allowed_methods)}
         data = b''
     elif len(not_found_router.routes) != 0:
-        status, _, headers, data = await execute_page(
+        status, _, headers, data = await execute_tornado_page(
             frontik_app,
-            asgi_app,
             tornado_request,
-            not_found_router.routes[0],  # type: ignore
-            not_found_router._cls,
-            {},
+            {'route': not_found_router.routes[0], 'page_cls': not_found_router._cls, 'path_params': {}},
             debug_mode,
         )
     else:
@@ -185,20 +203,19 @@ def build_error_data(
 async def execute_tornado_page(
     frontik_app: FrontikApplication,
     tornado_request: httputil.HTTPServerRequest,
-    route: APIRoute,
-    page_cls: type[PageHandler],
-    path_params: dict[str, str],
+    scope: dict,
     debug_mode: DebugMode,
 ) -> tuple[int, str, HTTPHeaders, bytes]:
+    route, page_cls, path_params = scope['route'], scope['page_cls'], scope['path_params']
+    request_context.set_handler_name(route)
     handler: PageHandler = page_cls(frontik_app, tornado_request, route, debug_mode, path_params)
     return await handler.execute()
 
 
 def convert_tornado_request_to_asgi(
-    frontik_app: FrontikApplication,
+    asgi_app: FrontikAsgiApp,
     tornado_request: httputil.HTTPServerRequest,
-    route: APIRoute,
-    path_params: dict[str, str],
+    scope: dict,
     debug_mode: DebugMode,
     result: dict[str, Any],
 ) -> tuple[dict, Callable, Callable]:
@@ -208,24 +225,16 @@ def convert_tornado_request_to_asgi(
         for value in tornado_request.headers.get_list(header)
     ]
 
-    json_builder = JsonBuilder()
-
-    scope = {
-        'type': tornado_request.protocol,
+    scope.update({
         'http_version': tornado_request.version,
-        'path': tornado_request.path,
-        'method': tornado_request.method,
         'query_string': tornado_request.query.encode(CHARSET),
         'headers': headers,
         'client': (tornado_request.remote_ip, 0),
-        'route': route,
-        'path_params': path_params,
-        'http_client_factory': frontik_app.http_client_factory,
-        'debug_enabled': debug_mode.enabled,
-        'pass_debug': debug_mode.pass_debug,
+        'http_client_factory': asgi_app.http_client_factory,
+        'debug_mode': debug_mode,
         'start_time': tornado_request._start_time,
-        'json_builder': json_builder,
-    }
+        'json_builder': JsonBuilder(),
+    })
 
     async def receive():
         return {

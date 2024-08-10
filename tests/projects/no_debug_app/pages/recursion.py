@@ -1,9 +1,9 @@
 from frontik import media_types
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
-@router.get('/recursion', cls=PageHandler)
+@plain_router.get('/recursion', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     n = int(handler.get_query_argument('n'))
     if n > 0:

@@ -1,5 +1,5 @@
 from frontik.handler import PageHandler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
 class Page(PageHandler):
@@ -12,6 +12,6 @@ class Page(PageHandler):
         self.finish_with_postprocessors()
 
 
-@router.get('/write_error', cls=Page)
+@plain_router.get('/write_error', cls=Page)
 async def get_page():
     raise Exception('exception in handler')

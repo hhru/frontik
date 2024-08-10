@@ -1,7 +1,7 @@
 import asyncio
 
 from frontik.handler import AbortAsyncGroup, PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
 class Page(PageHandler):
@@ -21,7 +21,7 @@ class Page(PageHandler):
         Page.data.update(data)
 
 
-@router.get('/async_group/not_waited_requests', cls=Page)
+@plain_router.get('/async_group/not_waited_requests', cls=Page)
 async def get_page(handler: Page = get_current_handler()) -> None:
     if not handler.data:
         handler.json.put({'get': True})
@@ -34,16 +34,16 @@ async def get_page(handler: Page = get_current_handler()) -> None:
         handler.data = {}
 
 
-@router.post('/async_group/not_waited_requests', cls=Page)
+@plain_router.post('/async_group/not_waited_requests', cls=Page)
 async def post_page(handler=get_current_handler()):
     handler.record_request({'post_made': True})
 
 
-@router.put('/async_group/not_waited_requests', cls=Page)
+@plain_router.put('/async_group/not_waited_requests', cls=Page)
 async def put_page(handler=get_current_handler()):
     handler.record_request({'put_made': True})
 
 
-@router.delete('/async_group/not_waited_requests', cls=Page)
+@plain_router.delete('/async_group/not_waited_requests', cls=Page)
 async def delete_page(handler=get_current_handler()):
     handler.record_request({'delete_made': True})

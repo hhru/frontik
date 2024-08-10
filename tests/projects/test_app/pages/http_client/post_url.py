@@ -2,7 +2,7 @@ import re
 from typing import Any
 
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 from frontik.util import any_to_bytes, any_to_unicode
 
 FIELDS: dict[str, Any] = {
@@ -24,14 +24,14 @@ FILES: dict[str, list] = {
 }
 
 
-@router.get('/http_client/post_url', cls=PageHandler)
+@plain_router.get('/http_client/post_url', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     result = await handler.post_url(handler.get_header('host'), handler.path, data=FIELDS, files=FILES)
     if not result.failed:
         handler.json.put(result.data)
 
 
-@router.post('/http_client/post_url', cls=PageHandler)
+@plain_router.post('/http_client/post_url', cls=PageHandler)
 async def post_page(handler: PageHandler = get_current_handler()):
     errors_count = 0
     body_parts = handler.request.body.split(b'\r\n--')

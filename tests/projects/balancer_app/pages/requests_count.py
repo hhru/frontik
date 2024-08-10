@@ -4,12 +4,12 @@ from http_client.balancing import Upstream
 
 from frontik import media_types
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_occupied
 
 
-@router.get('/requests_count', cls=PageHandler)
+@plain_router.get('/requests_count', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     upstreams = handler.application.upstream_manager.get_upstreams()
     upstreams['requests_count_async'] = Upstream('requests_count_async', {}, [get_server(handler, 'normal')])
@@ -31,7 +31,7 @@ async def get_page(handler=get_current_handler()):
     check_all_requests_done(handler, 'requests_count_async')
 
 
-@router.post('/requests_count', cls=PageHandler)
+@plain_router.post('/requests_count', cls=PageHandler)
 async def post_page(handler=get_current_handler()):
     handler.set_header('Content-Type', media_types.TEXT_PLAIN)
     upstreams = handler.application.upstream_manager.get_upstreams()

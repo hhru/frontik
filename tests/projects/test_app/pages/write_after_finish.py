@@ -1,7 +1,7 @@
 import asyncio
 
 from frontik.handler import FinishWithPostprocessors, PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
 class Page(PageHandler):
@@ -25,13 +25,13 @@ class Page(PageHandler):
                 handler.json.put({'postprocessor_completed': True})
 
 
-@router.get('/write_after_finish', cls=Page)
+@plain_router.get('/write_after_finish', cls=Page)
 async def get_page(handler=get_current_handler()):
     await handler.post_url(handler.get_header('host'), handler.path)
     # test that postprocessors are scheduled only once
     raise FinishWithPostprocessors()
 
 
-@router.post('/write_after_finish', cls=Page)
+@plain_router.post('/write_after_finish', cls=Page)
 async def post_page(handler=get_current_handler()):
     handler.json.put({'counter': handler.counter_static})

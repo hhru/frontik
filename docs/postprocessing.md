@@ -1,5 +1,7 @@
 ## Postprocessing
 
+Deprecated, works only in routes with `cls=PageHandler`. Use fastapi dependencies in new code
+
 Postprocessing is a mechanism for inserting and running hooks after finishing all page requests
 (see [Making HTTP requests](/docs/http-client.md)).
 

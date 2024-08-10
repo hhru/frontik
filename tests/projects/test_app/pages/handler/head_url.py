@@ -1,10 +1,10 @@
 import http.client
 
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
-@router.get('/handler/head_url', cls=PageHandler)
+@plain_router.get('/handler/head_url', cls=PageHandler)
 async def get_page(handler: PageHandler = get_current_handler()) -> None:
     head_result = await handler.head_url(handler.request.headers.get('host', ''), '/handler/head', name='head')
 

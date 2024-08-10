@@ -1,8 +1,8 @@
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
-@router.head('/handler/head', cls=PageHandler)
+@plain_router.head('/handler/head', cls=PageHandler)
 async def head_page(handler=get_current_handler()):
     handler.set_header('X-Foo', 'Bar')
     handler.text = 'response body must be empty for HEAD requests'

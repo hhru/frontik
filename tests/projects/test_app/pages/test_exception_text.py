@@ -1,9 +1,9 @@
 from frontik.handler import HTTPErrorWithPostprocessors, PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 from frontik.util import gather_list
 
 
-@router.get('/test_exception_text', cls=PageHandler)
+@plain_router.get('/test_exception_text', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     async def bad_post_requests() -> None:
         results = await gather_list(

@@ -1,14 +1,13 @@
 ## Argument validation
 
-Use methods described in
+For fastapi routing see fastapi docs
 
 - Query - https://fastapi.tiangolo.com/tutorial/query-params-str-validations/
 - Body - https://fastapi.tiangolo.com/tutorial/body-fields/
 - Body - https://fastapi.tiangolo.com/tutorial/body-nested-models/
+- Path - https://fastapi.tiangolo.com/tutorial/path-params/
 
-Unlike other params, path params don't work as https://fastapi.tiangolo.com/tutorial/path-params/
-because right now there is no way to set parametric url. Temporarily you can use regex router as a workaround.
-We are going to migrate on fastapi native routing soon, so don't use very complicated regex
+In legacy controllers, path params don't work as fastapi. You need to use regex router and then get params with `get_path_argument`:
 
 Path param example:
 

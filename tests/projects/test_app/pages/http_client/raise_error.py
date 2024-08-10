@@ -1,5 +1,5 @@
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
 class Page(PageHandler):
@@ -8,6 +8,6 @@ class Page(PageHandler):
             self.finish('UnicodeEncodeError')
 
 
-@router.get('/http_client/raise_error', cls=Page)
+@plain_router.get('/http_client/raise_error', cls=Page)
 async def get_page(handler=get_current_handler()):
     await handler.post_url(handler.get_header('host'), '/a-вот')

@@ -1,6 +1,17 @@
 ## Making HTTP requests
 
-Frontik's [PageHandler](/frontik/handler.py) contains several methods for making HTTP requests to backends:
+Frontik uses [balancing client](https://github.com/hhru/balancing-http-client). You can get instance through special dependency:
+
+```python
+from frontik.balancing_client import HttpClientT
+from frontik.routing import router
+
+@router.post('/handler')
+async def post_page(http_client: HttpClientT) -> None:
+    result = await http_client.post_url('http://backend', request.url.path, fail_fast=True)
+```
+
+In legacy controllers frontik's [PageHandler](/frontik/handler.py) contains several methods for making HTTP requests to backends:
 get_url, post_url, put_url, etc...
 
 Method parameters are:

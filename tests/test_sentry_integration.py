@@ -9,7 +9,7 @@ from tornado.web import HTTPError
 from frontik.app import FrontikApplication
 from frontik.handler import PageHandler, get_current_handler
 from frontik.options import options
-from frontik.routing import router
+from frontik.routing import plain_router
 from frontik.testing import FrontikTestBase
 from tests.instances import frontik_re_app, frontik_test_app
 
@@ -19,7 +19,7 @@ class Page(PageHandler):
         sentry_sdk.set_user({'id': '123456'})
 
 
-@router.get('/sentry_error', cls=Page)
+@plain_router.get('/sentry_error', cls=Page)
 async def get_page(handler: Page = get_current_handler()) -> None:
     ip = handler.get_query_argument('ip', None)
     extra = handler.get_query_argument('extra_key', None)
@@ -31,12 +31,12 @@ async def get_page(handler: Page = get_current_handler()) -> None:
     raise Exception('My_sentry_exception')
 
 
-@router.post('/sentry_error', cls=Page)
+@plain_router.post('/sentry_error', cls=Page)
 async def post_page():
     raise HTTPError(500, 'my_HTTPError')
 
 
-@router.put('/sentry_error', cls=Page)
+@plain_router.put('/sentry_error', cls=Page)
 async def put_page():
     sentry_sdk.set_extra('extra_key', 'extra_value')
     sentry_sdk.capture_message('sentry_message')

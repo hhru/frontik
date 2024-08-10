@@ -4,6 +4,8 @@ import contextvars
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Optional
 
+from fastapi.routing import APIRoute
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
@@ -39,8 +41,8 @@ def get_handler_name() -> Optional[str]:
     return _context.get().handler_name
 
 
-def set_handler_name(handler_name: str) -> None:
-    _context.get().handler_name = handler_name
+def set_handler_name(route: APIRoute) -> None:
+    _context.get().handler_name = f'{route.endpoint.__module__}.{route.endpoint.__name__}'
 
 
 def get_log_handler() -> Optional[DebugBufferedHandler]:

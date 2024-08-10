@@ -2,7 +2,7 @@ from lxml import etree
 from tornado.web import HTTPError
 
 from frontik.handler import FinishWithPostprocessors, PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
 class Page(PageHandler):
@@ -15,7 +15,7 @@ class Page(PageHandler):
         self.add_postprocessor(pp)
 
 
-@router.get('/finish_with_postprocessors', cls=Page)
+@plain_router.get('/finish_with_postprocessors', cls=Page)
 async def get_page(handler=get_current_handler()):
     content_type = handler.get_query_argument('type')
 
@@ -38,6 +38,6 @@ async def get_page(handler=get_current_handler()):
     raise FinishWithPostprocessors()
 
 
-@router.post('/finish_with_postprocessors', cls=Page)
+@plain_router.post('/finish_with_postprocessors', cls=Page)
 async def post_page():
     pass

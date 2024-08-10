@@ -1,6 +1,6 @@
 from frontik import media_types
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 from frontik.util import gather_dict
 
 
@@ -16,7 +16,7 @@ class Page(PageHandler):
         super().prepare()
 
 
-@router.get('/json_page', cls=Page)
+@plain_router.get('/json_page', cls=Page)
 async def get_page(handler: Page = get_current_handler()) -> None:
     invalid_json = handler.get_query_argument('invalid', 'false')
 
@@ -35,7 +35,7 @@ async def get_page(handler: Page = get_current_handler()) -> None:
     handler.json.put(data)
 
 
-@router.post('/json_page', cls=Page)
+@plain_router.post('/json_page', cls=Page)
 async def post_page(handler=get_current_handler()):
     invalid_json = handler.get_body_argument('invalid', 'false') == 'true'
 
