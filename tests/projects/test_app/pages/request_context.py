@@ -7,7 +7,7 @@ from fastapi import Request
 
 from frontik import request_context
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
 async def _callback(name: str, handler: PageHandler) -> None:
@@ -26,7 +26,7 @@ class Page(PageHandler):
         return 'request_context'
 
 
-@router.get('/request_context', cls=Page)
+@plain_router.get('/request_context', cls=Page)
 async def get_page(request: Request, handler: Page = get_current_handler()) -> None:
     def _waited_callback(name: str, _task: Any) -> None:
         task = asyncio.create_task(_callback(name, handler))
@@ -49,6 +49,6 @@ async def get_page(request: Request, handler: Page = get_current_handler()) -> N
     future.add_done_callback(partial(_waited_callback, 'future'))
 
 
-@router.post('/request_context', cls=Page)
+@plain_router.post('/request_context', cls=Page)
 async def post_page():
     pass

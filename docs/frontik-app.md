@@ -1,7 +1,7 @@
 ## Frontik application structure
 
 Each Frontik instance serves one application, which is imported from a package specified in
-`app` parameter (see [Running Frontik](/docs/running.md)).
+`app_class` parameter (see [Running Frontik](/docs/running.md)).
 
 Frontik application is a set of files, organized in the following structure
 (where `app` is a root folder for an application):
@@ -16,7 +16,7 @@ Frontik application is a set of files, organized in the following structure
 ```
 
 Application root module may contain class with overrides frontik.app.FrontikApplication class, providing application
-specific configs and url mappings, for example:
+specific configs, for example:
 
 ```
 from frontik.app import FrontikApplication
@@ -25,9 +25,6 @@ from frontik.app import FrontikApplication
 class MyApplication(FrontikApplication):
     def application_config(self):
         return config
-
-    def application_urls(self):
-        return config.urls
 ```
 
 Application initialization is done in 2 steps:

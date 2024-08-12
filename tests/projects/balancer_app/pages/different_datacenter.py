@@ -4,11 +4,11 @@ from tornado.web import HTTPError
 
 from frontik import media_types
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 from tests.projects.balancer_app import get_server
 
 
-@router.get('/different_datacenter', cls=PageHandler)
+@plain_router.get('/different_datacenter', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     free_server = get_server(handler, 'free')
     free_server.datacenter = 'dc1'
@@ -30,7 +30,7 @@ async def get_page(handler=get_current_handler()):
     handler.text = result.data
 
 
-@router.post('/different_datacenter', cls=PageHandler)
+@plain_router.post('/different_datacenter', cls=PageHandler)
 async def post_page(handler=get_current_handler()):
     handler.set_header('Content-Type', media_types.TEXT_PLAIN)
     handler.text = 'result'

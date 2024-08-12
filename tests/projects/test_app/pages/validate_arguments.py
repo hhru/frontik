@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import field_validator
 
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 from frontik.validator import BaseValidationModel, Validators
 
 
@@ -17,7 +17,7 @@ class CustomModel(BaseValidationModel):
         return 'customString'
 
 
-@router.get('/validate_arguments', cls=PageHandler)
+@plain_router.get('/validate_arguments', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     is_custom_model = handler.get_bool_argument('model', False)
     empty_default_str = handler.get_str_argument('str_arg_with_default', 'default')
@@ -42,7 +42,7 @@ async def get_page(handler=get_current_handler()):
     })
 
 
-@router.post('/validate_arguments', cls=PageHandler)
+@plain_router.post('/validate_arguments', cls=PageHandler)
 async def post_page(handler=get_current_handler()):
     str_body_arg = handler.get_str_argument('str_argument', 'default', from_body=True)
     int_body_arg = handler.get_int_argument('int_argument', 0, from_body=True)
@@ -50,6 +50,6 @@ async def post_page(handler=get_current_handler()):
     handler.json.put({'str_body_arg': str_body_arg, 'int_body_arg': int_body_arg})
 
 
-@router.put('/validate_arguments', cls=PageHandler)
+@plain_router.put('/validate_arguments', cls=PageHandler)
 async def put_page(handler=get_current_handler()):
     handler.get_str_argument('str_arg', 3)

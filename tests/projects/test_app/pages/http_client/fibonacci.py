@@ -2,10 +2,10 @@ import asyncio
 
 from frontik import media_types
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
-@router.get('/http_client/fibonacci', cls=PageHandler)
+@plain_router.get('/http_client/fibonacci', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     n = int(handler.get_query_argument('n'))
 

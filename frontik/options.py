@@ -17,6 +17,7 @@ class Options:
     xheaders: bool = False
     validate_request_id: bool = False
     xsrf_cookies: bool = False
+    openapi_enabled: bool = False
 
     config: Optional[str] = None
     host: str = '0.0.0.0'

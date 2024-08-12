@@ -3,10 +3,10 @@ from lxml import etree
 from frontik import media_types
 from frontik.doc import Doc
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
-@router.get('/compose_doc', cls=PageHandler)
+@plain_router.get('/compose_doc', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     invalid_xml = handler.get_query_argument('invalid', 'false')
 
@@ -16,7 +16,7 @@ async def get_page(handler=get_current_handler()):
     handler.doc.put(Doc('c'))
 
 
-@router.post('/compose_doc', cls=PageHandler)
+@plain_router.post('/compose_doc', cls=PageHandler)
 async def post_page(handler=get_current_handler()):
     invalid_xml = handler.get_body_argument('invalid', 'false') == 'true'
 

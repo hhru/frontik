@@ -3,14 +3,14 @@ from lxml import etree
 
 from frontik.app import FrontikApplication
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 from frontik.testing import FrontikTestBase
 from frontik.util import gather_list
 from tests import FRONTIK_ROOT
 from tests.projects.test_app.pages.handler import delete  # noqa
 
 
-@router.get('/sum_values', cls=PageHandler)
+@plain_router.get('/sum_values', cls=PageHandler)
 async def sum_values_page(handler=get_current_handler()):
     handler.result = 0
     service_host = handler.config.serviceHost
@@ -25,7 +25,7 @@ async def sum_values_page(handler=get_current_handler()):
     handler.set_status(400)
 
 
-@router.get('/config', cls=PageHandler)
+@plain_router.get('/config', cls=PageHandler)
 async def check_config_page(handler=get_current_handler()):
     handler.text = handler.config.config_param
 

@@ -1,12 +1,12 @@
 from http_client.balancing import Upstream, UpstreamConfig
 
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 from tests.instances import find_free_port
 from tests.projects.balancer_app import get_server_with_port
 
 
-@router.get('/retry_count_limit', cls=PageHandler)
+@plain_router.get('/retry_count_limit', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     upstream = Upstream(
         'retry_count_limit',

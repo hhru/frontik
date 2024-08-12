@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Callable, MutableSequence, Optional, Type
 
 from fastapi import APIRouter
 from fastapi.routing import APIRoute
+from starlette.routing import Match
 
 if TYPE_CHECKING:
     from frontik.handler import PageHandler
@@ -19,6 +20,7 @@ routing_logger = logging.getLogger('frontik.routing')
 routers: list[APIRouter] = []
 _plain_routes: dict[tuple[str, str], tuple[APIRoute, type[PageHandler] | None]] = {}
 _regex_mapping: list[tuple[re.Pattern, APIRoute, Type[PageHandler]]] = []
+_fastapi_routes: list[APIRoute] = []
 
 
 class FrontikRouter(APIRouter):
@@ -105,6 +107,30 @@ class FrontikRegexRouter(APIRouter):
         _regex_mapping.append((re.compile(route.path), route, self._cls))  # type: ignore
 
 
+class FastAPIRouter(APIRouter):
+    def __init__(self, include_in_app: bool = True, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        if include_in_app:
+            routers.append(self)
+
+    async def __call__(self, scope, receive, send):
+        assert scope['type'] == 'http'
+
+        if 'router' not in scope:
+            scope['router'] = self
+
+        route = scope['route']
+        await route.handle(scope, receive, send)
+
+    def add_api_route(self, *args: Any, **kwargs: Any) -> None:
+        super().add_api_route(*args, **kwargs)
+        _fastapi_routes.append(self.routes[-1])  # type: ignore
+
+    def add_route(self, *args: Any, **kwargs: Any) -> None:
+        super().add_route(*args, **kwargs)
+        _fastapi_routes.append(self.routes[-1])  # type: ignore
+
+
 def _iter_submodules(path: MutableSequence[str], prefix: str = '') -> Generator:
     """Find packages recursively, including PEP420 packages"""
     yield from pkgutil.walk_packages(path, prefix)
@@ -140,37 +166,62 @@ def import_all_pages(app_module: str) -> None:
             raise RuntimeError('failed on import page %s %s', full_name, ex)
 
 
-router = FrontikRouter()
+plain_router = FrontikRouter()
+router = FastAPIRouter(include_in_app=False)
 not_found_router = FrontikRouter()
 method_not_allowed_router = FrontikRouter()
 regex_router = FrontikRegexRouter()
-routers.extend((router, regex_router))
+
+
+def _find_fastapi_route(scope: dict) -> Optional[APIRoute]:
+    for route in _fastapi_routes:
+        match, child_scope = route.matches(scope)
+        if match == Match.FULL:
+            scope.update(child_scope)
+            scope['route'] = route
+            return route
+
+    return None
 
 
 def _find_regex_route(
     path: str, method: str
-) -> Union[tuple[APIRoute, Type[PageHandler], dict], tuple[None, None, None]]:
+) -> Union[tuple[APIRoute, Type[PageHandler], dict], tuple[None, None, dict]]:
     for pattern, route, cls in _regex_mapping:
         match = pattern.match(path)
         if match and next(iter(route.methods), None) == method:
             return route, cls, match.groupdict()
 
-    return None, None, None
+    return None, None, {}
 
 
-def find_route(path: str, method: str) -> tuple[APIRoute, type[PageHandler], dict]:
+def find_route(path: str, method: str) -> dict:
     route: APIRoute
     route, page_cls, path_params = _find_regex_route(path, method)  # type: ignore
+    scope = {
+        'type': 'http',
+        'path': path,
+        'method': method,
+        'route': route,
+        'page_cls': page_cls,
+        'path_params': path_params,
+    }
 
     if route is None:
         route, page_cls = _plain_routes.get((path.strip('/'), method), (None, None))
-        path_params = {}
+        scope['route'] = route
+        scope['page_cls'] = page_cls
+
+    if route is None:
+        route = _find_fastapi_route(scope)
+
+    if route is None and method == 'HEAD':
+        return find_route(path, 'GET')
 
     if route is None:
         routing_logger.error('match for request url %s "%s" not found', method, path)
-        return None, None, None
 
-    return route, page_cls, path_params  # type: ignore
+    return scope
 
 
 def get_allowed_methods(path: str) -> list[str]:

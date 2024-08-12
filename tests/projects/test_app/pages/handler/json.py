@@ -1,5 +1,5 @@
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
 class Page(PageHandler):
@@ -7,11 +7,11 @@ class Page(PageHandler):
         self.text = self.get_body_argument('foo')
 
 
-@router.post('/handler/json', cls=Page)
+@plain_router.post('/handler/json', cls=Page)
 async def post_page(handler=get_current_handler()):
     return handler._page_handler()
 
 
-@router.put('/handler/json', cls=Page)
+@plain_router.put('/handler/json', cls=Page)
 async def put_page(handler=get_current_handler()):
     return handler._page_handler()

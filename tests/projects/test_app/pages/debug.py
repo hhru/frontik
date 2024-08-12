@@ -2,10 +2,10 @@ from lxml.builder import E
 
 from frontik import media_types
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
-@router.get('/debug', cls=PageHandler)
+@plain_router.get('/debug', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     handler.log.debug('debug: starting debug page')
 
@@ -46,14 +46,14 @@ async def get_page(handler=get_current_handler()):
     handler.log.debug('testing unicode text output', extra={'_text': 'some\nmultiline\nюникод\ndebug'})
 
 
-@router.post('/debug', cls=PageHandler)
+@plain_router.post('/debug', cls=PageHandler)
 async def post_page(handler=get_current_handler()):
     handler.log.debug('this page returns json')
 
     handler.json.put({'param1': 'value', 'param2': 'тест', 'тест': 'value'})
 
 
-@router.put('/debug', cls=PageHandler)
+@plain_router.put('/debug', cls=PageHandler)
 async def put_page(handler=get_current_handler()):
     content_type = handler.get_query_argument('type')
 

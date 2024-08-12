@@ -4,12 +4,12 @@ from http_client.balancing import Server, Upstream, UpstreamConfig
 
 from frontik import media_types
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_were_occupied
 
 
-@router.get('/slow_start', cls=PageHandler)
+@plain_router.get('/slow_start', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     server = get_server(handler, 'normal')
     server.weight = 5
@@ -43,7 +43,7 @@ async def get_page(handler=get_current_handler()):
     check_all_requests_done(handler, 'slow_start')
 
 
-@router.post('/slow_start', cls=PageHandler)
+@plain_router.post('/slow_start', cls=PageHandler)
 async def post_page(handler=get_current_handler()):
     handler.set_header('Content-Type', media_types.TEXT_PLAIN)
     upstreams = handler.application.upstream_manager.get_upstreams()

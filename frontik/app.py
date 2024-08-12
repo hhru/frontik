@@ -7,7 +7,7 @@ import time
 from collections.abc import Callable
 from ctypes import c_bool, c_int
 from threading import Lock
-from typing import Awaitable, Optional, Union
+from typing import Optional, Union
 
 from aiokafka import AIOKafkaProducer
 from fastapi import FastAPI, HTTPException
@@ -19,55 +19,39 @@ from tornado import httputil
 
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
-from frontik import integrations, media_types, request_context
+from frontik import integrations, media_types
 from frontik.debug import get_frontik_and_apps_versions
 from frontik.handler import PageHandler, get_current_handler
-from frontik.handler_asgi import serve_request
+from frontik.handler_asgi import serve_tornado_request
 from frontik.handler_return_values import ReturnedValueHandlers, get_default_returned_value_handlers
 from frontik.integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
 from frontik.options import options
 from frontik.process import WorkerState
-from frontik.routing import import_all_pages, method_not_allowed_router, not_found_router, regex_router, router
+from frontik.routing import (
+    import_all_pages,
+    method_not_allowed_router,
+    not_found_router,
+    regex_router,
+    router,
+    routers,
+)
 from frontik.service_discovery import UpstreamManager
-from frontik.util import check_request_id, generate_uniq_timestamp_request_id
 
 app_logger = logging.getLogger('app_logger')
-
-
-class AsgiRouter:
-    async def __call__(self, scope, receive, send):
-        assert scope['type'] == 'http'
-
-        if 'router' not in scope:
-            scope['router'] = self
-
-        route = scope['route']
-        scope['endpoint'] = route.endpoint
-
-        await route.handle(scope, receive, send)
+_server_tasks = set()
 
 
 class FrontikAsgiApp(FastAPI):
     def __init__(self) -> None:
         super().__init__()
-        self.router = AsgiRouter()  # type: ignore
-        self.http_client = None
+        self.router = router
+        self.http_client_factory = None
 
+        if options.openapi_enabled:
+            self.setup()
 
-@router.get('/version', cls=PageHandler)
-@regex_router.get('/version', cls=PageHandler)
-async def get_version(handler: PageHandler = get_current_handler()) -> None:
-    handler.set_header('Content-Type', 'text/xml')
-    handler.finish(
-        etree.tostring(get_frontik_and_apps_versions(handler.application), encoding='utf-8', xml_declaration=True),
-    )
-
-
-@router.get('/status', cls=PageHandler)
-@regex_router.get('/status', cls=PageHandler)
-async def get_status(handler: PageHandler = get_current_handler()) -> None:
-    handler.set_header('Content-Type', media_types.APPLICATION_JSON)
-    handler.finish(handler.application.get_current_status())
+        for _router in routers:
+            self.include_router(_router)
 
 
 class FrontikApplication:
@@ -113,30 +97,11 @@ class FrontikApplication:
 
         self.asgi_app = FrontikAsgiApp()
 
-    def __call__(self, tornado_request: httputil.HTTPServerRequest) -> Optional[Awaitable[None]]:
-        # for making more asgi, reimplement tornado.http1connection._server_request_loop and ._read_message
-        request_id = tornado_request.headers.get('X-Request-Id') or generate_uniq_timestamp_request_id()
-        if options.validate_request_id:
-            check_request_id(request_id)
-        tornado_request.request_id = request_id  # type: ignore
-
-        async def _serve_tornado_request(
-            frontik_app: FrontikApplication,
-            _tornado_request: httputil.HTTPServerRequest,
-            asgi_app: FrontikAsgiApp,
-        ) -> None:
-            status, reason, headers, data = await serve_request(frontik_app, _tornado_request, asgi_app)
-
-            assert _tornado_request.connection is not None
-            _tornado_request.connection.set_close_callback(None)  # type: ignore
-
-            start_line = httputil.ResponseStartLine('', status, reason)
-            future = _tornado_request.connection.write_headers(start_line, headers, data)
-            _tornado_request.connection.finish()
-            return await future
-
-        with request_context.request_context(request_id):
-            return asyncio.create_task(_serve_tornado_request(self, tornado_request, self.asgi_app))
+    def __call__(self, tornado_request: httputil.HTTPServerRequest) -> None:
+        # for make it more asgi, reimplement tornado.http1connection._server_request_loop and ._read_message
+        task = asyncio.create_task(serve_tornado_request(self, self.asgi_app, tornado_request))
+        _server_tasks.add(task)
+        task.add_done_callback(_server_tasks.discard)
 
     def create_upstream_manager(
         self,
@@ -188,6 +153,8 @@ class FrontikApplication:
             kafka_producer=kafka_producer,
         )
         self.http_client_factory = HttpClientFactory(self.app_name, self.http_client, request_balancer_builder)
+        self.asgi_app.http_client_factory = self.http_client_factory
+
         if self.worker_state.single_worker_mode:
             self.worker_state.master_done.value = True
 
@@ -226,3 +193,17 @@ class FrontikApplication:
 
     def log_request(self, tornado_handler: PageHandler) -> None:
         pass
+
+
+@regex_router.get('/version', cls=PageHandler)
+async def get_version(handler: PageHandler = get_current_handler()) -> None:
+    handler.set_header('Content-Type', 'text/xml')
+    handler.finish(
+        etree.tostring(get_frontik_and_apps_versions(handler.application), encoding='utf-8', xml_declaration=True),
+    )
+
+
+@regex_router.get('/status', cls=PageHandler)
+async def get_status(handler: PageHandler = get_current_handler()) -> None:
+    handler.set_header('Content-Type', media_types.APPLICATION_JSON)
+    handler.finish(handler.application.get_current_status())

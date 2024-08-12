@@ -1,7 +1,7 @@
 from tornado.web import HTTPError
 
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
 class ContentPostprocessor:
@@ -22,7 +22,7 @@ class Page(PageHandler):
         return tpl.replace('%%header%%', 'HEADER')
 
 
-@router.get('/postprocess/', cls=Page)
+@plain_router.get('/postprocess/', cls=Page)
 async def get_page(handler: Page = get_current_handler()) -> None:
     if handler.get_query_argument('raise_error', None) is not None:
         handler.add_postprocessor(handler._pp_1)

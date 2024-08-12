@@ -28,7 +28,7 @@ def modify_http_client_request(request: Request, balanced_request: RequestBuilde
         )
         timeout_checker.check(balanced_request)
 
-    if request['pass_debug']:
+    if request['debug_mode'].pass_debug:
         balanced_request.headers[DEBUG_HEADER_NAME] = 'true'
 
         # debug_timestamp is added to avoid caching of debug responses
@@ -46,7 +46,7 @@ def get_http_client(modify_request_hook=None):
 
         http_client = request['http_client_factory'].get_http_client(
             modify_http_request_hook=hook,
-            debug_enabled=request['debug_enabled'],
+            debug_enabled=request['debug_mode'].enabled,
         )
 
         return http_client

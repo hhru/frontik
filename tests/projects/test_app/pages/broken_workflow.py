@@ -1,11 +1,11 @@
 from tornado.web import HTTPError
 
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 from frontik.util import gather_list
 
 
-@router.get('/broken_workflow', cls=PageHandler)
+@plain_router.get('/broken_workflow', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     port = int(handler.get_query_argument('port'))
 

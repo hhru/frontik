@@ -1,10 +1,10 @@
 import asyncio
 
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
-@router.get('/http_client/future', cls=PageHandler)
+@plain_router.get('/http_client/future', cls=PageHandler)
 async def get_page(handler: PageHandler = get_current_handler()):
     state = {
         'second_callback_must_be_async': True,
@@ -28,6 +28,6 @@ async def get_page(handler: PageHandler = get_current_handler()):
     request_future.add_done_callback(handler.finish_group.add_future(additional_task))
 
 
-@router.post('/http_client/future', cls=PageHandler)
+@plain_router.post('/http_client/future', cls=PageHandler)
 async def post_page(handler=get_current_handler()):
     handler.json.put({'yay': 'yay'})

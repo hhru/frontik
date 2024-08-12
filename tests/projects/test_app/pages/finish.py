@@ -1,8 +1,8 @@
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 
 
-@router.get('/finish', cls=PageHandler)
+@plain_router.get('/finish', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     code = int(handler.get_query_argument('code', '200'))
 

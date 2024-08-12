@@ -3,13 +3,13 @@ from tornado.web import HTTPError
 
 from frontik import media_types
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import router
+from frontik.routing import plain_router
 from frontik.util import gather_list
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
-@router.get('/retry_non_idempotent_503', cls=PageHandler)
+@plain_router.get('/retry_non_idempotent_503', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(retry_policy={503: {'idempotent': 'true'}})}
     upstreams = handler.application.upstream_manager.get_upstreams()
@@ -40,7 +40,7 @@ async def get_page(handler=get_current_handler()):
     check_all_requests_done(handler, 'do_not_retry_non_idempotent_503')
 
 
-@router.post('/retry_non_idempotent_503', cls=PageHandler)
+@plain_router.post('/retry_non_idempotent_503', cls=PageHandler)
 async def post_page(handler=get_current_handler()):
     handler.set_header('Content-Type', media_types.TEXT_PLAIN)
     handler.text = 'result'
