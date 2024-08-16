@@ -16,6 +16,7 @@ class Options:
     max_active_handlers: int = 100
     reuse_port: bool = True
     xheaders: bool = False
+    max_body_size: int = 1_000_000_000
     validate_request_id: bool = False
 
     config: Optional[str] = None

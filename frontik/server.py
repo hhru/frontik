@@ -129,7 +129,7 @@ def run_server(app: FrontikApplication) -> None:
     """Starts Frontik server for an application"""
     loop = asyncio.get_event_loop()
     log.info('starting server on %s:%s', options.host, options.port)
-    http_server = HTTPServer(app, xheaders=options.xheaders)
+    http_server = HTTPServer(app, xheaders=options.xheaders, max_body_size=options.max_body_size)
     http_server.bind(options.port, options.host, reuse_port=options.reuse_port)
     http_server.start()
 
