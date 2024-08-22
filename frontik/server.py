@@ -54,8 +54,9 @@ def main(config_file: Optional[str] = None) -> None:
             fork_workers(
                 worker_state=app.worker_state,
                 num_workers=options.workers,
-                master_function=partial(_multi_worker_master_function, app),
-                master_before_shutdown_action=lambda: app.upstream_manager.deregister_service_and_close(),  # noqa PLW0108
+                master_before_fork_action=partial(_master_before_fork_action, app),
+                master_after_fork_action=partial(_master_after_fork_action, app),
+                master_before_shutdown_action=partial(_master_before_shutdown_action, app),
                 worker_function=partial(_run_worker, app),
                 worker_listener_handler=partial(_worker_listener_handler, app),
             )
@@ -68,29 +69,38 @@ def main(config_file: Optional[str] = None) -> None:
         sys.exit(1)
 
 
-def _multi_worker_master_function(
+def _master_before_fork_action(app: FrontikApplication) -> tuple[dict, Optional[Lock]]:
+    async def async_actions() -> None:
+        await app.install_integrations()
+        if (local_before_fork_action := getattr(app, 'before_fork_action', None)) is not None:
+            await local_before_fork_action()
+
+    asyncio.run(async_actions())
+    return app.service_discovery.get_upstreams_with_lock()
+
+
+def _master_after_fork_action(
     app: FrontikApplication,
-    upstreams: dict[str, Upstream],
-    upstreams_lock: Lock,
-    send_to_all_workers: Callable,
+    update_shared_data_hook: Optional[Callable],
 ) -> None:
-    app.create_upstream_manager(upstreams, upstreams_lock, send_to_all_workers, with_consul=options.consul_enabled)
-    app.upstream_manager.register_service()
+    if update_shared_data_hook is None:
+        return
+
+    app.service_discovery.set_update_shared_data_hook(update_shared_data_hook)
+    app.service_discovery.send_updates()  # send in case there were updates between worker creation and this point
+    app.service_discovery.register_service()
+
+
+def _master_before_shutdown_action(app: FrontikApplication) -> None:
+    asyncio.run(_deinit_app(app))
 
 
 def _worker_listener_handler(app: FrontikApplication, data: list[Upstream]) -> None:
-    app.upstream_manager.update_upstreams(data)
+    app.service_discovery.update_upstreams(data)
 
 
 def _run_worker(app: FrontikApplication) -> None:
     MDC.init('worker')
-
-    try:
-        import uvloop
-    except ImportError:
-        log.info('There is no installed uvloop; use asyncio event loop')
-    else:
-        uvloop.install()
 
     loop = asyncio.get_event_loop()
     executor = ThreadPoolExecutor(options.common_executor_pool_size)
@@ -111,7 +121,7 @@ def run_server(app: FrontikApplication) -> None:
     """Starts Frontik server for an application"""
     loop = asyncio.get_event_loop()
     log.info('starting server on %s:%s', options.host, options.port)
-    http_server = HTTPServer(app, xheaders=options.xheaders)
+    http_server = HTTPServer(app, xheaders=options.xheaders, max_body_size=options.max_body_size)
     http_server.bind(options.port, options.host, reuse_port=options.reuse_port)
     http_server.start()
 
@@ -150,18 +160,24 @@ async def _init_app(frontik_app: FrontikApplication) -> None:
         frontik_app.worker_state.init_workers_count_down.value -= 1
         log.info('worker is up, remaining workers = %s', frontik_app.worker_state.init_workers_count_down.value)
 
+    frontik_app.service_discovery.register_service()
+
 
 async def _deinit_app(app: FrontikApplication) -> None:
     deinit_futures: list[Optional[Union[Future, Coroutine]]] = []
     deinit_futures.extend([integration.deinitialize_app(app) for integration in app.available_integrations])
 
-    app.upstream_manager.deregister_service_and_close()
+    app.service_discovery.deregister_service_and_close()
 
     try:
         await asyncio.gather(*[future for future in deinit_futures if future])
         log.info('Successfully deinited application')
     except Exception as e:
         log.exception('failed to deinit, deinit returned: %s', e)
+
+    await asyncio.sleep(options.stop_timeout)
+    if app.http_client_factory is not None:
+        await app.http_client_factory.http_client.client_session.close()
 
 
 def anyio_noop(*_args, **_kwargs):

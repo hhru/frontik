@@ -20,7 +20,7 @@ async def get_page(handler=get_current_handler()):
     server_slow_start = Server('127.0.0.1:12345', 'dest_host', weight=5, dc='Test')
 
     upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=0.1)}
-    upstreams = handler.application.upstream_manager.get_upstreams()
+    upstreams = handler.application.service_discovery.get_upstreams_unsafe()
     upstreams['slow_start'] = Upstream('slow_start', upstream_config, [server])
     handler.text = ''
 
@@ -46,5 +46,5 @@ async def get_page(handler=get_current_handler()):
 @plain_router.post('/slow_start', cls=PageHandler)
 async def post_page(handler=get_current_handler()):
     handler.set_header('Content-Type', media_types.TEXT_PLAIN)
-    upstreams = handler.application.upstream_manager.get_upstreams()
+    upstreams = handler.application.service_discovery.get_upstreams_unsafe()
     handler.text = str(upstreams['slow_start'].servers[0].stat_requests)

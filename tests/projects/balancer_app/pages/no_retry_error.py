@@ -9,7 +9,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 @plain_router.get('/no_retry_error', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
-    upstreams = handler.application.upstream_manager.get_upstreams()
+    upstreams = handler.application.service_discovery.get_upstreams_unsafe()
     upstreams['no_retry_error'] = Upstream('no_retry_error', {}, [get_server(handler, 'broken')])
 
     result = await handler.post_url('no_retry_error', handler.path)

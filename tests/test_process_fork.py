@@ -1,8 +1,10 @@
 import asyncio
 import contextlib
+import pickle
 import time
 from ctypes import c_bool, c_int
 from multiprocessing import Lock, Queue, Value
+from typing import Callable, Optional
 
 from http_client import options as http_client_options
 from http_client.balancing import Server, Upstream, UpstreamConfig
@@ -10,7 +12,7 @@ from http_client.balancing import Server, Upstream, UpstreamConfig
 import frontik.process
 from frontik.options import options
 from frontik.process import WorkerState, fork_workers
-from frontik.service_discovery import UpstreamManager
+from frontik.service_discovery import WorkerServiceDiscovery
 
 
 async def worker_teardown(worker_exit_event):
@@ -40,6 +42,10 @@ def prepare_upstreams():
     }
 
 
+def get_upstream_bytes(service_discovery):
+    return pickle.dumps(list(service_discovery.get_upstreams_unsafe().values()))
+
+
 def noop(*_args, **__kwargs):
     pass
 
@@ -61,39 +67,32 @@ class TestProcessFork:
         upstreams = prepare_upstreams()
         num_workers = 1
         worker_state = WorkerState(Value(c_int, num_workers), Value(c_bool, 0), Lock())
-        control_master_state = {
-            'shared_data': None,
-            'worker_state': worker_state,
-            'upstream_cache': None,
-            'master_func_done': Queue(1),
-        }
-        control_worker_state = {'shared_data': Queue(1), 'enable_listener': Queue(1)}
-        worker_exit_event = Queue(1)
+        service_discovery = WorkerServiceDiscovery({})
+        send_updates_hook: Optional[Callable] = None
 
-        def master_function(shared_data, upstreams_lock, send_to_all_workers):
-            shared_data.update(upstreams)
-            upstream_cache = UpstreamManager(shared_data, None, upstreams_lock, send_to_all_workers, False, 'test')
-            control_master_state['shared_data'] = shared_data
-            control_master_state['upstream_cache'] = upstream_cache
-            control_master_state['master_func_done'].put(True)
+        worker_queues = {'shared_data': Queue(1), 'enable_listener': Queue(1), 'worker_exit_event': Queue(1)}
+
+        def master_after_fork_action(hook):
+            nonlocal send_updates_hook
+            send_updates_hook = hook
 
         def worker_function():
-            control_master_state['worker_state'].init_workers_count_down.value -= 1
+            worker_state.init_workers_count_down.value -= 1
             loop = asyncio.get_event_loop()
-            loop.create_task(worker_teardown(worker_exit_event))
+            loop.create_task(worker_teardown(worker_queues['worker_exit_event']))
             loop.run_forever()
 
-        def worker_listener_handler(shared_data):
-            if control_worker_state['shared_data'].full():
-                control_worker_state['shared_data'].get()
-            control_worker_state['shared_data'].put(shared_data)
+        def worker_listener_handler(shared_upstreams):
+            if worker_queues['shared_data'].full():
+                worker_queues['shared_data'].get()
+            worker_queues['shared_data'].put(shared_upstreams)
 
         # Case 1: no worker reads, make write overflow
         async def delayed_listener(*_args, **__kwargs):
             while True:
                 await asyncio.sleep(0)
                 with contextlib.suppress(Exception):
-                    control_worker_state['enable_listener'].get_nowait()
+                    worker_queues['enable_listener'].get_nowait()
                     break
             await self._orig_listener(*_args, **__kwargs)
 
@@ -102,38 +101,38 @@ class TestProcessFork:
         fork_workers(
             worker_state=worker_state,
             num_workers=num_workers,
-            worker_function=worker_function,
-            master_function=master_function,
+            master_before_fork_action=lambda: ({}, Lock()),
+            master_after_fork_action=master_after_fork_action,
             master_before_shutdown_action=lambda: None,
+            worker_function=worker_function,
             worker_listener_handler=worker_listener_handler,
         )
-        if not worker_state.is_master:
+        if not worker_state.is_master:  # when worker stopes it should exit
             return
 
-        control_master_state['master_func_done'].get(timeout=1)
+        assert send_updates_hook is not None
+        service_discovery.get_upstreams_unsafe().update(upstreams)
         for _i in range(500):
-            control_master_state['upstream_cache'].send_updates()
+            send_updates_hook(get_upstream_bytes(service_discovery))
 
-        resend_dict = control_master_state['worker_state'].resend_dict
-
-        assert bool(resend_dict), 'resend dict should not be empty'
+        assert bool(worker_state.resend_dict), 'resend dict should not be empty'
 
         # Case 2: wake up worker listener, check shared data is correct
-        control_worker_state['enable_listener'].put(True)
+        worker_queues['enable_listener'].put(True)
         time.sleep(1)
-        worker_shared_data = control_worker_state['shared_data'].get(timeout=2)
+        worker_shared_data = worker_queues['shared_data'].get(timeout=2)
         assert len(worker_shared_data) == 1, 'upstreams size on master and worker should be the same'
 
         # Case 3: add new upstream, check worker get it
-        control_master_state['shared_data']['upstream2'] = Upstream(
+        service_discovery.get_upstreams_unsafe()['upstream2'] = Upstream(
             'upstream2',
             {},
             [Server('12.2.3.5', 'dest_host'), Server('12.22.3.5', 'dest_host')],
         )
-        control_master_state['upstream_cache'].send_updates()
-        control_master_state['upstream_cache'].send_updates()
+        send_updates_hook(get_upstream_bytes(service_discovery))
+        send_updates_hook(get_upstream_bytes(service_discovery))
         time.sleep(1)
-        worker_shared_data = control_worker_state['shared_data'].get(timeout=2)
+        worker_shared_data = worker_queues['shared_data'].get(timeout=2)
         assert len(worker_shared_data) == 2, 'upstreams size on master and worker should be the same'
 
-        worker_exit_event.put(True)
+        worker_queues['worker_exit_event'].put(True)

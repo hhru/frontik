@@ -12,7 +12,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 @plain_router.get('/retry_non_idempotent_503', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(retry_policy={503: {'idempotent': 'true'}})}
-    upstreams = handler.application.upstream_manager.get_upstreams()
+    upstreams = handler.application.service_discovery.get_upstreams_unsafe()
     upstreams['retry_non_idempotent_503'] = Upstream(
         'retry_non_idempotent_503',
         upstream_config,

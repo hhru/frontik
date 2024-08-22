@@ -80,10 +80,10 @@ async def get_page_b(handler=get_current_handler()):
     handler.json.put({})
 
 
-def make_otel_provider() -> TracerProvider:
+def make_otel_provider(service_name: str) -> TracerProvider:
     resource = Resource(
         attributes={
-            ResourceAttributes.SERVICE_NAME: options.service_name,  # type: ignore
+            ResourceAttributes.SERVICE_NAME: service_name,
             ResourceAttributes.SERVICE_VERSION: '1.2.3',
             ResourceAttributes.HOST_NAME: options.node_name,
             ResourceAttributes.CLOUD_REGION: 'test',
@@ -124,13 +124,14 @@ class TestFrontikTesting(FrontikTestBase):
         options.opentelemetry_enabled = True
         options.opentelemetry_sampler_ratio = 1
 
+        app = FrontikApplication()
+
         test_exporter = TestExporter()
-        provider = make_otel_provider()
+        provider = make_otel_provider(app.app_name)
         batch_span_processor = BatchSpanProcessor(test_exporter)
         provider.add_span_processor(batch_span_processor)
         trace.set_tracer_provider(provider)
 
-        app = FrontikApplication()
         BATCH_SPAN_PROCESSOR.append(batch_span_processor)
 
         return app

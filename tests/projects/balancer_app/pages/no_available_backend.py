@@ -9,7 +9,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 @plain_router.get('/no_available_backend', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
-    upstreams = handler.application.upstream_manager.get_upstreams()
+    upstreams = handler.application.service_discovery.get_upstreams_unsafe()
     upstreams['no_available_backend'] = Upstream('no_available_backend', {}, [])
 
     request = handler.post_url('no_available_backend', handler.path)

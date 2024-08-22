@@ -12,6 +12,8 @@ import struct
 import sys
 import time
 from collections.abc import Callable
+from contextlib import suppress
+from copy import deepcopy
 from dataclasses import dataclass, field
 from functools import partial
 from multiprocessing.sharedctypes import Synchronized
@@ -41,22 +43,23 @@ class WorkerState:
     is_master: bool = True
     children: dict = field(default_factory=lambda: {})  # pid: worker_id
     write_pipes: dict = field(default_factory=lambda: {})  # pid: write_pipe
+    resend_notification: Queue = field(default_factory=lambda: Queue(maxsize=1))
     resend_dict: dict = field(default_factory=lambda: {})  # pid: flag
     terminating: bool = False
-    single_worker_mode: bool = True
+    initial_shared_data: dict = field(default_factory=lambda: {})
 
 
 def fork_workers(
     *,
     worker_state: WorkerState,
     num_workers: int,
-    master_function: Callable,
+    master_before_fork_action: Callable,
+    master_after_fork_action: Callable,
     master_before_shutdown_action: Callable,
     worker_function: Callable,
     worker_listener_handler: Callable,
 ) -> None:
     log.info('starting %d processes', num_workers)
-    worker_state.single_worker_mode = False
 
     def master_sigterm_handler(signum, _frame):
         if not worker_state.is_master:
@@ -65,17 +68,17 @@ def fork_workers(
         worker_state.terminating = True
         master_before_shutdown_action()
         for pid, worker_id in worker_state.children.items():
-            log.info('sending %s to child %d (pid %d)', signal.Signals(signum).name, worker_id, pid)
+            log.info('sending %s to child %d (pid %d)', signal.SIGTERM.name, worker_id, pid)
             os.kill(pid, signal.SIGTERM)
 
     signal.signal(signal.SIGTERM, master_sigterm_handler)
     signal.signal(signal.SIGINT, master_sigterm_handler)
 
+    shared_data, lock = master_before_fork_action()
+
     worker_function_wrapped = partial(_worker_function_wrapper, worker_function, worker_listener_handler)
     for worker_id in range(num_workers):
-        is_worker = _start_child(worker_id, worker_state, worker_function_wrapped)
-        if is_worker:
-            return
+        _start_child(worker_id, worker_state, shared_data, lock, worker_function_wrapped)
 
     gc.enable()
     timeout = time.time() + options.init_workers_timeout_sec
@@ -88,13 +91,17 @@ def fork_workers(
                 f'{worker_state.init_workers_count_down.value} workers',
             )
         time.sleep(0.1)
-    _master_function_wrapper(worker_state, master_function)
+
+    __master_function_wrapper(worker_state, master_after_fork_action, shared_data, lock)
     worker_state.master_done.value = True
-    _supervise_workers(worker_state, worker_function_wrapped, master_before_shutdown_action)
+    _supervise_workers(worker_state, shared_data, lock, worker_function_wrapped)
 
 
 def _supervise_workers(
-    worker_state: WorkerState, worker_function: Callable, master_before_shutdown_action: Callable
+    worker_state: WorkerState,
+    shared_data: dict,
+    lock: Lock,
+    worker_function: Callable,
 ) -> None:
     while worker_state.children:
         try:
@@ -116,16 +123,6 @@ def _supervise_workers(
 
         if os.WIFSIGNALED(status):
             log.warning('child %d (pid %d) killed by signal %d, restarting', worker_id, pid, os.WTERMSIG(status))
-
-            # TODO remove this block # noqa
-            master_before_shutdown_action()
-            for pid, worker_id in worker_state.children.items():
-                log.info('sending %s to child %d (pid %d)', signal.Signals(os.WTERMSIG(status)).name, worker_id, pid)
-                os.kill(pid, signal.SIGTERM)
-            log.info('all children terminated, exiting')
-            time.sleep(options.stop_timeout)
-            sys.exit(0)
-
         elif os.WEXITSTATUS(status) != 0:
             log.warning('child %d (pid %d) exited with status %d, restarting', worker_id, pid, os.WEXITSTATUS(status))
         else:
@@ -136,30 +133,35 @@ def _supervise_workers(
             log.info('server is shutting down, not restarting %d', worker_id)
             continue
 
-        is_worker = _start_child(worker_id, worker_state, worker_function)
-        if is_worker:
-            return
+        worker_pid = _start_child(worker_id, worker_state, shared_data, lock, worker_function)
+        on_worker_restart(worker_state, worker_pid)
+
     log.info('all children terminated, exiting')
     sys.exit(0)
 
 
-# returns True inside child process, otherwise False
-def _start_child(worker_id: int, worker_state: WorkerState, worker_function: Callable) -> bool:
+def _start_child(
+    worker_id: int, worker_state: WorkerState, shared_data: dict, lock: Optional[Lock], worker_function: Callable
+) -> int:
     # it cannot be multiprocessing.pipe because we need to set nonblock flag and connect to asyncio
     read_fd, write_fd = os.pipe()
     os.set_blocking(read_fd, False)
     os.set_blocking(write_fd, False)
 
+    if lock is not None:
+        with lock:
+            worker_state.initial_shared_data = deepcopy(shared_data)
+
     prc = multiprocessing.Process(target=worker_function, args=(read_fd, write_fd, worker_state, worker_id))
     prc.start()
-    pid = prc.pid
+    pid: int = prc.pid  # type: ignore
 
     os.close(read_fd)
     worker_state.children[pid] = worker_id
     _set_pipe_size(write_fd, worker_id)
     worker_state.write_pipes[pid] = os.fdopen(write_fd, 'wb')
     log.info('started child %d, pid=%d', worker_id, pid)
-    return False
+    return pid
 
 
 def _set_pipe_size(fd: int, worker_id: int) -> None:
@@ -184,14 +186,17 @@ def _worker_function_wrapper(worker_function, worker_listener_handler, read_fd, 
     gc.enable()
     worker_state.is_master = False
 
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
-        loop.stop()
+    with suppress(Exception):
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.stop()
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
     task = loop.create_task(_worker_listener(read_fd, worker_listener_handler))
     LISTENER_TASK.add(task)
+
     worker_function()
 
 
@@ -216,41 +221,38 @@ async def _worker_listener(read_fd: int, worker_listener_handler: Callable) -> N
             log.exception('failed to fetch data from master %s', e)
 
 
-def _master_function_wrapper(worker_state: WorkerState, master_function: Callable) -> None:
-    data_for_share: dict = {}
-    lock = Lock()
-
-    resend_notification: Queue = Queue(maxsize=1)
+def __master_function_wrapper(
+    worker_state: WorkerState, master_after_fork_action: Callable, shared_data: dict, lock: Lock
+) -> None:
+    if not lock:
+        master_after_fork_action(None)
+        return
 
     resend_thread = Thread(
-        target=_resend,
-        args=(worker_state, resend_notification, worker_state.resend_dict, lock, data_for_share),
+        target=__resend,
+        args=(worker_state, worker_state.resend_notification, shared_data, lock),
         daemon=True,
     )
     resend_thread.start()
 
-    send_to_all_workers = partial(_send_to_all, worker_state, resend_notification, worker_state.resend_dict)
-    master_function_thread = Thread(
-        target=master_function,
-        args=(data_for_share, lock, send_to_all_workers),
-        daemon=True,
-    )
-    master_function_thread.start()
+    update_shared_data_hook = partial(__send_to_all, worker_state, worker_state.resend_notification)
+    master_after_fork_action(update_shared_data_hook)
 
 
-def _resend(
+def __resend(
     worker_state: WorkerState,
     resend_notification: Queue,
-    resend_dict: dict[int, bool],
+    shared_data: dict,
     lock: Lock,
-    data_for_share: dict,
 ) -> None:
+    resend_dict = worker_state.resend_dict
+
     while True:
         resend_notification.get()
         time.sleep(1.0)
 
         with lock:
-            data = pickle.dumps(list(data_for_share.values()))
+            data = pickle.dumps(list(shared_data.values()))
             clients = list(resend_dict.keys())
             if log.isEnabledFor(logging.DEBUG):
                 client_ids = ','.join(map(str, clients))
@@ -264,23 +266,21 @@ def _resend(
                     continue
 
                 # writing 2 times to ensure fix of client reading pattern
-                _send_update(resend_notification, resend_dict, worker_id, pipe, data)
-                _send_update(resend_notification, resend_dict, worker_id, pipe, data)
+                __send_update(resend_notification, resend_dict, worker_id, pipe, data)
+                __send_update(resend_notification, resend_dict, worker_id, pipe, data)
 
 
-def _send_to_all(
+def __send_to_all(
     worker_state: WorkerState,
     resend_notification: Queue,
-    resend_dict: dict[int, bool],
-    data_raw: Any,
+    data: bytes,
 ) -> None:
-    data = pickle.dumps(data_raw)
     log.debug('sending data to all workers length: %d', len(data))
     for worker_pid, pipe in worker_state.write_pipes.items():
-        _send_update(resend_notification, resend_dict, worker_pid, pipe, data)
+        __send_update(resend_notification, worker_state.resend_dict, worker_pid, pipe, data)
 
 
-def _send_update(
+def __send_update(
     resend_notification: Queue,
     resend_dict: dict[int, bool],
     worker_pid: int,
@@ -301,3 +301,9 @@ def _send_update(
                 resend_notification.put_nowait(True)
     except Exception as e:
         log.exception('client %s pipe write failed  %s', worker_pid, e)
+
+
+def on_worker_restart(worker_state: WorkerState, worker_pid: int) -> None:
+    worker_state.resend_dict[worker_pid] = True
+    with contextlib.suppress(Full):
+        worker_state.resend_notification.put_nowait(True)

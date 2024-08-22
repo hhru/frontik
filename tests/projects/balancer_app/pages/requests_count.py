@@ -11,7 +11,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done, check_all
 
 @plain_router.get('/requests_count', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
-    upstreams = handler.application.upstream_manager.get_upstreams()
+    upstreams = handler.application.service_discovery.get_upstreams_unsafe()
     upstreams['requests_count_async'] = Upstream('requests_count_async', {}, [get_server(handler, 'normal')])
     handler.text = ''
 
@@ -34,6 +34,6 @@ async def get_page(handler=get_current_handler()):
 @plain_router.post('/requests_count', cls=PageHandler)
 async def post_page(handler=get_current_handler()):
     handler.set_header('Content-Type', media_types.TEXT_PLAIN)
-    upstreams = handler.application.upstream_manager.get_upstreams()
+    upstreams = handler.application.service_discovery.get_upstreams_unsafe()
     servers = upstreams['requests_count_async'].servers
     handler.text = str(servers[0].stat_requests)
