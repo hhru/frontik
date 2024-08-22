@@ -62,7 +62,7 @@ def _encode_value(value: Any) -> Any:
 
 
 def json_encode_bytes(obj: Any, default: Callable = _encode_value) -> bytes:
-    return orjson.dumps(obj, default=default, option=orjson.OPT_NON_STR_KEYS)
+    return orjson.dumps(obj, default=default, option=(orjson.OPT_NON_STR_KEYS | orjson.OPT_SERIALIZE_NUMPY))
 
 
 def json_encode(obj: Any, default: Callable = _encode_value) -> str:
