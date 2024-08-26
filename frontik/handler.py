@@ -5,9 +5,10 @@ import http.client
 import logging
 import re
 import time
+import weakref
 from asyncio import Task
 from asyncio.futures import Future
-from functools import wraps
+from functools import wraps, partial
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, Optional, Type, TypeVar, Union, overload
 
@@ -125,7 +126,19 @@ class PageHandler(RequestHandler):
             if _value:
                 request.arguments.setdefault(_name, []).append(_value)  # type: ignore
 
-        super().__init__(application, request)  # type: ignore
+        self.application = application
+        self.request = request
+        self._headers_written = False
+        self._finished = False
+        self._auto_finish = True
+        self._prepared_future = None
+
+        self.clear()
+        assert self.request.connection is not None
+        self.request.connection.set_close_callback(  # type: ignore
+            partial(self._on_connection_close, weakref.proxy(self))
+        )
+        self.initialize()  # type: ignore
 
         self.statsd_client: StatsDClient | StatsDClientStub = application.statsd_client
 
@@ -170,7 +183,7 @@ class PageHandler(RequestHandler):
         self.doc = self.xml_producer.doc
 
         self._http_client: HttpClient = self.application.http_client_factory.get_http_client(
-            self.modify_http_client_request,
+            partial(self.modify_http_client_request, weakref.proxy(self)),
             self.debug_mode.enabled,
         )
 
@@ -368,17 +381,34 @@ class PageHandler(RequestHandler):
     # Requests handling
 
     async def execute(self) -> tuple[int, str, HTTPHeaders, bytes]:
-        if (
-            self.request.method
-            not in (
-                'GET',
-                'HEAD',
-                'OPTIONS',
-            )
-            and options.xsrf_cookies
-        ):
-            self.check_xsrf_cookie()
-        await super()._execute([], b'', b'')
+        self._transforms = []
+        try:
+            if self.request.method not in self.SUPPORTED_METHODS:
+                raise tornado.web.HTTPError(405)
+            self.path_args = []
+            self.path_kwargs = {}
+
+            if self.request.method not in (
+                "GET",
+                "HEAD",
+                "OPTIONS",
+            ) and options.xsrf_cookies:
+                self.check_xsrf_cookie()
+
+            self.prepare()
+
+            await self._execute_page()
+            if self._auto_finish and not self._finished:
+                self.finish()
+        except Exception as e:
+            try:
+                self._handle_request_exception(e)
+            except Exception:
+                self.log.error("Exception in exception handler", exc_info=True)
+                self.send_error()
+                return self.handler_result_future.result()
+            if self._prepared_future is not None and not self._prepared_future.done():
+                self._prepared_future.set_result(None)
 
         try:
             return await asyncio.wait_for(self.handler_result_future, timeout=5.0)
@@ -516,17 +546,15 @@ class PageHandler(RequestHandler):
         )
         return postprocessed_result
 
-    def on_connection_close(self):
-        with request_context.request_context(self.request_id):
-            super().on_connection_close()
+    @staticmethod
+    def _on_connection_close(self):
+        self.finish_group.abort()
+        self.set_status(CLIENT_CLOSED_REQUEST, 'Client closed the connection: aborting request')
 
-            self.finish_group.abort()
-            self.set_status(CLIENT_CLOSED_REQUEST, 'Client closed the connection: aborting request')
+        self.stages_logger.commit_stage('page')
+        self.stages_logger.flush_stages(self.get_status())
 
-            self.stages_logger.commit_stage('page')
-            self.stages_logger.flush_stages(self.get_status())
-
-            self.finish()
+        self.finish()
 
     def on_finish(self) -> None:
         self.stages_logger.commit_stage('flush')
@@ -764,6 +792,7 @@ class PageHandler(RequestHandler):
 
     # HTTP client methods
 
+    @staticmethod
     def modify_http_client_request(self, balanced_request: RequestBuilder) -> None:
         balanced_request.headers['x-request-id'] = request_context.get_request_id()
         balanced_request.headers[OUTER_TIMEOUT_MS_HEADER] = f'{balanced_request.request_timeout * 1000:.0f}'
