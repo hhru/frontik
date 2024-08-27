@@ -15,7 +15,7 @@ async def get_page(handler=get_current_handler()):
         'profile_without_retry': UpstreamConfig(max_tries=1),
         'profile_with_retry': UpstreamConfig(max_tries=2),
     }
-    upstreams = handler.application.upstream_manager.get_upstreams()
+    upstreams = handler.application.service_discovery.get_upstreams_unsafe()
     upstreams['profile_with_retry'] = Upstream(
         'profile_with_retry',
         upstream_config,

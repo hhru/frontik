@@ -1,5 +1,7 @@
+import abc
 import itertools
 import logging
+import pickle
 import socket
 from random import shuffle
 from threading import Lock
@@ -68,36 +70,53 @@ def _get_hostname_or_raise(node_name: str) -> str:
     return node_name
 
 
-class UpstreamManager:
-    def __init__(
-        self,
-        upstreams: dict[str, Upstream],
-        statsd_client: Union[StatsDClient, StatsDClientStub],
-        upstreams_lock: Optional[Lock],
-        send_to_all_workers: Optional[Callable],
-        with_consul: bool,
-        app_name: str,
-    ) -> None:
-        self.with_consul: bool = with_consul
+class ServiceDiscovery(abc.ABC):
+    @abc.abstractmethod
+    def get_upstreams_unsafe(self) -> dict[str, Upstream]:
+        pass
+
+    @abc.abstractmethod
+    def register_service(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def deregister_service_and_close(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_upstreams_with_lock(self) -> tuple[dict[str, Upstream], Optional[Lock]]:
+        pass
+
+    @abc.abstractmethod
+    def set_update_shared_data_hook(self, update_shared_data_hook: Callable) -> None:
+        pass
+
+    @abc.abstractmethod
+    def update_upstreams(self, upstreams: list[Upstream]) -> None:
+        pass
+
+    @abc.abstractmethod
+    def send_updates(self, upstream: Optional[Upstream] = None) -> None:
+        pass
+
+
+class MasterServiceDiscovery(ServiceDiscovery):
+    def __init__(self, statsd_client: Union[StatsDClient, StatsDClientStub], app_name: str) -> None:
         self._upstreams_config: dict[str, dict] = {}
         self._upstreams_servers: dict[str, list[Server]] = {}
 
-        self._upstreams = upstreams
-        self._upstreams_lock = upstreams_lock or Lock()  # should be used when access self._upstreams
-        self._send_to_all_workers = send_to_all_workers
-
-        if not self.with_consul:
-            log.info('Consul disabled, skipping')
-            return
+        self._upstreams: dict[str, Upstream] = {}
+        self._upstreams_lock = Lock()
+        self._send_to_all_workers: Optional[Callable] = None
 
         self.consul = SyncConsulClient(
             host=options.consul_host,
             port=options.consul_port,
             client_event_callback=ConsulMetricsTracker(statsd_client),
         )
-        self._service_name = app_name
+        self.service_name = app_name
         self.hostname = _get_hostname_or_raise(options.node_name)
-        self.service_id = _make_service_id(options, service_name=self._service_name, hostname=self.hostname)
+        self.service_id = _make_service_id(options, service_name=self.service_name, hostname=self.hostname)
         self.address = _get_service_address(options)
         self.http_check = _create_http_check(options, self.address)
         self.consul_weight_watch_seconds = f'{options.consul_weight_watch_seconds}s'
@@ -114,9 +133,9 @@ class UpstreamManager:
             cache_initial_warmup_timeout=self.consul_cache_initial_warmup_timeout_sec,
             consistency_mode=self.consul_weight_consistency_mode,
             recurse=False,
-            caller=self._service_name,
+            caller=self.service_name,
         )
-        self.kvCache.add_listener(self._update_register, False)
+        self.kvCache.add_listener(self._update_register)
 
         upstream_cache = KVCache(
             self.consul.kv,
@@ -127,9 +146,9 @@ class UpstreamManager:
             cache_initial_warmup_timeout=self.consul_cache_initial_warmup_timeout_sec,
             consistency_mode=self.consul_weight_consistency_mode,
             recurse=True,
-            caller=self._service_name,
+            caller=self.service_name,
         )
-        upstream_cache.add_listener(self._update_upstreams_config, True)
+        upstream_cache.add_listener(self._update_upstreams_config, trigger_current=True)
         upstream_cache.start()
 
         allow_cross_dc = http_options.http_client_allow_cross_datacenter_requests
@@ -142,22 +161,28 @@ class UpstreamManager:
                 watch_seconds=self.consul_weight_watch_seconds,
                 backoff_delay_seconds=self.consul_cache_backoff_delay_seconds,
                 dc=dc,
-                caller=self._service_name,
+                caller=self.service_name,
             )
-            health_cache.add_listener(self._update_upstreams_service, True)
+            health_cache.add_listener(self._update_upstreams_service, trigger_current=True)
             health_cache.start()
 
         if options.fail_start_on_empty_upstream:
-            self._check_empty_upstreams_on_startup()
+            self.__check_empty_upstreams_on_startup()
+
+    def set_update_shared_data_hook(self, update_shared_data_hook: Callable) -> None:
+        self._send_to_all_workers = update_shared_data_hook
+
+    def get_upstreams_with_lock(self) -> tuple[dict[str, Upstream], Lock]:
+        return self._upstreams, self._upstreams_lock
+
+    def get_upstreams_unsafe(self) -> dict[str, Upstream]:
+        return self._upstreams
 
     def _update_register(self, key, new_value):
         weight = _get_weight_or_default(new_value)
         self._sync_register(weight)
 
     def register_service(self) -> None:
-        if not self.with_consul:
-            return
-
         weight = _get_weight_or_default(self.kvCache.get_value())
         self._sync_register(weight)
         self.kvCache.start()
@@ -170,27 +195,21 @@ class UpstreamManager:
             'check': self.http_check,
             'tags': options.consul_tags,
             'weights': Weight.weights(weight, 0),
-            'caller': self._service_name,
+            'caller': self.service_name,
         }
-        if self.consul.agent.service.register(self._service_name, **register_params):
+        if self.consul.agent.service.register(self.service_name, **register_params):
             log.info('Successfully registered service %s', register_params)
         else:
             raise Exception(f'Failed to register {register_params}')
 
     def deregister_service_and_close(self) -> None:
-        if not self.with_consul:
-            return
-
         self.kvCache.stop()
-        if self.consul.agent.service.deregister(self.service_id, self._service_name):
+        if self.consul.agent.service.deregister(self.service_id, self.service_name):
             log.info('Successfully deregistered service %s', self.service_id)
         else:
             log.info('Failed to deregister service %s normally', self.service_id)
 
-    def get_upstreams(self) -> dict[str, Upstream]:
-        return self._upstreams
-
-    def _check_empty_upstreams_on_startup(self) -> None:
+    def __check_empty_upstreams_on_startup(self) -> None:
         empty_upstreams = [k for k, v in self._upstreams.items() if not v.servers]
         if empty_upstreams:
             msg = f'failed startup application, because for next upstreams got empty servers: {empty_upstreams}'
@@ -235,7 +254,7 @@ class UpstreamManager:
             return
         with self._upstreams_lock:
             upstreams = list(self._upstreams.values()) if upstream is None else [upstream]
-            self._send_to_all_workers(upstreams)
+            self._send_to_all_workers(pickle.dumps(upstreams))
 
     def _create_upstream(self, key: str) -> Upstream:
         servers = self._combine_servers(key)
@@ -251,20 +270,46 @@ class UpstreamManager:
         return servers_from_all_dc
 
     def update_upstreams(self, upstreams: list[Upstream]) -> None:
-        for upstream in upstreams:
-            self._update_upstream(upstream)
+        raise RuntimeError('master should not serve upstream updates')
 
-    def _update_upstream(self, upstream: Upstream) -> None:
-        current_upstream = self._upstreams.get(upstream.name)
+
+class WorkerServiceDiscovery(ServiceDiscovery):
+    def __init__(self, upstreams: dict[str, Upstream]) -> None:
+        self.upstreams = upstreams
+
+    def update_upstreams(self, upstreams: list[Upstream]) -> None:
+        for upstream in upstreams:
+            self.__update_upstream(upstream)
+
+    def __update_upstream(self, upstream: Upstream) -> None:
+        current_upstream = self.upstreams.get(upstream.name)
 
         if current_upstream is None:
             shuffle(upstream.servers)
-            self._upstreams[upstream.name] = upstream
+            self.upstreams[upstream.name] = upstream
             log.debug('add %s upstream: %s', upstream.name, str(upstream))
             return
 
         current_upstream.update(upstream)
         log.debug('update %s upstream: %s', upstream.name, str(upstream))
+
+    def get_upstreams_unsafe(self) -> dict[str, Upstream]:
+        return self.upstreams
+
+    def register_service(self) -> None:
+        pass
+
+    def deregister_service_and_close(self) -> None:
+        pass
+
+    def get_upstreams_with_lock(self) -> tuple[dict[str, Upstream], Optional[Lock]]:
+        return {}, None
+
+    def set_update_shared_data_hook(self, update_shared_data_hook: Callable) -> None:
+        raise RuntimeError('worker should not use update hook')
+
+    def send_updates(self, upstream: Optional[Upstream] = None) -> None:
+        raise RuntimeError('worker should not use send updates')
 
 
 class ConsulMetricsTracker(ClientEventCallback):

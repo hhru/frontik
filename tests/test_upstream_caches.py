@@ -1,8 +1,20 @@
+from threading import Lock
+from typing import Callable, Optional
+
 from http_client import options as http_client_options
 
-from frontik.integrations.statsd import StatsDClientStub
 from frontik.options import options
-from frontik.service_discovery import UpstreamManager
+from frontik.service_discovery import MasterServiceDiscovery
+
+
+class StubServiceDiscovery(MasterServiceDiscovery):
+    def __init__(self) -> None:
+        self._upstreams_config: dict = {}
+        self._upstreams_servers: dict = {}
+
+        self._upstreams = {}
+        self._upstreams_lock = Lock()
+        self._send_to_all_workers: Optional[Callable] = None
 
 
 class TestUpstreamCaches:
@@ -43,12 +55,12 @@ class TestUpstreamCaches:
             },
         ]
 
-        upstream_cache = UpstreamManager({}, StatsDClientStub(), None, None, False, 'test')
-        upstream_cache._update_upstreams_service('app', value_one_dc)
-        upstream_cache._update_upstreams_service('app', value_another_dc)
+        service_discovery = StubServiceDiscovery()
+        service_discovery._update_upstreams_service('app', value_one_dc)
+        service_discovery._update_upstreams_service('app', value_another_dc)
 
-        assert len(upstream_cache._upstreams_servers) == 2
-        assert len(upstream_cache._upstreams['app'].servers) == 2
+        assert len(service_discovery._upstreams_servers) == 2
+        assert len(service_discovery.get_upstreams_unsafe()['app'].servers) == 2
 
     def test_update_upstreams_servers_same_dc(self) -> None:
         options.upstreams = ['app']
@@ -66,12 +78,12 @@ class TestUpstreamCaches:
             },
         ]
 
-        upstream_cache = UpstreamManager({}, StatsDClientStub(), None, None, False, 'test')
-        upstream_cache._update_upstreams_service('app', value_one_dc)
-        upstream_cache._update_upstreams_service('app', value_one_dc)
+        service_discovery = StubServiceDiscovery()
+        service_discovery._update_upstreams_service('app', value_one_dc)
+        service_discovery._update_upstreams_service('app', value_one_dc)
 
-        assert len(upstream_cache._upstreams_servers) == 1
-        assert len(upstream_cache._upstreams['app'].servers) == 1
+        assert len(service_discovery._upstreams_servers) == 1
+        assert len(service_discovery.get_upstreams_unsafe()['app'].servers) == 1
 
     def test_multiple_update_upstreams_servers_different_dc(self) -> None:
         options.upstreams = ['app']
@@ -102,14 +114,14 @@ class TestUpstreamCaches:
             },
         ]
 
-        upstream_cache = UpstreamManager({}, StatsDClientStub(), None, None, False, 'test')
-        upstream_cache._update_upstreams_service('app', value_one_dc)
-        upstream_cache._update_upstreams_service('app', value_another_dc)
-        upstream_cache._update_upstreams_service('app', value_another_dc)
-        upstream_cache._update_upstreams_service('app', value_one_dc)
+        service_discovery = StubServiceDiscovery()
+        service_discovery._update_upstreams_service('app', value_one_dc)
+        service_discovery._update_upstreams_service('app', value_another_dc)
+        service_discovery._update_upstreams_service('app', value_another_dc)
+        service_discovery._update_upstreams_service('app', value_one_dc)
 
-        assert len(upstream_cache._upstreams_servers) == 2
-        assert len(upstream_cache._upstreams['app'].servers) == 2
+        assert len(service_discovery._upstreams_servers) == 2
+        assert len(service_discovery.get_upstreams_unsafe()['app'].servers) == 2
 
     def test_remove_upstreams_servers_different_dc(self) -> None:
         options.upstreams = ['app']
@@ -163,17 +175,20 @@ class TestUpstreamCaches:
             },
         ]
 
-        upstream_cache = UpstreamManager({}, StatsDClientStub(), None, None, False, 'test')
-        upstream_cache._update_upstreams_service('app', value_test_dc)
-        upstream_cache._update_upstreams_service('app', value_another_dc)
+        service_discovery = StubServiceDiscovery()
+        service_discovery._update_upstreams_service('app', value_test_dc)
+        service_discovery._update_upstreams_service('app', value_another_dc)
 
-        assert len(upstream_cache._upstreams_servers['app-test']) == 1
-        assert len(upstream_cache._upstreams_servers['app-another']) == 2
-        assert len(upstream_cache._upstreams['app'].servers) == 3
+        assert len(service_discovery._upstreams_servers['app-test']) == 1
+        assert len(service_discovery._upstreams_servers['app-another']) == 2
+        assert len(service_discovery.get_upstreams_unsafe()['app'].servers) == 3
 
-        upstream_cache._update_upstreams_service('app', value_another_remove_service_dc)
+        service_discovery._update_upstreams_service('app', value_another_remove_service_dc)
 
-        assert len(upstream_cache._upstreams_servers['app-another']) == 1
-        assert upstream_cache._upstreams_servers['app-another'][0].address == '2.2.2.2:9999'
-        assert len(upstream_cache._upstreams['app'].servers) == 3
-        assert len([server for server in upstream_cache._upstreams['app'].servers if server is not None]) == 2
+        assert len(service_discovery._upstreams_servers['app-another']) == 1
+        assert service_discovery._upstreams_servers['app-another'][0].address == '2.2.2.2:9999'
+        assert len(service_discovery.get_upstreams_unsafe()['app'].servers) == 3
+        assert (
+            len([server for server in service_discovery.get_upstreams_unsafe()['app'].servers if server is not None])
+            == 2
+        )

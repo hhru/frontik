@@ -62,7 +62,7 @@ class FrontikTestBase:
     ) -> None:
         self.app = frontik_app
         self.port = options.port
-        self.http_client: AIOHttpClientWrapper = frontik_app.http_client
+        self.http_client: AIOHttpClientWrapper = frontik_app.http_client_factory.http_client
         self.use_tornado_mocks = with_tornado_mocks
         if with_tornado_mocks:
             patch_http_client(self.http_client, fail_on_unknown=False)
@@ -263,9 +263,9 @@ class FrontikTestCase(AsyncHTTPTestCase):
         """Fetch the request and parse JSON tree from response body."""
         return json.loads(self.fetch(path, query, **kwargs).raw_body)
 
-    def patch_app_http_client(self, app: FrontikApplication) -> None:
+    def patch_app_http_client(self, _app: FrontikApplication) -> None:
         """Patches application HTTPClient to enable requests stubbing."""
-        patch_http_client(app.http_client)
+        patch_http_client(self.http_client)
 
     def set_stub(
         self,
@@ -280,7 +280,7 @@ class FrontikTestCase(AsyncHTTPTestCase):
         **kwargs: Any,
     ) -> None:
         set_stub(
-            self._app.http_client,
+            self.http_client,
             url,
             request_method,
             response_function,
@@ -293,8 +293,8 @@ class FrontikTestCase(AsyncHTTPTestCase):
         )
 
     def tearDown(self) -> None:
-        if self._app.http_client is not None:
-            self.io_loop.run_sync(self._app.http_client.client_session.close)
+        if self.http_client is not None:
+            self.io_loop.run_sync(self.http_client.client_session.close)  # type: ignore
         if self.forced_client is not None:
             self.io_loop.run_sync(self.forced_client.client_session.close)
         super().tearDown()

@@ -16,7 +16,7 @@ async def get_page(handler=get_current_handler()):
     normal_server.datacenter = 'dc2'
 
     upstream = Upstream('different_datacenter', {}, [free_server, normal_server])
-    handler.application.upstream_manager.get_upstreams()['different_datacenter'] = upstream
+    handler.application.service_discovery.get_upstreams_unsafe()['different_datacenter'] = upstream
 
     result = await handler.post_url('different_datacenter', handler.path)
     for server in upstream.servers:

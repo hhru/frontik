@@ -4,16 +4,14 @@ import logging
 import multiprocessing
 import os
 import time
-from collections.abc import Callable
 from ctypes import c_bool, c_int
-from threading import Lock
 from typing import Optional, Union
 
 from aiokafka import AIOKafkaProducer
 from fastapi import FastAPI, HTTPException
 from http_client import AIOHttpClientWrapper, HttpClientFactory
 from http_client import options as http_client_options
-from http_client.balancing import RequestBalancerBuilder, Upstream
+from http_client.balancing import RequestBalancerBuilder
 from lxml import etree
 from tornado import httputil
 
@@ -35,7 +33,7 @@ from frontik.routing import (
     router,
     routers,
 )
-from frontik.service_discovery import UpstreamManager
+from frontik.service_discovery import MasterServiceDiscovery, ServiceDiscovery, WorkerServiceDiscovery
 
 app_logger = logging.getLogger('app_logger')
 _server_tasks = set()
@@ -76,7 +74,6 @@ class FrontikApplication:
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
         self.available_integrations: list[integrations.Integration] = []
-        self.http_client: Optional[AIOHttpClientWrapper] = None
         self.http_client_factory: HttpClientFactory
 
         self.statsd_client: Union[StatsDClient, StatsDClientStub] = create_statsd_client(options, self)
@@ -96,6 +93,7 @@ class FrontikApplication:
         self.settings: dict = {}
 
         self.asgi_app = FrontikAsgiApp()
+        self.service_discovery: ServiceDiscovery
 
     def __call__(self, tornado_request: httputil.HTTPServerRequest) -> None:
         # for make it more asgi, reimplement tornado.http1connection._server_request_loop and ._read_message
@@ -103,30 +101,27 @@ class FrontikApplication:
         _server_tasks.add(task)
         task.add_done_callback(_server_tasks.discard)
 
-    def create_upstream_manager(
-        self,
-        upstreams: dict[str, Upstream],
-        upstreams_lock: Optional[Lock],
-        send_to_all_workers: Optional[Callable],
-        with_consul: bool,
-    ) -> None:
-        self.upstream_manager = UpstreamManager(
-            upstreams,
-            self.statsd_client,
-            upstreams_lock,
-            send_to_all_workers,
-            with_consul,
-            self.app_name,
-        )
+    def make_service_discovery(self) -> ServiceDiscovery:
+        if self.worker_state.is_master and options.consul_enabled:
+            return MasterServiceDiscovery(self.statsd_client, self.app_name)
+        else:
+            return WorkerServiceDiscovery(self.worker_state.initial_shared_data)
 
-        self.upstream_manager.send_updates()  # initial full state sending
-
-    async def init(self) -> None:
+    async def install_integrations(self) -> None:
         self.available_integrations, integration_futures = integrations.load_integrations(self)
         await asyncio.gather(*[future for future in integration_futures if future])
 
-        self.http_client = AIOHttpClientWrapper()
+        self.service_discovery = self.make_service_discovery()
+        self.http_client_factory = self.make_http_client_factory()
+        self.asgi_app.http_client_factory = self.http_client_factory
 
+    async def init(self) -> None:
+        await self.install_integrations()
+
+        if self.worker_state.is_master:
+            self.worker_state.master_done.value = True
+
+    def make_http_client_factory(self) -> HttpClientFactory:
         kafka_cluster = options.http_client_metrics_kafka_cluster
         send_metrics_to_kafka = kafka_cluster and kafka_cluster in options.kafka_clusters
 
@@ -143,20 +138,12 @@ class FrontikApplication:
             self.get_kafka_producer(kafka_cluster) if send_metrics_to_kafka and kafka_cluster is not None else None
         )
 
-        with_consul = self.worker_state.single_worker_mode and options.consul_enabled
-        self.create_upstream_manager({}, None, None, with_consul)
-        self.upstream_manager.register_service()
-
         request_balancer_builder = RequestBalancerBuilder(
-            self.upstream_manager.get_upstreams(),
+            upstreams=self.service_discovery.get_upstreams_unsafe(),
             statsd_client=self.statsd_client,
             kafka_producer=kafka_producer,
         )
-        self.http_client_factory = HttpClientFactory(self.app_name, self.http_client, request_balancer_builder)
-        self.asgi_app.http_client_factory = self.http_client_factory
-
-        if self.worker_state.single_worker_mode:
-            self.worker_state.master_done.value = True
+        return HttpClientFactory(self.app_name, AIOHttpClientWrapper(), request_balancer_builder)
 
     def application_config(self) -> DefaultConfig:
         return FrontikApplication.DefaultConfig()

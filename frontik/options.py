@@ -17,6 +17,7 @@ class Options:
     xheaders: bool = False
     validate_request_id: bool = False
     xsrf_cookies: bool = False
+    max_body_size: int = 1_000_000_000
     openapi_enabled: bool = False
 
     config: Optional[str] = None
