@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import http.client
 import logging
+from functools import partial
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from tornado import httputil
@@ -36,6 +37,9 @@ async def serve_tornado_request(
     with request_context.request_context(request_id):
         log.info('requested url: %s', tornado_request.uri)
 
+        assert tornado_request.connection is not None
+        tornado_request.connection.set_close_callback(partial(_on_connection_close, tornado_request))  # type: ignore
+
         with request_limiter(frontik_app.statsd_client) as accepted:
             if not accepted:
                 status, reason, headers, data = make_not_accepted_response()
@@ -46,6 +50,9 @@ async def serve_tornado_request(
 
         assert tornado_request.connection is not None
         tornado_request.connection.set_close_callback(None)  # type: ignore
+
+        if getattr(tornado_request, 'canceled', False):
+            return None
 
         start_line = httputil.ResponseStartLine('', status, reason)
         future = tornado_request.connection.write_headers(start_line, headers, data)
@@ -256,3 +263,18 @@ def convert_tornado_request_to_asgi(
             raise RuntimeError(f'Unsupported response type "{data["type"]}" for asgi app')
 
     return scope, receive, send
+
+
+def _on_connection_close(tornado_request):  # нужен тест на эту херню, чтоб на ювикорне потом огребсти
+    setattr(tornado_request, 'canceled', True)
+
+    # телеметрия тут кажется итак уже отьебнула тк часть исключений я вне хендлера делаю
+    # раньше финиш выставили а теперь нет но реквесты я прикрою
+
+    # self.finish_group.abort()
+    # self.set_status(CLIENT_CLOSED_REQUEST, 'Client closed the connection: aborting request')
+    #
+    # self.stages_logger.commit_stage('page')
+    # self.stages_logger.flush_stages(self.get_status())
+    #
+    # self.finish()
