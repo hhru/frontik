@@ -1,7 +1,12 @@
 ## Routing in Frontik applications
 
 On application start, frontik import all modules from {app_module}.pages so that any controller should be located there.
-We use fastapi routing, read [these docs](https://fastapi.tiangolo.com/reference/apirouter/?h=apirouter) for details. A small important difference - you must inherit `frontik.routing.FastAPIRouter` instead `fastapi.APIRouter`. And use `from frontik.routing import router`, if you need default router.
+We use fastapi routing, read [these docs](https://fastapi.tiangolo.com/reference/apirouter/?h=apirouter) for details. 
+
+> [!IMPORTANT]
+> Never use `fastapi.APIRouter` router directly, instead you should import wrapped alternative from [`frontik.routing.FastAPIRouter`](https://github.com/hhru/frontik/blob/526a4cc22d151694fa48439f884dd03a6ca2329f/frontik/routing.py#L110)
+> 
+> In any case you need the default FastAPI router — use `from frontik.routing import router`
 
 example:
 
