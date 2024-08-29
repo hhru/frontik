@@ -76,6 +76,8 @@ exclude = [
     '.*/api/2.*',
     'tests/test_process_fork.py',
     'http_client',
+    'frontik/integrations/tornado',
+    'frontik/integrations/sentry_tornado_integration',
 ]
 # should be fixed and enabled
 #strict = true
@@ -89,6 +91,10 @@ exclude = [
 line-length = 120
 target-version = 'py39'
 preview = true
+exclude = [
+    "sentry_tornado_integration.py",
+    "frontik/integrations/tornado/*",
+]
 
 [tool.ruff.format]
 quote-style = 'single'
