@@ -5,9 +5,10 @@ import http.client
 import logging
 import re
 import time
+import weakref
 from asyncio import Task
 from asyncio.futures import Future
-from functools import wraps
+from functools import partial, wraps
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, Optional, Type, TypeVar, Union, overload
 
@@ -29,7 +30,7 @@ from frontik import media_types, request_context
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.debug import DEBUG_HEADER_NAME, DebugMode
 from frontik.futures import AbortAsyncGroup, AsyncGroup
-from frontik.http_status import ALLOWED_STATUSES, CLIENT_CLOSED_REQUEST, NON_CRITICAL_BAD_GATEWAY
+from frontik.http_status import ALLOWED_STATUSES, NON_CRITICAL_BAD_GATEWAY
 from frontik.json_builder import FrontikJsonDecodeError, json_decode
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.loggers.stages import StagesLogger
@@ -125,7 +126,15 @@ class PageHandler(RequestHandler):
             if _value:
                 request.arguments.setdefault(_name, []).append(_value)  # type: ignore
 
-        super().__init__(application, request)  # type: ignore
+        self.application = application
+        self.request = request
+        self._headers_written = False
+        self._finished = False
+        self._auto_finish = True
+        self._prepared_future = None
+
+        self.clear()
+        self.initialize()
 
         self.statsd_client: StatsDClient | StatsDClientStub = application.statsd_client
 
@@ -170,7 +179,7 @@ class PageHandler(RequestHandler):
         self.doc = self.xml_producer.doc
 
         self._http_client: HttpClient = self.application.http_client_factory.get_http_client(
-            self.modify_http_client_request,
+            partial(self.modify_http_client_request, weakref.proxy(self)),
             self.debug_mode.enabled,
         )
 
@@ -368,17 +377,38 @@ class PageHandler(RequestHandler):
     # Requests handling
 
     async def execute(self) -> tuple[int, str, HTTPHeaders, bytes]:
-        if (
-            self.request.method
-            not in (
-                'GET',
-                'HEAD',
-                'OPTIONS',
-            )
-            and options.xsrf_cookies
-        ):
-            self.check_xsrf_cookie()
-        await super()._execute([], b'', b'')
+        self._transforms = []
+        try:
+            if self.request.method not in self.SUPPORTED_METHODS:
+                raise tornado.web.HTTPError(405)
+            self.path_args = []
+            self.path_kwargs = {}
+
+            if (
+                self.request.method
+                not in (
+                    'GET',
+                    'HEAD',
+                    'OPTIONS',
+                )
+                and options.xsrf_cookies
+            ):
+                self.check_xsrf_cookie()
+
+            self.prepare()
+
+            await self._execute_page()
+            if self._auto_finish and not self._finished:
+                self.finish()
+        except Exception as e:
+            try:
+                self._handle_request_exception(e)
+            except Exception:
+                self.log.exception('Exception in exception handler')
+                self.send_error()
+                return self.handler_result_future.result()
+            if self._prepared_future is not None and not self._prepared_future.done():
+                self._prepared_future.set_result(None)
 
         try:
             return await asyncio.wait_for(self.handler_result_future, timeout=5.0)
@@ -455,7 +485,7 @@ class PageHandler(RequestHandler):
     # Finish page
 
     def is_finished(self) -> bool:
-        return self._finished
+        return self._finished or getattr(self.request, 'canceled', False)
 
     def check_finished(self, callback: Callable) -> Callable:
         @wraps(callback)
@@ -487,7 +517,7 @@ class PageHandler(RequestHandler):
         return task
 
     async def _postprocess(self) -> Any:
-        if self._finished:
+        if self._finished or getattr(self.request, 'canceled', False):
             self.log.info('page was already finished, skipping postprocessors')
             return
 
@@ -515,18 +545,6 @@ class PageHandler(RequestHandler):
             meta_info,
         )
         return postprocessed_result
-
-    def on_connection_close(self):
-        with request_context.request_context(self.request_id):
-            super().on_connection_close()
-
-            self.finish_group.abort()
-            self.set_status(CLIENT_CLOSED_REQUEST, 'Client closed the connection: aborting request')
-
-            self.stages_logger.commit_stage('page')
-            self.stages_logger.flush_stages(self.get_status())
-
-            self.finish()
 
     def on_finish(self) -> None:
         self.stages_logger.commit_stage('flush')
@@ -645,7 +663,7 @@ class PageHandler(RequestHandler):
             self._write_buffer = []
             chunk = None
 
-        if self._finished:
+        if self._finished or getattr(self.request, 'canceled', False):
             raise RuntimeError('finish() called twice')
 
         if chunk is not None:
@@ -718,7 +736,7 @@ class PageHandler(RequestHandler):
             else:
                 p(self)
 
-            if self._finished:
+            if self._finished or getattr(self.request, 'canceled', False):
                 self.log.warning('page was already finished, breaking postprocessors chain')
                 return False
 
@@ -731,7 +749,7 @@ class PageHandler(RequestHandler):
             else:
                 rendered_template = p(self, rendered_template, meta_info)
 
-            if self._finished:
+            if self._finished or getattr(self.request, 'canceled', False):
                 self.log.warning('page was already finished, breaking postprocessors chain')
                 return None
 
@@ -764,21 +782,22 @@ class PageHandler(RequestHandler):
 
     # HTTP client methods
 
-    def modify_http_client_request(self, balanced_request: RequestBuilder) -> None:
+    @staticmethod
+    def modify_http_client_request(handler: PageHandler, balanced_request: RequestBuilder) -> None:
         balanced_request.headers['x-request-id'] = request_context.get_request_id()
         balanced_request.headers[OUTER_TIMEOUT_MS_HEADER] = f'{balanced_request.request_timeout * 1000:.0f}'
 
-        if self.timeout_checker is not None:
-            self.timeout_checker.check(balanced_request)
+        if handler.timeout_checker is not None:
+            handler.timeout_checker.check(balanced_request)
 
-        if self.debug_mode.pass_debug:
+        if handler.debug_mode.pass_debug:
             balanced_request.headers[DEBUG_HEADER_NAME] = 'true'
 
             # debug_timestamp is added to avoid caching of debug responses
             balanced_request.path = make_url(balanced_request.path, debug_timestamp=int(time.time()))
 
             for header_name in ('Authorization', DEBUG_AUTH_HEADER_NAME):
-                authorization = self.request.headers.get(header_name)
+                authorization = handler.request.headers.get(header_name)
                 if authorization is not None:
                     balanced_request.headers[header_name] = authorization
 
@@ -1003,7 +1022,9 @@ class PageHandler(RequestHandler):
         client_method: Callable,
         waited: bool,
     ) -> Future[RequestResult]:
-        if waited and (self.is_finished() or self.finish_group.is_finished()):
+        if waited and (
+            self.is_finished() or self.finish_group.is_finished() or getattr(self.request, 'canceled', False)
+        ):
             handler_logger.info(
                 'attempted to make waited http request to %s %s in finished handler, '
                 'ignoring. change "waited" method parameter to send it',

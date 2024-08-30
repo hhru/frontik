@@ -3,8 +3,9 @@ from frontik.routing import plain_router
 
 
 class Page(PageHandler):
-    def modify_http_client_request(self, balanced_request):
-        super().modify_http_client_request(balanced_request)
+    @staticmethod
+    def modify_http_client_request(handler, balanced_request):
+        super().modify_http_client_request(handler, balanced_request)
         balanced_request.headers['X-Foo'] = 'Bar'
 
 

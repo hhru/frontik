@@ -88,8 +88,6 @@ class FrontikApplication:
         assert len(not_found_router.routes) < 2
         assert len(method_not_allowed_router.routes) < 2
 
-        self.ui_methods: dict = {}
-        self.ui_modules: dict = {}
         self.settings: dict = {}
 
         self.asgi_app = FrontikAsgiApp()

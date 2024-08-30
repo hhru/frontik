@@ -9,7 +9,7 @@ from http_client import client_request_context, response_status_code_context
 from http_client.options import options as http_client_options
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation import aiohttp_client, tornado
+from opentelemetry.instrumentation import aiohttp_client
 from opentelemetry.propagate import set_global_textmap
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import IdGenerator, TracerProvider
@@ -22,7 +22,7 @@ from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapProp
 from opentelemetry.util.http import ExcludeList
 
 from frontik import request_context
-from frontik.integrations import Integration, integrations_logger
+from frontik.integrations import Integration, integrations_logger, tornado
 from frontik.options import options
 
 if TYPE_CHECKING:

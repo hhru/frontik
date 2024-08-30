@@ -12,10 +12,10 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration, StarletteIntegra
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.integrations.modules import ModulesIntegration
 from sentry_sdk.integrations.stdlib import StdlibIntegration
-from sentry_sdk.integrations.tornado import TornadoIntegration
 from tornado.web import HTTPError
 
 from frontik.integrations import Integration, integrations_logger
+from frontik.integrations.sentry_tornado_integration import TornadoIntegration
 from frontik.options import options
 
 if TYPE_CHECKING:
