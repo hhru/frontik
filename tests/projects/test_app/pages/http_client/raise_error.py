@@ -3,7 +3,7 @@ from frontik.routing import plain_router
 
 
 class Page(PageHandler):
-    def send_error(self, status_code=500, exc_info=None, **kwargs):
+    def _send_error(self, status_code=500, exc_info=None, **kwargs):
         if isinstance(exc_info[1], UnicodeEncodeError):
             self.finish('UnicodeEncodeError')
 

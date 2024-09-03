@@ -10,14 +10,14 @@ async def get_page_preprocessor(handler: PageHandler = get_current_handler()) ->
 
 
 class Page(PageHandler):
-    def get_page_fail_fast(self, failed_future):
+    async def get_page_fail_fast(self, failed_future):
         if self.get_argument('exception_in_fail_fast', 'false') == 'true':
             msg = 'Exception in fail_fast'
             raise Exception(msg)
 
         self.json.replace({'fail_fast': True})
         self.set_status(403)
-        self.finish_with_postprocessors()
+        await self.finish_with_postprocessors()
 
 
 @plain_router.get('/fail_fast', cls=Page, dependencies=[Depends(get_page_preprocessor)])
