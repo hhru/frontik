@@ -16,6 +16,72 @@ if TYPE_CHECKING:
 class TestDebug(unittest.TestCase):
     DEBUG_BASIC_AUTH = create_basic_auth_header('user:god')
 
+    def test_asgi_debug_page(self):
+        response = frontik_test_app.get_page('debug_asgi?debug')
+        response_content = to_unicode(response.content)
+
+        self.assertEqual(response.status_code, 200)
+
+        # Basic debug messages
+
+        basic_messages = (
+            'debug: starting debug page',
+            'warning: testing simple inherited debug',
+            'error: testing failing urls',
+            'info: testing responses',
+        )
+
+        for msg in basic_messages:
+            assert msg in response_content
+
+        # Extra output and different types of content
+
+        extra_output = (
+            '&lt;child2&gt;тест&lt;/child2&gt;',
+            'юникод\ndebug',
+            '"тест": "value"',
+            'SomeProtobufObject()',
+            '&lt;response&gt;some xml&lt;/response&gt;',
+            'document.body.write("Привет")',
+            'привет charset',
+        )
+
+        for msg in extra_output:
+            assert msg in response_content
+
+        # Check that all http requests are present
+
+        self.assertEqual(response_content.count('<div class="timebar">'), 17)
+
+        # Inherited debug
+
+        assert_occurs_twice = (
+            'ValueError: Testing an exception',
+            '<span class="entry__head__expandtext">Exception traceback</span>',
+            '<span class="entry__head__expandtext">testing xml output</span>',
+            '<span class="entry__head__expandtext">testing utf-8 text output</span>',
+            '<span class="entry__head__expandtext">testing unicode text output</span>',
+        )
+
+        for msg in assert_occurs_twice:
+            self.assertEqual(response_content.count(msg), 2)
+
+        # Check that everything went right
+
+        assert_not_found = (
+            'cannot parse request body',
+            'cannot parse response body',
+            'cannot append time info',
+            'cannot log response info',
+            'cannot decode parameter name or value',
+            'cannot add traceback lines',
+            'error creating log entry with attrs',
+            'XSLT debug file error',
+        )
+
+        for msg in assert_not_found:
+            self.assertNotIn(msg, response_content)
+
     def test_complex_debug_page(self):
         response = frontik_test_app.get_page('debug?debug')
         response_content = to_unicode(response.content)

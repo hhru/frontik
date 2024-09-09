@@ -31,6 +31,7 @@ import frontik.util
 import frontik.xml_util
 from frontik import media_types, request_context
 from frontik.auth import check_debug_auth
+from frontik.frontik_response import FrontikResponse
 from frontik.loggers import BufferedHandler
 from frontik.options import options
 from frontik.util import get_cookie_or_param_from_request
@@ -366,7 +367,7 @@ DEBUG_HEADER_NAME = 'X-Hh-Debug'
 DEBUG_XSL = os.path.join(os.path.dirname(__file__), 'debug/debug.xsl')
 
 
-def _data_to_chunk(data: Any, headers: HTTPHeaders) -> bytes:
+def _data_to_chunk(data: Any) -> bytes:
     result: bytes = b''
     if data is None:
         return result
@@ -375,7 +376,6 @@ def _data_to_chunk(data: Any, headers: HTTPHeaders) -> bytes:
     elif isinstance(data, dict):
         chunk = json.dumps(data).replace('</', '<\\/')
         result = chunk.encode('utf-8')
-        headers['Content-Type'] = 'application/json; charset=UTF-8'
     elif isinstance(data, bytes):
         result = data
     else:
@@ -395,23 +395,23 @@ class DebugTransform:
         return self.debug_mode.inherited
 
     def transform_chunk(
-        self, tornado_request: httputil.HTTPServerRequest, status_code: int, original_headers: HTTPHeaders, data: bytes
-    ) -> tuple[int, HTTPHeaders, bytes]:
-        chunk = _data_to_chunk(data, original_headers)
-
+        self, tornado_request: httputil.HTTPServerRequest, response: FrontikResponse
+    ) -> FrontikResponse:
         if not self.is_enabled():
-            return status_code, original_headers, chunk
+            return response
 
         if not self.is_inherited():
             wrap_headers = {'Content-Type': media_types.TEXT_HTML}
         else:
             wrap_headers = {'Content-Type': media_types.APPLICATION_XML, DEBUG_HEADER_NAME: 'true'}
 
+        chunk = b'Streamable response' if response.data_written else _data_to_chunk(response.body)
         start_time = time.time()
+        handler_name = request_context.get_handler_name()
 
         debug_log_data = request_context.get_log_handler().produce_all()  # type: ignore
-        debug_log_data.set('code', str(int(status_code)))
-        debug_log_data.set('handler-name', request_context.get_handler_name())
+        debug_log_data.set('code', str(int(response.status_code)))
+        debug_log_data.set('handler-name', handler_name if handler_name else 'unknown handler')
         debug_log_data.set('started', _format_number(tornado_request._start_time))
         debug_log_data.set('request-id', str(tornado_request.request_id))  # type: ignore
         debug_log_data.set('stages-total', _format_number((time.time() - tornado_request._start_time) * 1000))
@@ -437,12 +437,12 @@ class DebugTransform:
             ),
         )
 
-        debug_log_data.append(E.response(_headers_to_xml(original_headers), _cookies_to_xml(original_headers)))
+        debug_log_data.append(E.response(_headers_to_xml(response.headers), _cookies_to_xml(response.headers)))
 
         original_response = {
             'buffer': base64.b64encode(chunk),
-            'headers': dict(original_headers),
-            'code': int(status_code),
+            'headers': dict(response.headers),
+            'code': int(response.status_code),
         }
 
         debug_log_data.append(dict_to_xml(original_response, 'original-response'))
@@ -471,7 +471,7 @@ class DebugTransform:
         else:
             log_document = etree.tostring(debug_log_data, encoding='UTF-8', xml_declaration=True)
 
-        return 200, HTTPHeaders(wrap_headers), log_document
+        return FrontikResponse(status_code=200, headers=wrap_headers, body=log_document)
 
 
 class DebugMode:
