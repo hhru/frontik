@@ -1064,11 +1064,3 @@ def get_current_handler(_: Union[PageHandlerT, Type[PageHandler]] = PageHandler)
         return request['handler']
 
     return Depends(handler_getter)
-
-
-def get_default_headers() -> dict[str, str]:
-    request_id = request_context.get_request_id() or ''
-    return {
-        'Server': f'Frontik/{frontik_version}',
-        'X-Request-Id': request_id,
-    }
