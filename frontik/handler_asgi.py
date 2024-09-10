@@ -41,6 +41,9 @@ async def serve_tornado_request(
 
         process_request_task = asyncio.create_task(process_request(frontik_app, asgi_app, tornado_request))
 
+        if tornado_request.path == '/registration/applicant':
+            log.info('requested connection is None: %s', tornado_request.connection is None)
+
         assert tornado_request.connection is not None
         tornado_request.connection.set_close_callback(  # type: ignore
             partial(_on_connection_close, tornado_request, process_request_task)
@@ -70,6 +73,8 @@ async def process_request(
         if not accepted:
             status, reason, headers, data = make_not_accepted_response()
         else:
+            if tornado_request.path == '/registration/applicant':
+                log.info('execute_page in /registration/applicant')
             status, reason, headers, data = await execute_page(frontik_app, asgi_app, tornado_request)
             headers.add(
                 'Server-Timing', f'frontik;desc="frontik execution time";dur={tornado_request.request_time()!s}'
@@ -97,6 +102,8 @@ async def execute_page(
     if scope['route'] is None:
         status, reason, headers, data = await make_not_found_response(frontik_app, tornado_request, debug_mode)
     elif scope['page_cls'] is not None:
+        if tornado_request.path == '/registration/applicant':
+            log.info('execute_tornado_page in /registration/applicant')
         status, reason, headers, data = await execute_tornado_page(frontik_app, tornado_request, scope, debug_mode)
     else:
         status, reason, headers, data = await execute_asgi_page(
