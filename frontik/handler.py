@@ -607,7 +607,7 @@ class PageHandler(RequestHandler):
         """
         self.stages_logger.commit_stage('page')
         if exception is not None:
-            exc_info = type(exception), exception, exception.__traceback__
+            exc_info = type(exception), exception, getattr(exception, '__traceback__', None)
             kwargs['exc_info'] = exc_info
             self.log_exception(*exc_info)  # сентри этот метод манкипатчит
 

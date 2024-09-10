@@ -17,6 +17,7 @@ from tornado import httputil
 
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
+from frontik.producers.middleware import ProducersMiddleware
 from frontik import integrations, media_types
 from frontik.debug import get_frontik_and_apps_versions
 from frontik.handler import PageHandler, get_current_handler
@@ -91,6 +92,8 @@ class FrontikApplication:
         self.settings: dict = {}
 
         self.asgi_app = FrontikAsgiApp()
+        self.asgi_app.add_middleware(ProducersMiddleware, app_root=self.app_root)
+
         self.service_discovery: ServiceDiscovery
 
     def __call__(self, tornado_request: httputil.HTTPServerRequest) -> None:

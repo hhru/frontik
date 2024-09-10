@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import anyio
 import http.client
 import logging
 from functools import partial
@@ -12,7 +13,6 @@ from frontik import media_types, request_context
 from frontik.debug import DebugMode, DebugTransform
 from frontik.handler import PageHandler, get_default_headers, log_request
 from frontik.handler_active_limit import request_limiter
-from frontik.json_builder import JsonBuilder
 from frontik.options import options
 from frontik.routing import find_route, get_allowed_methods, method_not_allowed_router, not_found_router
 from frontik.util import check_request_id, generate_uniq_timestamp_request_id
@@ -120,14 +120,6 @@ async def execute_asgi_page(
     reason = httputil.responses.get(status, 'Unknown')
     headers = HTTPHeaders(result['headers'])
     data = result['data']
-
-    if not scope['json_builder'].is_empty():
-        if data != b'null':
-            raise RuntimeError('Cant have "return" and "json.put" at the same time')
-
-        headers['Content-Type'] = media_types.APPLICATION_JSON
-        data = scope['json_builder'].to_bytes()
-        headers['Content-Length'] = str(len(data))
 
     return status, reason, headers, data
 
@@ -240,16 +232,26 @@ def convert_tornado_request_to_asgi(
         'query_string': tornado_request.query.encode(CHARSET),
         'headers': headers,
         'client': (tornado_request.remote_ip, 0),
-        'http_client_factory': asgi_app.http_client_factory,
+        'http_client_factory': asgi_app.http_client_factory,  # нахер, надо через мидлварю сделать
         'debug_mode': debug_mode,
         'start_time': tornado_request._start_time,
-        'json_builder': JsonBuilder(),
     })
 
+    # see starlette.testclient._TestClientTransport for chunks
+    request_complete = False
+    response_complete = anyio.Event()
+
     async def receive():
+        nonlocal request_complete
+        if request_complete:
+            if not response_complete.is_set():
+                await response_complete.wait()
+            return {"type": "http.disconnect"}
+
+        request_complete = True
         return {
-            'body': tornado_request.body,
             'type': 'http.request',
+            'body': tornado_request.body,
             'more_body': False,
         }
 
@@ -262,6 +264,7 @@ def convert_tornado_request_to_asgi(
         elif data['type'] == 'http.response.body':
             assert isinstance(data['body'], bytes)
             result['data'] = data['body']
+            response_complete.set()
         else:
             raise RuntimeError(f'Unsupported response type "{data["type"]}" for asgi app')
 

@@ -131,7 +131,7 @@ class JsonBuilder:
 
 
 async def get_json_builder(request: Request) -> JsonBuilder:
-    return request['json_builder']
+    return request.state.json_producer.json
 
 
 JsonBuilderT = Annotated[JsonBuilder, Depends(get_json_builder)]
