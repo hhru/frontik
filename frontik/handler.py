@@ -30,7 +30,7 @@ from frontik import media_types, request_context
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.debug import DEBUG_HEADER_NAME, DebugMode
 from frontik.futures import AbortAsyncGroup, AsyncGroup
-from frontik.http_status import ALLOWED_STATUSES, CLIENT_CLOSED_REQUEST, NON_CRITICAL_BAD_GATEWAY
+from frontik.http_status import ALLOWED_STATUSES, NON_CRITICAL_BAD_GATEWAY
 from frontik.json_builder import FrontikJsonDecodeError, json_decode
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.loggers.stages import StagesLogger
@@ -398,13 +398,13 @@ class PageHandler(RequestHandler):
             except Exception as exc:
                 self.log.exception('Exception in exception handler')
                 await self._send_error(exception=exc)
-                return self.__get_result()
+                return self.handler_result_future.result()
 
         done, pending = await asyncio.wait((self.handler_result_future,), timeout=5.0)
         if not done:
             self.log.error('handler was never finished')
             await self._send_error(exception=RuntimeError('handler was never finished'))
-        return self.__get_result()
+        return self.handler_result_future.result()
 
     async def get(self, *args, **kwargs):
         await self._execute_page()
@@ -477,12 +477,7 @@ class PageHandler(RequestHandler):
     # Finish page
 
     def is_finished(self) -> bool:
-        return self.handler_result_future.done() or getattr(self.request, 'canceled', False)
-
-    def __get_result(self) -> tuple[int, str, HTTPHeaders, bytes]:
-        if getattr(self.request, 'canceled', False):
-            return CLIENT_CLOSED_REQUEST, 'Client closed the connection: aborting request', self._headers, b''
-        return self.handler_result_future.result()
+        return self.handler_result_future.done()
 
     def check_finished(self, callback: Callable) -> Callable:
         @wraps(callback)

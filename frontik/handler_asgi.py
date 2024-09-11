@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import http.client
 import logging
 from functools import partial
@@ -12,6 +13,7 @@ from frontik import media_types, request_context
 from frontik.debug import DebugMode, DebugTransform
 from frontik.handler import PageHandler, get_default_headers, log_request
 from frontik.handler_active_limit import request_limiter
+from frontik.http_status import CLIENT_CLOSED_REQUEST
 from frontik.json_builder import JsonBuilder
 from frontik.options import options
 from frontik.routing import find_route, get_allowed_methods, method_not_allowed_router, not_found_router
@@ -37,18 +39,14 @@ async def serve_tornado_request(
     with request_context.request_context(request_id):
         log.info('requested url: %s', tornado_request.uri)
 
+        process_request_task = asyncio.create_task(process_request(frontik_app, asgi_app, tornado_request))
+
         assert tornado_request.connection is not None
-        tornado_request.connection.set_close_callback(partial(_on_connection_close, tornado_request))  # type: ignore
+        tornado_request.connection.set_close_callback(  # type: ignore
+            partial(_on_connection_close, tornado_request, process_request_task)
+        )
 
-        with request_limiter(frontik_app.statsd_client) as accepted:
-            if not accepted:
-                status, reason, headers, data = make_not_accepted_response()
-            else:
-                status, reason, headers, data = await process_request(frontik_app, asgi_app, tornado_request)
-                headers.add(
-                    'Server-Timing', f'frontik;desc="frontik execution time";dur={tornado_request.request_time()!s}'
-                )
-
+        status, reason, headers, data = await process_request_task
         log_request(tornado_request, status)
 
         assert tornado_request.connection is not None
@@ -64,6 +62,23 @@ async def serve_tornado_request(
 
 
 async def process_request(
+    frontik_app: FrontikApplication,
+    asgi_app: FrontikAsgiApp,
+    tornado_request: httputil.HTTPServerRequest,
+) -> tuple[int, str, HTTPHeaders, bytes]:
+    with request_limiter(frontik_app.statsd_client) as accepted:
+        if not accepted:
+            status, reason, headers, data = make_not_accepted_response()
+        else:
+            status, reason, headers, data = await execute_page(frontik_app, asgi_app, tornado_request)
+            headers.add(
+                'Server-Timing', f'frontik;desc="frontik execution time";dur={tornado_request.request_time()!s}'
+            )
+
+        return status, reason, headers, data
+
+
+async def execute_page(
     frontik_app: FrontikApplication,
     asgi_app: FrontikAsgiApp,
     tornado_request: HTTPServerRequest,
@@ -268,5 +283,6 @@ def convert_tornado_request_to_asgi(
     return scope, receive, send
 
 
-def _on_connection_close(tornado_request):
-    setattr(tornado_request, 'canceled', True)
+def _on_connection_close(tornado_request, process_request_task):
+    process_request_task.cancel()
+    log_request(tornado_request, CLIENT_CLOSED_REQUEST)
