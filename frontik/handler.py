@@ -30,7 +30,7 @@ from frontik import media_types, request_context
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.debug import DEBUG_HEADER_NAME, DebugMode
 from frontik.futures import AbortAsyncGroup, AsyncGroup
-from frontik.http_status import ALLOWED_STATUSES, CLIENT_CLOSED_REQUEST, NON_CRITICAL_BAD_GATEWAY
+from frontik.http_status import ALLOWED_STATUSES, NON_CRITICAL_BAD_GATEWAY
 from frontik.json_builder import FrontikJsonDecodeError, json_decode
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.loggers.stages import StagesLogger
@@ -398,13 +398,13 @@ class PageHandler(RequestHandler):
             except Exception as exc:
                 self.log.exception('Exception in exception handler')
                 await self._send_error(exception=exc)
-                return self.__get_result()
+                return self.handler_result_future.result()
 
         done, pending = await asyncio.wait((self.handler_result_future,), timeout=5.0)
         if not done:
             self.log.error('handler was never finished')
             await self._send_error(exception=RuntimeError('handler was never finished'))
-        return self.__get_result()
+        return self.handler_result_future.result()
 
     async def get(self, *args, **kwargs):
         await self._execute_page()
@@ -469,17 +469,15 @@ class PageHandler(RequestHandler):
     async def __return_error(self, response_code: int, **kwargs: Any) -> None:
         if not (300 <= response_code < 500 or response_code == NON_CRITICAL_BAD_GATEWAY):
             response_code = HTTPStatus.BAD_GATEWAY
-        await self._send_error(response_code, None, **kwargs)
+        self.stages_logger.commit_stage('page')
+        self.clear()
+        self.set_status(response_code)
+        await self._write_error(response_code, **kwargs)
 
     # Finish page
 
     def is_finished(self) -> bool:
-        return self.handler_result_future.done() or getattr(self.request, 'canceled', False)
-
-    def __get_result(self) -> tuple[int, str, HTTPHeaders, bytes]:
-        if getattr(self.request, 'canceled', False):
-            return CLIENT_CLOSED_REQUEST, 'Client closed the connection: aborting request', self._headers, b''
-        return self.handler_result_future.result()
+        return self.handler_result_future.done()
 
     def check_finished(self, callback: Callable) -> Callable:
         @wraps(callback)
@@ -607,9 +605,9 @@ class PageHandler(RequestHandler):
         """
         self.stages_logger.commit_stage('page')
         if exception is not None:
-            exc_info = type(exception), exception, exception.__traceback__
+            exc_info = type(exception), exception, getattr(exception, '__traceback__', None)
             kwargs['exc_info'] = exc_info
-            self.log_exception(*exc_info)  # сентри этот метод манкипатчит
+            self.log_exception(*exc_info)  # need for sentry tornado integration
 
         if not isinstance(exception, HTTPErrorWithPostprocessors):
             self.clear()
@@ -647,6 +645,9 @@ class PageHandler(RequestHandler):
         return future
 
     def _finish(self, chunk: Optional[Union[str, bytes, dict]] = None, interrupt_execution: bool = True) -> None:
+        if self.is_finished():
+            raise RuntimeError('finish() called twice')
+
         self.stages_logger.commit_stage('postprocess')
         for name, value in self._mandatory_headers.items():
             self.set_header(name, value)
@@ -660,9 +661,6 @@ class PageHandler(RequestHandler):
         if self._status_code in (204, 304) or (100 <= self._status_code < 200):
             self._write_buffer = []
             chunk = None
-
-        if self.is_finished():
-            raise RuntimeError('finish() called twice')
 
         if chunk is not None:
             self.write(chunk)
