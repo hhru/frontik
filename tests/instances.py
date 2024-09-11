@@ -160,45 +160,37 @@ frontik_consul_mock_app = FrontikTestInstance(
     f'{FRONTIK_RUN} --app_class=tests.projects.consul_mock_app.TestApplication '
     f' --config={TEST_PROJECTS}/frontik_consul_mock.cfg {common_frontik_start_options}',
 )
-frontik_consul_mock_app.start()
 
 frontik_test_app = FrontikTestInstance(
     f'{FRONTIK_RUN} --app_class=tests.projects.test_app.TestApplication '
     f' --config={TEST_PROJECTS}/frontik_debug.cfg {common_frontik_start_options} '
-    f' --consul_port={frontik_consul_mock_app.port}',
 )
 frontik_re_app = FrontikTestInstance(
     f'{FRONTIK_RUN} --app_class=tests.projects.re_app.TestApplication '
     f' --config={TEST_PROJECTS}/frontik_debug.cfg {common_frontik_start_options} '
-    f' --consul_port={frontik_consul_mock_app.port}',
 )
 
 frontik_no_debug_app = FrontikTestInstance(
     f'{FRONTIK_RUN} --app_class=tests.projects.no_debug_app.TestApplication '
     f' --config={TEST_PROJECTS}/frontik_no_debug.cfg {common_frontik_start_options} '
-    f' --consul_port={frontik_consul_mock_app.port} ',
 )
 
 frontik_broken_config_app = FrontikTestInstance(
     f'{FRONTIK_RUN} --app_class=tests.projects.broken_config_app.TestApplication '
     f' --config={TEST_PROJECTS}/frontik_debug.cfg {common_frontik_start_options} '
-    f' --consul_port={frontik_consul_mock_app.port}',
 )
 
 frontik_broken_init_async_app = FrontikTestInstance(
     f'{FRONTIK_RUN} --app_class=tests.projects.broken_async_init_app.TestApplication '
     f' --config={TEST_PROJECTS}/frontik_debug.cfg {common_frontik_start_options} '
-    f' --consul_port={frontik_consul_mock_app.port}',
 )
 
 frontik_balancer_app = FrontikTestInstance(
     f'{FRONTIK_RUN} --app_class=tests.projects.balancer_app.TestApplication '
     f' --config={TEST_PROJECTS}/frontik_no_debug.cfg {common_frontik_start_options} '
-    f' --consul_port={frontik_consul_mock_app.port}',
 )
 
 frontik_broken_balancer_app = FrontikTestInstance(
     f'{FRONTIK_RUN} --app_class=tests.projects.broken_balancer_app.TestApplication '
     f' --config={TEST_PROJECTS}/frontik_debug.cfg {common_frontik_start_options} '
-    f' --consul_port={frontik_consul_mock_app.port}',
 )

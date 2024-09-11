@@ -44,6 +44,23 @@ tornado._excluded_urls = ExcludeList([*list(tornado._excluded_urls._excluded_url
 excluded_span_attributes = ['tornado.handler']
 
 
+def make_otel_provider(app: FrontikApplication) -> TracerProvider:
+    resource = Resource(
+        attributes={
+            ResourceAttributes.SERVICE_NAME: app.app_name,
+            ResourceAttributes.SERVICE_VERSION: app.application_version(),
+            ResourceAttributes.HOST_NAME: options.node_name,
+            ResourceAttributes.CLOUD_REGION: http_client_options.datacenter,
+        },
+    )
+    provider = TracerProvider(
+        resource=resource,
+        id_generator=FrontikIdGenerator(),
+        sampler=ParentBased(TraceIdRatioBased(options.opentelemetry_sampler_ratio)),
+    )
+    return provider
+
+
 class TelemetryIntegration(Integration):
     def __init__(self):
         self.aiohttp_instrumentor = aiohttp_client.AioHttpClientInstrumentor()
@@ -65,23 +82,9 @@ class TelemetryIntegration(Integration):
             return None
 
         integrations_logger.info('start telemetry')
+        provider = make_otel_provider(app)
 
-        resource = Resource(
-            attributes={
-                ResourceAttributes.SERVICE_NAME: app.app_name,
-                ResourceAttributes.SERVICE_VERSION: app.application_version(),  # type: ignore
-                ResourceAttributes.HOST_NAME: options.node_name,
-                ResourceAttributes.CLOUD_REGION: http_client_options.datacenter,
-            },
-        )
         otlp_exporter = OTLPSpanExporter(endpoint=options.opentelemetry_collector_url, insecure=True)
-
-        provider = TracerProvider(
-            resource=resource,
-            id_generator=FrontikIdGenerator(),
-            sampler=ParentBased(TraceIdRatioBased(options.opentelemetry_sampler_ratio)),
-        )
-
         provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
         trace.set_tracer_provider(provider)
 

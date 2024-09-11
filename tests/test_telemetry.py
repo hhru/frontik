@@ -4,16 +4,12 @@ from typing import Any, Optional
 import pytest
 from fastapi import Request
 from opentelemetry import trace
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ReadableSpan, SpanExporter, SpanExportResult
-from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
-from opentelemetry.semconv.resource import ResourceAttributes
 
 from frontik import request_context
 from frontik.app import FrontikApplication
 from frontik.handler import PageHandler, get_current_handler
-from frontik.integrations.telemetry import FrontikIdGenerator, get_netloc
+from frontik.integrations.telemetry import FrontikIdGenerator, get_netloc, make_otel_provider
 from frontik.options import options
 from frontik.routing import plain_router
 from frontik.testing import FrontikTestBase
@@ -80,23 +76,6 @@ async def get_page_b(handler=get_current_handler()):
     handler.json.put({})
 
 
-def make_otel_provider(service_name: str) -> TracerProvider:
-    resource = Resource(
-        attributes={
-            ResourceAttributes.SERVICE_NAME: service_name,
-            ResourceAttributes.SERVICE_VERSION: '1.2.3',
-            ResourceAttributes.HOST_NAME: options.node_name,
-            ResourceAttributes.CLOUD_REGION: 'test',
-        },
-    )
-    provider = TracerProvider(
-        resource=resource,
-        id_generator=FrontikIdGenerator(),
-        sampler=ParentBased(TraceIdRatioBased(options.opentelemetry_sampler_ratio)),
-    )
-    return provider
-
-
 SPAN_STORAGE: list[ReadableSpan] = []
 BATCH_SPAN_PROCESSOR: list[BatchSpanProcessor] = []
 
@@ -127,7 +106,7 @@ class TestFrontikTesting(FrontikTestBase):
         app = FrontikApplication()
 
         test_exporter = TestExporter()
-        provider = make_otel_provider(app.app_name)
+        provider = make_otel_provider(app)
         batch_span_processor = BatchSpanProcessor(test_exporter)
         provider.add_span_processor(batch_span_processor)
         trace.set_tracer_provider(provider)

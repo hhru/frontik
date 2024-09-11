@@ -469,7 +469,10 @@ class PageHandler(RequestHandler):
     async def __return_error(self, response_code: int, **kwargs: Any) -> None:
         if not (300 <= response_code < 500 or response_code == NON_CRITICAL_BAD_GATEWAY):
             response_code = HTTPStatus.BAD_GATEWAY
-        await self._send_error(response_code, None, **kwargs)
+        self.stages_logger.commit_stage('page')
+        self.clear()
+        self.set_status(response_code)
+        await self._write_error(response_code, **kwargs)
 
     # Finish page
 
@@ -607,9 +610,9 @@ class PageHandler(RequestHandler):
         """
         self.stages_logger.commit_stage('page')
         if exception is not None:
-            exc_info = type(exception), exception, exception.__traceback__
+            exc_info = type(exception), exception, getattr(exception, '__traceback__', None)
             kwargs['exc_info'] = exc_info
-            self.log_exception(*exc_info)  # сентри этот метод манкипатчит
+            self.log_exception(*exc_info)  # need for sentry tornado integration
 
         if not isinstance(exception, HTTPErrorWithPostprocessors):
             self.clear()
@@ -647,6 +650,9 @@ class PageHandler(RequestHandler):
         return future
 
     def _finish(self, chunk: Optional[Union[str, bytes, dict]] = None, interrupt_execution: bool = True) -> None:
+        if self.is_finished():
+            raise RuntimeError('finish() called twice')
+
         self.stages_logger.commit_stage('postprocess')
         for name, value in self._mandatory_headers.items():
             self.set_header(name, value)
@@ -660,9 +666,6 @@ class PageHandler(RequestHandler):
         if self._status_code in (204, 304) or (100 <= self._status_code < 200):
             self._write_buffer = []
             chunk = None
-
-        if self.is_finished():
-            raise RuntimeError('finish() called twice')
 
         if chunk is not None:
             self.write(chunk)

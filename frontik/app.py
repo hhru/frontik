@@ -151,8 +151,8 @@ class FrontikApplication:
         version.text = 'unknown'
         return [version]
 
-    def application_version(self) -> Optional[str]:
-        return None
+    def application_version(self) -> str:
+        return 'unknown'
 
     def get_current_status(self) -> dict[str, str]:
         not_started_workers = self.worker_state.init_workers_count_down.value
