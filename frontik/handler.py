@@ -497,7 +497,7 @@ class PageHandler(RequestHandler):
             result = await self._postprocess()
             self.finish(result)
         except FinishSignal:
-            return
+            raise
         except Exception as ex:
             self.log.error('postprocess failed %s', ex)
             self.set_status(500)
