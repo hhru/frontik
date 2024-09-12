@@ -18,6 +18,8 @@ from frontik.json_builder import JsonBuilder
 from frontik.options import options
 from frontik.routing import find_route, get_allowed_methods, method_not_allowed_router, not_found_router
 from frontik.util import check_request_id, generate_uniq_timestamp_request_id
+from frontik.integrations.telemetry import experimental_instrumentor
+from frontik.integrations.telemetry_instr_frontik import otel_instrumentation_ctx
 
 if TYPE_CHECKING:
     from frontik.app import FrontikApplication, FrontikAsgiApp
@@ -36,27 +38,28 @@ async def serve_tornado_request(
         check_request_id(request_id)
     tornado_request.request_id = request_id  # type: ignore
 
-    with request_context.request_context(request_id):
+    with request_context.request_context(request_id), otel_instrumentation_ctx(experimental_instrumentor, tornado_request) as otel_resul:
         log.info('requested url: %s', tornado_request.uri)
 
         process_request_task = asyncio.create_task(process_request(frontik_app, asgi_app, tornado_request))
 
         assert tornado_request.connection is not None
         tornado_request.connection.set_close_callback(  # type: ignore
-            partial(_on_connection_close, tornado_request, process_request_task)
+            partial(_on_connection_close, tornado_request, process_request_task, otel_resul)
         )
 
         status, reason, headers, data = await process_request_task
-        log_request(tornado_request, status)
 
         assert tornado_request.connection is not None
         tornado_request.connection.set_close_callback(None)  # type: ignore
 
-        if getattr(tornado_request, 'canceled', False):
-            return None
+        otel_resul['status'] = status
+        otel_resul['headers'] = headers
 
         start_line = httputil.ResponseStartLine('', status, reason)
         future = tornado_request.connection.write_headers(start_line, headers, data)
+        log_request(tornado_request, status)
+
         tornado_request.connection.finish()
         return await future
 
@@ -283,6 +286,9 @@ def convert_tornado_request_to_asgi(
     return scope, receive, send
 
 
-def _on_connection_close(tornado_request, process_request_task):
-    process_request_task.cancel()
+def _on_connection_close(tornado_request, process_request_task, otel_resul):
+    otel_resul['status'] = CLIENT_CLOSED_REQUEST
+    otel_resul['headers'] = httputil.HTTPHeaders()
     log_request(tornado_request, CLIENT_CLOSED_REQUEST)
+    setattr(tornado_request, 'canceled', False)
+    process_request_task.cancel()  # instantly kill serve_tornado_request with CanceledError

@@ -23,6 +23,7 @@ from opentelemetry.util.http import ExcludeList
 
 from frontik import request_context
 from frontik.integrations import Integration, integrations_logger, tornado
+from frontik.integrations.telemetry_instr_frontik import ExperimentalOtelInstrumentor
 from frontik.options import options
 
 if TYPE_CHECKING:
@@ -61,21 +62,12 @@ def make_otel_provider(app: FrontikApplication) -> TracerProvider:
     return provider
 
 
+experimental_instrumentor = ExperimentalOtelInstrumentor()
+
+
 class TelemetryIntegration(Integration):
     def __init__(self):
         self.aiohttp_instrumentor = aiohttp_client.AioHttpClientInstrumentor()
-        self.tornado_instrumentor = tornado.TornadoInstrumentor()
-        TelemetryIntegration.patch_span_impl()
-
-    @staticmethod
-    def patch_span_impl() -> None:
-        set_attribute = SpanImpl.set_attribute
-
-        def patched_set_attribute(self: SpanImpl, key: str, value: types.AttributeValue) -> None:
-            if key not in excluded_span_attributes:
-                return set_attribute(self, key, value)
-
-        SpanImpl.set_attribute = patched_set_attribute  # type: ignore
 
     def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
         if not options.opentelemetry_enabled:
@@ -89,7 +81,7 @@ class TelemetryIntegration(Integration):
         trace.set_tracer_provider(provider)
 
         self.aiohttp_instrumentor.instrument(request_hook=_client_request_hook, response_hook=_client_response_hook)
-        self.tornado_instrumentor.instrument(server_request_hook=_server_request_hook)
+        experimental_instrumentor.instrument()
         return None
 
     def deinitialize_app(self, app: FrontikApplication) -> Optional[Future]:
@@ -98,21 +90,11 @@ class TelemetryIntegration(Integration):
 
         integrations_logger.info('stop telemetry')
         self.aiohttp_instrumentor.uninstrument()
-        self.tornado_instrumentor.uninstrument()
         return None
 
     def initialize_handler(self, handler):
         pass
 
-
-def _server_request_hook(span, handler):
-    if (handler_name := request_context.get_handler_name()) is not None:
-        method_path, method_name = handler_name.rsplit('.', 1)
-        span.update_name(f'{method_path}.{method_name}')
-        span.set_attribute(SpanAttributes.CODE_FUNCTION, method_name)
-        span.set_attribute(SpanAttributes.CODE_NAMESPACE, method_path)
-
-    span.set_attribute(SpanAttributes.HTTP_TARGET, handler.request.uri)
 
 
 def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams) -> None:

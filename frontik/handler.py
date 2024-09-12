@@ -10,6 +10,7 @@ from asyncio import Task
 from asyncio.futures import Future
 from functools import partial, wraps
 from http import HTTPStatus
+from inspect import iscoroutinefunction
 from typing import TYPE_CHECKING, Any, Optional, Type, TypeVar, Union, overload
 
 import tornado.web
@@ -587,8 +588,11 @@ class PageHandler(RequestHandler):
             try:
                 error_method_name = f'{self.request.method.lower()}_page_fail_fast'  # type: ignore
                 method = getattr(self, error_method_name, None)
-                if callable(method):
+                if iscoroutinefunction(method):
                     await method(e.failed_result)
+                    self.finish()
+                elif callable(method):
+                    method(e.failed_result)
                     self.finish()
                 else:
                     await self.__return_error(e.failed_result.status_code, error_info={'is_fail_fast': True})
@@ -1042,7 +1046,7 @@ def log_request(tornado_request: httputil.HTTPServerRequest, status_code: int) -
     request_time = int(1000.0 * tornado_request.request_time())
     extra = {
         'ip': tornado_request.remote_ip,
-        'rid': request_context.get_request_id(),
+        'rid': tornado_request.request_id,  # type: ignore
         'status': status_code,
         'time': request_time,
         'method': tornado_request.method,
