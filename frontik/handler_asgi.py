@@ -4,17 +4,17 @@ import asyncio
 import http.client
 import logging
 from functools import partial
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Optional
 
 from tornado import httputil
-from tornado.httputil import HTTPHeaders, HTTPServerRequest
+from tornado.httputil import HTTPServerRequest
 
 from frontik import media_types, request_context
 from frontik.debug import DebugMode, DebugTransform
-from frontik.handler import PageHandler, get_default_headers, log_request
+from frontik.frontik_response import FrontikResponse
+from frontik.handler import PageHandler, log_request
 from frontik.handler_active_limit import request_limiter
 from frontik.http_status import CLIENT_CLOSED_REQUEST
-from frontik.json_builder import JsonBuilder
 from frontik.options import options
 from frontik.routing import find_route, get_allowed_methods, method_not_allowed_router, not_found_router
 from frontik.util import check_request_id, generate_uniq_timestamp_request_id
@@ -46,8 +46,8 @@ async def serve_tornado_request(
             partial(_on_connection_close, tornado_request, process_request_task)
         )
 
-        status, reason, headers, data = await process_request_task
-        log_request(tornado_request, status)
+        response = await process_request_task
+        log_request(tornado_request, response.status_code)
 
         assert tornado_request.connection is not None
         tornado_request.connection.set_close_callback(None)  # type: ignore
@@ -55,34 +55,35 @@ async def serve_tornado_request(
         if getattr(tornado_request, 'canceled', False):
             return None
 
-        start_line = httputil.ResponseStartLine('', status, reason)
-        future = tornado_request.connection.write_headers(start_line, headers, data)
+        if not response.data_written:
+            start_line = httputil.ResponseStartLine('', response.status_code, response.reason)
+            await tornado_request.connection.write_headers(start_line, response.headers, response.body)
+
         tornado_request.connection.finish()
-        return await future
 
 
 async def process_request(
     frontik_app: FrontikApplication,
     asgi_app: FrontikAsgiApp,
     tornado_request: httputil.HTTPServerRequest,
-) -> tuple[int, str, HTTPHeaders, bytes]:
+) -> FrontikResponse:
     with request_limiter(frontik_app.statsd_client) as accepted:
         if not accepted:
-            status, reason, headers, data = make_not_accepted_response()
+            response = make_not_accepted_response()
         else:
-            status, reason, headers, data = await execute_page(frontik_app, asgi_app, tornado_request)
-            headers.add(
+            response = await execute_page(frontik_app, asgi_app, tornado_request)
+            response.headers.add(
                 'Server-Timing', f'frontik;desc="frontik execution time";dur={tornado_request.request_time()!s}'
             )
 
-        return status, reason, headers, data
+        return response
 
 
 async def execute_page(
     frontik_app: FrontikApplication,
     asgi_app: FrontikAsgiApp,
     tornado_request: HTTPServerRequest,
-) -> tuple[int, str, HTTPHeaders, bytes]:
+) -> FrontikResponse:
     debug_mode = make_debug_mode(frontik_app, tornado_request)
     if debug_mode.auth_failed():
         assert debug_mode.failed_auth_header is not None
@@ -92,26 +93,19 @@ async def execute_page(
     assert tornado_request.protocol == 'http'
 
     scope = find_route(tornado_request.path, tornado_request.method)
-    data: bytes
 
     if scope['route'] is None:
-        status, reason, headers, data = await make_not_found_response(frontik_app, tornado_request, debug_mode)
+        response = await make_not_found_response(frontik_app, tornado_request, debug_mode)
     elif scope['page_cls'] is not None:
-        status, reason, headers, data = await execute_tornado_page(frontik_app, tornado_request, scope, debug_mode)
+        response = await execute_tornado_page(frontik_app, tornado_request, scope, debug_mode)
     else:
-        status, reason, headers, data = await execute_asgi_page(
-            asgi_app,
-            tornado_request,
-            scope,
-            debug_mode,
-        )
+        response = await execute_asgi_page(asgi_app, tornado_request, scope, debug_mode)
 
-    if debug_mode.enabled:
+    if debug_mode.enabled and not response.data_written:
         debug_transform = DebugTransform(frontik_app, debug_mode)
-        status, headers, data = debug_transform.transform_chunk(tornado_request, status, headers, data)
-        reason = httputil.responses.get(status, 'Unknown')
+        response = debug_transform.transform_chunk(tornado_request, response)
 
-    return status, reason, headers, data
+    return response
 
 
 async def execute_asgi_page(
@@ -119,45 +113,73 @@ async def execute_asgi_page(
     tornado_request: HTTPServerRequest,
     scope: dict,
     debug_mode: DebugMode,
-) -> tuple[int, str, HTTPHeaders, bytes]:
+) -> FrontikResponse:
     request_context.set_handler_name(scope['route'])
-    result: dict = {'headers': get_default_headers()}
-    scope, receive, send = convert_tornado_request_to_asgi(
-        asgi_app,
-        tornado_request,
-        scope,
-        debug_mode,
-        result,
-    )
+
+    response = FrontikResponse(status_code=200)
+
+    request_headers = [
+        (header.encode(CHARSET).lower(), value.encode(CHARSET))
+        for header in tornado_request.headers
+        for value in tornado_request.headers.get_list(header)
+    ]
+
+    scope.update({
+        'http_version': tornado_request.version,
+        'query_string': tornado_request.query.encode(CHARSET),
+        'headers': request_headers,
+        'client': (tornado_request.remote_ip, 0),
+        'http_client_factory': asgi_app.http_client_factory,
+        'debug_mode': debug_mode,
+        'start_time': tornado_request._start_time,
+    })
+
+    async def receive():
+        await asyncio.sleep(0)
+        return {
+            'body': tornado_request.body,
+            'type': 'http.request',
+            'more_body': False,
+        }
+
+    async def send(data):
+        assert tornado_request.connection is not None
+
+        if data['type'] == 'http.response.start':
+            response.status_code = int(data['status'])
+            for h in data['headers']:
+                if len(h) == 2:
+                    response.headers.add(h[0].decode(CHARSET), h[1].decode(CHARSET))
+        elif data['type'] == 'http.response.body':
+            chunk = data['body']
+            if debug_mode.enabled or not data.get('more_body'):
+                response.body += chunk
+            elif not response.data_written:
+                await tornado_request.connection.write_headers(
+                    start_line=httputil.ResponseStartLine('', response.status_code, response.reason),
+                    headers=response.headers,
+                    chunk=chunk,
+                )
+                response.data_written = True
+            else:
+                await tornado_request.connection.write(chunk)
+        else:
+            raise RuntimeError(f'Unsupported response type "{data["type"]}" for asgi app')
+
     await asgi_app(scope, receive, send)
 
-    status: int = result['status']
-    reason = httputil.responses.get(status, 'Unknown')
-    headers = HTTPHeaders(result['headers'])
-    data = result['data']
-
-    if not scope['json_builder'].is_empty():
-        if data != b'null':
-            raise RuntimeError('Cant have "return" and "json.put" at the same time')
-
-        headers['Content-Type'] = media_types.APPLICATION_JSON
-        data = scope['json_builder'].to_bytes()
-        headers['Content-Length'] = str(len(data))
-
-    return status, reason, headers, data
+    return response
 
 
 async def make_not_found_response(
     frontik_app: FrontikApplication,
     tornado_request: httputil.HTTPServerRequest,
     debug_mode: DebugMode,
-) -> tuple[int, str, HTTPHeaders, bytes]:
+) -> FrontikResponse:
     allowed_methods = get_allowed_methods(tornado_request.path)
-    default_headers = get_default_headers()
-    headers: Any
 
     if allowed_methods and len(method_not_allowed_router.routes) != 0:
-        status, _, headers, data = await execute_tornado_page(
+        return await execute_tornado_page(
             frontik_app,
             tornado_request,
             {
@@ -167,24 +189,18 @@ async def make_not_found_response(
             },
             debug_mode,
         )
-    elif allowed_methods:
-        status = 405
-        headers = {'Allow': ', '.join(allowed_methods)}
-        data = b''
-    elif len(not_found_router.routes) != 0:
-        status, _, headers, data = await execute_tornado_page(
+
+    if allowed_methods:
+        return FrontikResponse(status_code=405, headers={'Allow': ', '.join(allowed_methods)})
+
+    if len(not_found_router.routes) != 0:
+        return await execute_tornado_page(
             frontik_app,
             tornado_request,
             {'route': not_found_router.routes[0], 'page_cls': not_found_router._cls, 'path_params': {}},
             debug_mode,
         )
-    else:
-        status, headers, data = build_error_data(404, 'Not Found')
-
-    default_headers.update(headers)
-
-    reason = httputil.responses.get(status, 'Unknown')
-    return status, reason, HTTPHeaders(headers), data
+    return build_error_data(404, 'Not Found')
 
 
 def make_debug_mode(frontik_app: FrontikApplication, tornado_request: HTTPServerRequest) -> DebugMode:
@@ -201,28 +217,18 @@ def make_debug_mode(frontik_app: FrontikApplication, tornado_request: HTTPServer
     return debug_mode
 
 
-def make_debug_auth_failed_response(auth_header: str) -> tuple[int, str, HTTPHeaders, bytes]:
-    status = http.client.UNAUTHORIZED
-    reason = httputil.responses.get(status, 'Unknown')
-    headers = get_default_headers()
-    headers['WWW-Authenticate'] = auth_header
-
-    return status, reason, HTTPHeaders(headers), b''
+def make_debug_auth_failed_response(auth_header: str) -> FrontikResponse:
+    return FrontikResponse(status_code=http.client.UNAUTHORIZED, headers={'WWW-Authenticate': auth_header})
 
 
-def make_not_accepted_response() -> tuple[int, str, HTTPHeaders, bytes]:
-    status = http.client.SERVICE_UNAVAILABLE
-    reason = httputil.responses.get(status, 'Unknown')
-    headers = get_default_headers()
-    return status, reason, HTTPHeaders(headers), b''
+def make_not_accepted_response() -> FrontikResponse:
+    return FrontikResponse(status_code=http.client.SERVICE_UNAVAILABLE)
 
 
-def build_error_data(
-    status_code: int = 500, message: Optional[str] = 'Internal Server Error'
-) -> tuple[int, dict, bytes]:
+def build_error_data(status_code: int = 500, message: Optional[str] = 'Internal Server Error') -> FrontikResponse:
     headers = {'Content-Type': media_types.TEXT_HTML}
     data = f'<html><title>{status_code}: {message}</title><body>{status_code}: {message}</body></html>'.encode()
-    return status_code, headers, data
+    return FrontikResponse(status_code=status_code, headers=headers, body=data)
 
 
 async def execute_tornado_page(
@@ -230,57 +236,12 @@ async def execute_tornado_page(
     tornado_request: httputil.HTTPServerRequest,
     scope: dict,
     debug_mode: DebugMode,
-) -> tuple[int, str, HTTPHeaders, bytes]:
+) -> FrontikResponse:
     route, page_cls, path_params = scope['route'], scope['page_cls'], scope['path_params']
     request_context.set_handler_name(route)
     handler: PageHandler = page_cls(frontik_app, tornado_request, route, debug_mode, path_params)
-    return await handler.execute()
-
-
-def convert_tornado_request_to_asgi(
-    asgi_app: FrontikAsgiApp,
-    tornado_request: httputil.HTTPServerRequest,
-    scope: dict,
-    debug_mode: DebugMode,
-    result: dict[str, Any],
-) -> tuple[dict, Callable, Callable]:
-    headers = [
-        (header.encode(CHARSET).lower(), value.encode(CHARSET))
-        for header in tornado_request.headers
-        for value in tornado_request.headers.get_list(header)
-    ]
-
-    scope.update({
-        'http_version': tornado_request.version,
-        'query_string': tornado_request.query.encode(CHARSET),
-        'headers': headers,
-        'client': (tornado_request.remote_ip, 0),
-        'http_client_factory': asgi_app.http_client_factory,
-        'debug_mode': debug_mode,
-        'start_time': tornado_request._start_time,
-        'json_builder': JsonBuilder(),
-    })
-
-    async def receive():
-        return {
-            'body': tornado_request.body,
-            'type': 'http.request',
-            'more_body': False,
-        }
-
-    async def send(data):
-        if data['type'] == 'http.response.start':
-            result['status'] = data['status']
-            for h in data['headers']:
-                if len(h) == 2:
-                    result['headers'][h[0].decode(CHARSET)] = h[1].decode(CHARSET)
-        elif data['type'] == 'http.response.body':
-            assert isinstance(data['body'], bytes)
-            result['data'] = data['body']
-        else:
-            raise RuntimeError(f'Unsupported response type "{data["type"]}" for asgi app')
-
-    return scope, receive, send
+    status_code, _, headers, body = await handler.execute()
+    return FrontikResponse(status_code=status_code, headers=headers, body=body)
 
 
 def _on_connection_close(tornado_request, process_request_task):
