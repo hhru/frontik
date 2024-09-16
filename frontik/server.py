@@ -12,7 +12,6 @@ from functools import partial
 from threading import Lock
 from typing import Callable, Optional, Union
 
-import anyio
 import tornado.autoreload
 from http_client.balancing import Upstream
 from tornado.httpserver import HTTPServer
@@ -178,10 +177,3 @@ async def _deinit_app(app: FrontikApplication) -> None:
     await asyncio.sleep(options.stop_timeout)
     if app.http_client_factory is not None:
         await app.http_client_factory.http_client.client_session.close()
-
-
-def anyio_noop(*_args, **_kwargs):
-    raise RuntimeError(f'trying to use non async {_args[0]}')
-
-
-anyio.to_thread.run_sync = anyio_noop

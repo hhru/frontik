@@ -5,7 +5,7 @@ import multiprocessing
 import os
 import time
 from ctypes import c_bool, c_int
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from aiokafka import AIOKafkaProducer
 from fastapi import FastAPI, HTTPException
@@ -52,6 +52,10 @@ class FrontikAsgiApp(FastAPI):
             self.include_router(_router)
 
 
+def anyio_noop(*_args: Any, **_kwargs: Any) -> None:
+    raise RuntimeError(f'trying to use non async {_args[0]}')
+
+
 class FrontikApplication:
     request_id = ''
 
@@ -60,6 +64,7 @@ class FrontikApplication:
 
     def __init__(self, app_module_name: Optional[str] = None) -> None:
         self.start_time = time.time()
+        self.patch_anyio()
 
         self.app_module_name: str = app_module_name or self.__class__.__module__
         app_module = importlib.import_module(self.app_module_name)
@@ -92,6 +97,17 @@ class FrontikApplication:
 
         self.asgi_app = FrontikAsgiApp()
         self.service_discovery: ServiceDiscovery
+
+    def patch_anyio(self) -> None:
+        """
+        We have problems with anyio running sync dependencies in threadpool, so sync deps are prohibited
+        """
+        try:
+            import anyio
+
+            anyio.to_thread.run_sync = anyio_noop  # type: ignore
+        except ImportError:
+            pass
 
     def __call__(self, tornado_request: httputil.HTTPServerRequest) -> None:
         # for make it more asgi, reimplement tornado.http1connection._server_request_loop and ._read_message
