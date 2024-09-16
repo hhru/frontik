@@ -68,13 +68,19 @@ async def process_request(
     tornado_request: httputil.HTTPServerRequest,
 ) -> FrontikResponse:
     with request_limiter(frontik_app.statsd_client) as accepted:
+        if tornado_request.path == '/registration/applicant':
+            log.info('start process_request')
         if not accepted:
+            if tornado_request.path == '/registration/applicant':
+                log.info('start make_not_accepted_response')
             response = make_not_accepted_response()
         else:
             response = await execute_page(frontik_app, asgi_app, tornado_request)
             response.headers.add(
                 'Server-Timing', f'frontik;desc="frontik execution time";dur={tornado_request.request_time()!s}'
             )
+        if tornado_request.path == '/registration/applicant':
+            log.info('end process_request')
 
         return response
 
@@ -84,6 +90,8 @@ async def execute_page(
     asgi_app: FrontikAsgiApp,
     tornado_request: HTTPServerRequest,
 ) -> FrontikResponse:
+    if tornado_request.path == '/registration/applicant':
+        log.info('start execute_page in /registration/applicant')
     debug_mode = make_debug_mode(frontik_app, tornado_request)
     if debug_mode.auth_failed():
         assert debug_mode.failed_auth_header is not None
@@ -95,15 +103,26 @@ async def execute_page(
     scope = find_route(tornado_request.path, tornado_request.method)
 
     if scope['route'] is None:
+        if tornado_request.path == '/registration/applicant':
+            log.info('start make_not_found_response')
         response = await make_not_found_response(frontik_app, tornado_request, debug_mode)
+        if tornado_request.path == '/registration/applicant':
+            log.info('end make_not_found_response')
     elif scope['page_cls'] is not None:
+        if tornado_request.path == '/registration/applicant':
+            log.info('start execute_tornado_page')
         response = await execute_tornado_page(frontik_app, tornado_request, scope, debug_mode)
+        if tornado_request.path == '/registration/applicant':
+            log.info('end execute_tornado_page')
     else:
         response = await execute_asgi_page(asgi_app, tornado_request, scope, debug_mode)
 
     if debug_mode.enabled and not response.data_written:
         debug_transform = DebugTransform(frontik_app, debug_mode)
         response = debug_transform.transform_chunk(tornado_request, response)
+
+    if tornado_request.path == '/registration/applicant':
+        log.info('end execute_page in /registration/applicant')
 
     return response
 
@@ -114,6 +133,8 @@ async def execute_asgi_page(
     scope: dict,
     debug_mode: DebugMode,
 ) -> FrontikResponse:
+    if tornado_request.path == '/registration/applicant':
+        log.info('start execute_asgi_page')
     request_context.set_handler_name(scope['route'])
 
     response = FrontikResponse(status_code=200)
@@ -143,14 +164,25 @@ async def execute_asgi_page(
         }
 
     async def send(data):
+        if tornado_request.path == '/registration/applicant':
+            log.info('start send')
         assert tornado_request.connection is not None
 
         if data['type'] == 'http.response.start':
+            if tornado_request.path == '/registration/applicant':
+                log.info('start in send data[type]=start')
+
             response.status_code = int(data['status'])
             for h in data['headers']:
                 if len(h) == 2:
                     response.headers.add(h[0].decode(CHARSET), h[1].decode(CHARSET))
+
+            if tornado_request.path == '/registration/applicant':
+                log.info('end in send data[type]=start')
         elif data['type'] == 'http.response.body':
+            if tornado_request.path == '/registration/applicant':
+                log.info('start in send data[type]=body')
+
             chunk = data['body']
             if debug_mode.enabled or not data.get('more_body'):
                 response.body += chunk
@@ -163,10 +195,18 @@ async def execute_asgi_page(
                 response.data_written = True
             else:
                 await tornado_request.connection.write(chunk)
+
+            if tornado_request.path == '/registration/applicant':
+                log.info('end in send data[type]=body')
         else:
             raise RuntimeError(f'Unsupported response type "{data["type"]}" for asgi app')
+        if tornado_request.path == '/registration/applicant':
+            log.info('end send')
 
     await asgi_app(scope, receive, send)
+
+    if tornado_request.path == '/registration/applicant':
+        log.info('end execute_asi_page')
 
     return response
 
