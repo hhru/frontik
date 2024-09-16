@@ -76,8 +76,8 @@ exclude = [
     '.*/api/2.*',
     'tests/test_process_fork.py',
     'http_client',
-    'frontik/integrations/tornado',
-    'frontik/integrations/sentry_tornado_integration',
+    'frontik/request_integrations/telemetry.py',
+    'frontik/app_integrations/sentry_tornado_integration',
 ]
 # should be fixed and enabled
 #strict = true
@@ -93,7 +93,7 @@ target-version = 'py39'
 preview = true
 exclude = [
     "sentry_tornado_integration.py",
-    "frontik/integrations/tornado/*",
+    "frontik/request_integrations/telemetry.py",
 ]
 
 [tool.ruff.format]

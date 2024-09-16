@@ -10,6 +10,7 @@ from asyncio import Task
 from asyncio.futures import Future
 from functools import partial, wraps
 from http import HTTPStatus
+from inspect import iscoroutinefunction
 from typing import TYPE_CHECKING, Any, Optional, Type, TypeVar, Union, overload
 
 import tornado.web
@@ -47,8 +48,8 @@ if TYPE_CHECKING:
     from tornado.httputil import HTTPHeaders, HTTPServerRequest
 
     from frontik.app import FrontikApplication
+    from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub
     from frontik.handler_return_values import ReturnedValue, ReturnedValueHandlers
-    from frontik.integrations.statsd import StatsDClient, StatsDClientStub
 
 
 class FinishWithPostprocessors(Exception):
@@ -585,10 +586,14 @@ class PageHandler(RequestHandler):
                 )
 
             try:
+                # this block should ends with finish() call
                 error_method_name = f'{self.request.method.lower()}_page_fail_fast'  # type: ignore
                 method = getattr(self, error_method_name, None)
-                if callable(method):
+                if iscoroutinefunction(method):
                     await method(e.failed_result)
+                    self.finish()
+                elif callable(method):
+                    method(e.failed_result)
                     self.finish()
                 else:
                     await self.__return_error(e.failed_result.status_code, error_info={'is_fail_fast': True})
@@ -600,8 +605,8 @@ class PageHandler(RequestHandler):
             await self._send_error(exception=e)
 
     async def _send_error(self, status_code: int = 500, exception: Any = None, **kwargs: Any) -> None:
-        """`send_error` is adapted to support `write_error` that can call
-        `finish` asynchronously.
+        """
+        `send_error` shouldn't raise any exception
         """
         self.stages_logger.commit_stage('page')
         if exception is not None:
@@ -627,7 +632,7 @@ class PageHandler(RequestHandler):
 
     async def _write_error(self, status_code: int = 500, **kwargs: Any) -> None:
         """
-        `write_error` can call `finish` asynchronously if HTTPErrorWithPostprocessors is raised.
+        `write_error` must ends with finish() call
         """
         exception = kwargs['exc_info'][1] if 'exc_info' in kwargs else None
 
@@ -1039,10 +1044,11 @@ class PageHandler(RequestHandler):
 
 
 def log_request(tornado_request: httputil.HTTPServerRequest, status_code: int) -> None:
+    # frontik.request_context can't be used in case when client has closed connection
     request_time = int(1000.0 * tornado_request.request_time())
     extra = {
         'ip': tornado_request.remote_ip,
-        'rid': request_context.get_request_id(),
+        'rid': tornado_request.request_id,  # type: ignore
         'status': status_code,
         'time': request_time,
         'method': tornado_request.method,

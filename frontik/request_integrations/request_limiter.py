@@ -1,13 +1,10 @@
-from __future__ import annotations
-
 import logging
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Iterator, Union
+from typing import Union
 
+from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub
 from frontik.options import options
-
-if TYPE_CHECKING:
-    from frontik.integrations.statsd import StatsDClient, StatsDClientStub
+from frontik.request_integrations.integrations_dto import IntegrationDto
 
 handlers_count_logger = logging.getLogger('handlers_count')
 
@@ -16,7 +13,7 @@ class ActiveHandlersLimit:
     count = 0
     high_watermark_ratio = 0.75
 
-    def __init__(self, statsd_client: StatsDClient | StatsDClientStub) -> None:
+    def __init__(self, statsd_client: Union[StatsDClient, StatsDClientStub]) -> None:
         self.acquired = False
         self._statsd_client = statsd_client
         self._high_watermark = int(options.max_active_handlers * self.high_watermark_ratio)
@@ -49,9 +46,10 @@ class ActiveHandlersLimit:
 
 
 @contextmanager
-def request_limiter(statsd_client: Union[StatsDClient, StatsDClientStub]) -> Iterator:
-    active_limit = ActiveHandlersLimit(statsd_client)
+def request_limiter(frontik_app, _):
+    active_limit = ActiveHandlersLimit(frontik_app.statsd_client)
+    dto = IntegrationDto(active_limit.acquired)
     try:
-        yield active_limit.acquired
+        yield dto
     finally:
         active_limit.release()

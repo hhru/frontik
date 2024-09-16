@@ -9,7 +9,7 @@ from typing import Optional
 import sentry_sdk
 
 from frontik.app import FrontikApplication
-from frontik.integrations import Integration, integrations_logger
+from frontik.app_integrations import Integration, integrations_logger
 from frontik.loggers import bootstrap_logger
 from frontik.options import options
 

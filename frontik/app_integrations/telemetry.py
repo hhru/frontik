@@ -10,19 +10,18 @@ from http_client.options import options as http_client_options
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation import aiohttp_client
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore
 from opentelemetry.propagate import set_global_textmap
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import IdGenerator, TracerProvider
-from opentelemetry.sdk.trace import Span as SpanImpl
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
-from opentelemetry.util.http import ExcludeList
 
 from frontik import request_context
-from frontik.integrations import Integration, integrations_logger, tornado
+from frontik.app_integrations import Integration, integrations_logger
 from frontik.options import options
 
 if TYPE_CHECKING:
@@ -31,17 +30,11 @@ if TYPE_CHECKING:
     import aiohttp
     from http_client.request_response import RequestBuilder
     from opentelemetry.trace import Span
-    from opentelemetry.util import types
 
     from frontik.app import FrontikApplication
 
 log = logging.getLogger('telemetry')
-# change log-level, because mainly detach context produce exception on Tornado 5. Will be deleted, when up Tornado to 6
-logging.getLogger('opentelemetry.context').setLevel(logging.CRITICAL)
 set_global_textmap(TraceContextTextMapPropagator())
-
-tornado._excluded_urls = ExcludeList([*list(tornado._excluded_urls._excluded_urls), '/status'])
-excluded_span_attributes = ['tornado.handler']
 
 
 def make_otel_provider(app: FrontikApplication) -> TracerProvider:
@@ -61,35 +54,45 @@ def make_otel_provider(app: FrontikApplication) -> TracerProvider:
     return provider
 
 
+class FrontikServerInstrumentor(BaseInstrumentor):
+    patched_handlers: list = []
+    original_handler_new = None
+
+    def _instrument(self, **kwargs):
+        tracer_provider = kwargs.get('tracer_provider')
+        self.tracer = trace.get_tracer(
+            'frontik',
+            '0.0.1',
+            tracer_provider,
+            schema_url='https://opentelemetry.io/schemas/1.11.0',
+        )
+
+    def _uninstrument(self, **kwargs):
+        pass
+
+    def instrumentation_dependencies(self):
+        return []
+
+
 class TelemetryIntegration(Integration):
     def __init__(self):
         self.aiohttp_instrumentor = aiohttp_client.AioHttpClientInstrumentor()
-        self.tornado_instrumentor = tornado.TornadoInstrumentor()
-        TelemetryIntegration.patch_span_impl()
+        self.frontik_instrumentor = FrontikServerInstrumentor()
 
-    @staticmethod
-    def patch_span_impl() -> None:
-        set_attribute = SpanImpl.set_attribute
-
-        def patched_set_attribute(self: SpanImpl, key: str, value: types.AttributeValue) -> None:
-            if key not in excluded_span_attributes:
-                return set_attribute(self, key, value)
-
-        SpanImpl.set_attribute = patched_set_attribute  # type: ignore
-
-    def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
+    def initialize_app(self, frontik_app: FrontikApplication) -> Optional[Future]:
         if not options.opentelemetry_enabled:
             return None
 
         integrations_logger.info('start telemetry')
-        provider = make_otel_provider(app)
+        provider = make_otel_provider(frontik_app)
 
         otlp_exporter = OTLPSpanExporter(endpoint=options.opentelemetry_collector_url, insecure=True)
         provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
         trace.set_tracer_provider(provider)
 
         self.aiohttp_instrumentor.instrument(request_hook=_client_request_hook, response_hook=_client_response_hook)
-        self.tornado_instrumentor.instrument(server_request_hook=_server_request_hook)
+        self.frontik_instrumentor.instrument()
+        frontik_app.otel_tracer = self.frontik_instrumentor.tracer  # type: ignore
         return None
 
     def deinitialize_app(self, app: FrontikApplication) -> Optional[Future]:
@@ -97,22 +100,12 @@ class TelemetryIntegration(Integration):
             return None
 
         integrations_logger.info('stop telemetry')
+        self.frontik_instrumentor.uninstrument()
         self.aiohttp_instrumentor.uninstrument()
-        self.tornado_instrumentor.uninstrument()
         return None
 
     def initialize_handler(self, handler):
         pass
-
-
-def _server_request_hook(span, handler):
-    if (handler_name := request_context.get_handler_name()) is not None:
-        method_path, method_name = handler_name.rsplit('.', 1)
-        span.update_name(f'{method_path}.{method_name}')
-        span.set_attribute(SpanAttributes.CODE_FUNCTION, method_name)
-        span.set_attribute(SpanAttributes.CODE_NAMESPACE, method_path)
-
-    span.set_attribute(SpanAttributes.HTTP_TARGET, handler.request.uri)
 
 
 def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams) -> None:

@@ -12,8 +12,8 @@ from http_client import consul_parser
 from http_client import options as http_options
 from http_client.balancing import Server, Upstream
 
+from frontik.app_integrations.statsd import Counters, StatsDClient, StatsDClientStub
 from frontik.consul_client import ClientEventCallback, SyncConsulClient
-from frontik.integrations.statsd import Counters, StatsDClient, StatsDClientStub
 from frontik.options import Options, options
 from frontik.version import version
 

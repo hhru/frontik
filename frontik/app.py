@@ -17,12 +17,12 @@ from tornado import httputil
 
 import frontik.producers.json_producer
 import frontik.producers.xml_producer
-from frontik import integrations, media_types
+from frontik import app_integrations, media_types
+from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
 from frontik.debug import get_frontik_and_apps_versions
 from frontik.handler import PageHandler, get_current_handler
 from frontik.handler_asgi import serve_tornado_request
 from frontik.handler_return_values import ReturnedValueHandlers, get_default_returned_value_handlers
-from frontik.integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
 from frontik.options import options
 from frontik.process import WorkerState
 from frontik.routing import (
@@ -73,7 +73,7 @@ class FrontikApplication:
         self.xml = frontik.producers.xml_producer.XMLProducerFactory(self)
         self.json = frontik.producers.json_producer.JsonProducerFactory(self)
 
-        self.available_integrations: list[integrations.Integration] = []
+        self.available_integrations: list[app_integrations.Integration] = []
         self.http_client_factory: HttpClientFactory
 
         self.statsd_client: Union[StatsDClient, StatsDClientStub] = create_statsd_client(options, self)
@@ -106,7 +106,7 @@ class FrontikApplication:
             return WorkerServiceDiscovery(self.worker_state.initial_shared_data)
 
     async def install_integrations(self) -> None:
-        self.available_integrations, integration_futures = integrations.load_integrations(self)
+        self.available_integrations, integration_futures = app_integrations.load_integrations(self)
         await asyncio.gather(*[future for future in integration_futures if future])
 
         self.service_discovery = self.make_service_discovery()

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Optional
 from aiokafka import AIOKafkaProducer
 from tornado import gen
 
-from frontik.integrations import Integration
+from frontik.app_integrations import Integration
 from frontik.options import options
 
 if TYPE_CHECKING:

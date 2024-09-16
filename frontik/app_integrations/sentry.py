@@ -14,8 +14,8 @@ from sentry_sdk.integrations.modules import ModulesIntegration
 from sentry_sdk.integrations.stdlib import StdlibIntegration
 from tornado.web import HTTPError
 
-from frontik.integrations import Integration, integrations_logger
-from frontik.integrations.sentry_tornado_integration import TornadoIntegration
+from frontik.app_integrations import Integration, integrations_logger
+from frontik.app_integrations.sentry_tornado_integration import TornadoIntegration
 from frontik.options import options
 
 if TYPE_CHECKING:

@@ -28,7 +28,7 @@ class Integration:
 def load_integrations(app: FrontikApplication) -> tuple[list[Integration], list[Future]]:
     for _importer, module_name, _is_package in pkgutil.iter_modules(__path__):
         try:
-            importlib.import_module(f'frontik.integrations.{module_name}')
+            importlib.import_module(f'frontik.app_integrations.{module_name}')
         except Exception as e:
             integrations_logger.info('%s integration is not available: %s', module_name, e)
 
