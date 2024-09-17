@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import http.client
 import logging
+from contextlib import ExitStack
 from functools import partial
 from typing import TYPE_CHECKING, Optional
 
@@ -13,11 +14,10 @@ from frontik import media_types, request_context
 from frontik.debug import DebugMode, DebugTransform
 from frontik.frontik_response import FrontikResponse
 from frontik.handler import PageHandler, log_request
-from frontik.handler_active_limit import request_limiter
 from frontik.http_status import CLIENT_CLOSED_REQUEST
-from frontik.options import options
+from frontik.request_integrations import get_integrations
+from frontik.request_integrations.integrations_dto import IntegrationDto
 from frontik.routing import find_route, get_allowed_methods, method_not_allowed_router, not_found_router
-from frontik.util import check_request_id, generate_uniq_timestamp_request_id
 
 if TYPE_CHECKING:
     from frontik.app import FrontikApplication, FrontikAsgiApp
@@ -31,59 +31,46 @@ async def serve_tornado_request(
     asgi_app: FrontikAsgiApp,
     tornado_request: httputil.HTTPServerRequest,
 ) -> None:
-    request_id = tornado_request.headers.get('X-Request-Id') or generate_uniq_timestamp_request_id()
-    if options.validate_request_id:
-        check_request_id(request_id)
-    tornado_request.request_id = request_id  # type: ignore
-
-    with request_context.request_context(request_id):
+    with ExitStack() as stack:
+        integrations: dict[str, IntegrationDto] = {
+            ctx_name: stack.enter_context(ctx(frontik_app, tornado_request)) for ctx_name, ctx in get_integrations()
+        }
         log.info('requested url: %s', tornado_request.uri)
 
-        process_request_task = asyncio.create_task(process_request(frontik_app, asgi_app, tornado_request))
-
+        process_request_task = asyncio.create_task(
+            process_request(frontik_app, asgi_app, tornado_request, integrations)
+        )
         assert tornado_request.connection is not None
         tornado_request.connection.set_close_callback(  # type: ignore
-            partial(_on_connection_close, tornado_request, process_request_task)
+            partial(_on_connection_close, tornado_request, process_request_task, integrations)
         )
 
         response = await process_request_task
-        log_request(tornado_request, response.status_code)
 
         assert tornado_request.connection is not None
         tornado_request.connection.set_close_callback(None)  # type: ignore
 
-        if getattr(tornado_request, 'canceled', False):
-            return None
-
         if not response.data_written:
+            for integration in integrations.values():
+                integration.set_response(response)
+
             start_line = httputil.ResponseStartLine('', response.status_code, response.reason)
             await tornado_request.connection.write_headers(start_line, response.headers, response.body)
 
+        log_request(tornado_request, response.status_code)
         tornado_request.connection.finish()
 
 
 async def process_request(
     frontik_app: FrontikApplication,
     asgi_app: FrontikAsgiApp,
-    tornado_request: httputil.HTTPServerRequest,
+    tornado_request: HTTPServerRequest,
+    integrations: dict[str, IntegrationDto],
 ) -> FrontikResponse:
-    with request_limiter(frontik_app.statsd_client) as accepted:
-        if not accepted:
-            response = make_not_accepted_response()
-        else:
-            response = await execute_page(frontik_app, asgi_app, tornado_request)
-            response.headers.add(
-                'Server-Timing', f'frontik;desc="frontik execution time";dur={tornado_request.request_time()!s}'
-            )
-
+    if integrations.get('request_limiter', IntegrationDto()).get_value() is False:
+        response = make_not_accepted_response()
         return response
 
-
-async def execute_page(
-    frontik_app: FrontikApplication,
-    asgi_app: FrontikAsgiApp,
-    tornado_request: HTTPServerRequest,
-) -> FrontikResponse:
     debug_mode = make_debug_mode(frontik_app, tornado_request)
     if debug_mode.auth_failed():
         assert debug_mode.failed_auth_header is not None
@@ -244,6 +231,11 @@ async def execute_tornado_page(
     return FrontikResponse(status_code=status_code, headers=headers, body=body)
 
 
-def _on_connection_close(tornado_request, process_request_task):
-    process_request_task.cancel()
+def _on_connection_close(tornado_request, process_request_task, integrations):
+    response = FrontikResponse(CLIENT_CLOSED_REQUEST)
+    for integration in integrations.values():
+        integration.set_response(response)
+
     log_request(tornado_request, CLIENT_CLOSED_REQUEST)
+    setattr(tornado_request, 'canceled', False)
+    process_request_task.cancel()  # serve_tornado_request will be interrupted with CanceledError

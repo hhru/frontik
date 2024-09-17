@@ -22,7 +22,7 @@ lxml = '4.9.2'
 pydantic = '^2.3.0'
 tornado = '6.3.3'
 orjson = '*'
-http-client = {git = 'https://github.com/hhru/balancing-http-client.git', tag = '2.1.17'}
+http-client = {git = 'https://github.com/hhru/balancing-http-client.git', tag = '2.1.18'}
 python-consul2-hh = {git = 'https://github.com/hhru/python-consul2', tag = 'v0.2.10'}
 opentelemetry-sdk = '1.25.0'
 opentelemetry-api = '1.25.0'
@@ -33,7 +33,6 @@ opentelemetry-instrumentation-tornado = '0.46b0'
 fastapi = '0.105.0'
 aiokafka = '0.8.1'
 sentry-sdk = '2.7.0'
-aioresponses = '0.7.6'
 tornado-httpclient-mock = '0.2.3'
 
 [tool.poetry.group.test.dependencies]
@@ -52,7 +51,7 @@ virtualenv = '<=20.26.0'
 
 [tool.poetry.extras]
 sentry = ["sentry-sdk"]
-testing = ["aioresponses", "tornado-httpclient-mock"]
+testing = ["tornado-httpclient-mock"]
 
 [tool.pytest.ini_options]
 addopts = '''
@@ -76,8 +75,8 @@ exclude = [
     '.*/api/2.*',
     'tests/test_process_fork.py',
     'http_client',
-    'frontik/integrations/tornado',
-    'frontik/integrations/sentry_tornado_integration',
+    'frontik/request_integrations/telemetry.py',
+    'frontik/app_integrations/sentry_tornado_integration',
 ]
 # should be fixed and enabled
 #strict = true
@@ -93,7 +92,7 @@ target-version = 'py39'
 preview = true
 exclude = [
     "sentry_tornado_integration.py",
-    "frontik/integrations/tornado/*",
+    "frontik/request_integrations/telemetry.py",
 ]
 
 [tool.ruff.format]

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Optional
 
 from tornado.ioloop import PeriodicCallback
 
-from frontik.integrations import Integration, integrations_logger
+from frontik.app_integrations import Integration, integrations_logger
 from frontik.options import options
 
 if TYPE_CHECKING:

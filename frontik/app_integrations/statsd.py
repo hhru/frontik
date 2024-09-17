@@ -7,7 +7,7 @@ import time
 from functools import partial
 from typing import TYPE_CHECKING, Optional, Union
 
-from frontik.integrations import Integration, integrations_logger
+from frontik.app_integrations import Integration, integrations_logger
 
 if TYPE_CHECKING:
     from asyncio import Future

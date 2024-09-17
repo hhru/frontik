@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from frontik import request_context
 
 if TYPE_CHECKING:
-    from frontik.integrations.statsd import StatsDClient, StatsDClientStub
+    from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub
 
 stages_logger = logging.getLogger('stages')
 

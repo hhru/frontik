@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 import contextvars
-from contextlib import contextmanager
 from typing import TYPE_CHECKING, Optional
 
 from fastapi.routing import APIRoute
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from frontik.debug import DebugBufferedHandler
 
 
@@ -22,15 +19,6 @@ class _Context:
 
 
 _context = contextvars.ContextVar('context', default=_Context(None))
-
-
-@contextmanager
-def request_context(request_id: str) -> Iterator:
-    token = _context.set(_Context(request_id))
-    try:
-        yield
-    finally:
-        _context.reset(token)
 
 
 def get_request_id() -> Optional[str]:
