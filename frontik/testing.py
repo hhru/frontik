@@ -5,9 +5,9 @@ from collections.abc import Callable
 from typing import Any, Optional, Union
 
 import pytest
-from aioresponses import aioresponses
 from http_client import AIOHttpClientWrapper
 from http_client.request_response import RequestBuilder, RequestResult
+from http_client.testing import MockHttpClient
 from lxml import etree
 from tornado.escape import utf8
 from tornado.httpserver import HTTPServer
@@ -68,10 +68,10 @@ class FrontikTestBase:
             patch_http_client(self.http_client, fail_on_unknown=False)
 
     @pytest.fixture(autouse=True)
-    def setup_mock_client(self, passthrow_hosts):
-        with aioresponses(passthrough=passthrow_hosts) as mock_client:
-            self.mock_client = mock_client
-            yield self.mock_client
+    def setup_mock_http_client(self, passthrow_hosts):
+        with MockHttpClient(passthrough=passthrow_hosts) as mock_http_client:
+            self.mock_http_client = mock_http_client
+            yield self.mock_http_client
 
     @pytest.fixture()
     def passthrow_hosts(self):
@@ -204,7 +204,7 @@ class FrontikTestBase:
         if response_headers is not None:
             headers.update(response_headers)
 
-        self.mock_client.add(
+        self.mock_http_client.add(
             url,
             method=request_method,
             status=response_code,
