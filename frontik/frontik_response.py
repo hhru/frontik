@@ -17,8 +17,13 @@ class FrontikResponse:
         body: bytes = b'',
     ):
         self.headers = HTTPHeaders(get_default_headers())  # type: ignore
-        if headers is not None:
+
+        if isinstance(headers, HTTPHeaders):
+            for k, v in headers.get_all():
+                self.headers.add(k, v)
+        elif headers is not None:
             self.headers.update(headers)
+
         self.status_code = status_code
         self.body = body
         self.data_written = False
