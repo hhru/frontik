@@ -31,6 +31,9 @@ async def serve_tornado_request(
     asgi_app: FrontikAsgiApp,
     tornado_request: httputil.HTTPServerRequest,
 ) -> None:
+    if tornado_request.path == '/registration/applicant':
+        log.info('QQQ start serving request')
+
     with ExitStack() as stack:
         integrations: dict[str, IntegrationDto] = {
             ctx_name: stack.enter_context(ctx(frontik_app, tornado_request)) for ctx_name, ctx in get_integrations()
@@ -45,7 +48,11 @@ async def serve_tornado_request(
             partial(_on_connection_close, tornado_request, process_request_task, integrations)
         )
 
+        if tornado_request.path == '/registration/applicant':
+            log.info('QQQ complete request integrations')
         response = await process_request_task
+        if tornado_request.path == '/registration/applicant':
+            log.info('QQQ get request response response')
 
         assert tornado_request.connection is not None
         tornado_request.connection.set_close_callback(None)  # type: ignore
@@ -67,30 +74,55 @@ async def process_request(
     tornado_request: HTTPServerRequest,
     integrations: dict[str, IntegrationDto],
 ) -> FrontikResponse:
+    if tornado_request.path == '/registration/applicant':
+        log.info('QQQ start process_request')
+
     if integrations.get('request_limiter', IntegrationDto()).get_value() is False:
         response = make_not_accepted_response()
         return response
 
-    debug_mode = make_debug_mode(frontik_app, tornado_request)
-    if debug_mode.auth_failed():
-        assert debug_mode.failed_auth_header is not None
-        return make_debug_auth_failed_response(debug_mode.failed_auth_header)
+    try:
+        debug_mode = make_debug_mode(frontik_app, tornado_request)
+        if debug_mode.auth_failed():
+            assert debug_mode.failed_auth_header is not None
+            return make_debug_auth_failed_response(debug_mode.failed_auth_header)
 
-    assert tornado_request.method is not None
-    assert tornado_request.protocol == 'http'
+        assert tornado_request.method is not None
+        assert tornado_request.protocol == 'http'
+    except BaseException as exc:
+        if tornado_request.path == '/registration/applicant':
+            log.error(f'QQQ Got exception in /registration/applicant --- {type(exc)} --- {exc} '
+                      f'---- {getattr(exc, "__traceback__", None)}')
+            log.error(f'QQQ request_body = {tornado_request.body.decode()}')
+
+            for k, v in tornado_request.headers.get_all():
+                if k != 'Hh-Proto-Session':
+                    log.error('QQQ header - %s: %s' % (k, v))
+        raise
 
     scope = find_route(tornado_request.path, tornado_request.method)
 
     if scope['route'] is None:
+        if tornado_request.path == '/registration/applicant':
+            log.info('QQQ start make_not_found_response')
         response = await make_not_found_response(frontik_app, tornado_request, debug_mode)
+        if tornado_request.path == '/registration/applicant':
+            log.info('QQQ end make_not_found_response')
     elif scope['page_cls'] is not None:
+        if tornado_request.path == '/registration/applicant':
+            log.info('QQQ start execute_tornado_page')
         response = await execute_tornado_page(frontik_app, tornado_request, scope, debug_mode)
+        if tornado_request.path == '/registration/applicant':
+            log.info('QQQ end execute_tornado_page')
     else:
         response = await execute_asgi_page(asgi_app, tornado_request, scope, debug_mode)
 
     if debug_mode.enabled and not response.data_written:
         debug_transform = DebugTransform(frontik_app, debug_mode)
         response = debug_transform.transform_chunk(tornado_request, response)
+
+    if tornado_request.path == '/registration/applicant':
+        log.info('end execute_page in /registration/applicant')
 
     return response
 
