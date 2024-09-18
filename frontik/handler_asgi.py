@@ -92,15 +92,27 @@ async def execute_page(
 ) -> FrontikResponse:
     if tornado_request.path == '/registration/applicant':
         log.info('start execute_page in /registration/applicant')
-    debug_mode = make_debug_mode(frontik_app, tornado_request)
-    if debug_mode.auth_failed():
-        assert debug_mode.failed_auth_header is not None
-        return make_debug_auth_failed_response(debug_mode.failed_auth_header)
+    try:
+        debug_mode = make_debug_mode(frontik_app, tornado_request)
+        if tornado_request.path == '/registration/applicant':
+            log.info('made debug_mode in /registration/applicant')
+        if debug_mode.auth_failed():
+            if tornado_request.path == '/registration/applicant':
+                log.info('debug_mode.auth_failed() in /registration/applicant')
+            assert debug_mode.failed_auth_header is not None
+            return make_debug_auth_failed_response(debug_mode.failed_auth_header)
 
-    assert tornado_request.method is not None
-    assert tornado_request.protocol == 'http'
+        assert tornado_request.method is not None
+        assert tornado_request.protocol == 'http'
 
-    scope = find_route(tornado_request.path, tornado_request.method)
+        scope = find_route(tornado_request.path, tornado_request.method)
+    except BaseException as exc:
+        log.error(f'Got exception in /registration/applicant --- {type(exc)} --- {exc}')
+        log.error(f'request_body = {tornado_request.body.decode()}')
+        for (k, v) in sorted(tornado_request.headers):
+            if k != 'Hh-Proto-Session':
+                log.error('%s: %s' % (k, v))
+        raise
 
     if scope['route'] is None:
         if tornado_request.path == '/registration/applicant':
