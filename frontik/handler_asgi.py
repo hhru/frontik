@@ -77,7 +77,6 @@ async def process_request(
         return make_debug_auth_failed_response(debug_mode.failed_auth_header)
 
     assert tornado_request.method is not None
-    assert tornado_request.protocol == 'http'
 
     scope = find_route(tornado_request.path, tornado_request.method)
 
