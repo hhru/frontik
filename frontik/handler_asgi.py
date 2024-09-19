@@ -87,6 +87,9 @@ async def process_request(
             assert debug_mode.failed_auth_header is not None
             return make_debug_auth_failed_response(debug_mode.failed_auth_header)
 
+        if tornado_request.path == '/registration/applicant':
+            log.info(f'QQQ tornado_request.method = {tornado_request.method}'
+                     f' tornado_request.protocol  = {tornado_request.protocol}')
         assert tornado_request.method is not None
         assert tornado_request.protocol == 'http'
     except BaseException as exc:
