@@ -30,6 +30,7 @@ import frontik.util
 from frontik import media_types, request_context
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.debug import DEBUG_HEADER_NAME, DebugMode
+from frontik.frontik_response import FrontikResponse
 from frontik.futures import AbortAsyncGroup, AsyncGroup
 from frontik.http_status import ALLOWED_STATUSES, NON_CRITICAL_BAD_GATEWAY
 from frontik.json_builder import FrontikJsonDecodeError, json_decode
@@ -39,13 +40,12 @@ from frontik.options import options
 from frontik.timeout_tracking import get_timeout_checker
 from frontik.util import gather_dict, make_url
 from frontik.validator import BaseValidationModel, Validators
-from frontik.version import version as frontik_version
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
 
     from http_client import HttpClient
-    from tornado.httputil import HTTPHeaders, HTTPServerRequest
+    from tornado.httputil import HTTPServerRequest
 
     from frontik.app import FrontikApplication
     from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub
@@ -111,7 +111,7 @@ class PageHandler(RequestHandler):
         path_params: dict[str, str],
     ) -> None:
         self.name = self.__class__.__name__
-        self.request_id: str = request_context.get_request_id()  # type: ignore
+        self.request_id: str = request.request_id  # type: ignore
         self.config = application.config
         self.log = handler_logger
         self.text: Any = None
@@ -158,7 +158,7 @@ class PageHandler(RequestHandler):
                 request._start_time,
             )
 
-        self.handler_result_future: Future[tuple[int, str, HTTPHeaders, bytes]] = Future()
+        self.handler_result_future: Future[FrontikResponse] = Future()
 
     def __repr__(self):
         return f'{self.__module__}.{self.__class__.__name__}'
@@ -183,10 +183,7 @@ class PageHandler(RequestHandler):
         super().prepare()
 
     def set_default_headers(self):
-        self._headers = httputil.HTTPHeaders({
-            'Server': f'Frontik/{frontik_version}',
-            'X-Request-Id': self.request_id,
-        })
+        self._headers = httputil.HTTPHeaders()
 
     @property
     def path(self) -> str:
@@ -370,7 +367,7 @@ class PageHandler(RequestHandler):
 
     # Requests handling
 
-    async def execute(self) -> tuple[int, str, HTTPHeaders, bytes]:
+    async def execute(self) -> FrontikResponse:
         self._transforms = []
         try:
             if self.request.method not in self.SUPPORTED_METHODS:
@@ -701,7 +698,7 @@ class PageHandler(RequestHandler):
             for cookie in self._new_cookie.values():
                 self.add_header('Set-Cookie', cookie.OutputString(None))
 
-        self.handler_result_future.set_result((self._status_code, self._reason, self._headers, chunk))
+        self.handler_result_future.set_result(FrontikResponse(self._status_code, self._headers, chunk, self._reason))
 
     # postprocessors
 

@@ -226,15 +226,17 @@ async def execute_tornado_page(
     route, page_cls, path_params = scope['route'], scope['page_cls'], scope['path_params']
     request_context.set_handler_name(route)
     handler: PageHandler = page_cls(frontik_app, tornado_request, route, debug_mode, path_params)
-    status_code, _, headers, body = await handler.execute()
-    return FrontikResponse(status_code=status_code, headers=headers, body=body)
+    return await handler.execute()
 
 
 def _on_connection_close(tornado_request, process_request_task, integrations):
-    response = FrontikResponse(CLIENT_CLOSED_REQUEST)
-    for integration in integrations.values():
-        integration.set_response(response)
+    request_id = integrations.get('request_id', IntegrationDto()).get_value()
+    with request_context.request_context(request_id):
+        log.info('client has canceled request')
+        response = FrontikResponse(CLIENT_CLOSED_REQUEST)
+        for integration in integrations.values():
+            integration.set_response(response)
 
-    log_request(tornado_request, CLIENT_CLOSED_REQUEST)
-    setattr(tornado_request, 'canceled', False)
-    process_request_task.cancel()  # serve_tornado_request will be interrupted with CanceledError
+        log_request(tornado_request, CLIENT_CLOSED_REQUEST)
+        setattr(tornado_request, 'canceled', False)
+        process_request_task.cancel()  # serve_tornado_request will be interrupted with CanceledError

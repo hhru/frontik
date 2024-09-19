@@ -26,11 +26,9 @@ CUSTOM_JSON_EXTRA = 'custom_json'
 
 class Mdc:
     def __init__(self) -> None:
-        self.pid: int
         self.role: Union[str, None] = None
 
     def init(self, role: Union[str, None] = None) -> None:
-        self.pid = os.getpid()
         self.role = role
 
 
@@ -40,8 +38,7 @@ MDC = Mdc()
 class ContextFilter(Filter):
     def filter(self, record):
         handler_name = request_context.get_handler_name()
-        request_id = request_context.get_request_id()
-        record.name = '.'.join(filter(None, [record.name, handler_name, request_id]))
+        record.name = '.'.join(filter(None, [record.name, handler_name]))
         return True
 
 
@@ -94,7 +91,7 @@ class JSONFormatter(Formatter):
 
     @staticmethod
     def get_mdc() -> dict:
-        mdc: dict = {'thread': MDC.pid}
+        mdc: dict = {'thread': os.getpid()}
 
         if MDC.role is not None:
             mdc['role'] = MDC.role
@@ -126,15 +123,11 @@ class JSONFormatter(Formatter):
         return stack_trace
 
 
-_JSON_FORMATTER = JSONFormatter()
+JSON_FORMATTER = JSONFormatter()
 
 
 class StderrFormatter(LogFormatter):
     def format(self, record):
-        handler_name = request_context.get_handler_name()
-        request_id = request_context.get_request_id()
-        record.name = '.'.join(filter(None, [record.name, handler_name, request_id]))
-
         if not record.msg:
             record.msg = ', '.join(f'{k}={v}' for k, v in getattr(record, CUSTOM_JSON_EXTRA, {}).items())
 
@@ -197,7 +190,7 @@ def _configure_file(
     if formatter is not None:
         file_handler.setFormatter(formatter)
     elif use_json_formatter:
-        file_handler.setFormatter(_JSON_FORMATTER)
+        file_handler.setFormatter(JSON_FORMATTER)
     else:
         file_handler.setFormatter(get_text_formatter())
         file_handler.addFilter(_CONTEXT_FILTER)
@@ -232,7 +225,7 @@ def _configure_syslog(
         if formatter is not None:
             syslog_handler.setFormatter(formatter)
         elif use_json_formatter:
-            syslog_handler.setFormatter(_JSON_FORMATTER)
+            syslog_handler.setFormatter(JSON_FORMATTER)
         else:
             syslog_handler.setFormatter(get_text_formatter())
             syslog_handler.addFilter(_CONTEXT_FILTER)

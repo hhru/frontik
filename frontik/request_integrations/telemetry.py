@@ -17,6 +17,7 @@ from opentelemetry.util.http import OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SE
 from opentelemetry.util.http import normalise_response_header_name
 from opentelemetry.trace.status import Status, StatusCode
 from tornado import httputil
+from frontik import request_context
 
 _traced_request_attrs = get_traced_request_attrs('TORNADO')
 _excluded_urls = ['/status']
@@ -86,6 +87,12 @@ def _finish_span(span, dto: IntegrationDto):
 
     if span.is_recording():
         span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+        if (handler_name := request_context.get_handler_name()) is not None:
+            method_path, method_name = handler_name.rsplit('.', 1)
+            span.update_name(f'{method_path}.{method_name}')
+            span.set_attribute(SpanAttributes.CODE_FUNCTION, method_name)
+            span.set_attribute(SpanAttributes.CODE_NAMESPACE, method_path)
+
         otel_status_code = http_status_to_status_code(status_code, server_span=True)
         otel_status_description = None
         if otel_status_code is StatusCode.ERROR:

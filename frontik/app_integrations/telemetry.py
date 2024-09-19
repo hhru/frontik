@@ -162,8 +162,7 @@ class FrontikIdGenerator(IdGenerator):
         request_id = request_context.get_request_id()
         try:
             if request_id is None:
-                msg = 'bad request_id'
-                raise Exception(msg)
+                raise Exception('bad request_id')
 
             if len(request_id) < 32:
                 log.debug('request_id = %s is less than 32 characters. Generating random trace_id', request_id)

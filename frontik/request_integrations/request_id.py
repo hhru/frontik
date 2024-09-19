@@ -13,8 +13,5 @@ def request_id_ctx(_, tornado_request):
         check_request_id(request_id)
     tornado_request.request_id = request_id
 
-    token = request_context._context.set(request_context._Context(request_id))
-    try:
-        yield IntegrationDto()
-    finally:
-        request_context._context.reset(token)
+    with request_context.request_context(request_id):
+        yield IntegrationDto(request_id)

@@ -1,7 +1,5 @@
-import pytest
 from fastapi import Response
 
-from frontik.app import FrontikApplication
 from frontik.handler import PageHandler, get_current_handler
 from frontik.routing import plain_router
 from frontik.testing import FrontikTestBase
@@ -19,11 +17,7 @@ async def asgi_cookies_page(response: Response) -> None:
     response.set_cookie('key2', 'val2')
 
 
-class TestFrontikTesting(FrontikTestBase):
-    @pytest.fixture(scope='class')
-    def frontik_app(self) -> FrontikApplication:
-        return FrontikApplication()
-
+class TestCookies(FrontikTestBase):
     async def test_cookies(self):
         response = await self.fetch('/cookies')
 

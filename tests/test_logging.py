@@ -113,7 +113,7 @@ class TestSyslog:
             {
                 'priority': '10',
                 'message': r'\[\d+\] [\d-]+ [\d:,]+ CRITICAL '
-                r'custom_logger\.tests\.projects\.test_app\.pages\.log\.get_page\.\w+: fatal',
+                r'custom_logger\.tests\.projects\.test_app\.pages\.log\.get_page: fatal',
             },
         ]
 
