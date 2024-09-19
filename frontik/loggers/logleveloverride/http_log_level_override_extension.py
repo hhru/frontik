@@ -4,9 +4,9 @@ from typing import Optional
 from fastapi import HTTPException
 from http_client import HttpClientFactory
 
-from frontik import request_context
 from frontik.loggers.logleveloverride.log_level_override_extension import LogLevelOverride, LogLevelOverrideExtension
 from frontik.loggers.logleveloverride.logging_configurator_client import LOG_LEVEL_MAPPING
+from frontik.util import generate_uniq_timestamp_request_id
 
 logger = logging.getLogger('http_log_level_override_extension')
 
@@ -33,7 +33,7 @@ class HttpLogLevelOverrideExtension(LogLevelOverrideExtension):
         self.http_client_factory = http_client_factory
 
     async def load_log_level_overrides(self) -> list[LogLevelOverride]:
-        headers = {'X-Request-Id': request_context.get_request_id()}
+        headers = {'X-Request-Id': generate_uniq_timestamp_request_id()}
         result = await self.http_client_factory.get_http_client().get_url(self.host, self.uri, headers=headers)
         if result.failed:
             logger.error('some problem with fetching log level overrides: %s', result.failed)

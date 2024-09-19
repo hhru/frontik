@@ -15,6 +15,7 @@ class FrontikResponse:
         status_code: int,
         headers: dict[str, str] | None | HTTPHeaders = None,
         body: bytes = b'',
+        reason: str | None = None,
     ):
         self.headers = HTTPHeaders(get_default_headers())  # type: ignore
 
@@ -26,11 +27,12 @@ class FrontikResponse:
 
         self.status_code = status_code
         self.body = body
+        self._reason = reason
         self.data_written = False
 
     @property
     def reason(self) -> str:
-        return httputil.responses.get(self.status_code, 'Unknown')
+        return self._reason or httputil.responses.get(self.status_code, 'Unknown')
 
 
 def get_default_headers() -> Mapping[str, str | None]:

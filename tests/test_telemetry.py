@@ -1,11 +1,11 @@
-from collections.abc import Iterator, Sequence
-from contextlib import contextmanager
+from collections.abc import Sequence
 from typing import Any, Optional
 
 import pytest
 from fastapi import Request
 from opentelemetry import trace
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ReadableSpan, SpanExporter, SpanExportResult
+from opentelemetry.semconv.trace import SpanAttributes
 
 from frontik import request_context
 from frontik.app import FrontikApplication
@@ -18,15 +18,6 @@ from frontik.testing import FrontikTestBase
 dummy_request = Request({'type': 'http'})
 
 
-@contextmanager
-def request_id_context(request_id: str) -> Iterator:
-    token = request_context._context.set(request_context._Context(request_id))
-    try:
-        yield
-    finally:
-        request_context._context.reset(token)
-
-
 class TestTelemetry:
     def setup_method(self) -> None:
         self.trace_id_generator = FrontikIdGenerator()
@@ -36,33 +27,33 @@ class TestTelemetry:
         assert trace_id is not None
 
     def test_generate_trace_id_with_hex_request_id(self) -> None:
-        with request_id_context('163897206709842601f90a070699ac44'):
+        with request_context.request_context('163897206709842601f90a070699ac44'):
             trace_id = self.trace_id_generator.generate_trace_id()
             assert '0x163897206709842601f90a070699ac44' == hex(trace_id)
 
     def test_generate_trace_id_with_no_hex_request_id(self) -> None:
-        with request_id_context('non-hex-string-1234'):
+        with request_context.request_context('non-hex-string-1234'):
             trace_id = self.trace_id_generator.generate_trace_id()
             assert trace_id is not None
 
     def test_generate_trace_id_with_no_str_request_id(self) -> None:
-        with request_id_context(12345678910):  # type: ignore
+        with request_context.request_context(12345678910):  # type: ignore
             trace_id = self.trace_id_generator.generate_trace_id()
             assert trace_id is not None
 
     def test_generate_trace_id_with_hex_request_id_and_postfix(self) -> None:
-        with request_id_context('163897206709842601f90a070699ac44_some_postfix_string'):
+        with request_context.request_context('163897206709842601f90a070699ac44_some_postfix_string'):
             trace_id = self.trace_id_generator.generate_trace_id()
             assert '0x163897206709842601f90a070699ac44' == hex(trace_id)
 
     def test_generate_trace_id_with_no_hex_request_id_in_first_32_characters(self) -> None:
-        with request_id_context('16389720670_NOT_HEX_9842601f90a070699ac44_some_postfix_string'):
+        with request_context.request_context('16389720670_NOT_HEX_9842601f90a070699ac44_some_postfix_string'):
             trace_id = self.trace_id_generator.generate_trace_id()
             assert trace_id is not None
             assert '0x16389720670_NOT_HEX_9842601f90a0' != hex(trace_id)
 
     def test_generate_trace_id_with_request_id_len_less_32_characters(self) -> None:
-        with request_id_context('163897206'):
+        with request_context.request_context('163897206'):
             trace_id = self.trace_id_generator.generate_trace_id()
             assert trace_id is not None
             assert '0x163897206' != hex(trace_id)
@@ -137,3 +128,7 @@ class TestFrontikTesting(FrontikTestBase):
         assert client_a_span.parent is not None
         assert server_b_span is not None
         assert server_b_span.parent is not None
+
+        assert server_b_span.attributes is not None
+        assert server_b_span.attributes.get(SpanAttributes.CODE_FUNCTION) == 'get_page_b'
+        assert server_b_span.attributes.get(SpanAttributes.CODE_NAMESPACE) == 'tests.test_telemetry'

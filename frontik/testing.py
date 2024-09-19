@@ -30,6 +30,10 @@ class FrontikTestBase:
         yield loop
         loop.close()
 
+    @pytest.fixture(scope='class')
+    def frontik_app(self) -> FrontikApplication:
+        return FrontikApplication()
+
     @pytest.fixture(scope='class', autouse=True)
     async def _run_server(self, frontik_app):
         options.stderr_log = True
