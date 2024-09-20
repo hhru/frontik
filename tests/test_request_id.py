@@ -3,7 +3,7 @@ import json
 
 from frontik.handler import PageHandler
 from frontik.loggers import JSON_FORMATTER
-from frontik.routing import plain_router
+from frontik.routing import plain_router, router
 from frontik.testing import FrontikTestBase
 
 known_loggers = ['handler', 'stages']
@@ -19,12 +19,12 @@ async def request_id_long_page() -> None:
     await asyncio.sleep(2)
 
 
-@plain_router.get('/asgi_request_id')
+@router.get('/asgi_request_id')
 async def asgi_request_id_page() -> None:
     pass
 
 
-@plain_router.get('/asgi_request_id_long')
+@router.get('/asgi_request_id_long')
 async def asgi_request_id_long_page() -> None:
     await asyncio.sleep(2)
 

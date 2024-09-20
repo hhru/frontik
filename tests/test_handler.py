@@ -1,6 +1,12 @@
+import pytest
 import requests
 
 from frontik import media_types
+from frontik.app import FrontikApplication
+from frontik.handler import PageHandler, get_current_handler
+from frontik.options import options
+from frontik.routing import plain_router
+from frontik.testing import FrontikTestBase
 from tests.instances import frontik_no_debug_app, frontik_test_app
 
 
@@ -112,3 +118,72 @@ class TestRedirectHandler:
         response = frontik_test_app.get_page('redirect/permanent?code=403', allow_redirects=True)
         assert response.status_code == 403
         assert response.content == b'success'
+
+
+@plain_router.get('/xsrf', cls=PageHandler)
+@plain_router.post('/xsrf', cls=PageHandler)
+async def xsrf_page() -> None:
+    pass
+
+
+class TestXsrf(FrontikTestBase):
+    def setup_method(self):
+        options.xsrf_cookies = True
+
+    def teardown_method(self):
+        options.xsrf_cookies = False
+
+    async def test_xsrf(self):
+        response = await self.fetch('/xsrf', method='GET', headers={'Cookie': '_xsrf=123'}, data={'_xsrf': '456'})
+        assert response.status_code == 200
+        response = await self.fetch('/xsrf', method='POST', headers={'Cookie': '_xsrf=123'}, data={'_xsrf': '456'})
+        assert response.status_code == 403
+        response = await self.fetch('/xsrf', method='POST', headers={'Cookie': '_xsrf=123'}, data={'_xsrf': '123'})
+        assert response.status_code == 200
+
+
+@plain_router.get('/client_ip', cls=PageHandler)
+async def client_ip_page(handler: PageHandler = get_current_handler()) -> None:
+    assert handler.request.protocol == 'https'
+    handler.text = handler.request.remote_ip
+
+
+class TestClientIp(FrontikTestBase):
+    @pytest.fixture(scope='class')
+    def frontik_app(self) -> FrontikApplication:
+        options.xheaders = True
+        return FrontikApplication()
+
+    def teardown_method(self):
+        options.xheaders = False
+
+    async def test_client_ip(self):
+        response = await self.fetch(
+            '/client_ip',
+            headers={
+                'X-Forwarded-Proto': 'https',
+                'X-Real-Ip': '1.2.3.4',
+                'X-Forwarded-For': '4.5.6.7',
+            },
+        )
+        assert response.status_code == 200
+        assert response.raw_body == b'1.2.3.4'
+
+        response = await self.fetch(
+            '/client_ip',
+            headers={
+                'X-Forwarded-Proto': 'https',
+                'X-Forwarded-For': '3.5.7.9',
+            },
+        )
+        assert response.status_code == 200
+        assert response.raw_body == b'3.5.7.9'
+
+        response = await self.fetch(
+            '/client_ip',
+            headers={
+                'X-Forwarded-Proto': 'https',
+            },
+        )
+        assert response.status_code == 200
+        assert response.raw_body == b'127.0.0.1'
