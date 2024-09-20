@@ -17,6 +17,7 @@ from opentelemetry.util.http import OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SE
 from opentelemetry.util.http import normalise_response_header_name
 from opentelemetry.trace.status import Status, StatusCode
 from tornado import httputil
+from tornado.httputil import HTTPServerRequest
 from frontik import request_context
 
 _traced_request_attrs = get_traced_request_attrs('TORNADO')
@@ -81,32 +82,37 @@ def _collect_custom_request_headers_attributes(request_headers):
     return attributes
 
 
-def _finish_span(span, dto: IntegrationDto):
+def _finish_span(span, dto: IntegrationDto, tornado_request: HTTPServerRequest):
+    if not span.is_recording():
+        return
+
     status_code = dto.response.status_code
     resp_headers = dto.response.headers
 
-    if span.is_recording():
-        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
-        if (handler_name := request_context.get_handler_name()) is not None:
-            method_path, method_name = handler_name.rsplit('.', 1)
-            span.update_name(f'{method_path}.{method_name}')
-            span.set_attribute(SpanAttributes.CODE_FUNCTION, method_name)
-            span.set_attribute(SpanAttributes.CODE_NAMESPACE, method_path)
+    span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+    span.set_attribute(SpanAttributes.USER_AGENT_ORIGINAL, tornado_request.headers.get('User-Agent', 'noUserAgent'))
+    if hasattr(tornado_request, '_path_format'):
+        span.set_attribute(SpanAttributes.HTTP_ROUTE, getattr(tornado_request, '_path_format'))
+    if (handler_name := request_context.get_handler_name()) is not None:
+        method_path, method_name = handler_name.rsplit('.', 1)
+        span.update_name(f'{method_path}.{method_name}')
+        span.set_attribute(SpanAttributes.CODE_FUNCTION, method_name)
+        span.set_attribute(SpanAttributes.CODE_NAMESPACE, method_path)
 
-        otel_status_code = http_status_to_status_code(status_code, server_span=True)
-        otel_status_description = None
-        if otel_status_code is StatusCode.ERROR:
-            otel_status_description = httputil.responses.get(status_code, 'Unknown')
-        span.set_status(
-            Status(
-                status_code=otel_status_code,
-                description=otel_status_description,
-            )
+    otel_status_code = http_status_to_status_code(status_code, server_span=True)
+    otel_status_description = None
+    if otel_status_code is StatusCode.ERROR:
+        otel_status_description = httputil.responses.get(status_code, 'Unknown')
+    span.set_status(
+        Status(
+            status_code=otel_status_code,
+            description=otel_status_description,
         )
-        if span.is_recording() and span.kind == trace.SpanKind.SERVER:
-            custom_attributes = _collect_custom_response_headers_attributes(resp_headers)
-            if len(custom_attributes) > 0:
-                span.set_attributes(custom_attributes)
+    )
+    if span.is_recording() and span.kind == trace.SpanKind.SERVER:
+        custom_attributes = _collect_custom_response_headers_attributes(resp_headers)
+        if len(custom_attributes) > 0:
+            span.set_attributes(custom_attributes)
 
 
 def _collect_custom_response_headers_attributes(response_headers):
@@ -133,4 +139,4 @@ def otel_instrumentation_ctx(frontik_app, tornado_request):
         try:
             yield dto
         finally:
-            _finish_span(span, dto)
+            _finish_span(span, dto, tornado_request)

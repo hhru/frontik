@@ -7,6 +7,7 @@ from contextlib import ExitStack
 from functools import partial
 from typing import TYPE_CHECKING, Optional
 
+from fastapi.routing import APIRoute
 from tornado import httputil
 from tornado.httputil import HTTPServerRequest
 
@@ -79,12 +80,15 @@ async def process_request(
     assert tornado_request.method is not None
 
     scope = find_route(tornado_request.path, tornado_request.method)
+    route: Optional[APIRoute] = scope['route']
 
-    if scope['route'] is None:
+    if route is None:
         response = await make_not_found_response(frontik_app, tornado_request, debug_mode)
     elif scope['page_cls'] is not None:
+        tornado_request._path_format = route.path_format  # type: ignore
         response = await execute_tornado_page(frontik_app, tornado_request, scope, debug_mode)
     else:
+        tornado_request._path_format = route.path_format  # type: ignore
         response = await execute_asgi_page(asgi_app, tornado_request, scope, debug_mode)
 
     if debug_mode.enabled and not response.data_written:

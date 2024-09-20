@@ -45,7 +45,7 @@ class FrontikTestBase:
 
         await frontik_app.init()
 
-        http_server = HTTPServer(frontik_app)
+        http_server = HTTPServer(frontik_app, xheaders=options.xheaders, max_body_size=options.max_body_size)
         http_server.add_sockets([sock])
 
         yield
