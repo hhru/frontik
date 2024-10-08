@@ -1,3 +1,10 @@
+import asyncio
+import json
+
+from frontik.handler import PageHandler, get_current_handler
+from frontik.loggers import JSON_FORMATTER
+from frontik.routing import plain_router
+from frontik.testing import FrontikTestBase
 from tests.instances import frontik_test_app
 
 
@@ -51,3 +58,28 @@ class TestHttpClient:
     def test_http_raise_error(self):
         response = frontik_test_app.get_page('http_client/raise_error')
         assert 200 == response.status_code
+
+
+@plain_router.get('/long_page', cls=PageHandler)
+async def long_page() -> None:
+    await asyncio.sleep(1)
+
+
+@plain_router.get('/long_request', cls=PageHandler)
+async def long_request(handler: PageHandler = get_current_handler()) -> None:
+    await handler.get_url(handler.get_header('host'), '/long_page')
+
+
+class TestRequestCancled(FrontikTestBase):
+    async def test_request_canceled(self, caplog):
+        caplog.handler.setFormatter(JSON_FORMATTER)
+        response = await self.fetch('/long_request', request_timeout=0.1)
+        await asyncio.sleep(2)
+
+        assert response.status_code == 599
+
+        for log_row in caplog.text.split('\n'):
+            if log_row == '':
+                continue
+            log_obj = json.loads(log_row)
+            assert log_obj.get('lvl') != 'ERROR', log_obj
