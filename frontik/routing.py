@@ -26,7 +26,7 @@ _fastapi_routes: list[APIRoute] = []
 class FrontikRouter(APIRouter):
     def __init__(self, *, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        routers.append(self)
+        # routers.append(self)
         self._cls: Optional[Type[PageHandler]] = None
         self._base_cls: Optional[Type[PageHandler]] = cls
 
@@ -71,7 +71,7 @@ class FrontikRouter(APIRouter):
 class FrontikRegexRouter(APIRouter):
     def __init__(self, *, cls: Optional[Type[PageHandler]] = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        routers.append(self)
+        # routers.append(self)
         self._cls: Optional[Type[PageHandler]] = None
         self._base_cls: Optional[Type[PageHandler]] = cls
 

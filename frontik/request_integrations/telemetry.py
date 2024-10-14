@@ -53,7 +53,7 @@ def _get_default_span_name(tornado_request):
     return f'{method}'
 
 
-def _get_attributes_from_request(tornado_request):
+def _get_attributes_from_request(tornado_request: HTTPServerRequest):
     attrs = {
         SpanAttributes.HTTP_METHOD: tornado_request.method,
         SpanAttributes.HTTP_SCHEME: tornado_request.protocol,

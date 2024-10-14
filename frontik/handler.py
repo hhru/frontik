@@ -650,6 +650,14 @@ class PageHandler(RequestHandler):
         if self.is_finished():
             raise RuntimeError('finish() called twice')
 
+        response = self.build_response(chunk)
+        self.handler_result_future.set_result(response)
+        self._finished = True
+        self.on_finish()
+        if interrupt_execution:
+            raise FinishSignal()
+
+    def build_response(self, chunk=None) -> FrontikResponse:
         self.stages_logger.commit_stage('postprocess')
         for name, value in self._mandatory_headers.items():
             self.set_header(name, value)
@@ -679,13 +687,6 @@ class PageHandler(RequestHandler):
             content_length = sum(len(part) for part in self._write_buffer)
             self.set_header('Content-Length', content_length)
 
-        self._flush()
-        self._finished = True
-        self.on_finish()
-        if interrupt_execution:
-            raise FinishSignal()
-
-    def _flush(self) -> None:
         assert self.request.connection is not None
         chunk = b''.join(self._write_buffer)
         self._write_buffer = []
@@ -698,7 +699,7 @@ class PageHandler(RequestHandler):
             for cookie in self._new_cookie.values():
                 self.add_header('Set-Cookie', cookie.OutputString(None))
 
-        self.handler_result_future.set_result(FrontikResponse(self._status_code, self._headers, chunk, self._reason))
+        return FrontikResponse(self._status_code, self._headers, chunk, self._reason)
 
     # postprocessors
 

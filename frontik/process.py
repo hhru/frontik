@@ -81,6 +81,7 @@ def fork_workers(
         _start_child(worker_id, worker_state, shared_data, lock, worker_function_wrapped)
 
     gc.enable()
+    # gc.set_threshold(threshold0[, threshold1[, threshold2]])
     timeout = time.time() + options.init_workers_timeout_sec
     while worker_state.init_workers_count_down.value > 0:
         if time.time() > timeout:
@@ -184,6 +185,7 @@ def _worker_function_wrapper(worker_function, worker_listener_handler, read_fd, 
     os.close(write_fd)
     _set_pipe_size(read_fd, worker_id)
     gc.enable()
+    # gc.set_threshold(threshold0[, threshold1[, threshold2]])
     worker_state.is_master = False
 
     with suppress(Exception):

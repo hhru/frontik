@@ -5,7 +5,7 @@ import multiprocessing
 import os
 import time
 from ctypes import c_bool, c_int
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Type, Callable
 
 from aiokafka import AIOKafkaProducer
 from fastapi import FastAPI, HTTPException
@@ -21,7 +21,7 @@ from frontik import app_integrations, media_types
 from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
 from frontik.debug import get_frontik_and_apps_versions
 from frontik.handler import PageHandler, get_current_handler
-from frontik.handler_asgi import serve_tornado_request
+from frontik.handler_asgi import serve_tornado_request, CoreMiddleware
 from frontik.handler_return_values import ReturnedValueHandlers, get_default_returned_value_handlers
 from frontik.options import options
 from frontik.process import WorkerState
@@ -34,16 +34,16 @@ from frontik.routing import (
     routers,
 )
 from frontik.service_discovery import MasterServiceDiscovery, ServiceDiscovery, WorkerServiceDiscovery
+from starlette.middleware import Middleware
 
 app_logger = logging.getLogger('app_logger')
 _server_tasks = set()
 
 
 class FrontikAsgiApp(FastAPI):
-    def __init__(self) -> None:
+    def __init__(self, frontik_app) -> None:
         super().__init__()
         self.router = router
-        self.http_client_factory = None
 
         if options.openapi_enabled:
             self.setup()
@@ -51,12 +51,16 @@ class FrontikAsgiApp(FastAPI):
         for _router in routers:
             self.include_router(_router)
 
+        self.app_module_name = frontik_app.app_module_name
+        self.config = frontik_app.config
+        self.statsd_client = frontik_app.statsd_client
+
 
 def anyio_noop(*_args: Any, **_kwargs: Any) -> None:
     raise RuntimeError(f'trying to use non async {_args[0]}')
 
 
-class FrontikApplication:
+class FrontikApplication:  # бэкенд без шелухи
     request_id = ''
 
     class DefaultConfig:
@@ -95,8 +99,18 @@ class FrontikApplication:
 
         self.settings: dict = {}
 
-        self.asgi_app = FrontikAsgiApp()
+        self.asgi_app = FrontikAsgiApp(self)
+        self.asgi_app.add_middleware(CoreMiddleware)
+
         self.service_discovery: ServiceDiscovery
+
+    def add_middleware(self, middleware_class: type) -> None:
+        if self.asgi_app.middleware_stack is not None:
+            raise RuntimeError("Cannot add middleware after an application has started")
+        self.asgi_app.user_middleware.insert(1, Middleware(middleware_class))
+
+    def add_exception_handler(self, exc_class: Type[Exception], foo: Callable) -> None:
+        self.asgi_app.add_exception_handler(exc_class, foo)
 
     def patch_anyio(self) -> None:
         """

@@ -89,7 +89,7 @@ async def process_request(
         response = await execute_tornado_page(frontik_app, tornado_request, scope, debug_mode)
     else:
         tornado_request._path_format = route.path_format  # type: ignore
-        response = await execute_asgi_page(asgi_app, tornado_request, scope, debug_mode)
+        response = await execute_asgi_page(frontik_app, asgi_app, tornado_request, scope, debug_mode)
 
     if debug_mode.enabled and not response.data_written:
         debug_transform = DebugTransform(frontik_app, debug_mode)
@@ -99,6 +99,7 @@ async def process_request(
 
 
 async def execute_asgi_page(
+    frontik_app,
     asgi_app: FrontikAsgiApp,
     tornado_request: HTTPServerRequest,
     scope: dict,
@@ -119,8 +120,9 @@ async def execute_asgi_page(
         'query_string': tornado_request.query.encode(CHARSET),
         'headers': request_headers,
         'client': (tornado_request.remote_ip, 0),
-        'http_client_factory': asgi_app.http_client_factory,
-        'debug_mode': debug_mode,
+        'debug_mode': debug_mode,  # при удалении торнадо это надо перенести в коре мидлварю
+        'tornado_request': tornado_request,  # при удалении торнадо это надо перенести в коре мидлварю
+        'frontik_app': frontik_app,  # при удалении торнадо это надо перенести в коре мидлварю
         'start_time': tornado_request._start_time,
     })
 
@@ -244,3 +246,31 @@ def _on_connection_close(tornado_request, process_request_task, integrations):
         log_request(tornado_request, CLIENT_CLOSED_REQUEST)
         setattr(tornado_request, 'canceled', False)
         process_request_task.cancel()  # serve_tornado_request will be interrupted with CanceledError
+
+
+from fastapi import HTTPException, Request
+from starlette.middleware.base import BaseHTTPMiddleware
+from frontik.loggers.stages import StagesLogger
+
+
+def redirect(url: str, permanent: bool = False, status: Optional[int] = None) -> None:
+    if url.startswith('//'):
+        raise HTTPException(status_code=403, detail='cannot redirect path with two initial slashes')
+    log.info('redirecting to: %s', url)
+    if status is None:
+        status = 301 if permanent else 302
+    else:
+        assert isinstance(status, int) and 300 <= status <= 399
+
+    detail = httputil.responses.get(status, 'Unknown')
+    raise HTTPException(status_code=status, detail=detail, headers = {"Location": url} )
+
+
+class CoreMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        request.state.debug_mode = request.scope['debug_mode']
+        request.state.stages_logger = StagesLogger(request.scope['start_time'], request.app.statsd_client)
+        request.state.request_id = request_context.get_request_id()
+
+        response = await call_next(request)
+        return response

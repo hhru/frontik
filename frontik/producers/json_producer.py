@@ -44,6 +44,16 @@ class JsonProducer:
             self.log.debug('ignoring templating because notpl parameter is passed')
             return self._finish_with_json()
 
+        # import logging
+        # logging.getLogger('handler').error(f'SUKA1 -- {self.template_filename}')
+        # logging.getLogger('handler').error(f'SUKA1 -- {self.environment}')
+        # t = self.environment.get_template(self.template_filename)
+        # logging.getLogger('handler').error(f'SUKA1 -- {t}')
+        # d = self.json.to_dict()
+        # g = t.generate(d)
+        # logging.getLogger('handler').error(f'SUKA1 -- {d}')
+        # logging.getLogger('handler').error(f'SUKA1 -- {g}')
+
         if self.template_filename:
             return self._finish_with_template()
 

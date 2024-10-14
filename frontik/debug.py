@@ -477,13 +477,15 @@ class DebugTransform:
 class DebugMode:
     def __init__(self, tornado_request: HTTPServerRequest) -> None:
         self.debug_value = get_cookie_or_param_from_request(tornado_request, 'debug')
+        self.notpl = get_cookie_or_param_from_request(tornado_request, 'notpl')
+        self.notrl = get_cookie_or_param_from_request(tornado_request, 'notrl')
         self.mode_values = self.debug_value.split(',') if self.debug_value is not None else ''
         self.inherited = tornado_request.headers.get(DEBUG_HEADER_NAME, None)
         self.pass_debug = False
         self.enabled = False
         self.profile_xslt = False
         self.failed_auth_header: Optional[str] = None
-        self.need_auth = self.debug_value is not None or self.inherited
+        self.need_auth = self.debug_value is not None or self.inherited or self.notpl is not None or self.notrl is not None
 
         if self.inherited:
             debug_log.debug('debug mode is inherited due to %s request header', DEBUG_HEADER_NAME)

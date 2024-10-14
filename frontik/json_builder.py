@@ -128,10 +128,3 @@ class JsonBuilder:
 
     def to_bytes(self) -> bytes:
         return json_encode_bytes(self._concat_chunks())
-
-
-async def get_json_builder(request: Request) -> JsonBuilder:
-    return request['json_builder']
-
-
-JsonBuilderT = Annotated[JsonBuilder, Depends(get_json_builder)]

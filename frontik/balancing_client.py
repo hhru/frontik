@@ -44,7 +44,7 @@ def get_http_client(modify_request_hook=None):
     async def _get_http_client(request: Request) -> HttpClient:
         hook = modify_request_hook or partial(modify_http_client_request, request)
 
-        http_client = request['http_client_factory'].get_http_client(
+        http_client = request.app.http_client_factory.get_http_client(
             modify_http_request_hook=hook,
             debug_enabled=request['debug_mode'].enabled,
         )
