@@ -37,7 +37,7 @@ async def put_page():
 
 
 @router.post('/api/2/envelope/')
-async def post_page(request: Request):
+async def post_to_sentry(request: Request):
     messages = gzip.decompress(await request.body()).decode('utf8')
 
     for message in messages.split('\n'):
@@ -47,20 +47,13 @@ async def post_page(request: Request):
         exceptions.append(sentry_event)
 
 
-@router.get('/api/2/envelope/')
-async def get_page():
-    return {'exceptions': exceptions}
-
-
-@router.delete('/api/2/envelope/')
-async def delete_page():
-    exceptions.clear()
-
-
 class TestSentryIntegration(FrontikTestBase):
     @classmethod
-    def teardown_class(cla):
+    def teardown_class(cls):
         options.sentry_dsn = None
+
+    def teardown_method(self, method):
+        exceptions.clear()
 
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
@@ -75,11 +68,9 @@ class TestSentryIntegration(FrontikTestBase):
         return app
 
     async def test_sentry_exception(self):
-        await self.fetch('/api/2/envelope/', method='DELETE')
-
         await self.fetch('/sentry_error?ip=127.0.0.77&extra_key=extra_val')
         await asyncio.sleep(0.1)
-        sentry_events = await self._get_sentry_exceptions('My_sentry_exception')
+        sentry_events = _get_sentry_exceptions('My_sentry_exception')
 
         assert len(sentry_events) == 1
         event = sentry_events[0]
@@ -93,7 +84,7 @@ class TestSentryIntegration(FrontikTestBase):
         # second request for check that sentry scope was overwritten
         await self.fetch('/sentry_error')
         await asyncio.sleep(0.1)
-        sentry_events = await self._get_sentry_exceptions('My_sentry_exception')
+        sentry_events = _get_sentry_exceptions('My_sentry_exception')
 
         assert len(sentry_events) == 2
         event = sentry_events[1]
@@ -101,12 +92,10 @@ class TestSentryIntegration(FrontikTestBase):
         assert event.get('extra') is None
 
     async def test_sentry_message(self):
-        await self.fetch('/api/2/envelope/', method='DELETE')
         await self.fetch('/sentry_error', method='PUT', headers={'MaHeaderKey': 'MaHeaderValue'})
 
         await asyncio.sleep(1)
-        sentry_events = await self._get_sentry_messages()
-        sentry_events = list(filter(lambda e: e.get('message') == 'sentry_message', sentry_events))
+        sentry_events = list(filter(lambda e: e.get('message') == 'sentry_message', exceptions))
         assert len(sentry_events) == 1
 
         event = sentry_events[0]
@@ -120,25 +109,19 @@ class TestSentryIntegration(FrontikTestBase):
         assert event['user']['id'] == '123456'
 
     async def test_sentry_http_error(self):
-        await self.fetch('/api/2/envelope/', method='DELETE')
         await self.fetch('/sentry_error', method='POST')
 
-        sentry_events = await self._get_sentry_exceptions('my_HTTPError')
+        sentry_events = _get_sentry_exceptions('my_HTTPError')
         assert len(sentry_events) == 0, 'HTTPException must not be sent to Sentry'
-
-    async def _get_sentry_messages(self) -> list[dict[str, Any]]:
-        sentry_raw = await self.fetch('/api/2/envelope/')
-        return sentry_raw.data['exceptions']
-
-    async def _get_sentry_exceptions(self, name: str) -> list[dict[str, Any]]:
-        sentry_raw = await self.fetch('/api/2/envelope/')
-        sentry_json = sentry_raw.data
-        return list(filter(lambda event: filter_sentry_event(event, name), sentry_json['exceptions']))
 
 
 class TestWithoutSentryIntegration(FrontikTestBase):
     def test_sentry_not_configured(self):
         assert not options.sentry_dsn
+
+
+def _get_sentry_exceptions(name: str) -> list[dict[str, Any]]:
+    return list(filter(lambda event: filter_sentry_event(event, name), exceptions))
 
 
 def filter_sentry_event(event: dict, name: str) -> bool:
