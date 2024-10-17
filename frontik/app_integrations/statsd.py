@@ -4,8 +4,10 @@ import collections
 import socket
 import threading
 import time
+from fastapi import Depends, Request
 from functools import partial
 from typing import TYPE_CHECKING, Optional, Union
+from typing_extensions import Annotated
 
 from frontik.app_integrations import Integration, integrations_logger
 
@@ -213,3 +215,9 @@ def create_statsd_client(options: Options, app: FrontikApplication) -> Union[Sta
             app=app.app_name,
         )
     return statsd_client
+
+
+async def get_statsd_client(request: Request) -> StatsDClient:
+    return request.app.statsd_client
+
+StatsDClientT = Annotated[StatsDClient, Depends(get_statsd_client)]

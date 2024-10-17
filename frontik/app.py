@@ -52,6 +52,7 @@ class FrontikAsgiApp(FastAPI):
         self.config = frontik_app.config
         self.get_current_status = frontik_app.get_current_status
         self.get_frontik_and_apps_versions = frontik_app.get_frontik_and_apps_versions
+        self.statsd_client = frontik_app.statsd_client
 
 
 def anyio_noop(*_args: Any, **_kwargs: Any) -> None:
