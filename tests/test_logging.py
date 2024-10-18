@@ -79,7 +79,7 @@ class TestSyslog:
                     'lvl': 'ERROR',
                     'logger': r'handler',
                     'msg': 'error',
-                    'exception': r".*handler\.log\.error\('error', stack_info=True\)",
+                    'exception': r".*handler_logger\.error\('error', stack_info=True\)",
                 },
             },
             {'priority': '10', 'message': {'lvl': 'CRITICAL', 'logger': r'handler', 'msg': 'critical'}},

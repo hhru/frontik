@@ -31,8 +31,10 @@ try:
     from tornado.web import HTTPError
     from frontik.handler import PageHandler
     from tornado.gen import coroutine
+
+    has_page_handler = True
 except ImportError:
-    raise DidNotEnable('Tornado not installed')
+    has_page_handler = False
 
 from sentry_sdk._types import TYPE_CHECKING
 
@@ -53,8 +55,8 @@ class TornadoIntegration(Integration):
     @staticmethod
     def setup_once():
         # type: () -> None
-        if TORNADO_VERSION < (6, 0):
-            raise DidNotEnable('Tornado 6.0+ required')
+        if not has_page_handler:
+            return
 
         if not HAS_REAL_CONTEXTVARS:
             # Tornado is async. We better have contextvars or we're going to leak

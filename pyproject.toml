@@ -30,7 +30,7 @@ opentelemetry-exporter-otlp-proto-grpc = '1.25.0'
 opentelemetry-instrumentation-fastapi = '0.46b0'
 opentelemetry-instrumentation-aiohttp-client = '0.46b0'
 opentelemetry-instrumentation-tornado = '0.46b0'
-fastapi = '0.105.0'
+fastapi = '0.115.2'
 aiokafka = '0.8.1'
 sentry-sdk = '2.7.0'
 tornado-httpclient-mock = '0.2.3'
@@ -132,11 +132,11 @@ known-third-party = ['http_client']
     'ARG', # Unused function args -> fixtures nevertheless are functionally relevant
     'FBT', # Don't care about booleans as positional arguments in tests, e.g. via @pytest.mark.parametrize()
     'PLR2004', # Magic value used in comparison
-    'S311', # Standard pseudo-random generators are not suitable for cryptographic purposes
+    'S311', 'S105',
     'PT009', 'PT027', # while using unittest
     'ANN201',
     'RUF001',
-    'E722','ERA001',
+    'E722','ERA001','SIM108',
     # should be fixed
     'SIM300','PLC0414','S602','S404','S110','S603','INP001',
 ]

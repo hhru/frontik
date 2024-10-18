@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 import datetime
 import logging
@@ -9,19 +7,13 @@ import re
 import socket
 import sys
 from string import Template
-from typing import TYPE_CHECKING, Optional
+from typing import Any, Optional
 from urllib.parse import urlencode
 from uuid import uuid4
 
 from http_client.util import any_to_bytes, any_to_unicode, to_unicode
 from tornado.escape import utf8
-
-if TYPE_CHECKING:
-    from typing import Any
-
-    from tornado.web import httputil
-
-    from frontik.handler import PageHandler
+from tornado.web import httputil
 
 logger = logging.getLogger('util')
 
@@ -85,16 +77,12 @@ def choose_boundary():
     return utf8(uuid4().hex)
 
 
-def get_cookie_or_url_param_value(handler: PageHandler, param_name: str) -> Optional[str]:
-    return handler.get_argument(param_name, handler.get_cookie(param_name, None))
-
-
 def get_cookie_or_param_from_request(tornado_request: httputil.HTTPServerRequest, param_name: str) -> Optional[str]:
     query = tornado_request.query_arguments.get(param_name)
     if query:
         return query[-1].decode()
 
-    cookie = tornado_request.cookies.get('debug', None)
+    cookie = tornado_request.cookies.get(param_name, None)
     if cookie:
         return cookie.value
 

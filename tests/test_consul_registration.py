@@ -43,13 +43,13 @@ class TestConsulRegistration:
     def test_single_worker_registration(self):
         self.frontik_single_worker_app.start()
         self.frontik_single_worker_app.stop()
-        registration_call_count = self.consul_mock.get_page_json('call_registration_stat')['put_page']
+        registration_call_count = self.consul_mock.get_page_json('/call_registration_stat')['put_page']
         assert registration_call_count == 1, 'Application should register only once'
 
     def test_multiple_worker_registration(self):
         self.frontik_multiple_worker_app.start()
         self.frontik_multiple_worker_app.stop()
-        registration_call_count = self.consul_mock.get_page_json('call_registration_stat')['put_page']
+        registration_call_count = self.consul_mock.get_page_json('/call_registration_stat')['put_page']
         assert registration_call_count == 1, 'Application should register only once'
 
     def test_multiple_worker_not_registration(self):
@@ -60,10 +60,9 @@ class TestConsulRegistration:
             if not self.frontik_multiple_worker_app_timeout_barrier.is_alive():
                 break
         else:
-            msg = "application didn't stop"
-            raise Exception(msg)
+            raise Exception("application didn't stop")
 
-        registration_call_count = self.consul_mock.get_page_json('call_registration_stat')
+        registration_call_count = self.consul_mock.get_page_json('/call_registration_stat')
         assert registration_call_count == {}, 'Application should not register'
 
         self.frontik_multiple_worker_app_timeout_barrier.stop()

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import base64
 import contextlib
 import copy
@@ -10,7 +9,6 @@ import logging
 import os
 import pprint
 import re
-import sys
 import time
 import traceback
 from binascii import crc32
@@ -19,24 +17,19 @@ from http.cookies import SimpleCookie
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlparse
 
-import aiohttp
-import tornado
 from lxml import etree
 from lxml.builder import E
 from tornado import httputil
 from tornado.escape import to_unicode, utf8
 from tornado.httputil import HTTPHeaders, HTTPServerRequest
 
-import frontik.util
-import frontik.xml_util
 from frontik import media_types, request_context
 from frontik.auth import check_debug_auth
 from frontik.frontik_response import FrontikResponse
 from frontik.loggers import BufferedHandler
 from frontik.options import options
-from frontik.util import get_cookie_or_param_from_request
-from frontik.version import version as frontik_version
-from frontik.xml_util import dict_to_xml
+from frontik.util import any_to_unicode, decode_string_from_charset, get_cookie_or_param_from_request
+from frontik.util.xml import dict_to_xml
 
 if TYPE_CHECKING:
     from typing import Any, Optional
@@ -63,7 +56,7 @@ def response_to_xml(result: RequestResult) -> etree.Element:
             body = ''
         elif 'text/html' in content_type:
             mode = 'html'
-            body = frontik.util.decode_string_from_charset(raw_body, try_charsets)
+            body = decode_string_from_charset(raw_body, try_charsets)
         elif 'protobuf' in content_type:
             body = raw_body
         elif 'xml' in content_type:
@@ -75,7 +68,7 @@ def response_to_xml(result: RequestResult) -> etree.Element:
         else:
             if 'javascript' in content_type:
                 mode = 'javascript'
-            body = frontik.util.decode_string_from_charset(raw_body, try_charsets)
+            body = decode_string_from_charset(raw_body, try_charsets)
 
     except Exception:
         debug_log.exception('cannot parse response body')
@@ -175,7 +168,7 @@ def request_to_curl_string(request: RequestBuilder) -> str:
         curl_data_string = f"--data '{request_body}'" if request_body else ''
 
     def _format_header(key: str) -> str:
-        header_value = frontik.util.any_to_unicode(curl_headers[key])
+        header_value = any_to_unicode(curl_headers[key])
         return f"-H '{key}: {_escape_apos(header_value)}'"
 
     return "{echo} curl -X {method} '{url}' {headers} {data}".format(
@@ -417,7 +410,7 @@ class DebugTransform:
         debug_log_data.set('stages-total', _format_number((time.time() - tornado_request._start_time) * 1000))
 
         try:
-            debug_log_data.append(E.versions(_pretty_print_xml(get_frontik_and_apps_versions(self.application))))
+            debug_log_data.append(E.versions(_pretty_print_xml(self.application.get_frontik_and_apps_versions())))
         except Exception:
             debug_log.exception('cannot add version information')
             debug_log_data.append(E.versions('failed to get version information'))
@@ -477,13 +470,22 @@ class DebugTransform:
 class DebugMode:
     def __init__(self, tornado_request: HTTPServerRequest) -> None:
         self.debug_value = get_cookie_or_param_from_request(tornado_request, 'debug')
+        self.notpl = get_cookie_or_param_from_request(tornado_request, 'notpl')
+        self.notrl = get_cookie_or_param_from_request(tornado_request, 'notrl')
+        self.noxsl = get_cookie_or_param_from_request(tornado_request, 'noxsl')
         self.mode_values = self.debug_value.split(',') if self.debug_value is not None else ''
         self.inherited = tornado_request.headers.get(DEBUG_HEADER_NAME, None)
         self.pass_debug = False
         self.enabled = False
         self.profile_xslt = False
         self.failed_auth_header: Optional[str] = None
-        self.need_auth = self.debug_value is not None or self.inherited
+        self.need_auth = (
+            self.debug_value is not None
+            or self.inherited
+            or self.notpl is not None
+            or self.notrl is not None
+            or self.noxsl is not None
+        )
 
         if self.inherited:
             debug_log.debug('debug mode is inherited due to %s request header', DEBUG_HEADER_NAME)
@@ -513,21 +515,3 @@ class DebugMode:
 
     def auth_failed(self) -> bool:
         return self.failed_auth_header is not None
-
-
-def get_frontik_and_apps_versions(application: FrontikApplication) -> etree.Element:
-    versions = etree.Element('versions')
-
-    etree.SubElement(versions, 'frontik').text = frontik_version
-    etree.SubElement(versions, 'tornado').text = tornado.version
-    etree.SubElement(versions, 'lxml.etree.LXML').text = '.'.join(str(x) for x in etree.LXML_VERSION)
-    etree.SubElement(versions, 'lxml.etree.LIBXML').text = '.'.join(str(x) for x in etree.LIBXML_VERSION)
-    etree.SubElement(versions, 'lxml.etree.LIBXSLT').text = '.'.join(str(x) for x in etree.LIBXSLT_VERSION)
-    etree.SubElement(versions, 'aiohttp').text = aiohttp.__version__
-    etree.SubElement(versions, 'python').text = sys.version.replace('\n', '')
-    etree.SubElement(versions, 'event_loop').text = str(type(asyncio.get_event_loop())).split("'")[1]
-    etree.SubElement(versions, 'application', name=application.app_module_name).extend(
-        application.application_version_xml()
-    )
-
-    return versions

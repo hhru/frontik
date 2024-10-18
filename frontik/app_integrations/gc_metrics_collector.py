@@ -30,9 +30,6 @@ class GCMetricsCollectorIntegration(Integration):
         periodic_callback.start()
         return None
 
-    def initialize_handler(self, handler):
-        pass
-
 
 class GCStats:
     __slots__ = ('count', 'duration', 'max_stw', 'start')

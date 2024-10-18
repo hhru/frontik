@@ -1,41 +1,53 @@
 import socket
 
+import pytest
 from tornado.escape import to_unicode
 
-from tests import FRONTIK_ROOT
-from tests.instances import FrontikTestInstance
+from frontik.app import FrontikApplication
+from frontik.dependencies import StatsDClientT
+from frontik.options import options
+from frontik.routing import router
+from frontik.testing import FrontikTestBase
 
-FRONTIK_RUN = f'{FRONTIK_ROOT}/frontik-test'
-TEST_PROJECTS = f'{FRONTIK_ROOT}/tests/projects'
+
+@router.get('/statsd')
+async def get_page(statsd_client: StatsDClientT):
+    statsd_client.count('count_metric', 10, tag1='tag1', tag2='tag2')
+    statsd_client.gauge('gauge_metric', 100, tag='tag3')
+    statsd_client.time('time_metric', 1000, tag='tag4')
 
 
-class TestStatsdIntegration:
-    def test_send_to_statsd(self):
+class TestStatsdIntegration(FrontikTestBase):
+    @pytest.fixture(scope='class')
+    def frontik_app(self) -> FrontikApplication:
         statsd_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         statsd_socket.settimeout(0.1)
         statsd_socket.bind(('', 0))
 
         port = statsd_socket.getsockname()[1]
 
-        test_app = FrontikTestInstance(
-            f'{FRONTIK_RUN} --app_class=tests.projects.test_app.TestApplication '
-            f'--config={TEST_PROJECTS}/frontik_debug.cfg '
-            f'--statsd_host=127.0.0.1 --consul_enabled=False --statsd_port={port}',
-        )
+        options.service_name = 'test_app'
+        options.statsd_host = '127.0.0.1'
+        options.statsd_port = port
 
-        test_app.get_page('statsd')
-        test_app.stop()
+        app = FrontikApplication()
+        app.statsd_socket = statsd_socket
+
+        return app
+
+    async def test_send_to_statsd(self):
+        await self.fetch('/statsd')
 
         metrics = []
         try:
-            chunk = statsd_socket.recv(1024 * 24)
+            chunk = self.app.statsd_socket.recv(1024 * 24)
             while chunk:
                 metrics.append(to_unicode(chunk))
-                chunk = statsd_socket.recv(1024 * 24)
+                chunk = self.app.statsd_socket.recv(1024 * 24)
         except socket.timeout:
             pass
         finally:
-            statsd_socket.close()
+            self.app.statsd_socket.close()
 
         metrics = '\n'.join(metrics).split('\n')
 

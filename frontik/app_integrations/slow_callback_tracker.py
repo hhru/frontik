@@ -37,9 +37,6 @@ class SlowCallbackTrackerIntegration(Integration):
 
         return None
 
-    def initialize_handler(self, handler):
-        pass
-
 
 def wrap_handle_with_time_logging(app: FrontikApplication, slow_tasks_logger: logging.Logger) -> None:
     old_run = asyncio.Handle._run
