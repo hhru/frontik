@@ -44,6 +44,8 @@ class FrontikTestBase:
         options.port = sock.getsockname()[1]
 
         await frontik_app.init()
+        with frontik_app.worker_state.count_down_lock:
+            frontik_app.worker_state.init_workers_count_down.value -= 1
 
         http_server = HTTPServer(frontik_app, xheaders=options.xheaders, max_body_size=options.max_body_size)
         http_server.add_sockets([sock])

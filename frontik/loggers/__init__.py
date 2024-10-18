@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Optional, Union
 from tornado.log import LogFormatter
 
 from frontik import request_context
-from frontik.json_builder import json_encode
+from frontik.util.json import json_encode
 from frontik.options import options
 
 if TYPE_CHECKING:

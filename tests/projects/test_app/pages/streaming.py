@@ -3,7 +3,7 @@ from typing import AsyncIterable
 from fastapi.responses import StreamingResponse
 
 from frontik.media_types import TEXT_PLAIN
-from frontik.routing import plain_router as router
+from frontik.routing import router as router
 
 
 @router.get('/stream')

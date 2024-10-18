@@ -3,11 +3,11 @@ from tornado.web import HTTPError
 
 from frontik import media_types
 from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import plain_router
+from frontik.routing import router
 from tests.projects.balancer_app import get_server
 
 
-@plain_router.get('/speculative_retry', cls=PageHandler)
+@router.get('/speculative_retry', cls=PageHandler)
 async def get_page(handler=get_current_handler()):
     upstreams = handler.application.service_discovery.get_upstreams_unsafe()
     upstreams['speculative_retry'] = Upstream(
@@ -31,7 +31,7 @@ async def get_page(handler=get_current_handler()):
     handler.text = result.data
 
 
-@plain_router.put('/speculative_retry', cls=PageHandler)
+@router.put('/speculative_retry', cls=PageHandler)
 async def put_page(handler=get_current_handler()):
     handler.set_header('Content-Type', media_types.TEXT_PLAIN)
     handler.text = 'result'

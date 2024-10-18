@@ -28,7 +28,7 @@ class FrontikResponse:
         self.status_code = status_code
         self.body = body
         self._reason = reason
-        self.data_written = False
+        self.data_written = False  # data_written === у нас стриминг и уже начали писать данные
 
     @property
     def reason(self) -> str:
