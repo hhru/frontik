@@ -131,5 +131,5 @@ class TestFrontikTesting(FrontikTestBase):
         assert server_b_span.attributes is not None
         assert server_b_span.attributes.get(SpanAttributes.CODE_FUNCTION) == 'get_page_b'
         assert server_b_span.attributes.get(SpanAttributes.CODE_NAMESPACE) == 'tests.test_telemetry'
-        assert server_b_span.attributes.get(SpanAttributes.USER_AGENT_ORIGINAL) == 'app'
+        assert server_b_span.attributes.get(SpanAttributes.USER_AGENT_ORIGINAL) == self.app.app_name
         assert server_b_span.attributes.get(SpanAttributes.HTTP_ROUTE) == '/page_b'
