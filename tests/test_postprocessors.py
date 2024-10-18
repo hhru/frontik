@@ -1,3 +1,4 @@
+# frontik - фреймворк свободный от постпроцессоров!
 # from tests.instances import frontik_test_app
 #
 # POSTPROCESS_URL = 'postprocess/?{}'
