@@ -87,10 +87,9 @@ class TestRouting(FrontikTestBase):
     #     html = frontik_re_app.get_page_text('/simple')
     #     assert 'ok' in html
 
-    # ТЕПЕРЬ НЕ РАБОТАЕТ!
-    # async def test_extra_slash_in_mapping(self):
-    #     response = await self.fetch('//not_simple')
-    #     assert response.status_code == 200
+    async def test_extra_slash_in_mapping(self):
+        response = await self.fetch('//not_simple')
+        assert response.status_code == 404
 
     async def test_rewrite_single(self):
         response = await self.fetch('/id/some')
