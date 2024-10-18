@@ -32,27 +32,27 @@ class TestHttpError:
     def test_no_retry_error(self):
         result = frontik_balancer_app.get_page(self.make_url('/no_retry_error'))
         assert result.status_code == 200
-        assert result.content == b'no retry error'
+        assert result.content == b'"no retry error"'
 
     def test_no_retry_timeout(self):
         result = frontik_balancer_app.get_page(self.make_url('/no_retry_timeout'))
         assert result.status_code == 200
-        assert result.content == b'no retry timeout'
+        assert result.content == b'"no retry timeout"'
 
     def test_no_available_backend(self):
         result = frontik_balancer_app.get_page(self.make_url('/no_available_backend'))
         assert result.status_code == 200
-        assert result.content == b'no backend available'
+        assert result.content == b'"no backend available"'
 
     def test_retry_on_timeout(self):
         result = frontik_balancer_app.get_page(self.make_url('/retry_on_timeout'))
         assert result.status_code == 200
-        assert result.content == b'result'
+        assert result.content == b'"result"'
 
     def test_retry_non_idempotent(self):
         result = frontik_balancer_app.get_page(self.make_url('/retry_non_idempotent_503'))
         assert result.status_code == 200
-        assert result.content == b'result'
+        assert result.content == b'"result"'
 
     def test_different_datacenter(self):
         result = frontik_balancer_app.get_page(self.make_url('/different_datacenter'))
@@ -62,7 +62,7 @@ class TestHttpError:
     def test_requests_count(self):
         result = frontik_balancer_app.get_page(self.make_url('/requests_count'))
         assert result.status_code == 200
-        assert result.content == b'3'
+        assert result.content == b'"3"'
 
     def test_slow_start(self):
         result = frontik_balancer_app.get_page(self.make_url('/slow_start'))
@@ -77,7 +77,7 @@ class TestHttpError:
     def test_speculative_retry(self):
         result = frontik_balancer_app.get_page(self.make_url('/speculative_retry'))
         assert result.status_code == 200
-        assert result.content == b'result'
+        assert result.content == b'"result"'
 
     def test_speculative_no_retry(self):
         result = frontik_balancer_app.get_page(self.make_url('/speculative_no_retry'))
@@ -87,7 +87,7 @@ class TestHttpError:
     def test_upstream_profile_with_retry(self):
         result = frontik_balancer_app.get_page(self.make_url('/profile_with_retry'))
         assert result.status_code == 200
-        assert result.content == b'result'
+        assert result.content == b'"result"'
 
     def test_upstream_profile_without_retry(self):
         result = frontik_balancer_app.get_page(self.make_url('/profile_without_retry'))

@@ -14,10 +14,10 @@ async def get_page(request: Request, http_client: HttpClientT):
     no_available_backend = 'no_available_backend'
     upstreams[no_available_backend] = Upstream(no_available_backend, {}, [])
 
-    request = http_client.post_url(no_available_backend, no_available_backend)
+    req = http_client.post_url(no_available_backend, no_available_backend)
     check_all_requests_done(request, no_available_backend)
 
-    result = await request
+    result = await req
 
     if result.exc is not None and isinstance(result.exc, NoAvailableServerException):
         return 'no backend available'

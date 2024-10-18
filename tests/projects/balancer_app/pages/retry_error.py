@@ -20,7 +20,7 @@ async def get_page(request: Request, http_client: HttpClientT):
     text = ''
 
     requests = [
-        # http_client.put_url(retry_error, retry_error),
+        http_client.put_url(retry_error, retry_error),
         http_client.put_url(retry_error, retry_error),
         http_client.put_url(retry_error, retry_error),
     ]

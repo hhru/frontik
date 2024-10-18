@@ -1,6 +1,5 @@
 import asyncio
 
-from frontik import media_types
 from frontik.routing import router
 
 

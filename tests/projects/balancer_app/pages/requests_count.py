@@ -16,10 +16,10 @@ async def get_page(request: Request, http_client: HttpClientT):
     upstreams[requests_count_async] = Upstream(requests_count_async, {}, [get_server(request, 'normal')])
     text = ''
 
-    result1 = http_client.post_url(requests_count_async, requests_count_async)
-    result2 = http_client.post_url(requests_count_async, requests_count_async)
+    result1 = http_client.post_url(requests_count_async, 'requests_count')
+    result2 = http_client.post_url(requests_count_async, 'requests_count')
     upstreams[requests_count_async].update(Upstream(requests_count_async, {}, [get_server(request, 'normal')]))
-    result3 = http_client.post_url(requests_count_async, requests_count_async)
+    result3 = http_client.post_url(requests_count_async, 'requests_count')
 
     await asyncio.sleep(0)
 

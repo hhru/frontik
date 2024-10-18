@@ -1,8 +1,7 @@
-from tornado.web import HTTPError
-
+from fastapi import HTTPException
 from frontik.routing import router
 
 
 @router.put('/profile_without_retry')
 async def put_page():
-    raise HTTPError(503, 'broken')
+    raise HTTPException(503, 'broken')
