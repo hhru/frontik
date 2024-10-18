@@ -3,7 +3,6 @@ from http_client.request_response import NoAvailableServerException
 from tornado.web import HTTPError
 
 from fastapi import Request
-from frontik import media_types
 from frontik.dependencies import HttpClientT
 from frontik.routing import router
 from tests.projects.balancer_app import get_server
@@ -16,11 +15,11 @@ async def get_page(request: Request, http_client: HttpClientT):
     normal_server = get_server(request, 'normal')
     normal_server.datacenter = 'dc2'
 
-    upstream = Upstream('different_datacenter', {}, [free_server, normal_server])
-    request.app.service_discovery.get_upstreams_unsafe()['different_datacenter'] = upstream
+    different_datacenter = 'different_datacenter'
+    upstream = Upstream(different_datacenter, {}, [free_server, normal_server])
+    request.app.service_discovery.get_upstreams_unsafe()[different_datacenter] = upstream
 
-    u = request.url
-    result = await http_client.post_url('different_datacenter', u.path + '?' + u.query)
+    result = await http_client.post_url(different_datacenter, different_datacenter)
     for server in upstream.servers:
         if server.stat_requests != 0:
             raise HTTPError(500)

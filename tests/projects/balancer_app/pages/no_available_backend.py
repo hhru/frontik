@@ -11,18 +11,18 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 @router.get('/no_available_backend')
 async def get_page(request: Request, http_client: HttpClientT):
     upstreams = request.app.service_discovery.get_upstreams_unsafe()
-    upstreams['no_available_backend'] = Upstream('no_available_backend', {}, [])
+    no_available_backend = 'no_available_backend'
+    upstreams[no_available_backend] = Upstream(no_available_backend, {}, [])
 
-    u = request.url
-    request = http_client.post_url('no_available_backend', u.path + '?' + u.query)
-    check_all_requests_done(request, 'no_available_backend')
+    request = http_client.post_url(no_available_backend, no_available_backend)
+    check_all_requests_done(request, no_available_backend)
 
     result = await request
 
     if result.exc is not None and isinstance(result.exc, NoAvailableServerException):
         return 'no backend available'
 
-    check_all_requests_done(request, 'no_available_backend')
+    check_all_requests_done(request, no_available_backend)
     return result.text
 
 

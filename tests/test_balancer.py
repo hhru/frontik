@@ -22,12 +22,12 @@ class TestHttpError:
     def test_retry_connect_timeout(self):
         result = frontik_balancer_app.get_page(self.make_url('/retry_connect_timeout'))
         assert result.status_code == 200
-        assert result.content == b'resultresultresult'
+        assert result.content == b'"resultresultresult"'
 
     def test_retry_error(self):
         result = frontik_balancer_app.get_page(self.make_url('/retry_error'))
         assert result.status_code == 200
-        assert result.content == b'resultresultresult'
+        assert result.content == b'"resultresultresult"'
 
     def test_no_retry_error(self):
         result = frontik_balancer_app.get_page(self.make_url('/no_retry_error'))
@@ -67,12 +67,12 @@ class TestHttpError:
     def test_slow_start(self):
         result = frontik_balancer_app.get_page(self.make_url('/slow_start'))
         assert result.status_code == 200
-        assert result.content == b'6'
+        assert result.content == b'"6"'
 
     def test_retry_count_limit(self):
         result = frontik_balancer_app.get_page(self.make_url('/retry_count_limit'))
         assert result.status_code == 200
-        assert result.content == b'1'
+        assert result.content == b'"1"'
 
     def test_speculative_retry(self):
         result = frontik_balancer_app.get_page(self.make_url('/speculative_retry'))
@@ -82,7 +82,7 @@ class TestHttpError:
     def test_speculative_no_retry(self):
         result = frontik_balancer_app.get_page(self.make_url('/speculative_no_retry'))
         assert result.status_code == 200
-        assert result.content == b'no retry'
+        assert result.content == b'"no retry"'
 
     def test_upstream_profile_with_retry(self):
         result = frontik_balancer_app.get_page(self.make_url('/profile_with_retry'))
@@ -92,4 +92,4 @@ class TestHttpError:
     def test_upstream_profile_without_retry(self):
         result = frontik_balancer_app.get_page(self.make_url('/profile_without_retry'))
         assert result.status_code == 200
-        assert result.content == b'no retry'
+        assert result.content == b'"no retry"'

@@ -1,15 +1,18 @@
 from http_client.balancing import Upstream, UpstreamConfig
 
-from frontik.handler import PageHandler, get_current_handler
+from fastapi import Request
+
+from frontik.dependencies import HttpClientT
 from frontik.routing import router
 from tests.instances import find_free_port
 from tests.projects.balancer_app import get_server_with_port
 
 
-@router.get('/retry_count_limit', cls=PageHandler)
-async def get_page(handler=get_current_handler()):
+@router.get('/retry_count_limit')
+async def get_page(request: Request, http_client: HttpClientT):
+    retry_count_limit = 'retry_count_limit'
     upstream = Upstream(
-        'retry_count_limit',
+        retry_count_limit,
         {Upstream.DEFAULT_PROFILE: UpstreamConfig(max_tries=3)},
         [
             get_server_with_port(find_free_port(11000, 20000)),
@@ -19,11 +22,9 @@ async def get_page(handler=get_current_handler()):
         ],
     )
 
-    upstreams = handler.application.service_discovery.get_upstreams_unsafe()
-    upstreams['retry_count_limit'] = upstream
+    upstreams = request.app.service_discovery.get_upstreams_unsafe()
+    upstreams[retry_count_limit] = upstream
 
-    handler.text = ''
+    await http_client.get_url(retry_count_limit, retry_count_limit)
 
-    await handler.get_url('retry_count_limit', handler.path)
-
-    handler.text = str(sum(server.stat_requests for server in upstream.servers))
+    return str(sum(server.stat_requests for server in upstream.servers))

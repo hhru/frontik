@@ -12,22 +12,22 @@ from tests.projects.balancer_app.pages import check_all_servers_were_occupied
 @router.get('/retry_connect')
 async def get_page(request: Request, http_client: HttpClientT):
     upstreams = request.app.service_discovery.get_upstreams_unsafe()
-    upstreams['retry_connect'] = Upstream(
-        'retry_connect',
+    retry_connect = 'retry_connect'
+    upstreams[retry_connect] = Upstream(
+        retry_connect,
         {},
         [get_server(request, 'free'), get_server(request, 'normal')],
     )
     text = ''
 
-    u = request.url
     requests = [
-        http_client.post_url('retry_connect', u.path + '?' + u.query),
-        http_client.post_url('retry_connect', u.path + '?' + u.query),
-        http_client.post_url('retry_connect', u.path + '?' + u.query),
+        http_client.post_url(retry_connect, retry_connect),
+        http_client.post_url(retry_connect, retry_connect),
+        http_client.post_url(retry_connect, retry_connect),
     ]
     results = await gather_list(*requests)
 
-    check_all_servers_were_occupied(request, 'retry_connect')
+    check_all_servers_were_occupied(request, retry_connect)
 
     for result in results:
         if result.failed or result.data is None:
