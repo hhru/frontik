@@ -1,10 +1,9 @@
 import http
 from http.client import HTTPException
-from typing import Optional
 
 import pytest
 
-from fastapi import HTTPException, Request, Response
+from fastapi import HTTPException, Request
 from frontik.app import FrontikApplication
 from frontik.auth import check_debug_auth_by_headers
 from frontik.options import options
