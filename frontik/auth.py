@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 import http.client
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Mapping, MutableMapping
 
 from tornado.escape import to_unicode
 from tornado.web import Finish
@@ -21,8 +21,7 @@ class DebugUnauthorizedError(Finish):
     pass
 
 
-def passed_basic_auth(tornado_request: httputil.HTTPServerRequest, login: Optional[str], passwd: Optional[str]) -> bool:
-    auth_header = tornado_request.headers.get('Authorization')
+def passed_basic_auth(auth_header: str, login: Optional[str], passwd: Optional[str]) -> bool:
     if auth_header and auth_header.startswith('Basic '):
         method, auth_b64 = auth_header.split(' ')
         try:
@@ -34,21 +33,29 @@ def passed_basic_auth(tornado_request: httputil.HTTPServerRequest, login: Option
     return False
 
 
-def check_debug_auth(
-    tornado_request: httputil.HTTPServerRequest, login: Optional[str], password: Optional[str]
+def check_debug_auth_by_headers(
+        headers: Mapping | MutableMapping, login: Optional[str], password: Optional[str]
 ) -> Optional[str]:
-    debug_auth_header = tornado_request.headers.get(DEBUG_AUTH_HEADER_NAME)
+    debug_auth_header = headers.get(DEBUG_AUTH_HEADER_NAME)
     if debug_auth_header is not None:
         debug_access = debug_auth_header == f'{login}:{password}'
         if not debug_access:
             return f'{DEBUG_AUTH_HEADER_NAME}-Header realm="Secure Area"'
     else:
-        debug_access = passed_basic_auth(tornado_request, login, password)
+        auth_header = headers.get('Authorization')
+        debug_access = passed_basic_auth(auth_header, login, password)
         if not debug_access:
             return 'Basic realm="Secure Area"'
     return None
 
 
+def check_debug_auth(
+    tornado_request: httputil.HTTPServerRequest, login: Optional[str], password: Optional[str]
+) -> Optional[str]:
+    return check_debug_auth_by_headers(tornado_request.headers, login, password)
+
+
+# TODO в fph, а тут адаптировать для fastapi request?
 def check_debug_auth_or_finish(
     handler: PageHandler, login: Optional[str] = None, password: Optional[str] = None
 ) -> None:
