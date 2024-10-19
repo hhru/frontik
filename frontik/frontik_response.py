@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from typing import Mapping
+from typing import Mapping, Optional, Union
 
 from tornado import httputil
 from tornado.httputil import HTTPHeaders
@@ -13,9 +11,9 @@ class FrontikResponse:
     def __init__(
         self,
         status_code: int,
-        headers: dict[str, str] | None | HTTPHeaders = None,
+        headers: Union[dict[str, str], None, HTTPHeaders] = None,
         body: bytes = b'',
-        reason: str | None = None,
+        reason: Optional[str] = None,
     ):
         self.headers = HTTPHeaders(get_default_headers())  # type: ignore
 
@@ -35,7 +33,7 @@ class FrontikResponse:
         return self._reason or httputil.responses.get(self.status_code, 'Unknown')
 
 
-def get_default_headers() -> Mapping[str, str | None]:
+def get_default_headers() -> Mapping[str, Optional[str]]:
     request_id = request_context.get_request_id() or ''
     return {
         'Server': f'Frontik/{frontik_version}',

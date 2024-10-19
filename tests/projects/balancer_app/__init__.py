@@ -1,11 +1,11 @@
+from fastapi import Request
 from http_client.balancing import Server
 
 from frontik.app import FrontikApplication
-from frontik.handler import PageHandler
 
 
-def get_server(handler: PageHandler, type: str) -> Server:
-    return Server(f'127.0.0.1:{handler.get_query_argument(type)}', 'dest_host', dc='Test')
+def get_server(request: Request, type: str) -> Server:
+    return Server(f'127.0.0.1:{request.query_params.get(type)}', 'dest_host', dc='Test')
 
 
 def get_server_with_port(port: int) -> Server:
@@ -17,4 +17,6 @@ def get_non_listening_server() -> Server:
 
 
 class TestApplication(FrontikApplication):
-    pass
+    async def init(self) -> None:
+        await super().init()
+        self.asgi_app.service_discovery = self.service_discovery  # type: ignore

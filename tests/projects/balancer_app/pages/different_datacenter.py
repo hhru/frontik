@@ -1,36 +1,35 @@
+from fastapi import Request
 from http_client.balancing import Upstream
 from http_client.request_response import NoAvailableServerException
 from tornado.web import HTTPError
 
-from frontik import media_types
-from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import plain_router
+from frontik.dependencies import HttpClientT
+from frontik.routing import router
 from tests.projects.balancer_app import get_server
 
 
-@plain_router.get('/different_datacenter', cls=PageHandler)
-async def get_page(handler=get_current_handler()):
-    free_server = get_server(handler, 'free')
+@router.get('/different_datacenter')
+async def get_page(request: Request, http_client: HttpClientT) -> str:
+    free_server = get_server(request, 'free')
     free_server.datacenter = 'dc1'
-    normal_server = get_server(handler, 'normal')
+    normal_server = get_server(request, 'normal')
     normal_server.datacenter = 'dc2'
 
-    upstream = Upstream('different_datacenter', {}, [free_server, normal_server])
-    handler.application.service_discovery.get_upstreams_unsafe()['different_datacenter'] = upstream
+    different_datacenter = 'different_datacenter'
+    upstream = Upstream(different_datacenter, {}, [free_server, normal_server])
+    request.app.service_discovery.get_upstreams_unsafe()[different_datacenter] = upstream
 
-    result = await handler.post_url('different_datacenter', handler.path)
+    result = await http_client.post_url(different_datacenter, different_datacenter)
     for server in upstream.servers:
         if server.stat_requests != 0:
             raise HTTPError(500)
 
     if result.exc is not None and isinstance(result.exc, NoAvailableServerException):
-        handler.text = 'no backend available'
-        return
+        return 'no backend available'
 
-    handler.text = result.data
+    return result.data
 
 
-@plain_router.post('/different_datacenter', cls=PageHandler)
-async def post_page(handler=get_current_handler()):
-    handler.set_header('Content-Type', media_types.TEXT_PLAIN)
-    handler.text = 'result'
+@router.post('/different_datacenter')
+async def post_page():
+    return 'result'

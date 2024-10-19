@@ -1,2 +1,1 @@
-msg = 'broken config'
-raise Exception(msg)
+raise Exception('broken config')

@@ -1,22 +1,22 @@
 import logging
 
-from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import plain_router
+from frontik.routing import router
 
+handler_logger = logging.getLogger('handler')
 custom_logger = logging.getLogger('custom_logger')
 
 
-@plain_router.get('/log', cls=PageHandler)
-async def get_page(handler=get_current_handler()):
-    handler.log.debug('debug')
-    handler.log.info('info')
+@router.get('/log')
+async def get_page():
+    handler_logger.debug('debug')
+    handler_logger.info('info')
 
     try:
         raise Exception('test')
     except Exception:
-        handler.log.exception('exception')
-        handler.log.error('error', stack_info=True)
+        handler_logger.exception('exception')
+        handler_logger.error('error', stack_info=True)
 
-    handler.log.critical('critical')
+    handler_logger.critical('critical')
 
     custom_logger.fatal('fatal')

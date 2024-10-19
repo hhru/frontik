@@ -2,7 +2,6 @@ import asyncio
 import contextlib
 import errno
 import fcntl
-import gc
 import logging
 import multiprocessing
 import os
@@ -23,6 +22,7 @@ from threading import Lock, Thread
 from typing import Any, Optional
 
 from frontik.options import options
+from frontik.util.gc import enable_gc
 
 log = logging.getLogger('fork')
 multiprocessing.set_start_method('fork')
@@ -80,7 +80,7 @@ def fork_workers(
     for worker_id in range(num_workers):
         _start_child(worker_id, worker_state, shared_data, lock, worker_function_wrapped)
 
-    gc.enable()
+    enable_gc()
     timeout = time.time() + options.init_workers_timeout_sec
     while worker_state.init_workers_count_down.value > 0:
         if time.time() > timeout:
@@ -183,7 +183,7 @@ def _errno_from_exception(e: BaseException) -> Optional[int]:
 def _worker_function_wrapper(worker_function, worker_listener_handler, read_fd, write_fd, worker_state, worker_id):
     os.close(write_fd)
     _set_pipe_size(read_fd, worker_id)
-    gc.enable()
+    enable_gc()
     worker_state.is_master = False
 
     with suppress(Exception):

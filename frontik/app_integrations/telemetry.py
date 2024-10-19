@@ -104,9 +104,6 @@ class TelemetryIntegration(Integration):
         self.aiohttp_instrumentor.uninstrument()
         return None
 
-    def initialize_handler(self, handler):
-        pass
-
 
 def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams) -> None:
     if not span or not span.is_recording():

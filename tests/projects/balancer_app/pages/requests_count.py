@@ -1,39 +1,39 @@
 import asyncio
 
+from fastapi import Request
 from http_client.balancing import Upstream
 
-from frontik import media_types
-from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import plain_router
+from frontik.dependencies import HttpClientT
+from frontik.routing import router
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_occupied
 
 
-@plain_router.get('/requests_count', cls=PageHandler)
-async def get_page(handler=get_current_handler()):
-    upstreams = handler.application.service_discovery.get_upstreams_unsafe()
-    upstreams['requests_count_async'] = Upstream('requests_count_async', {}, [get_server(handler, 'normal')])
-    handler.text = ''
+@router.get('/requests_count')
+async def get_page(request: Request, http_client: HttpClientT) -> str:
+    upstreams = request.app.service_discovery.get_upstreams_unsafe()
+    requests_count_async = 'requests_count_async'
+    upstreams[requests_count_async] = Upstream(requests_count_async, {}, [get_server(request, 'normal')])
+    text = ''
 
-    result1 = handler.post_url('requests_count_async', handler.path)
-    result2 = handler.post_url('requests_count_async', handler.path)
-    upstreams['requests_count_async'].update(Upstream('requests_count_async', {}, [get_server(handler, 'normal')]))
-    result3 = handler.post_url('requests_count_async', handler.path)
+    result1 = http_client.post_url(requests_count_async, 'requests_count')
+    result2 = http_client.post_url(requests_count_async, 'requests_count')
+    upstreams[requests_count_async].update(Upstream(requests_count_async, {}, [get_server(request, 'normal')]))
+    result3 = http_client.post_url(requests_count_async, 'requests_count')
 
     await asyncio.sleep(0)
 
-    check_all_servers_occupied(handler, 'requests_count_async')
+    check_all_servers_occupied(request, requests_count_async)
 
     _, _, response = await asyncio.gather(result1, result2, result3)
 
-    handler.text = response.data
+    check_all_requests_done(request, requests_count_async)
 
-    check_all_requests_done(handler, 'requests_count_async')
+    return response.data
 
 
-@plain_router.post('/requests_count', cls=PageHandler)
-async def post_page(handler=get_current_handler()):
-    handler.set_header('Content-Type', media_types.TEXT_PLAIN)
-    upstreams = handler.application.service_discovery.get_upstreams_unsafe()
+@router.post('/requests_count')
+async def post_page(request: Request) -> str:
+    upstreams = request.app.service_discovery.get_upstreams_unsafe()
     servers = upstreams['requests_count_async'].servers
-    handler.text = str(servers[0].stat_requests)
+    return str(servers[0].stat_requests)

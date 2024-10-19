@@ -16,7 +16,7 @@ def test_mypy():
 def test_ruff():
     modules = ' '.join(MODULES)
     opts = ''
-    completed_proc = subprocess.run(f'cd {ROOT}; ruff {opts} {modules}', capture_output=True, shell=True)
+    completed_proc = subprocess.run(f'cd {ROOT}; ruff check {opts} {modules}', capture_output=True, shell=True)
     code = completed_proc.returncode
     out = completed_proc.stdout.decode('utf-8')
     assert code == 0, out
@@ -24,7 +24,7 @@ def test_ruff():
 
 def test_ruff_format():
     modules = ' '.join(MODULES)
-    opts = ''
+    opts = '--check'
     completed_proc = subprocess.run(f'cd {ROOT}; ruff format {opts} {modules}', capture_output=True, shell=True)
     code = completed_proc.returncode
     out = completed_proc.stdout.decode('utf-8')

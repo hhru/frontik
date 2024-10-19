@@ -9,7 +9,6 @@ if TYPE_CHECKING:
     from asyncio import Future
 
     from frontik.app import FrontikApplication
-    from frontik.handler import PageHandler
 
 integrations_logger = logging.getLogger('integrations')
 
@@ -21,8 +20,8 @@ class Integration:
     def deinitialize_app(self, app: FrontikApplication) -> Optional[Future]:
         pass  # pragma: no cover
 
-    def initialize_handler(self, handler: PageHandler) -> None:
-        raise NotImplementedError()  # pragma: no cover
+    def initialize_handler(self, handler):
+        pass
 
 
 def load_integrations(app: FrontikApplication) -> tuple[list[Integration], list[Future]]:
