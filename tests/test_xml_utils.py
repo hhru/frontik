@@ -6,7 +6,7 @@ import pytest
 from lxml import etree
 from lxml_asserts.testcase import LxmlTestCaseMixin
 
-from frontik.xml_util import dict_to_xml, xml_from_file, xml_to_dict
+from frontik.util.xml import dict_to_xml, xml_from_file, xml_to_dict
 
 XML = etree.XML(
     """

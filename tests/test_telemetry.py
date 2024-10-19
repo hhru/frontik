@@ -10,9 +10,9 @@ from opentelemetry.semconv.trace import SpanAttributes
 from frontik import request_context
 from frontik.app import FrontikApplication
 from frontik.app_integrations.telemetry import FrontikIdGenerator, get_netloc, make_otel_provider
-from frontik.handler import PageHandler, get_current_handler
+from frontik.dependencies import HttpClientT
 from frontik.options import options
-from frontik.routing import plain_router
+from frontik.routing import router
 from frontik.testing import FrontikTestBase
 
 dummy_request = Request({'type': 'http'})
@@ -66,15 +66,14 @@ class TestTelemetry:
         assert 'ftp:' == get_netloc('ftp://hh.ru')
 
 
-@plain_router.get('/page_a', cls=PageHandler)
-async def get_page_a(handler=get_current_handler()):
-    res = await handler.get_url(handler.get_header('host'), '/page_b')
-    handler.json.put(res)
+@router.get('/page_a')
+async def get_page_a(request: Request, http_client: HttpClientT) -> None:
+    await http_client.get_url(request.headers.get('host'), '/page_b')
 
 
-@plain_router.get('/page_b', cls=PageHandler)
-async def get_page_b(handler=get_current_handler()):
-    handler.json.put({})
+@router.get('/page_b')
+async def get_page_b() -> dict:
+    return {}
 
 
 SPAN_STORAGE: list[ReadableSpan] = []
@@ -132,5 +131,5 @@ class TestFrontikTesting(FrontikTestBase):
         assert server_b_span.attributes is not None
         assert server_b_span.attributes.get(SpanAttributes.CODE_FUNCTION) == 'get_page_b'
         assert server_b_span.attributes.get(SpanAttributes.CODE_NAMESPACE) == 'tests.test_telemetry'
-        assert server_b_span.attributes.get(SpanAttributes.USER_AGENT_ORIGINAL) == 'app'
+        assert server_b_span.attributes.get(SpanAttributes.USER_AGENT_ORIGINAL) == self.app.app_name
         assert server_b_span.attributes.get(SpanAttributes.HTTP_ROUTE) == '/page_b'

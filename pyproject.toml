@@ -22,7 +22,7 @@ lxml = '4.9.2'
 pydantic = '^2.3.0'
 tornado = '6.3.3'
 orjson = '*'
-http-client = {git = 'https://github.com/hhru/balancing-http-client.git', tag = '2.1.19'}
+http-client = {git = 'https://github.com/hhru/balancing-http-client.git', tag = '2.1.20'}
 python-consul2-hh = {git = 'https://github.com/hhru/python-consul2', tag = 'v0.2.10'}
 opentelemetry-sdk = '1.25.0'
 opentelemetry-api = '1.25.0'
@@ -30,7 +30,7 @@ opentelemetry-exporter-otlp-proto-grpc = '1.25.0'
 opentelemetry-instrumentation-fastapi = '0.46b0'
 opentelemetry-instrumentation-aiohttp-client = '0.46b0'
 opentelemetry-instrumentation-tornado = '0.46b0'
-fastapi = '0.105.0'
+fastapi = '0.115.2'
 aiokafka = '0.8.1'
 sentry-sdk = '2.7.0'
 tornado-httpclient-mock = '0.2.3'
@@ -115,11 +115,11 @@ ignore = [
     'DTZ005','FURB101','F841','TRY401','S403','PLR2004','ARG001','BLE001','B009','B010','C901','PLR0912','PLR0911',
     'PLC0415','RUF003','TRY201','TRY300','S301','S102','S104','E721','PLW0603','RET503','PLR6201','PERF203',
     'TRY003','EM102','RUF006','PYI055','RET501','PLC1901','RET502','PLC2801','EM101','B028','A002','DTZ006',
-    'PLR0402','PYI024','PYI024','PLW2901','S701','UP006','UP035',
+    'PLR0402','PYI024','PYI024','PLW2901','S701','UP006','UP035','PT005',
     # should be ignored
     'ANN101','ANN102','D102','D101','CPY001','D100','D107','D106','B008','D103','D104','D105','D202',
     'RET505','RET506','RET504','RSE102','TCH003','TCH002',
-    'COM812', 'ISC001', 'PT015', 'FIX002',
+    'COM812', 'ISC001', 'PT015', 'FIX002'
 ]
 
 [tool.ruff.lint.isort]
@@ -132,11 +132,11 @@ known-third-party = ['http_client']
     'ARG', # Unused function args -> fixtures nevertheless are functionally relevant
     'FBT', # Don't care about booleans as positional arguments in tests, e.g. via @pytest.mark.parametrize()
     'PLR2004', # Magic value used in comparison
-    'S311', # Standard pseudo-random generators are not suitable for cryptographic purposes
-    'PT009', 'PT027', # while using unittest
+    'S311', 'S105',
+    'PT009', 'PT027',
     'ANN201',
     'RUF001',
-    'E722','ERA001',
+    'E722','ERA001','SIM108',
     # should be fixed
     'SIM300','PLC0414','S602','S404','S110','S603','INP001',
 ]

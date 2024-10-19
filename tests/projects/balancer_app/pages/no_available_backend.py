@@ -1,32 +1,30 @@
+from fastapi import Request
 from http_client.balancing import Upstream
 from http_client.request_response import NoAvailableServerException
 
-from frontik import media_types
-from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import plain_router
+from frontik.dependencies import HttpClientT
+from frontik.routing import router
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
-@plain_router.get('/no_available_backend', cls=PageHandler)
-async def get_page(handler=get_current_handler()):
-    upstreams = handler.application.service_discovery.get_upstreams_unsafe()
-    upstreams['no_available_backend'] = Upstream('no_available_backend', {}, [])
+@router.get('/no_available_backend')
+async def get_page(request: Request, http_client: HttpClientT) -> str:
+    upstreams = request.app.service_discovery.get_upstreams_unsafe()
+    no_available_backend = 'no_available_backend'
+    upstreams[no_available_backend] = Upstream(no_available_backend, {}, [])
 
-    request = handler.post_url('no_available_backend', handler.path)
-    check_all_requests_done(handler, 'no_available_backend')
+    req = http_client.post_url(no_available_backend, no_available_backend)
+    check_all_requests_done(request, no_available_backend)
 
-    result = await request
+    result = await req
 
     if result.exc is not None and isinstance(result.exc, NoAvailableServerException):
-        handler.text = 'no backend available'
-        return
+        return 'no backend available'
 
-    handler.text = result.text
-
-    check_all_requests_done(handler, 'no_available_backend')
+    check_all_requests_done(request, no_available_backend)
+    return result.text
 
 
-@plain_router.post('/no_available_backend', cls=PageHandler)
-async def post_page(handler=get_current_handler()):
-    handler.set_header('Content-Type', media_types.TEXT_PLAIN)
-    handler.text = 'result'
+@router.post('/no_available_backend')
+async def post_page():
+    return 'result'

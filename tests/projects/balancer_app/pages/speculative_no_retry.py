@@ -1,23 +1,24 @@
+from fastapi import Request
 from http_client.balancing import Upstream
 
-from frontik import media_types
-from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import plain_router
+from frontik.dependencies import HttpClientT
+from frontik.routing import router
 from tests.projects.balancer_app import get_server
 
 
-@plain_router.get('/speculative_no_retry', cls=PageHandler)
-async def get_page(handler=get_current_handler()):
-    upstreams = handler.application.service_discovery.get_upstreams_unsafe()
-    upstreams['speculative_no_retry'] = Upstream(
-        'speculative_no_retry',
+@router.get('/speculative_no_retry')
+async def get_page(request: Request, http_client: HttpClientT) -> str:
+    upstreams = request.app.service_discovery.get_upstreams_unsafe()
+    speculative_no_retry = 'speculative_no_retry'
+    upstreams[speculative_no_retry] = Upstream(
+        speculative_no_retry,
         {},
-        [get_server(handler, 'broken'), get_server(handler, 'normal')],
+        [get_server(request, 'broken'), get_server(request, 'normal')],
     )
 
-    result = await handler.post_url(
-        'speculative_no_retry',
-        handler.path,
+    result = await http_client.post_url(
+        speculative_no_retry,
+        speculative_no_retry,
         connect_timeout=0.1,
         request_timeout=0.5,
         max_timeout_tries=1,
@@ -25,13 +26,11 @@ async def get_page(handler=get_current_handler()):
     )
 
     if result.failed or result.status_code == 500:
-        handler.text = 'no retry'
-        return
+        return 'no retry'
 
-    handler.text = result.data
+    return result.data
 
 
-@plain_router.post('/speculative_no_retry', cls=PageHandler)
-async def post_page(handler=get_current_handler()):
-    handler.set_header('Content-Type', media_types.TEXT_PLAIN)
-    handler.text = 'result'
+@router.post('/speculative_no_retry')
+async def post_page() -> str:
+    return 'result'

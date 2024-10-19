@@ -21,6 +21,7 @@ from frontik.config_parser import parse_configs
 from frontik.loggers import MDC
 from frontik.options import options
 from frontik.process import fork_workers
+from frontik.util.gc import enable_gc
 
 log = logging.getLogger('server')
 
@@ -61,7 +62,7 @@ def main(config_file: Optional[str] = None) -> None:
             )
         else:
             # run in single process mode
-            gc.enable()
+            enable_gc()
             _run_worker(app)
     except Exception as e:
         log.exception('frontik application exited with exception: %s', e)
@@ -116,11 +117,11 @@ def _run_worker(app: FrontikApplication) -> None:
     initialize_application_task.result()
 
 
-def run_server(app: FrontikApplication) -> None:
+def run_server(frontik_app: FrontikApplication) -> None:
     """Starts Frontik server for an application"""
     loop = asyncio.get_event_loop()
     log.info('starting server on %s:%s', options.host, options.port)
-    http_server = HTTPServer(app, xheaders=options.xheaders, max_body_size=options.max_body_size)
+    http_server = HTTPServer(frontik_app, xheaders=options.xheaders, max_body_size=options.max_body_size)
     http_server.bind(options.port, options.host, reuse_port=options.reuse_port)
     http_server.start()
 
@@ -133,7 +134,7 @@ def run_server(app: FrontikApplication) -> None:
             loop.call_soon_threadsafe(server_stop)
 
     def server_stop():
-        deinit_task = loop.create_task(_deinit_app(app))
+        deinit_task = loop.create_task(_deinit_app(frontik_app))
         http_server.stop()
 
         if loop.is_running():

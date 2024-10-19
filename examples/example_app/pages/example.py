@@ -1,8 +1,8 @@
-from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import plain_router
+from frontik.dependencies import HttpClientT
+from frontik.routing import router
 
 
-@plain_router.get('/example', cls=PageHandler)
-async def example_page(self: PageHandler = get_current_handler()) -> None:
-    result = await self.get_url('http://example.com', '/')
-    self.json.put({'example': result.status_code})
+@router.get('/example')
+async def example_page(http_client: HttpClientT) -> dict:
+    result = await http_client.get_url('http://example.com', '/')
+    return {'example': result.status_code}

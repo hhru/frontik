@@ -3,57 +3,37 @@ import importlib
 import logging
 import multiprocessing
 import os
+import sys
 import time
 from ctypes import c_bool, c_int
 from typing import Any, Optional, Union
 
+import aiohttp
+import tornado
 from aiokafka import AIOKafkaProducer
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import ORJSONResponse
 from http_client import AIOHttpClientWrapper, HttpClientFactory
 from http_client import options as http_client_options
 from http_client.balancing import RequestBalancerBuilder
 from lxml import etree
 from tornado import httputil
 
-import frontik.producers.json_producer
-import frontik.producers.xml_producer
-from frontik import app_integrations, media_types
+from frontik import app_integrations
 from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
-from frontik.debug import get_frontik_and_apps_versions
-from frontik.handler import PageHandler, get_current_handler
 from frontik.handler_asgi import serve_tornado_request
-from frontik.handler_return_values import ReturnedValueHandlers, get_default_returned_value_handlers
 from frontik.options import options
 from frontik.process import WorkerState
 from frontik.routing import (
     import_all_pages,
-    method_not_allowed_router,
-    not_found_router,
-    regex_router,
     router,
     routers,
 )
 from frontik.service_discovery import MasterServiceDiscovery, ServiceDiscovery, WorkerServiceDiscovery
+from frontik.version import version as frontik_version
 
 app_logger = logging.getLogger('app_logger')
 _server_tasks = set()
-
-
-class FrontikAsgiApp(FastAPI):
-    def __init__(self) -> None:
-        super().__init__()
-        self.router = router
-        self.http_client_factory = None
-
-        if options.openapi_enabled:
-            self.setup()
-
-        for _router in routers:
-            self.include_router(_router)
-
-
-def anyio_noop(*_args: Any, **_kwargs: Any) -> None:
-    raise RuntimeError(f'trying to use non async {_args[0]}')
 
 
 class FrontikApplication:
@@ -75,9 +55,6 @@ class FrontikApplication:
 
         self.config = self.application_config()
 
-        self.xml = frontik.producers.xml_producer.XMLProducerFactory(self)
-        self.json = frontik.producers.json_producer.JsonProducerFactory(self)
-
         self.available_integrations: list[app_integrations.Integration] = []
         self.http_client_factory: HttpClientFactory
 
@@ -87,15 +64,12 @@ class FrontikApplication:
         master_done = multiprocessing.Value(c_bool, False)
         count_down_lock = multiprocessing.Lock()
         self.worker_state = WorkerState(init_workers_count_down, master_done, count_down_lock)  # type: ignore
-        self.returned_value_handlers: ReturnedValueHandlers = get_default_returned_value_handlers()
 
         import_all_pages(self.app_module_name)
-        assert len(not_found_router.routes) < 2
-        assert len(method_not_allowed_router.routes) < 2
 
         self.settings: dict = {}
 
-        self.asgi_app = FrontikAsgiApp()
+        self.asgi_app = FrontikAsgiApp(self)
         self.service_discovery: ServiceDiscovery
 
     def patch_anyio(self) -> None:
@@ -127,7 +101,7 @@ class FrontikApplication:
 
         self.service_discovery = self.make_service_discovery()
         self.http_client_factory = self.make_http_client_factory()
-        self.asgi_app.http_client_factory = self.http_client_factory
+        self.asgi_app.http_client_factory = self.http_client_factory  # type: ignore
 
     async def init(self) -> None:
         await self.install_integrations()
@@ -189,22 +163,52 @@ class FrontikApplication:
 
         return {'uptime': uptime_value, 'datacenter': http_client_options.datacenter}
 
+    def get_frontik_and_apps_versions(self) -> etree.Element:
+        versions = etree.Element('versions')
+
+        etree.SubElement(versions, 'frontik').text = frontik_version
+        etree.SubElement(versions, 'tornado').text = tornado.version
+        etree.SubElement(versions, 'lxml.etree.LXML').text = '.'.join(str(x) for x in etree.LXML_VERSION)
+        etree.SubElement(versions, 'lxml.etree.LIBXML').text = '.'.join(str(x) for x in etree.LIBXML_VERSION)
+        etree.SubElement(versions, 'lxml.etree.LIBXSLT').text = '.'.join(str(x) for x in etree.LIBXSLT_VERSION)
+        etree.SubElement(versions, 'aiohttp').text = aiohttp.__version__
+        etree.SubElement(versions, 'python').text = sys.version.replace('\n', '')
+        etree.SubElement(versions, 'event_loop').text = str(type(asyncio.get_event_loop())).split("'")[1]
+        etree.SubElement(versions, 'application', name=self.app_module_name).extend(self.application_version_xml())
+
+        return versions
+
     def get_kafka_producer(self, producer_name: str) -> Optional[AIOKafkaProducer]:  # pragma: no cover
         pass
 
-    def log_request(self, tornado_handler: PageHandler) -> None:
-        pass
+
+def anyio_noop(*_args: Any, **_kwargs: Any) -> None:
+    raise RuntimeError(f'trying to use non async {_args[0]}')
 
 
-@regex_router.get('/version', cls=PageHandler)
-async def get_version(handler: PageHandler = get_current_handler()) -> None:
-    handler.set_header('Content-Type', 'text/xml')
-    handler.finish(
-        etree.tostring(get_frontik_and_apps_versions(handler.application), encoding='utf-8', xml_declaration=True),
-    )
+class FrontikAsgiApp(FastAPI):
+    def __init__(self, frontik_app: FrontikApplication) -> None:
+        super().__init__()
+        self.router = router
+
+        if options.openapi_enabled:
+            self.setup()
+
+        for _router in routers:
+            self.include_router(_router)
+
+        self.config = frontik_app.config
+        self.get_current_status = frontik_app.get_current_status
+        self.get_frontik_and_apps_versions = frontik_app.get_frontik_and_apps_versions
+        self.statsd_client = frontik_app.statsd_client
 
 
-@regex_router.get('/status', cls=PageHandler)
-async def get_status(handler: PageHandler = get_current_handler()) -> None:
-    handler.set_header('Content-Type', media_types.APPLICATION_JSON)
-    handler.finish(handler.application.get_current_status())
+@router.get('/version')
+async def get_version(request: Request) -> Response:
+    data = etree.tostring(request.app.get_frontik_and_apps_versions(), encoding='utf-8', xml_declaration=True)
+    return Response(content=data, media_type='text/xml')
+
+
+@router.get('/status')
+async def get_status(request: Request) -> ORJSONResponse:
+    return ORJSONResponse(request.app.get_current_status())

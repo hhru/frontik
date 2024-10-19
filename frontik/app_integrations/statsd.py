@@ -26,9 +26,6 @@ class StatsdIntegration(Integration):
         self.statsd_client = app.statsd_client
         return None
 
-    def initialize_handler(self, handler):
-        pass
-
 
 def _convert_tag(name: str, value: Any) -> str:
     return '{}_is_{}'.format(name.replace('.', '-'), str(value).replace('.', '-'))

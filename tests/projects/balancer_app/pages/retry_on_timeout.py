@@ -1,25 +1,26 @@
+from fastapi import Request
 from http_client.balancing import Upstream
 from tornado.web import HTTPError
 
-from frontik import media_types
-from frontik.handler import PageHandler, get_current_handler
-from frontik.routing import plain_router
+from frontik.dependencies import HttpClientT
+from frontik.routing import router
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
-@plain_router.get('/retry_on_timeout', cls=PageHandler)
-async def get_page(handler=get_current_handler()):
-    upstreams = handler.application.service_discovery.get_upstreams_unsafe()
-    upstreams['retry_on_timeout'] = Upstream(
-        'retry_on_timeout',
+@router.get('/retry_on_timeout')
+async def get_page(request: Request, http_client: HttpClientT) -> str:
+    upstreams = request.app.service_discovery.get_upstreams_unsafe()
+    retry_on_timeout = 'retry_on_timeout'
+    upstreams[retry_on_timeout] = Upstream(
+        retry_on_timeout,
         {},
-        [get_server(handler, 'broken'), get_server(handler, 'normal')],
+        [get_server(request, 'broken'), get_server(request, 'normal')],
     )
 
-    result = await handler.delete_url(
-        'retry_on_timeout',
-        handler.path,
+    result = await http_client.delete_url(
+        retry_on_timeout,
+        retry_on_timeout,
         connect_timeout=0.1,
         request_timeout=0.3,
         max_timeout_tries=2,
@@ -28,12 +29,11 @@ async def get_page(handler=get_current_handler()):
     if result.error or result.data is None:
         raise HTTPError(500)
 
-    handler.text = result.data
+    check_all_requests_done(request, retry_on_timeout)
 
-    check_all_requests_done(handler, 'retry_on_timeout')
+    return result.data
 
 
-@plain_router.delete('/retry_on_timeout', cls=PageHandler)
-async def delete_page(handler=get_current_handler()):
-    handler.set_header('Content-Type', media_types.TEXT_PLAIN)
-    handler.text = 'result'
+@router.delete('/retry_on_timeout')
+async def delete_page() -> str:
+    return 'result'

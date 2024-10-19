@@ -16,37 +16,33 @@ from tornado_mock.httpclient import patch_http_client, set_stub
 from yarl import URL
 
 from frontik.app import FrontikApplication
-from frontik.loggers import bootstrap_core_logging
 from frontik.media_types import APPLICATION_JSON, APPLICATION_PROTOBUF, APPLICATION_XML, TEXT_PLAIN
 from frontik.options import options
 from frontik.util import bind_socket, make_url, safe_template
 
 
 class FrontikTestBase:
-    @pytest.fixture(scope='session')
-    def event_loop(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        yield loop
-        loop.close()
-
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
         return FrontikApplication()
 
     @pytest.fixture(scope='class', autouse=True)
-    async def _run_server(self, frontik_app):
-        options.stderr_log = True
-        options.consul_enabled = False
-        bootstrap_core_logging(options.log_level, options.log_json, options.suppressed_loggers)
-
+    async def _bind_socket(self):
         sock = bind_socket(options.host, 0)
         options.port = sock.getsockname()[1]
+        yield sock
+        sock.close()
+
+    @pytest.fixture(scope='class', autouse=True)
+    async def _run_app(self, frontik_app, _bind_socket):
+        options.consul_enabled = False
 
         await frontik_app.init()
+        with frontik_app.worker_state.count_down_lock:
+            frontik_app.worker_state.init_workers_count_down.value -= 1
 
         http_server = HTTPServer(frontik_app, xheaders=options.xheaders, max_body_size=options.max_body_size)
-        http_server.add_sockets([sock])
+        http_server.add_sockets([_bind_socket])
 
         yield
 
@@ -58,21 +54,18 @@ class FrontikTestBase:
         return False
 
     @pytest.fixture(autouse=True)
-    async def _finish_server_setup(
-        self,
-        frontik_app: FrontikApplication,
-        _run_server: None,
-        with_tornado_mocks: bool,
-    ) -> None:
+    async def _setup_app_links(self, frontik_app: FrontikApplication, _run_app: None) -> None:
         self.app = frontik_app
         self.port = options.port
+
+    @pytest.fixture(autouse=True)
+    def setup_mock_http_client(self, frontik_app, passthrow_hosts, with_tornado_mocks):
         self.http_client: AIOHttpClientWrapper = frontik_app.http_client_factory.http_client
+
         self.use_tornado_mocks = with_tornado_mocks
         if with_tornado_mocks:
             patch_http_client(self.http_client, fail_on_unknown=False)
 
-    @pytest.fixture(autouse=True)
-    def setup_mock_http_client(self, passthrow_hosts):
         with MockHttpClient(passthrough=passthrow_hosts) as mock_http_client:
             self.mock_http_client = mock_http_client
             yield self.mock_http_client
