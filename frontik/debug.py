@@ -398,7 +398,7 @@ class DebugTransform:
         else:
             wrap_headers = {'Content-Type': media_types.APPLICATION_XML, DEBUG_HEADER_NAME: 'true'}
 
-        chunk = b'Streamable response' if response.data_written else _data_to_chunk(response.body)
+        chunk = b'Streamable response' if response.headers_written else _data_to_chunk(response.body)
         start_time = time.time()
         handler_name = request_context.get_handler_name()
 

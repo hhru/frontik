@@ -51,7 +51,7 @@ async def serve_tornado_request(
         assert tornado_request.connection is not None
         tornado_request.connection.set_close_callback(None)  # type: ignore
 
-        if not response.data_written:
+        if not response.headers_written:
             for integration in integrations.values():
                 integration.set_response(response)
 
@@ -74,20 +74,16 @@ async def process_request(
     debug_mode = make_debug_mode(frontik_app, tornado_request)
     if debug_mode.auth_failed():
         assert debug_mode.failed_auth_header is not None
-        return make_debug_auth_failed_response(debug_mode.failed_auth_header)
+        return FrontikResponse(status_code=http.client.UNAUTHORIZED, headers={'WWW-Authenticate': debug_mode.failed_auth_header})
 
     assert tornado_request.method is not None
 
     scope = find_route(tornado_request.path, tornado_request.method)
-    route: Optional[APIRoute] = scope['route']
+    tornado_request._path_format = scope['route'].path_format  # type: ignore
 
-    if route is None:
-        response = await make_not_found_response(frontik_app, tornado_request, debug_mode, scope)
-    else:
-        tornado_request._path_format = route.path_format  # type: ignore
-        response = await execute_asgi_page(frontik_app, asgi_app, tornado_request, scope, debug_mode, integrations)
+    response = await execute_asgi_page(frontik_app, asgi_app, tornado_request, scope, debug_mode, integrations)
 
-    if debug_mode.enabled and not response.data_written:
+    if debug_mode.enabled and not response.headers_written:
         debug_transform = DebugTransform(frontik_app, debug_mode)
         response = debug_transform.transform_chunk(tornado_request, response)
 
@@ -142,8 +138,10 @@ async def execute_asgi_page(
         elif data['type'] == 'http.response.body':
             chunk = data['body']
             if debug_mode.enabled or not data.get('more_body'):
+                log.error(f'AZAZAAZAZAZA --- full_chunk ')
                 response.body += chunk
-            elif not response.data_written:
+            elif not response.headers_written:
+                log.error(f'AZAZAAZAZAZA --- data_written_start ')
                 for integration in integrations.values():
                     integration.set_response(response)
 
@@ -152,8 +150,9 @@ async def execute_asgi_page(
                     headers=response.headers,
                     chunk=chunk,
                 )
-                response.data_written = True
+                response.headers_written = True
             else:
+                # log.error(f'AZAZAAZAZAZA --- connection_write_chunk_hmmmmm ')
                 await tornado_request.connection.write(chunk)
         else:
             raise RuntimeError(f'Unsupported response type "{data["type"]}" for asgi app')
@@ -161,28 +160,6 @@ async def execute_asgi_page(
     await asgi_app(scope, receive, send)
 
     return response
-
-
-async def make_not_found_response(
-    frontik_app: FrontikApplication,
-    tornado_request: httputil.HTTPServerRequest,
-    debug_mode: DebugMode,
-    scope: dict,
-) -> FrontikResponse:
-    allowed_methods = get_allowed_methods(scope)
-
-    if allowed_methods and hasattr(frontik_app, 'method_not_allowed_handler'):
-        return await frontik_app.method_not_allowed_handler(
-            tornado_request, debug_mode, path_params={'allowed_methods': allowed_methods}
-        )
-
-    if allowed_methods:
-        return FrontikResponse(status_code=405, headers={'Allow': ', '.join(allowed_methods)})
-
-    if hasattr(frontik_app, 'not_found_handler'):
-        return await frontik_app.not_found_handler(tornado_request, debug_mode, path_params={})
-
-    return build_error_data(404, 'Not Found')
 
 
 def make_debug_mode(frontik_app: FrontikApplication, tornado_request: HTTPServerRequest) -> DebugMode:
@@ -197,16 +174,6 @@ def make_debug_mode(frontik_app: FrontikApplication, tornado_request: HTTPServer
         debug_mode.require_debug_access(tornado_request)
 
     return debug_mode
-
-
-def make_debug_auth_failed_response(auth_header: str) -> FrontikResponse:
-    return FrontikResponse(status_code=http.client.UNAUTHORIZED, headers={'WWW-Authenticate': auth_header})
-
-
-def build_error_data(status_code: int = 500, message: Optional[str] = 'Internal Server Error') -> FrontikResponse:
-    headers = {'Content-Type': media_types.TEXT_HTML}
-    data = f'<html><title>{status_code}: {message}</title><body>{status_code}: {message}</body></html>'.encode()
-    return FrontikResponse(status_code=status_code, headers=headers, body=data)
 
 
 def _on_connection_close(tornado_request, process_request_task, integrations):

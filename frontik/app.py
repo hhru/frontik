@@ -18,6 +18,7 @@ from http_client import options as http_client_options
 from http_client.balancing import RequestBalancerBuilder
 from lxml import etree
 from tornado import httputil
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from frontik import app_integrations
 from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
@@ -27,10 +28,12 @@ from frontik.process import WorkerState
 from frontik.routing import (
     import_all_pages,
     router,
-    routers,
+    routers, not_found_router, method_not_allowed_router,
 )
 from frontik.service_discovery import MasterServiceDiscovery, ServiceDiscovery, WorkerServiceDiscovery
 from frontik.version import version as frontik_version
+from frontik.balancing_client import create_http_client
+from frontik.dependencies import clients
 
 app_logger = logging.getLogger('app_logger')
 _server_tasks = set()
@@ -202,6 +205,8 @@ class FrontikAsgiApp(FastAPI):
         self.get_frontik_and_apps_versions = frontik_app.get_frontik_and_apps_versions
         self.statsd_client = frontik_app.statsd_client
 
+        self.add_middleware(FrontikMiddleware)
+
 
 @router.get('/version')
 async def get_version(request: Request) -> Response:
@@ -212,3 +217,20 @@ async def get_version(request: Request) -> Response:
 @router.get('/status')
 async def get_status(request: Request) -> ORJSONResponse:
     return ORJSONResponse(request.app.get_current_status())
+
+
+class FrontikMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        clients.get()['http_client'] = create_http_client(request)
+        clients.get()['app_config'] = request.app.config
+        clients.get()['statsd_client'] = request.app.statsd_client
+        return await call_next(request)
+
+
+@not_found_router.get('__not_found')
+async def default_404():
+    return Response(status_code=404)
+
+@method_not_allowed_router.get('__method_not_allowed')
+async def default_405(request: Request):
+    return Response(status_code=405, headers={'Allow': ', '.join(request.scope['allowed_methods'])})

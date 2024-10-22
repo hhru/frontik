@@ -38,19 +38,14 @@ def modify_http_client_request(request: Request, balanced_request: RequestBuilde
                 balanced_request.headers[header_name] = authorization
 
 
-def get_http_client(modify_request_hook=None):
-    async def _get_http_client(request: Request) -> HttpClient:
-        def hook(balanced_request):
-            if modify_request_hook is not None:
-                modify_request_hook(balanced_request)
+def create_http_client(request: Request) -> HttpClient:
+    def hook(balanced_request):
+        if getattr(request.state, '_http_client_hook', None) is not None:
+            request.state._http_client_hook(balanced_request)
 
-            modify_http_client_request(request, balanced_request)
+        modify_http_client_request(request, balanced_request)
 
-        http_client = request.app.http_client_factory.get_http_client(
-            modify_http_request_hook=hook,
-            debug_enabled=request['debug_mode'].enabled,
-        )
-
-        return http_client
-
-    return _get_http_client
+    return request.app.http_client_factory.get_http_client(
+        modify_http_request_hook=hook,
+        debug_enabled=request['debug_mode'].enabled,
+    )

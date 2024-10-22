@@ -77,17 +77,33 @@ def import_all_pages(app_module: str) -> None:
         full_name = pages_package.__name__ + '.' + name
         try:
             importlib.import_module(full_name)
-        except ModuleNotFoundError:
-            continue
+        # except ModuleNotFoundError:
+        #     continue
         except Exception as ex:
             raise RuntimeError('failed on import page %s %s', full_name, ex)
 
 
 router = FastAPIRouter(include_in_app=False)
 regex_router = FrontikRegexRouter()
+not_found_router = APIRouter()
+method_not_allowed_router = APIRouter()
 
 
 def _find_fastapi_route(scope: dict) -> Optional[APIRoute]:
+    for route in _fastapi_routes:
+        match, child_scope = route.matches(scope)
+        if match == Match.FULL:
+            scope.update(child_scope)
+            scope['route'] = route
+            return route
+
+    route_path = scope['path']
+    if route_path != '/':
+        if route_path.endswith('/'):
+            scope['path'] = scope['path'].rstrip('/')
+        else:
+            scope['path'] = scope['path'] + '/'
+
     for route in _fastapi_routes:
         match, child_scope = route.matches(scope)
         if match == Match.FULL:
@@ -117,18 +133,25 @@ def find_route(path: str, method: str) -> dict:
         'route': route,
         'path_params': path_params,
     }
-    if route is not None:
-        scope['endpoint'] = route.endpoint
 
     if route is None:
         route = _find_fastapi_route(scope)
 
     if route is None and method == 'HEAD':
-        return find_route(path, 'GET')
+        scope = find_route(path, 'GET')
 
     if route is None:
         routing_logger.error('match for request url %s "%s" not found', method, path)
 
+        if (allowed_methods := get_allowed_methods(scope)) is not None:
+            scope['allowed_methods'] = allowed_methods
+            route = method_not_allowed_router.routes[-1]
+        else:
+            route = not_found_router.routes[-1]
+
+        scope['route'] = route
+
+    scope['endpoint'] = route.endpoint
     return scope
 
 
