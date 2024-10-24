@@ -1,20 +1,38 @@
+import contextvars
 from typing import Annotated, Any
 
-from fastapi import Depends, Request
-from http_client import HttpClient
+import http_client
+from fastapi import Depends
 
-from frontik.app_integrations.statsd import StatsDClient
-from frontik.balancing_client import get_http_client
+from frontik.app_integrations import statsd
 
-
-async def get_app_config(request: Request) -> Any:
-    return request.app.config
+clients: contextvars.ContextVar = contextvars.ContextVar('clients')
 
 
-async def get_statsd_client(request: Request) -> StatsDClient:
-    return request.app.statsd_client
+def get_app_config() -> Any:
+    return clients.get().get('app_config')
 
 
-StatsDClientT = Annotated[StatsDClient, Depends(get_statsd_client)]
-AppConfig = Annotated[Any, Depends(get_app_config)]
-HttpClientT = Annotated[HttpClient, Depends(get_http_client())]
+async def _get_app_config() -> Any:
+    return get_app_config()
+
+
+def get_http_client() -> http_client.HttpClient:
+    return clients.get().get('http_client')
+
+
+async def _get_http_client() -> http_client.HttpClient:
+    return get_http_client()
+
+
+def get_statsd_client() -> statsd.StatsDClient:
+    return clients.get().get('statsd_client')
+
+
+async def _get_statsd_client() -> statsd.StatsDClient:
+    return get_statsd_client()
+
+
+StatsDClient = Annotated[statsd.StatsDClient, Depends(_get_statsd_client)]
+AppConfig = Annotated[Any, Depends(_get_app_config)]
+HttpClient = Annotated[http_client.HttpClient, Depends(_get_http_client)]

@@ -2,7 +2,7 @@ from fastapi import Request
 from http_client.balancing import Upstream
 from tornado.web import HTTPError
 
-from frontik.dependencies import HttpClientT
+from frontik.dependencies import HttpClient
 from frontik.routing import router
 from frontik.util import gather_list
 from tests.projects.balancer_app import get_server
@@ -10,7 +10,7 @@ from tests.projects.balancer_app.pages import check_all_servers_were_occupied
 
 
 @router.get('/retry_connect')
-async def get_page(request: Request, http_client: HttpClientT) -> str:
+async def get_page(request: Request, http_client: HttpClient) -> str:
     upstreams = request.app.service_discovery.get_upstreams_unsafe()
     retry_connect = 'retry_connect'
     upstreams[retry_connect] = Upstream(

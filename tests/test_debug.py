@@ -11,17 +11,17 @@ from lxml.builder import E
 from tornado.escape import to_unicode
 
 from frontik import media_types
-from frontik.dependencies import HttpClientT
+from frontik.dependencies import HttpClient
 from frontik.options import options
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
-from tests.instances import create_basic_auth_header
+from tests import create_basic_auth_header
 
 logger = logging.getLogger('handler')
 
 
 @router.get('/debug')
-async def get_debug_page(http_client: HttpClientT, request: Request, no_recursion: str = 'false') -> None:
+async def get_debug_page(http_client: HttpClient, request: Request, no_recursion: str = 'false') -> None:
     logger.debug('debug: starting debug page')
 
     def _exception_trace() -> None:

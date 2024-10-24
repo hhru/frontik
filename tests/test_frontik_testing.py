@@ -2,7 +2,7 @@ from typing import Any
 
 from fastapi import Request, Response
 
-from frontik.dependencies import AppConfig, HttpClientT
+from frontik.dependencies import AppConfig, HttpClient
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
 from frontik.util import gather_list
@@ -10,7 +10,7 @@ from tests import FRONTIK_ROOT
 
 
 @router.get('/sum_values')
-async def sum_values_page(config: AppConfig, http_client: HttpClientT) -> int:
+async def sum_values_page(config: AppConfig, http_client: HttpClient) -> int:
     result = 0
     service_host = config.serviceHost
 
@@ -29,7 +29,7 @@ async def check_config_page(config: AppConfig) -> Response:
 
 
 @router.post('/json_stub')
-async def post_page(request: Request, http_client: HttpClientT) -> Any:
+async def post_page(request: Request, http_client: HttpClient) -> Any:
     result = await http_client.delete_url('http://backend', request.url.path, fail_fast=True)
     return result.data
 

@@ -2,13 +2,13 @@ from fastapi import Request
 from http_client.balancing import Upstream
 from tornado.web import HTTPError
 
-from frontik.dependencies import HttpClientT
+from frontik.dependencies import HttpClient
 from frontik.routing import router
 from tests.projects.balancer_app import get_server
 
 
 @router.get('/speculative_retry')
-async def get_page(request: Request, http_client: HttpClientT) -> str:
+async def get_page(request: Request, http_client: HttpClient) -> str:
     upstreams = request.app.service_discovery.get_upstreams_unsafe()
     speculative_retry = 'speculative_retry'
     upstreams[speculative_retry] = Upstream(

@@ -133,8 +133,8 @@ known-third-party = ['http_client']
     'FBT', # Don't care about booleans as positional arguments in tests, e.g. via @pytest.mark.parametrize()
     'PLR2004', # Magic value used in comparison
     'S311', 'S105',
-    'PT009', 'PT027',
-    'ANN201',
+    'PT009', 'PT027', 'B011',
+    'ANN201', 'PLC2701',
     'RUF001',
     'E722','ERA001','SIM108',
     # should be fixed

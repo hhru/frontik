@@ -1,4 +1,5 @@
-from tests.instances import find_free_port, frontik_balancer_app, frontik_broken_balancer_app
+from tests import find_free_port
+from tests.instances import frontik_balancer_app, frontik_broken_balancer_app
 
 
 class TestHttpError:

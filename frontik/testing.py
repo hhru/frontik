@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import re
 from collections.abc import Callable
 from typing import Any, Optional, Union
@@ -19,6 +20,8 @@ from frontik.app import FrontikApplication
 from frontik.media_types import APPLICATION_JSON, APPLICATION_PROTOBUF, APPLICATION_XML, TEXT_PLAIN
 from frontik.options import options
 from frontik.util import bind_socket, make_url, safe_template
+
+log = logging.getLogger('server')
 
 
 class FrontikTestBase:
@@ -43,6 +46,7 @@ class FrontikTestBase:
 
         http_server = HTTPServer(frontik_app, xheaders=options.xheaders, max_body_size=options.max_body_size)
         http_server.add_sockets([_bind_socket])
+        log.info('Successfully inited application %s', frontik_app.app_name)
 
         yield
 

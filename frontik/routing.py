@@ -85,9 +85,25 @@ def import_all_pages(app_module: str) -> None:
 
 router = FastAPIRouter(include_in_app=False)
 regex_router = FrontikRegexRouter()
+not_found_router = APIRouter()
+method_not_allowed_router = APIRouter()
 
 
 def _find_fastapi_route(scope: dict) -> Optional[APIRoute]:
+    for route in _fastapi_routes:
+        match, child_scope = route.matches(scope)
+        if match == Match.FULL:
+            scope.update(child_scope)
+            scope['route'] = route
+            return route
+
+    route_path = scope['path']
+    if route_path != '/':
+        if route_path.endswith('/'):
+            scope['path'] = scope['path'].rstrip('/')
+        else:
+            scope['path'] = scope['path'] + '/'
+
     for route in _fastapi_routes:
         match, child_scope = route.matches(scope)
         if match == Match.FULL:
@@ -117,18 +133,28 @@ def find_route(path: str, method: str) -> dict:
         'route': route,
         'path_params': path_params,
     }
-    if route is not None:
-        scope['endpoint'] = route.endpoint
 
     if route is None:
         route = _find_fastapi_route(scope)
 
     if route is None and method == 'HEAD':
-        return find_route(path, 'GET')
+        scope = find_route(path, 'GET')
+        route = scope['route']
 
     if route is None:
         routing_logger.error('match for request url %s "%s" not found', method, path)
 
+        allowed_methods = get_allowed_methods(scope)
+        if len(allowed_methods) > 0:
+            scope['allowed_methods'] = allowed_methods
+            route = method_not_allowed_router.routes[-1]
+        else:
+            route = not_found_router.routes[-1]
+
+        scope['route'] = route
+
+    scope['method'] = next(iter(route.methods))
+    scope['endpoint'] = route.endpoint
     return scope
 
 

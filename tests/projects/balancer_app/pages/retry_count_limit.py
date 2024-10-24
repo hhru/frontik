@@ -1,14 +1,14 @@
 from fastapi import Request
 from http_client.balancing import Upstream, UpstreamConfig
 
-from frontik.dependencies import HttpClientT
+from frontik.dependencies import HttpClient
 from frontik.routing import router
-from tests.instances import find_free_port
+from tests import find_free_port
 from tests.projects.balancer_app import get_server_with_port
 
 
 @router.get('/retry_count_limit')
-async def get_page(request: Request, http_client: HttpClientT) -> str:
+async def get_page(request: Request, http_client: HttpClient) -> str:
     retry_count_limit = 'retry_count_limit'
     upstream = Upstream(
         retry_count_limit,
