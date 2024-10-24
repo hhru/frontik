@@ -5,17 +5,22 @@ from frontik.testing import FrontikTestBase
 
 
 @router.get('/simple')
-async def get_page1() -> str:
+async def simple_page() -> str:
+    return 'ok'
+
+
+@router.get('/simple_slash/')
+async def simple_slash_page() -> str:
     return 'ok'
 
 
 @regex_router.get('/id/(?P<id>[^/]+)')
-async def get_page2(request: Request) -> str:
+async def id_page(request: Request) -> str:
     return str(request.path_params.get('id'))
 
 
 @router.get('/nested/nested/nested')
-async def get_page3() -> str:
+async def nested_page() -> str:
     return 'OK'
 
 
@@ -36,6 +41,15 @@ class TestRouting(FrontikTestBase):
         response = await self.fetch('/not_exists')
         assert response.status_code == 404
 
-    async def test_filemapping_404_on_dot_in_url(self):
-        response = await self.fetch('/nested/nested.nested')
-        assert response.status_code == 404
+    async def test_ending_slash(self):
+        response = await self.fetch('/simple')
+        assert response.status_code == 200
+
+        response = await self.fetch('/simple/')
+        assert response.status_code == 200
+
+        response = await self.fetch('/simple_slash/')
+        assert response.status_code == 200
+
+        response = await self.fetch('/simple_slash')
+        assert response.status_code == 200

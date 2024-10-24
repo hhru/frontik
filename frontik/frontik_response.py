@@ -26,7 +26,7 @@ class FrontikResponse:
         self.status_code = status_code
         self.body = body
         self._reason = reason
-        self.data_written = False
+        self.headers_written = False
 
     @property
     def reason(self) -> str:

@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-import base64
 import json
-import random
-import socket
 import subprocess
 import sys
 import time
-from itertools import chain
 from typing import TYPE_CHECKING, Optional
 
 import requests
@@ -15,7 +11,7 @@ from lxml import etree
 from tornado.escape import to_unicode, utf8
 
 from frontik import options
-from tests import FRONTIK_ROOT
+from tests import FRONTIK_ROOT, find_free_port
 
 if TYPE_CHECKING:
     from builtins import function
@@ -33,29 +29,6 @@ def _run_command(command: str, port: int) -> subprocess.Popen:
     python = sys.executable
     executable = f'{python} {command} --port={port}'
     return subprocess.Popen(executable.split())
-
-
-def find_free_port(from_port: int = 9000, to_port: int = 10000) -> int:
-    random_start = random.randint(from_port, to_port)
-
-    for port in chain(range(random_start, to_port), range(from_port, random_start)):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            s.bind(('', port))
-            break
-        except Exception:
-            pass
-        finally:
-            s.close()
-    else:
-        msg = f'No empty port in range {from_port}..{to_port} for frontik test instance'
-        raise AssertionError(msg)
-
-    return port
-
-
-def create_basic_auth_header(credentials: str) -> str:
-    return f'Basic {to_unicode(base64.b64encode(utf8(credentials)))}'
 
 
 class FrontikTestInstance:

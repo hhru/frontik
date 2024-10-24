@@ -46,7 +46,7 @@ class ActiveHandlersLimit:
 
 
 @contextmanager
-def request_limiter(frontik_app, _):
+def request_limiter(frontik_app, _tornado_request):
     active_limit = ActiveHandlersLimit(frontik_app.statsd_client)
     dto = IntegrationDto(active_limit.acquired)
     try:

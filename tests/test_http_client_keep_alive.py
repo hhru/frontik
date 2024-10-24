@@ -2,7 +2,8 @@ import socket
 from contextlib import closing
 from typing import Any, Optional
 
-from tests.instances import find_free_port, frontik_test_app
+from tests import find_free_port
+from tests.instances import frontik_test_app
 
 
 class TestHTTPClientKeepAlive:
