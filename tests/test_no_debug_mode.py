@@ -9,7 +9,7 @@ from frontik.auth import check_debug_auth_by_headers
 from frontik.options import options
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
-from tests.instances import create_basic_auth_header
+from tests import create_basic_auth_header
 
 
 @router.get('/simple')

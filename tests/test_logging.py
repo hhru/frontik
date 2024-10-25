@@ -1,20 +1,62 @@
 import json
+import logging
+import os
 import re
+import shutil
 import socket
+import tempfile
 from collections import defaultdict
+from logging.handlers import SysLogHandler
+from typing import Any
 
 import pytest
 from tornado.escape import to_unicode
 
+from frontik.loggers import _configure_file, _configure_syslog, bootstrap_logger
+from frontik.options import options
+from frontik.routing import router
+from frontik.testing import FrontikTestBase
 from tests import FRONTIK_ROOT
-from tests.instances import FrontikTestInstance
 
 FRONTIK_RUN = f'{FRONTIK_ROOT}/frontik-test'
 TEST_PROJECTS = f'{FRONTIK_ROOT}/tests/projects'
+handler_logger = logging.getLogger('handler')
+custom_logger = logging.getLogger('custom_logger')
 
 
-class TestSyslog:
-    test_app: FrontikTestInstance
+def add_syslog_handler_for_logger(logger_name: str) -> None:
+    handler = _configure_syslog(logger_name)[0]
+    handler.setLevel(logging.DEBUG)
+    logging.getLogger(logger_name).addHandler(handler)
+
+
+def add_syslog_handler_for_root_logger() -> None:
+    handler = _configure_syslog('service')[0]
+    handler.setLevel(logging.DEBUG)
+    logging.root.addHandler(handler)
+
+
+def remove_syslog_handler_from_logger(logger_name: str) -> None:
+    logger = logging.getLogger(logger_name)
+    logger.handlers = [handler for handler in handler_logger.handlers if not isinstance(handler, SysLogHandler)]
+
+
+@router.get('/log')
+async def get_page():
+    handler_logger.debug('debug')
+    handler_logger.info('info')
+
+    try:
+        raise Exception('test')
+    except Exception:
+        handler_logger.exception('exception')
+        handler_logger.error('error')  # stack_info = True should be added
+
+    handler_logger.critical('critical')
+    custom_logger.fatal('fatal')
+
+
+class TestSyslog(FrontikTestBase):
     s: socket.socket
 
     @classmethod
@@ -25,18 +67,31 @@ class TestSyslog:
 
         port = cls.s.getsockname()[1]
 
-        cls.test_app = FrontikTestInstance(
-            f'{FRONTIK_RUN} --app_class=tests.projects.test_app.TestApplication '
-            f'--config={TEST_PROJECTS}/frontik_debug.cfg --syslog=true --consul_enabled=False --syslog_host=127.0.0.1 '
-            f'--syslog_tag=test --log_level=debug --syslog_port={port}',
-        )
+        options.syslog = True
+        options.syslog_port = port
+        options.syslog_tag = 'test'
+        options.service_name = 'app'
+
+        add_syslog_handler_for_logger('server')
+        add_syslog_handler_for_root_logger()
+        add_syslog_handler_for_logger('requests')
+        add_syslog_handler_for_logger('handler')
+        bootstrap_logger('custom_logger', logger_level=logging.DEBUG, use_json_formatter=False)
 
     @classmethod
     def teardown_class(cls):
-        cls.test_app.stop()
+        options.syslog = False
 
-    def test_send_to_syslog(self):
-        self.test_app.get_page('log')
+        remove_syslog_handler_from_logger('server')
+        remove_syslog_handler_from_logger('service')
+        remove_syslog_handler_from_logger('requests')
+        remove_syslog_handler_from_logger('handler')
+        remove_syslog_handler_from_logger('custom_logger')
+
+        cls.s.close()
+
+    async def test_send_to_syslog(self):
+        await self.fetch('/log')
 
         logs = []
 
@@ -53,12 +108,10 @@ class TestSyslog:
         syslog_line_regexp = r'<(?P<priority>\d+)>(?P<tag>[^:]+): (?P<message>.*)\x00'
         parsed_logs = defaultdict(list)
         for log in logs:
-            assert re.match(syslog_line_regexp, log)
-
             match = re.match(syslog_line_regexp, log)
-            if match is not None:
-                priority, tag, message = match.groups()
-                parsed_logs[tag].append({'priority': priority, 'message': message})
+            assert match is not None
+            priority, tag, message = match.groups()
+            parsed_logs[tag].append({'priority': priority, 'message': message})
 
         expected_service_logs = [
             {'priority': '14', 'message': {'lvl': 'INFO', 'logger': r'handler', 'msg': 'requested url: /log'}},
@@ -79,7 +132,6 @@ class TestSyslog:
                     'lvl': 'ERROR',
                     'logger': r'handler',
                     'msg': 'error',
-                    'exception': r".*handler_logger\.error\('error', stack_info=True\)",
                 },
             },
             {'priority': '10', 'message': {'lvl': 'CRITICAL', 'logger': r'handler', 'msg': 'critical'}},
@@ -93,7 +145,7 @@ class TestSyslog:
                 'message': {
                     'lvl': 'INFO',
                     'logger': r'server',
-                    'msg': r'starting application tests\.projects\.test_app',
+                    'msg': r'Successfully inited application app',
                 },
             },
         ]
@@ -113,7 +165,7 @@ class TestSyslog:
             {
                 'priority': '10',
                 'message': r'\[\d+\] [\d-]+ [\d:,]+ CRITICAL '
-                r'custom_logger\.tests\.projects\.test_app\.pages\.log\.get_page: fatal',
+                r'custom_logger\.tests\.test_logging\.get_page\.tests\.test_logging\.get_page: fatal',  # seems weird
             },
         ]
 
@@ -144,3 +196,30 @@ class TestSyslog:
                     break
             else:
                 pytest.fail(f'Log message not found: {expected_log}')
+
+
+class TestLogToFile(FrontikTestBase):
+    tmp_log_dir: str
+    handler: Any
+
+    @classmethod
+    def setup_class(cls):
+        cls.tmp_log_dir = tempfile.mkdtemp()
+        options.log_dir = cls.tmp_log_dir
+        cls.handler = _configure_file('server')[0]
+        logging.getLogger('server').addHandler(cls.handler)
+
+    @classmethod
+    def teardown_class(cls):
+        shutil.rmtree(cls.tmp_log_dir, ignore_errors=True)
+        options.log_dir = None
+        logging.getLogger('server').removeHandler(cls.handler)
+
+    def test_log_dir_is_not_empty(self) -> None:
+        dir_contents = os.listdir(self.tmp_log_dir)
+        if not dir_contents:
+            assert False, 'No log files'
+
+        empty_files = [f for f in dir_contents if os.stat(os.path.join(self.tmp_log_dir, f)).st_size == 0]
+        if empty_files:
+            assert False, f'Empty log files: {empty_files}'

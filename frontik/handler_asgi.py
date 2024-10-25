@@ -5,20 +5,19 @@ import http.client
 import logging
 from contextlib import ExitStack
 from functools import partial
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-from fastapi.routing import APIRoute
 from tornado import httputil
 from tornado.httputil import HTTPServerRequest
 
-from frontik import media_types, request_context
+from frontik import request_context
 from frontik.debug import DebugMode, DebugTransform
 from frontik.frontik_response import FrontikResponse
 from frontik.http_status import CLIENT_CLOSED_REQUEST
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.request_integrations import get_integrations
 from frontik.request_integrations.integrations_dto import IntegrationDto
-from frontik.routing import find_route, get_allowed_methods
+from frontik.routing import find_route
 
 if TYPE_CHECKING:
     from frontik.app import FrontikApplication, FrontikAsgiApp
@@ -51,7 +50,7 @@ async def serve_tornado_request(
         assert tornado_request.connection is not None
         tornado_request.connection.set_close_callback(None)  # type: ignore
 
-        if not response.data_written:
+        if not response.headers_written:
             for integration in integrations.values():
                 integration.set_response(response)
 
@@ -74,20 +73,18 @@ async def process_request(
     debug_mode = make_debug_mode(frontik_app, tornado_request)
     if debug_mode.auth_failed():
         assert debug_mode.failed_auth_header is not None
-        return make_debug_auth_failed_response(debug_mode.failed_auth_header)
+        return FrontikResponse(
+            status_code=http.client.UNAUTHORIZED, headers={'WWW-Authenticate': debug_mode.failed_auth_header}
+        )
 
     assert tornado_request.method is not None
 
     scope = find_route(tornado_request.path, tornado_request.method)
-    route: Optional[APIRoute] = scope['route']
+    tornado_request._path_format = scope['route'].path_format  # type: ignore
 
-    if route is None:
-        response = await make_not_found_response(frontik_app, tornado_request, debug_mode, scope)
-    else:
-        tornado_request._path_format = route.path_format  # type: ignore
-        response = await execute_asgi_page(frontik_app, asgi_app, tornado_request, scope, debug_mode, integrations)
+    response = await execute_asgi_page(frontik_app, asgi_app, tornado_request, scope, debug_mode, integrations)
 
-    if debug_mode.enabled and not response.data_written:
+    if debug_mode.enabled and not response.headers_written:
         debug_transform = DebugTransform(frontik_app, debug_mode)
         response = debug_transform.transform_chunk(tornado_request, response)
 
@@ -131,19 +128,19 @@ async def execute_asgi_page(
             'more_body': False,
         }
 
-    async def send(data):
+    async def send(message):
         assert tornado_request.connection is not None
 
-        if data['type'] == 'http.response.start':
-            response.status_code = int(data['status'])
-            for h in data['headers']:
+        if message['type'] == 'http.response.start':
+            response.status_code = int(message['status'])
+            for h in message['headers']:
                 if len(h) == 2:
                     response.headers.add(h[0].decode(CHARSET), h[1].decode(CHARSET))
-        elif data['type'] == 'http.response.body':
-            chunk = data['body']
-            if debug_mode.enabled or not data.get('more_body'):
+        elif message['type'] == 'http.response.body':
+            chunk = message['body']
+            if debug_mode.enabled or not message.get('more_body'):
                 response.body += chunk
-            elif not response.data_written:
+            elif not response.headers_written:
                 for integration in integrations.values():
                     integration.set_response(response)
 
@@ -152,37 +149,15 @@ async def execute_asgi_page(
                     headers=response.headers,
                     chunk=chunk,
                 )
-                response.data_written = True
+                response.headers_written = True
             else:
                 await tornado_request.connection.write(chunk)
         else:
-            raise RuntimeError(f'Unsupported response type "{data["type"]}" for asgi app')
+            raise RuntimeError(f'Unsupported response type "{message["type"]}" for asgi app')
 
     await asgi_app(scope, receive, send)
 
     return response
-
-
-async def make_not_found_response(
-    frontik_app: FrontikApplication,
-    tornado_request: httputil.HTTPServerRequest,
-    debug_mode: DebugMode,
-    scope: dict,
-) -> FrontikResponse:
-    allowed_methods = get_allowed_methods(scope)
-
-    if allowed_methods and hasattr(frontik_app, 'method_not_allowed_handler'):
-        return await frontik_app.method_not_allowed_handler(
-            tornado_request, debug_mode, path_params={'allowed_methods': allowed_methods}
-        )
-
-    if allowed_methods:
-        return FrontikResponse(status_code=405, headers={'Allow': ', '.join(allowed_methods)})
-
-    if hasattr(frontik_app, 'not_found_handler'):
-        return await frontik_app.not_found_handler(tornado_request, debug_mode, path_params={})
-
-    return build_error_data(404, 'Not Found')
 
 
 def make_debug_mode(frontik_app: FrontikApplication, tornado_request: HTTPServerRequest) -> DebugMode:
@@ -197,16 +172,6 @@ def make_debug_mode(frontik_app: FrontikApplication, tornado_request: HTTPServer
         debug_mode.require_debug_access(tornado_request)
 
     return debug_mode
-
-
-def make_debug_auth_failed_response(auth_header: str) -> FrontikResponse:
-    return FrontikResponse(status_code=http.client.UNAUTHORIZED, headers={'WWW-Authenticate': auth_header})
-
-
-def build_error_data(status_code: int = 500, message: Optional[str] = 'Internal Server Error') -> FrontikResponse:
-    headers = {'Content-Type': media_types.TEXT_HTML}
-    data = f'<html><title>{status_code}: {message}</title><body>{status_code}: {message}</body></html>'.encode()
-    return FrontikResponse(status_code=status_code, headers=headers, body=data)
 
 
 def _on_connection_close(tornado_request, process_request_task, integrations):

@@ -3,14 +3,14 @@ import asyncio
 from fastapi import Request
 from http_client.balancing import Upstream
 
-from frontik.dependencies import HttpClientT
+from frontik.dependencies import HttpClient
 from frontik.routing import router
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_occupied
 
 
 @router.get('/requests_count')
-async def get_page(request: Request, http_client: HttpClientT) -> str:
+async def get_page(request: Request, http_client: HttpClient) -> str:
     upstreams = request.app.service_discovery.get_upstreams_unsafe()
     requests_count_async = 'requests_count_async'
     upstreams[requests_count_async] = Upstream(requests_count_async, {}, [get_server(request, 'normal')])

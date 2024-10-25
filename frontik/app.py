@@ -17,15 +17,20 @@ from http_client import AIOHttpClientWrapper, HttpClientFactory
 from http_client import options as http_client_options
 from http_client.balancing import RequestBalancerBuilder
 from lxml import etree
+from starlette.types import ASGIApp, Receive, Scope, Send
 from tornado import httputil
 
 from frontik import app_integrations
 from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
+from frontik.balancing_client import create_http_client
+from frontik.dependencies import clients
 from frontik.handler_asgi import serve_tornado_request
 from frontik.options import options
 from frontik.process import WorkerState
 from frontik.routing import (
     import_all_pages,
+    method_not_allowed_router,
+    not_found_router,
     router,
     routers,
 )
@@ -202,6 +207,8 @@ class FrontikAsgiApp(FastAPI):
         self.get_frontik_and_apps_versions = frontik_app.get_frontik_and_apps_versions
         self.statsd_client = frontik_app.statsd_client
 
+        self.add_middleware(FrontikMiddleware)
+
 
 @router.get('/version')
 async def get_version(request: Request) -> Response:
@@ -212,3 +219,28 @@ async def get_version(request: Request) -> Response:
 @router.get('/status')
 async def get_status(request: Request) -> ORJSONResponse:
     return ORJSONResponse(request.app.get_current_status())
+
+
+class FrontikMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope['type'] != 'http':
+            await self.app(scope, receive, send)
+            return
+
+        clients.get()['http_client'] = create_http_client(scope)
+        clients.get()['app_config'] = scope['app'].config
+        clients.get()['statsd_client'] = scope['app'].statsd_client
+        await self.app(scope, receive, send)
+
+
+@not_found_router.get('__not_found')
+async def default_404() -> Response:
+    return Response(status_code=404)
+
+
+@method_not_allowed_router.get('__method_not_allowed')
+async def default_405(request: Request) -> Response:
+    return Response(status_code=405, headers={'Allow': ', '.join(request.scope['allowed_methods'])})

@@ -2,7 +2,7 @@ from fastapi import Request
 from http_client.balancing import Upstream, UpstreamConfig
 from tornado.web import HTTPError
 
-from frontik.dependencies import HttpClientT
+from frontik.dependencies import HttpClient
 from frontik.routing import router
 from frontik.util import gather_list
 from tests.projects.balancer_app import get_server
@@ -10,7 +10,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 
 @router.get('/retry_non_idempotent_503')
-async def get_page(request: Request, http_client: HttpClientT) -> str:
+async def get_page(request: Request, http_client: HttpClient) -> str:
     upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(retry_policy={503: {'idempotent': 'true'}})}
     upstreams = request.app.service_discovery.get_upstreams_unsafe()
     retry_non_idempotent = 'retry_non_idempotent_503'
