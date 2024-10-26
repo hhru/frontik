@@ -16,7 +16,7 @@ async def get_page():
     return StreamingResponse(content=iterable(), headers={'Content-type': TEXT_PLAIN})
 
 
-class TestStreaming(FrontikTestBase):
+class TestStreamingResponse(FrontikTestBase):
     async def test_streaming_response(self):
         response = await self.fetch('/stream')
         assert response.headers['content-type'] == 'text/plain'
