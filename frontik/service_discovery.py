@@ -209,7 +209,8 @@ class MasterServiceDiscovery(ServiceDiscovery):
             log.info('Failed to deregister service %s normally', self.service_id)
 
     def __check_empty_upstreams_on_startup(self) -> None:
-        empty_upstreams = [k for k, v in self._upstreams.items() if not v.servers]
+        skip_check_upstreams = options.skip_empty_upstream_check_for_upstreams
+        empty_upstreams = [k for k, v in self._upstreams.items() if not v.servers and k not in skip_check_upstreams]
         if empty_upstreams:
             msg = f'failed startup application, because for next upstreams got empty servers: {empty_upstreams}'
             raise RuntimeError(msg)

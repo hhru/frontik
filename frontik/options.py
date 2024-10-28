@@ -113,6 +113,7 @@ class Options:
     # upstream options
     upstreams: list = field(default_factory=lambda: [])
     fail_start_on_empty_upstream: bool = True
+    skip_empty_upstream_check_for_upstreams: list = field(default_factory=lambda: [])
 
     # opentelemetry options
     opentelemetry_collector_url: str = 'http://127.0.0.1:2360'
