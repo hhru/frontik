@@ -1,9 +1,10 @@
 import base64
 from typing import Mapping, MutableMapping, Optional, Union
 
-from tornado import httputil
 from tornado.escape import to_unicode
 from tornado.web import Finish
+
+from frontik.tornado_request import FrontikTornadoServerRequest
 
 DEBUG_AUTH_HEADER_NAME = 'Frontik-Debug-Auth'
 
@@ -41,6 +42,6 @@ def check_debug_auth_by_headers(
 
 
 def check_debug_auth(
-    tornado_request: httputil.HTTPServerRequest, login: Optional[str], password: Optional[str]
+    tornado_request: FrontikTornadoServerRequest, login: Optional[str], password: Optional[str]
 ) -> Optional[dict]:
     return check_debug_auth_by_headers(tornado_request.headers, login, password)

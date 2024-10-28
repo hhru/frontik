@@ -34,6 +34,7 @@ fastapi = '0.115.2'
 aiokafka = '0.8.1'
 sentry-sdk = '2.7.0'
 tornado-httpclient-mock = '0.2.3'
+python-multipart = "^0.0.16"
 
 [tool.poetry.group.test.dependencies]
 pytest = '8.1.1'

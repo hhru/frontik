@@ -19,7 +19,8 @@ from frontik.request_integrations.integrations_dto import IntegrationDto
 from frontik.routing import find_route
 
 if TYPE_CHECKING:
-    from frontik.app import FrontikApplication, FrontikAsgiApp, FrontikTornadoServerRequest
+    from frontik.app import FrontikApplication, FrontikAsgiApp
+    from frontik.tornado_request import FrontikTornadoServerRequest
 
 CHARSET = 'utf-8'
 log = logging.getLogger('handler')

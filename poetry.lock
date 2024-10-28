@@ -1538,6 +1538,17 @@ reference = "v0.2.10"
 resolved_reference = "a9c9256832fdaae5beaea4e3925c9fb7b0adf47e"
 
 [[package]]
+name = "python-multipart"
+version = "0.0.16"
+description = "A streaming multipart parser for Python"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "python_multipart-0.0.16-py3-none-any.whl", hash = "sha256:c2759b7b976ef3937214dfb592446b59dfaa5f04682a076f78b117c94776d87a"},
+    {file = "python_multipart-0.0.16.tar.gz", hash = "sha256:8dee37b88dab9b59922ca173c35acb627cc12ec74019f5cd4578369c6df36554"},
+]
+
+[[package]]
 name = "requests"
 version = "2.32.3"
 description = "Python HTTP for Humans."
@@ -2020,4 +2031,4 @@ testing = ["tornado-httpclient-mock"]
 [metadata]
 lock-version = "2.0"
 python-versions = "~=3.9"
-content-hash = "298ecef7bfe549a1c6371e8d8234d83c97fe92edb34f40ce4fa36703ba2a1c0a"
+content-hash = "6988c9a80f4addc8baa237a88f791e3f45d6b8d8e0db55ee96f7839fdfec5333"

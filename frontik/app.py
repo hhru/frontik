@@ -5,9 +5,8 @@ import multiprocessing
 import os
 import sys
 import time
-import typing
 from ctypes import c_bool, c_int
-from typing import Any, Awaitable, Optional, Union
+from typing import Any, Optional, Union
 
 import aiohttp
 import tornado
@@ -25,7 +24,6 @@ from frontik import app_integrations
 from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
 from frontik.balancing_client import create_http_client
 from frontik.dependencies import clients
-from frontik.handler_asgi import serve_tornado_request
 from frontik.options import options
 from frontik.process import WorkerState
 from frontik.routing import (
@@ -36,57 +34,10 @@ from frontik.routing import (
     routers,
 )
 from frontik.service_discovery import MasterServiceDiscovery, ServiceDiscovery, WorkerServiceDiscovery
+from frontik.tornado_connection_handler import LegacyTornadoConnectionHandler, TornadoConnectionHandler
 from frontik.version import version as frontik_version
 
 app_logger = logging.getLogger('app_logger')
-_server_tasks: typing.Set[asyncio.Task] = set()
-
-
-class FrontikTornadoServerRequest(httputil.HTTPServerRequest):
-    def __init__(self, *args, **kwargs) -> None:  # type: ignore
-        super().__init__(*args, **kwargs)
-        self.body_chunks: asyncio.Queue = asyncio.Queue(maxsize=100)
-        self.request_id = None
-        self.finished = False
-
-
-class TornadoConnectionHandler(httputil.HTTPMessageDelegate):
-    def __init__(
-        self,
-        frontik_app: 'FrontikApplication',
-        request_conn: httputil.HTTPConnection,
-    ) -> None:
-        self.connection = request_conn
-        self.frontik_app = frontik_app
-        self.request = None  # type: Optional[FrontikTornadoServerRequest]
-
-    def headers_received(
-        self,
-        start_line: Union[httputil.RequestStartLine, httputil.ResponseStartLine],
-        headers: httputil.HTTPHeaders,
-    ) -> Optional[Awaitable[None]]:
-        self.request = FrontikTornadoServerRequest(
-            connection=self.connection,
-            start_line=typing.cast(httputil.RequestStartLine, start_line),
-            headers=headers,
-        )
-        task = asyncio.create_task(serve_tornado_request(self.frontik_app, self.frontik_app.asgi_app, self.request))
-        _server_tasks.add(task)
-        task.add_done_callback(_server_tasks.discard)
-        return None
-
-    def data_received(self, chunk: bytes) -> Optional[Awaitable[None]]:
-        assert self.request is not None
-        task = asyncio.create_task(self.request.body_chunks.put(chunk))
-        return task
-
-    def finish(self) -> None:
-        assert self.request is not None
-        self.request.finished = True
-
-    def on_connection_close(self) -> None:
-        assert self.request is not None
-        self.request.finished = True
 
 
 class FrontikApplication(httputil.HTTPServerConnectionDelegate):
@@ -233,7 +184,7 @@ class FrontikApplication(httputil.HTTPServerConnectionDelegate):
         server_conn: object,
         request_conn: httputil.HTTPConnection,
     ) -> TornadoConnectionHandler:
-        return TornadoConnectionHandler(self, request_conn)
+        return LegacyTornadoConnectionHandler(self, request_conn)
 
 
 def anyio_noop(*_args: Any, **_kwargs: Any) -> None:
