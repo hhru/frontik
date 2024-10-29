@@ -71,11 +71,8 @@ async def process_request(
         return FrontikResponse(status_code=http.client.SERVICE_UNAVAILABLE)
 
     debug_mode = make_debug_mode(frontik_app, tornado_request)
-    if debug_mode.auth_failed():
-        assert debug_mode.failed_auth_header is not None
-        return FrontikResponse(
-            status_code=http.client.UNAUTHORIZED, headers={'WWW-Authenticate': debug_mode.failed_auth_header}
-        )
+    if debug_mode.auth_failed:
+        return FrontikResponse(status_code=http.client.UNAUTHORIZED, headers=debug_mode.failed_auth_headers)
 
     assert tornado_request.method is not None
 
@@ -84,7 +81,7 @@ async def process_request(
 
     response = await execute_asgi_page(frontik_app, asgi_app, tornado_request, scope, debug_mode, integrations)
 
-    if debug_mode.enabled and not response.headers_written:
+    if debug_mode.debug_response and not response.headers_written:
         debug_transform = DebugTransform(frontik_app, debug_mode)
         response = debug_transform.transform_chunk(tornado_request, response)
 
@@ -138,7 +135,7 @@ async def execute_asgi_page(
                     response.headers.add(h[0].decode(CHARSET), h[1].decode(CHARSET))
         elif message['type'] == 'http.response.body':
             chunk = message['body']
-            if debug_mode.enabled or not message.get('more_body'):
+            if debug_mode.debug_response or not message.get('more_body'):
                 response.body += chunk
             elif not response.headers_written:
                 for integration in integrations.values():

@@ -196,11 +196,12 @@ class FrontikAsgiApp(FastAPI):
         super().__init__()
         self.router = router
 
+        for _router in routers:
+            if _router is not router:
+                self.include_router(_router)
+
         if options.openapi_enabled:
             self.setup()
-
-        for _router in routers:
-            self.include_router(_router)
 
         self.config = frontik_app.config
         self.get_current_status = frontik_app.get_current_status

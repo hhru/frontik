@@ -65,8 +65,7 @@ def _get_weight_or_default(value: Optional[dict]) -> int:
 
 def _get_hostname_or_raise(node_name: str) -> str:
     if not node_name:
-        msg = 'options node_name must be defined'
-        raise RuntimeError(msg)
+        raise RuntimeError('options node_name must be defined')
     return node_name
 
 

@@ -402,7 +402,7 @@ class DebugTransform:
         start_time = time.time()
         handler_name = request_context.get_handler_name()
 
-        debug_log_data = request_context.get_log_handler().produce_all()  # type: ignore
+        debug_log_data = request_context.get_debug_log_handler().produce_all()  # type: ignore
         debug_log_data.set('code', str(int(response.status_code)))
         debug_log_data.set('handler-name', handler_name if handler_name else 'unknown handler')
         debug_log_data.set('started', _format_number(tornado_request._start_time))
@@ -477,8 +477,9 @@ class DebugMode:
         self.inherited = tornado_request.headers.get(DEBUG_HEADER_NAME, None)
         self.pass_debug = False
         self.enabled = False
+        self.debug_response = False
         self.profile_xslt = False
-        self.failed_auth_header: Optional[str] = None
+        self.failed_auth_headers: Optional[dict] = None
         self.need_auth = (
             self.debug_value is not None
             or self.inherited
@@ -486,32 +487,36 @@ class DebugMode:
             or self.notrl is not None
             or self.noxsl is not None
         )
+        self.auth_failed: Optional[bool] = None
 
         if self.inherited:
             debug_log.debug('debug mode is inherited due to %s request header', DEBUG_HEADER_NAME)
 
     def require_debug_access(self, tornado_request: HTTPServerRequest, auth_failed: Optional[bool] = None) -> None:
         if auth_failed is True:
-            self.failed_auth_header = 'Basic realm="Secure Area"'
+            self.auth_failed = True
             return
 
         if options.debug or auth_failed is False:
+            self.auth_failed = False
             self.on_auth_ok()
             return
 
-        self.failed_auth_header = check_debug_auth(tornado_request, options.debug_login, options.debug_password)
-        if not self.failed_auth_header:
+        self.failed_auth_headers = check_debug_auth(tornado_request, options.debug_login, options.debug_password)
+        if self.failed_auth_headers is None:
+            self.auth_failed = False
             self.on_auth_ok()
+            return
+
+        self.auth_failed = True
 
     def on_auth_ok(self) -> None:
+        self.debug_response = self.debug_value is not None or self.inherited
         self.enabled = True
         self.pass_debug = 'nopass' not in self.mode_values or bool(self.inherited)
         self.profile_xslt = 'xslt' in self.mode_values
 
-        request_context.set_log_handler(DebugBufferedHandler())
+        request_context.set_debug_log_handler(DebugBufferedHandler())
 
         if self.pass_debug:
             debug_log.debug('%s header will be passed to all requests', DEBUG_HEADER_NAME)
-
-    def auth_failed(self) -> bool:
-        return self.failed_auth_header is not None

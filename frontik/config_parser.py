@@ -29,8 +29,7 @@ def parse_configs(config_files: Optional[str]) -> None:
         configs_to_read = options.config
     else:
         if config_files is None:
-            msg = 'Configs can not be None'
-            raise Exception(msg)
+            raise Exception('Configs can not be None')
         configs_to_read = config_files
 
     configs_to_read_filter = filter(
@@ -86,5 +85,4 @@ def parse_command_line(options: Options, allowed_options: Iterable) -> None:
         elif option.type == str or get_args(option.type) == (str, type(None)):
             setattr(options, name, value)
         else:
-            msg = f'Complex types are not implemented {name!r}: {value!r} ({option.type})'
-            raise Exception(msg)
+            raise Exception(f'Complex types are not implemented {name!r}: {value!r} ({option.type})')
