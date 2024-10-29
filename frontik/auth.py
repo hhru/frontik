@@ -26,21 +26,21 @@ def passed_basic_auth(auth_header: Optional[str], login: Optional[str], passwd: 
 
 def check_debug_auth_by_headers(
     headers: Union[Mapping, MutableMapping], login: Optional[str], password: Optional[str]
-) -> Optional[str]:
+) -> Optional[dict]:
     debug_auth_header = headers.get(DEBUG_AUTH_HEADER_NAME)
     if debug_auth_header is not None:
         debug_access = debug_auth_header == f'{login}:{password}'
         if not debug_access:
-            return f'{DEBUG_AUTH_HEADER_NAME}-Header realm="Secure Area"'
+            return {'WWW-Authenticate': f'{DEBUG_AUTH_HEADER_NAME}-Header realm="Secure Area"'}
     else:
         auth_header: Optional[str] = headers.get('Authorization')
         debug_access = passed_basic_auth(auth_header, login, password)
         if not debug_access:
-            return 'Basic realm="Secure Area"'
+            return {'WWW-Authenticate': 'Basic realm="Secure Area"'}
     return None
 
 
 def check_debug_auth(
     tornado_request: httputil.HTTPServerRequest, login: Optional[str], password: Optional[str]
-) -> Optional[str]:
+) -> Optional[dict]:
     return check_debug_auth_by_headers(tornado_request.headers, login, password)

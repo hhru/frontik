@@ -57,9 +57,9 @@ class BufferedHandler(Handler):
         raise NotImplementedError()  # pragma: no cover
 
 
-class GlobalLogHandler(Handler):
+class DebugLogHandler(Handler):
     def handle(self, record):
-        handler = request_context.get_log_handler()
+        handler = request_context.get_debug_log_handler()
         if handler is not None:
             handler.handle(record)
 
@@ -171,7 +171,7 @@ def bootstrap_logger(
         handler.setLevel(logger_level)
         logger.addHandler(handler)
 
-    logger.addHandler(GlobalLogHandler())
+    logger.addHandler(DebugLogHandler())
     logger.propagate = False
 
     return logger

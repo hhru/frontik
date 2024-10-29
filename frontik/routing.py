@@ -25,10 +25,9 @@ class FrontikRegexRouter(APIRouter):
 
 
 class FastAPIRouter(APIRouter):
-    def __init__(self, include_in_app: bool = True, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        if include_in_app:
-            routers.append(self)
+        routers.append(self)
 
     async def __call__(self, scope, receive, send):
         assert scope['type'] == 'http'
@@ -83,7 +82,7 @@ def import_all_pages(app_module: str) -> None:
             raise RuntimeError('failed on import page %s %s', full_name, ex)
 
 
-router = FastAPIRouter(include_in_app=False)
+router = FastAPIRouter()
 regex_router = FrontikRegexRouter()
 not_found_router = APIRouter()
 method_not_allowed_router = APIRouter()

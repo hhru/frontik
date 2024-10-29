@@ -24,11 +24,9 @@ async def get_page2(request: Request) -> dict:
             return
         _login: Optional[str] = login or options.debug_login
         _password: Optional[str] = password or options.debug_password
-        fail_header = check_debug_auth_by_headers(request.headers, _login, _password)
-        if fail_header:
-            raise HTTPException(
-                status_code=http.client.UNAUTHORIZED, detail='Unauthorized', headers={'WWW-Authenticate': fail_header}
-            )
+        fail_headers = check_debug_auth_by_headers(request.headers, _login, _password)
+        if fail_headers:
+            raise HTTPException(status_code=http.client.UNAUTHORIZED, detail='Unauthorized', headers=fail_headers)
 
     check_debug_auth_or_finish('user', 'god')
     return {'authenticated': True}

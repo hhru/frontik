@@ -45,9 +45,9 @@ def set_handler_name(route: APIRoute) -> None:
     _context.get().handler_name = f'{route.endpoint.__module__}.{route.endpoint.__name__}'
 
 
-def get_log_handler() -> Optional[DebugBufferedHandler]:
+def get_debug_log_handler() -> Optional[DebugBufferedHandler]:
     return _context.get().log_handler
 
 
-def set_log_handler(log_handler: DebugBufferedHandler) -> None:
+def set_debug_log_handler(log_handler: DebugBufferedHandler) -> None:
     _context.get().log_handler = log_handler

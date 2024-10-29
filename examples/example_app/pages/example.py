@@ -1,5 +1,8 @@
+from fastapi import APIRouter
+
 from frontik.dependencies import HttpClient
-from frontik.routing import router
+
+router = APIRouter()
 
 
 @router.get('/example')
