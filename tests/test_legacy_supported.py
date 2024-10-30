@@ -1,5 +1,7 @@
+import pytest
 from fastapi import Request
 
+from frontik.app import FrontikApplication
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
 
@@ -14,6 +16,10 @@ async def legacy_supported_page(request: Request) -> bool:
 
 
 class TestLegacySupported(FrontikTestBase):
+    @pytest.fixture(scope='class')
+    def frontik_app(self) -> FrontikApplication:
+        return FrontikApplication()
+
     async def test_config(self):
         response = await self.fetch('/legacy_supported')
 

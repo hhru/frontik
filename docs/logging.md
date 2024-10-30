@@ -1,28 +1,21 @@
-## Logging in Frontik
+## Logging
 
-Frontik has several options for logging:
+На старте приложения фронтик выставляет уровень NOTSET для `logging.root`,
+а так же инициализирует несколько базовых логеров (`server`, `service`, `requests`) методом `frontik.logging.bootstrap_logger`.
+`service` является рутовым логгером, без доп настроек любые новые логгеры будут попадать в его хендлеры.
 
-* Writing to stderr (useful in development environment)
-* Writing to a file
-* Sending messages to syslog (preferred for highload projects)
+`bootstrap_logger` выставляет логгерам propagate = False, а также добавляет хендлеры логерам в зависимости от настроек.
+доступные хендлеры - syslog, file, stderr, debug (добавляется всегда, нужен для дебаг страницы).
+Настройка `options.log_level` проставляется в хендлеры, не в логеры.
 
-For more information on configuring logging options see [Configuring Frontik](/docs/config.md).
-
-Frontik can also send all unhandled runtime exceptions to Sentry, if `sentry_dsn` option is set in the configuration file.
-Note that if you raise `tornado.web.HTTPError` in your code, it would not be sent to Sentry, because probably it's a
-part of the normal flow for generating error responses.
-
-You can also send exceptions and messages to Sentry manually:
-
+Как написать что-нибудь в лог
 ```python
-# Sending a message to Sentry
-sentry_sdk.capture_message('Message for Sentry')
-```
+import logging
+from frontik.routing import router
 
-To provide Sentry logger customization, you can use `initialize_sentry_logger` method in the request handler:
+logger = logging.getLogger('handler')
 
-```python
-class Page(frontik.handler.PageHandler):
-    def initialize_sentry_logger(self):
-        pass
+@router.get('/my_page')
+async def my_page() -> None:
+    logger.info('start my_page')
 ```

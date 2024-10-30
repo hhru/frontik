@@ -1,6 +1,9 @@
 import asyncio
 import json
 
+import pytest
+
+from frontik.app import FrontikApplication
 from frontik.loggers import JSON_FORMATTER
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
@@ -19,6 +22,10 @@ async def asgi_request_id_long_page() -> None:
 
 
 class TestRequestId(FrontikTestBase):
+    @pytest.fixture(scope='class')
+    def frontik_app(self) -> FrontikApplication:
+        return FrontikApplication()
+
     async def test_asgi_request_id(self):
         response = await self.fetch('/asgi_request_id')
 

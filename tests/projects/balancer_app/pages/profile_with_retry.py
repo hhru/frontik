@@ -2,13 +2,13 @@ from fastapi import Request
 from http_client.balancing import Upstream, UpstreamConfig
 from tornado.web import HTTPError
 
-from frontik.dependencies import HttpClient
+from frontik.dependencies import http_client
 from frontik.routing import router
 from tests.projects.balancer_app import get_server
 
 
 @router.get('/profile_with_retry')
-async def get_page(request: Request, http_client: HttpClient) -> str:
+async def get_page(request: Request) -> str:
     servers = [get_server(request, 'broken'), get_server(request, 'normal')]
     profile_with_retry = 'profile_with_retry'
     upstream_config = {

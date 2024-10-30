@@ -25,10 +25,6 @@ log = logging.getLogger('server')
 
 
 class FrontikTestBase:
-    @pytest.fixture(scope='class')
-    def frontik_app(self) -> FrontikApplication:
-        return FrontikApplication()
-
     @pytest.fixture(scope='class', autouse=True)
     async def _bind_socket(self):
         sock = bind_socket(options.host, 0)

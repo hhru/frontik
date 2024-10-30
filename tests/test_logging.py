@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 from tornado.escape import to_unicode
 
+from frontik.app import FrontikApplication
 from frontik.loggers import _configure_file, _configure_syslog, bootstrap_logger
 from frontik.options import options
 from frontik.routing import router
@@ -58,6 +59,10 @@ async def get_page():
 
 class TestSyslog(FrontikTestBase):
     s: socket.socket
+
+    @pytest.fixture(scope='class')
+    def frontik_app(self) -> FrontikApplication:
+        return FrontikApplication()
 
     @classmethod
     def setup_class(cls):
@@ -201,6 +206,10 @@ class TestSyslog(FrontikTestBase):
 class TestLogToFile(FrontikTestBase):
     tmp_log_dir: str
     handler: Any
+
+    @pytest.fixture(scope='class')
+    def frontik_app(self) -> FrontikApplication:
+        return FrontikApplication()
 
     @classmethod
     def setup_class(cls):
