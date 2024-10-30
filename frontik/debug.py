@@ -19,9 +19,8 @@ from urllib.parse import parse_qs, urlparse
 
 from lxml import etree
 from lxml.builder import E
-from tornado import httputil
 from tornado.escape import to_unicode, utf8
-from tornado.httputil import HTTPHeaders, HTTPServerRequest
+from tornado.httputil import HTTPHeaders
 
 from frontik import media_types, request_context
 from frontik.auth import check_debug_auth
@@ -37,6 +36,7 @@ if TYPE_CHECKING:
     from http_client.request_response import RequestBuilder, RequestResult
 
     from frontik.app import FrontikApplication
+    from frontik.tornado_request import FrontikTornadoServerRequest
 
 debug_log = logging.getLogger('frontik.debug')
 
@@ -388,7 +388,7 @@ class DebugTransform:
         return self.debug_mode.inherited
 
     def transform_chunk(
-        self, tornado_request: httputil.HTTPServerRequest, response: FrontikResponse
+        self, tornado_request: FrontikTornadoServerRequest, response: FrontikResponse
     ) -> FrontikResponse:
         if not self.is_enabled():
             return response
@@ -406,7 +406,7 @@ class DebugTransform:
         debug_log_data.set('code', str(int(response.status_code)))
         debug_log_data.set('handler-name', handler_name if handler_name else 'unknown handler')
         debug_log_data.set('started', _format_number(tornado_request._start_time))
-        debug_log_data.set('request-id', str(tornado_request.request_id))  # type: ignore
+        debug_log_data.set('request-id', str(tornado_request.request_id))
         debug_log_data.set('stages-total', _format_number((time.time() - tornado_request._start_time) * 1000))
 
         try:
@@ -468,7 +468,7 @@ class DebugTransform:
 
 
 class DebugMode:
-    def __init__(self, tornado_request: HTTPServerRequest) -> None:
+    def __init__(self, tornado_request: FrontikTornadoServerRequest) -> None:
         self.debug_value = get_cookie_or_param_from_request(tornado_request, 'debug')
         self.notpl = get_cookie_or_param_from_request(tornado_request, 'notpl')
         self.notrl = get_cookie_or_param_from_request(tornado_request, 'notrl')
@@ -492,7 +492,9 @@ class DebugMode:
         if self.inherited:
             debug_log.debug('debug mode is inherited due to %s request header', DEBUG_HEADER_NAME)
 
-    def require_debug_access(self, tornado_request: HTTPServerRequest, auth_failed: Optional[bool] = None) -> None:
+    def require_debug_access(
+        self, tornado_request: FrontikTornadoServerRequest, auth_failed: Optional[bool] = None
+    ) -> None:
         if auth_failed is True:
             self.auth_failed = True
             return

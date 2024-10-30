@@ -24,7 +24,6 @@ from frontik import app_integrations
 from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
 from frontik.balancing_client import create_http_client
 from frontik.dependencies import clients
-from frontik.handler_asgi import serve_tornado_request
 from frontik.options import options
 from frontik.process import WorkerState
 from frontik.routing import (
@@ -35,13 +34,13 @@ from frontik.routing import (
     routers,
 )
 from frontik.service_discovery import MasterServiceDiscovery, ServiceDiscovery, WorkerServiceDiscovery
+from frontik.tornado_connection_handler import LegacyTornadoConnectionHandler, TornadoConnectionHandler
 from frontik.version import version as frontik_version
 
 app_logger = logging.getLogger('app_logger')
-_server_tasks = set()
 
 
-class FrontikApplication:
+class FrontikApplication(httputil.HTTPServerConnectionDelegate):
     request_id = ''
 
     class DefaultConfig:
@@ -87,12 +86,6 @@ class FrontikApplication:
             anyio.to_thread.run_sync = anyio_noop  # type: ignore
         except ImportError:
             pass
-
-    def __call__(self, tornado_request: httputil.HTTPServerRequest) -> None:
-        # for make it more asgi, reimplement tornado.http1connection._server_request_loop and ._read_message
-        task = asyncio.create_task(serve_tornado_request(self, self.asgi_app, tornado_request))
-        _server_tasks.add(task)
-        task.add_done_callback(_server_tasks.discard)
 
     def make_service_discovery(self) -> ServiceDiscovery:
         if self.worker_state.is_master and options.consul_enabled:
@@ -185,6 +178,13 @@ class FrontikApplication:
 
     def get_kafka_producer(self, producer_name: str) -> Optional[AIOKafkaProducer]:  # pragma: no cover
         pass
+
+    def start_request(
+        self,
+        server_conn: object,
+        request_conn: httputil.HTTPConnection,
+    ) -> TornadoConnectionHandler:
+        return LegacyTornadoConnectionHandler(self, request_conn)
 
 
 def anyio_noop(*_args: Any, **_kwargs: Any) -> None:

@@ -12,7 +12,7 @@ from frontik.routing import router
 from frontik.testing import FrontikTestBase
 
 
-class TestKafkaProducer:
+class KafkaProducerMock:
     def __init__(self) -> None:
         self.data: list[dict[str, dict]] = []
         self.request_id = None
@@ -34,7 +34,7 @@ class TestKafkaProducer:
 class KafkaApplication(FrontikApplication):
     async def init(self):
         await super().init()
-        self.http_client_factory.request_engine_builder.kafka_producer = TestKafkaProducer()
+        self.http_client_factory.request_engine_builder.kafka_producer = KafkaProducerMock()
 
 
 @router.get('/kafka')

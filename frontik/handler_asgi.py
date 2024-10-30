@@ -8,7 +8,6 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 from tornado import httputil
-from tornado.httputil import HTTPServerRequest
 
 from frontik import request_context
 from frontik.debug import DebugMode, DebugTransform
@@ -21,6 +20,7 @@ from frontik.routing import find_route
 
 if TYPE_CHECKING:
     from frontik.app import FrontikApplication, FrontikAsgiApp
+    from frontik.tornado_request import FrontikTornadoServerRequest
 
 CHARSET = 'utf-8'
 log = logging.getLogger('handler')
@@ -29,7 +29,7 @@ log = logging.getLogger('handler')
 async def serve_tornado_request(
     frontik_app: FrontikApplication,
     asgi_app: FrontikAsgiApp,
-    tornado_request: httputil.HTTPServerRequest,
+    tornado_request: FrontikTornadoServerRequest,
 ) -> None:
     with ExitStack() as stack:
         integrations: dict[str, IntegrationDto] = {
@@ -64,7 +64,7 @@ async def serve_tornado_request(
 async def process_request(
     frontik_app: FrontikApplication,
     asgi_app: FrontikAsgiApp,
-    tornado_request: HTTPServerRequest,
+    tornado_request: FrontikTornadoServerRequest,
     integrations: dict[str, IntegrationDto],
 ) -> FrontikResponse:
     if integrations.get('request_limiter', IntegrationDto()).get_value() is False:
@@ -91,7 +91,7 @@ async def process_request(
 async def execute_asgi_page(
     frontik_app: FrontikApplication,
     asgi_app: FrontikAsgiApp,
-    tornado_request: HTTPServerRequest,
+    tornado_request: FrontikTornadoServerRequest,
     scope: dict,
     debug_mode: DebugMode,
     integrations: dict[str, IntegrationDto],
@@ -119,10 +119,19 @@ async def execute_asgi_page(
 
     async def receive():
         await asyncio.sleep(0)
+
+        if tornado_request.finished and tornado_request.body_chunks.empty():
+            return {
+                'body': b'',
+                'type': 'http.request',
+                'more_body': False,
+            }
+
+        chunk = await tornado_request.body_chunks.get()
         return {
-            'body': tornado_request.body,
+            'body': chunk,
             'type': 'http.request',
-            'more_body': False,
+            'more_body': not tornado_request.finished or not tornado_request.body_chunks.empty(),
         }
 
     async def send(message):
@@ -157,7 +166,7 @@ async def execute_asgi_page(
     return response
 
 
-def make_debug_mode(frontik_app: FrontikApplication, tornado_request: HTTPServerRequest) -> DebugMode:
+def make_debug_mode(frontik_app: FrontikApplication, tornado_request: FrontikTornadoServerRequest) -> DebugMode:
     debug_mode = DebugMode(tornado_request)
 
     if not debug_mode.need_auth:
@@ -184,12 +193,12 @@ def _on_connection_close(tornado_request, process_request_task, integrations):
         process_request_task.cancel()  # serve_tornado_request will be interrupted with CanceledError
 
 
-def log_request(tornado_request: httputil.HTTPServerRequest, status_code: int) -> None:
+def log_request(tornado_request: FrontikTornadoServerRequest, status_code: int) -> None:
     # frontik.request_context can't be used in case when client has closed connection
     request_time = int(1000.0 * tornado_request.request_time())
     extra = {
         'ip': tornado_request.remote_ip,
-        'rid': tornado_request.request_id,  # type: ignore
+        'rid': tornado_request.request_id,
         'status': status_code,
         'time': request_time,
         'method': tornado_request.method,
