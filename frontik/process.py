@@ -14,6 +14,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import partial
+from multiprocessing.context import ForkContext
 from multiprocessing.sharedctypes import Synchronized
 from multiprocessing.synchronize import Lock as LockBase
 from queue import Full, Queue
@@ -23,7 +24,6 @@ from typing import Any, Optional
 from frontik.options import options
 
 log = logging.getLogger('fork')
-multiprocessing.set_start_method('fork')
 
 
 F_SETPIPE_SZ = 1031  # can't use fcntl.F_SETPIPE_SZ on macos
@@ -57,6 +57,7 @@ def fork_workers(
 ) -> None:
     log.info('starting %d processes', num_workers)
     worker_state.single_worker_mode = False
+    ctx = multiprocessing.get_context('fork')
 
     def master_sigterm_handler(signum, _frame):
         if not worker_state.is_master:
@@ -73,7 +74,7 @@ def fork_workers(
 
     worker_function_wrapped = partial(_worker_function_wrapper, worker_function, worker_listener_handler)
     for worker_id in range(num_workers):
-        is_worker = _start_child(worker_id, worker_state, worker_function_wrapped)
+        is_worker = _start_child(worker_id, worker_state, worker_function_wrapped, ctx)
         if is_worker:
             return
 
@@ -90,10 +91,10 @@ def fork_workers(
         time.sleep(0.1)
     _master_function_wrapper(worker_state, master_function)
     worker_state.master_done.value = True
-    _supervise_workers(worker_state, worker_function_wrapped)
+    _supervise_workers(worker_state, worker_function_wrapped, ctx)
 
 
-def _supervise_workers(worker_state: WorkerState, worker_function: Callable) -> None:
+def _supervise_workers(worker_state: WorkerState, worker_function: Callable, ctx: ForkContext) -> None:
     while worker_state.children:
         try:
             pid, status = os.wait()
@@ -124,7 +125,7 @@ def _supervise_workers(worker_state: WorkerState, worker_function: Callable) -> 
             log.info('server is shutting down, not restarting %d', worker_id)
             continue
 
-        is_worker = _start_child(worker_id, worker_state, worker_function)
+        is_worker = _start_child(worker_id, worker_state, worker_function, ctx)
         if is_worker:
             return
     log.info('all children terminated, exiting')
@@ -132,13 +133,13 @@ def _supervise_workers(worker_state: WorkerState, worker_function: Callable) -> 
 
 
 # returns True inside child process, otherwise False
-def _start_child(worker_id: int, worker_state: WorkerState, worker_function: Callable) -> bool:
+def _start_child(worker_id: int, worker_state: WorkerState, worker_function: Callable, ctx: ForkContext) -> bool:
     # it cannot be multiprocessing.pipe because we need to set nonblock flag and connect to asyncio
     read_fd, write_fd = os.pipe()
     os.set_blocking(read_fd, False)
     os.set_blocking(write_fd, False)
 
-    prc = multiprocessing.Process(target=worker_function, args=(read_fd, write_fd, worker_state, worker_id))
+    prc = ctx.Process(target=worker_function, args=(read_fd, write_fd, worker_state, worker_id))
     prc.start()
     pid = prc.pid
 
