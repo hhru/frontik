@@ -10,7 +10,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 from frontik import request_context
 from frontik.app import FrontikApplication
 from frontik.app_integrations.telemetry import FrontikIdGenerator, get_netloc, make_otel_provider
-from frontik.dependencies import HttpClient
+from frontik.dependencies import http_client
 from frontik.options import options
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
@@ -67,7 +67,7 @@ class TestTelemetry:
 
 
 @router.get('/page_a')
-async def get_page_a(request: Request, http_client: HttpClient) -> None:
+async def get_page_a(request: Request) -> None:
     await http_client.get_url(request.headers.get('host'), '/page_b')
 
 

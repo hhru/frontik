@@ -62,7 +62,7 @@ class TestHttpError:
 
     def test_requests_count(self):
         result = frontik_balancer_app.get_page(self.make_url('/requests_count'))
-        assert result.status_code == 200
+        assert result.status_code == 200, result.content
         assert result.content == b'"3"'
 
     def test_slow_start(self):

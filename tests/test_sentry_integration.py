@@ -108,6 +108,10 @@ class TestSentryIntegration(FrontikTestBase):
 
 
 class TestWithoutSentryIntegration(FrontikTestBase):
+    @pytest.fixture(scope='class')
+    def frontik_app(self) -> FrontikApplication:
+        return FrontikApplication()
+
     def test_sentry_not_configured(self):
         assert not options.sentry_dsn
 

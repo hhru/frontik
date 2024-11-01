@@ -1,50 +1,30 @@
-## Routing in Frontik applications
+## Routing
 
-On application start, frontik import all modules from {app_module}.pages so that any controller should be located there.
-We use fastapi routing, read [these docs](https://fastapi.tiangolo.com/reference/apirouter/?h=apirouter) for details.
+Конечные сервисы должны использовать [роутинг из fastapi](https://fastapi.tiangolo.com/tutorial/bigger-applications/).
 
-> [!IMPORTANT]
-> Never inherit from the `fastapi.APIRouter` router directly, instead you should use wrapped alternative from [`frontik.routing.FastAPIRouter`](https://github.com/hhru/frontik/blob/526a4cc22d151694fa48439f884dd03a6ca2329f/frontik/routing.py#L110)
->
-> If you won't customize router behaviour then simply import `from frontik.routing import router`
-
-example:
-
+Дефолтный роутер доступен по ссылке `frontik.routing.router`
 ```python
 from frontik.routing import router
 
-@router.get("/users/me")
-async def read_user_me():
-    return {"username": "fakecurrentuser"}
-
+@router.get('/my_page')
+async def my_page() -> str:
+    return 'Hello World'
 ```
 
-### Deprecated
+На старте приложения происходит импорт всех *.py файлов из модуля pages (см [Рекомендуемая структура проекта](README.md)).
+Следует размещать контроллеры там.
 
-Page generation logic with (pre/post)processors and finish group from previous versions is temporarily supported. You need to add `cls=PageHandler` arg to route:
+Если необходимо создать свой роутер, то нужно использовать `frontik.routing.FastAPIRouter` (вместо `fastapi.APIRouter`).
+Т.к. он автоматически подключается в приложение
 
-```python
-from frontik.routing import plain_router
-from frontik.handler import PageHandler
+Для поддержки старого кода временно существет `frontik.routing.regex_router` в который можно передавать произвольный регекспы.
+В следующих версиях он будет удален
 
-
-@plain_router.get('/simple_page', cls=PageHandler)  # or .post .put .delete .head
-async def get_page():
-    ...
+Дефолтные контроллеры фронтик приложения
+* `/status` – возвращает `200 OK` если сервер готов принимать запросы. Ответ содержит json с дополнительной информацией
+```json
+{
+    "uptime": "99.28 hours and 16.53 minutes"
+}
 ```
-
-If you need regex with path params use `from frontik.routing import regex_router`. The handler object can be accessed via `request.state.handler`
-You can use fastapi dependencies functions in router, see https://fastapi.tiangolo.com/tutorial/dependencies/ and https://fastapi.tiangolo.com/tutorial/bigger-applications/#another-module-with-apirouter for details
-
-Example with dependencies:
-
-```python
-from frontik.routing import plain_router
-from frontik.handler import PageHandler, get_current_handler
-from fastapi import Depends
-
-
-@plain_router.get('/simple_page', cls=PageHandler, dependencies=[Depends(my_foo)])
-async def get_page(handler=get_current_handler()):
-    ...
-```
+* `/version` – xml с версией приложения и некоторых зависимостей

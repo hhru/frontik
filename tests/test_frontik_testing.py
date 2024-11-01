@@ -1,8 +1,10 @@
 from typing import Any
 
+import pytest
 from fastapi import Request, Response
 
-from frontik.dependencies import AppConfig, HttpClient
+from frontik.app import FrontikApplication
+from frontik.dependencies import get_app_config, http_client
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
 from frontik.util import gather_list
@@ -10,7 +12,8 @@ from tests import FRONTIK_ROOT
 
 
 @router.get('/sum_values')
-async def sum_values_page(config: AppConfig, http_client: HttpClient) -> int:
+async def sum_values_page() -> int:
+    config = get_app_config()
     result = 0
     service_host = config.serviceHost
 
@@ -24,17 +27,22 @@ async def sum_values_page(config: AppConfig, http_client: HttpClient) -> int:
 
 
 @router.get('/config')
-async def check_config_page(config: AppConfig) -> Response:
+async def check_config_page() -> Response:
+    config = get_app_config()
     return Response(config.config_param)
 
 
 @router.post('/json_stub')
-async def post_page(request: Request, http_client: HttpClient) -> Any:
+async def post_page(request: Request) -> Any:
     result = await http_client.delete_url('http://backend', request.url.path, fail_fast=True)
     return result.data
 
 
 class TestFrontikTesting(FrontikTestBase):
+    @pytest.fixture(scope='class')
+    def frontik_app(self) -> FrontikApplication:
+        return FrontikApplication()
+
     async def test_config(self):
         self.configure_app(config_param='param_value')
         response = await self.fetch('/config')

@@ -2,13 +2,13 @@ from fastapi import Request
 from http_client.balancing import Upstream
 from http_client.request_response import NoAvailableServerException
 
-from frontik.dependencies import HttpClient
+from frontik.dependencies import http_client
 from frontik.routing import router
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
 @router.get('/no_available_backend')
-async def get_page(request: Request, http_client: HttpClient) -> str:
+async def get_page(request: Request) -> str:
     upstreams = request.app.service_discovery.get_upstreams_unsafe()
     no_available_backend = 'no_available_backend'
     upstreams[no_available_backend] = Upstream(no_available_backend, {}, [])

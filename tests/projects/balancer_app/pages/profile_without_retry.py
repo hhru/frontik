@@ -1,13 +1,13 @@
 from fastapi import Request
 from http_client.balancing import Upstream, UpstreamConfig
 
-from frontik.dependencies import HttpClient
+from frontik.dependencies import http_client
 from frontik.routing import router
 from tests.projects.balancer_app import get_server
 
 
 @router.get('/profile_without_retry')
-async def get_page(request: Request, http_client: HttpClient) -> str:
+async def get_page(request: Request) -> str:
     servers = [get_server(request, 'broken'), get_server(request, 'normal')]
     profile_without_retry = 'profile_without_retry'
     upstream_config = {

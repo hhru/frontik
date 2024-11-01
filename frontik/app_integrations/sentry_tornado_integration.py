@@ -29,7 +29,7 @@ from sentry_sdk.integrations.logging import ignore_logger
 try:
     from tornado import version_info as TORNADO_VERSION
     from tornado.web import HTTPError
-    from frontik.handler import PageHandler
+    from front_page_handler.base_page import PageHandler
     from tornado.gen import coroutine
 
     has_page_handler = True

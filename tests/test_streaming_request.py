@@ -1,8 +1,10 @@
 import math
 
+import pytest
 from fastapi import Request
 from fastapi.responses import Response
 
+from frontik.app import FrontikApplication
 from frontik.media_types import TEXT_PLAIN
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
@@ -23,6 +25,10 @@ async def get_page(request: Request) -> Response:
 
 
 class TestStreamingRequest(FrontikTestBase):
+    @pytest.fixture(scope='class')
+    def frontik_app(self) -> FrontikApplication:
+        return FrontikApplication()
+
     async def test_streaming_request(self):
         await self.fetch(
             method='POST',

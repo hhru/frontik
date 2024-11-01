@@ -6,7 +6,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from frontik.app import FrontikApplication
-from frontik.dependencies import HttpClient
+from frontik.dependencies import http_client
 from frontik.options import options
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
@@ -38,14 +38,14 @@ class KafkaApplication(FrontikApplication):
 
 
 @router.get('/kafka')
-async def get_page(http_client: HttpClient, request: Request) -> JSONResponse:
+async def get_page(request: Request) -> JSONResponse:
     rid = request.scope['tornado_request'].request_id
-    http_client.request_engine_builder.kafka_producer.enable_for_request_id(rid)
+    request.app.http_client_factory.request_engine_builder.kafka_producer.enable_for_request_id(rid)
 
     await http_client.post_url(request.headers.get('host'), request.url.path)
     await asyncio.sleep(0.1)
 
-    return JSONResponse(*http_client.request_engine_builder.kafka_producer.disable_and_get_data())
+    return JSONResponse(*request.app.http_client_factory.request_engine_builder.kafka_producer.disable_and_get_data())
 
 
 @router.post('/kafka')

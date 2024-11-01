@@ -1,6 +1,8 @@
+import pytest
 from fastapi import HTTPException
 
 from frontik import media_types
+from frontik.app import FrontikApplication
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
 
@@ -11,6 +13,10 @@ async def get_page(code: int = 200) -> None:
 
 
 class TestHttpError(FrontikTestBase):
+    @pytest.fixture(scope='class')
+    def frontik_app(self) -> FrontikApplication:
+        return FrontikApplication()
+
     async def test_raise_200(self):
         response = await self.fetch('/http_exception?code=200')
         assert response.status_code == 200

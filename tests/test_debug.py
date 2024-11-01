@@ -4,6 +4,7 @@ import logging
 import re
 from typing import Optional
 
+import pytest
 from fastapi import Query, Request, Response
 from http_client import RequestResult
 from lxml import etree
@@ -11,7 +12,8 @@ from lxml.builder import E
 from tornado.escape import to_unicode
 
 from frontik import media_types
-from frontik.dependencies import HttpClient
+from frontik.app import FrontikApplication
+from frontik.dependencies import http_client
 from frontik.options import options
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
@@ -21,7 +23,7 @@ logger = logging.getLogger('handler')
 
 
 @router.get('/debug')
-async def get_debug_page(http_client: HttpClient, request: Request, no_recursion: str = 'false') -> None:
+async def get_debug_page(request: Request, no_recursion: str = 'false') -> None:
     logger.debug('debug: starting debug page')
 
     def _exception_trace() -> None:
@@ -80,6 +82,10 @@ async def put_debug_page(content_type: str = Query(alias='type')) -> Response:
 
 
 class TestDebug(FrontikTestBase):
+    @pytest.fixture(scope='class')
+    def frontik_app(self) -> FrontikApplication:
+        return FrontikApplication()
+
     def setup_method(self):
         options.debug = True
 
@@ -160,6 +166,10 @@ async def get_page():
 
 class TestDebugFailed(FrontikTestBase):
     DEBUG_BASIC_AUTH = create_basic_auth_header('user:god')
+
+    @pytest.fixture(scope='class')
+    def frontik_app(self) -> FrontikApplication:
+        return FrontikApplication()
 
     def setup_method(self):
         options.debug_login = 'user'

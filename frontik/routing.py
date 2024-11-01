@@ -43,7 +43,7 @@ class FastAPIRouter(APIRouter):
         _fastapi_routes.append(self.routes[-1])  # type: ignore
 
     def add_route(self, *args: Any, **kwargs: Any) -> None:
-        super().add_route(*args, **kwargs)
+        super().add_api_route(*args, **kwargs)
         _fastapi_routes.append(self.routes[-1])  # type: ignore
 
 
