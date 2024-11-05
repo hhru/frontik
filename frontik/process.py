@@ -15,6 +15,7 @@ from contextlib import suppress
 from copy import deepcopy
 from dataclasses import dataclass, field
 from functools import partial
+from multiprocessing.context import ForkContext
 from multiprocessing.sharedctypes import Synchronized
 from multiprocessing.synchronize import Lock as LockBase
 from queue import Full, Queue
@@ -25,7 +26,6 @@ from frontik.options import options
 from frontik.util.gc import enable_gc
 
 log = logging.getLogger('fork')
-multiprocessing.set_start_method('fork')
 
 
 F_SETPIPE_SZ = 1031  # can't use fcntl.F_SETPIPE_SZ on macos
@@ -59,6 +59,7 @@ def fork_workers(
     worker_function: Callable,
     worker_listener_handler: Callable,
 ) -> None:
+    ctx = multiprocessing.get_context('fork')
     log.info('starting %d processes', num_workers)
 
     def master_sigterm_handler(signum, _frame):
@@ -78,7 +79,7 @@ def fork_workers(
 
     worker_function_wrapped = partial(_worker_function_wrapper, worker_function, worker_listener_handler)
     for worker_id in range(num_workers):
-        _start_child(worker_id, worker_state, shared_data, lock, worker_function_wrapped)
+        _start_child(worker_id, worker_state, shared_data, lock, worker_function_wrapped, ctx)
 
     enable_gc()
     timeout = time.time() + options.init_workers_timeout_sec
@@ -94,14 +95,11 @@ def fork_workers(
 
     __master_function_wrapper(worker_state, master_after_fork_action, shared_data, lock)
     worker_state.master_done.value = True
-    _supervise_workers(worker_state, shared_data, lock, worker_function_wrapped)
+    _supervise_workers(worker_state, shared_data, lock, worker_function_wrapped, ctx)
 
 
 def _supervise_workers(
-    worker_state: WorkerState,
-    shared_data: dict,
-    lock: Lock,
-    worker_function: Callable,
+    worker_state: WorkerState, shared_data: dict, lock: Lock, worker_function: Callable, ctx: ForkContext
 ) -> None:
     while worker_state.children:
         try:
@@ -133,7 +131,7 @@ def _supervise_workers(
             log.info('server is shutting down, not restarting %d', worker_id)
             continue
 
-        worker_pid = _start_child(worker_id, worker_state, shared_data, lock, worker_function)
+        worker_pid = _start_child(worker_id, worker_state, shared_data, lock, worker_function, ctx)
         on_worker_restart(worker_state, worker_pid)
 
     log.info('all children terminated, exiting')
@@ -141,7 +139,12 @@ def _supervise_workers(
 
 
 def _start_child(
-    worker_id: int, worker_state: WorkerState, shared_data: dict, lock: Optional[Lock], worker_function: Callable
+    worker_id: int,
+    worker_state: WorkerState,
+    shared_data: dict,
+    lock: Optional[Lock],
+    worker_function: Callable,
+    ctx: ForkContext,
 ) -> int:
     # it cannot be multiprocessing.pipe because we need to set nonblock flag and connect to asyncio
     read_fd, write_fd = os.pipe()
@@ -152,7 +155,7 @@ def _start_child(
         with lock:
             worker_state.initial_shared_data = deepcopy(shared_data)
 
-    prc = multiprocessing.Process(target=worker_function, args=(read_fd, write_fd, worker_state, worker_id))
+    prc = ctx.Process(target=worker_function, args=(read_fd, write_fd, worker_state, worker_id))
     prc.start()
     pid: int = prc.pid  # type: ignore
 
