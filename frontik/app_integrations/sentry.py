@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 import sentry_sdk
+from fastapi import HTTPException
 from http_client.request_response import FailFastError
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from sentry_sdk.integrations.atexit import AtexitIntegration
@@ -58,7 +59,7 @@ class SentryIntegration(Integration):
             traces_sample_rate=options.sentry_traces_sample_rate,
             in_app_include=list(filter(None, options.sentry_in_app_include.split(','))),
             profiles_sample_rate=options.sentry_profiles_sample_rate,
-            ignore_errors=[HTTPError, FailFastError],
+            ignore_errors=[HTTPError, FailFastError, HTTPException],
         )
 
         return None
