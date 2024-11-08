@@ -151,8 +151,13 @@ class MasterServiceDiscovery(ServiceDiscovery):
         upstream_cache.start()
 
         allow_cross_dc = http_options.http_client_allow_cross_datacenter_requests
-        datacenters = http_options.datacenters if allow_cross_dc else (http_options.datacenter,)
-        for upstream, dc in itertools.product(options.upstreams, datacenters):
+        forced_cross_dc_upstreams = http_options.force_allow_cross_datacenter_for_upstreams
+
+        def cross_dc_or_forced(entry):
+            upstream, dc = entry
+            return allow_cross_dc or dc == http_options.datacenter or upstream in forced_cross_dc_upstreams
+
+        for upstream, dc in filter(cross_dc_or_forced, itertools.product(options.upstreams, http_options.datacenter)):
             health_cache = HealthCache(
                 service=upstream,
                 health_client=self.consul.health,
