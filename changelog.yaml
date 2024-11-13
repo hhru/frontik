@@ -1,3 +1,9 @@
+-   name: 8.2.11
+    date: '2024-11-13T14:33:14.882872+03:00'
+    description: fix datacenters in service discovery
+    instructions: ''
+    compatible: true
+
 -   name: 8.2.10
     date: '2024-11-11T17:18:46.058860+03:00'
     description: consider forced_cross_dc_upstreams in service discovery
