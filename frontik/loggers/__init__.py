@@ -113,12 +113,12 @@ class JSONFormatter(Formatter):
             record.exc_text = self.formatException(record.exc_info)
         if record.exc_text:
             if stack_trace[-1:] != '\n':
-                stack_trace = stack_trace + '\n'
-            stack_trace = stack_trace + record.exc_text
+                stack_trace += '\n'
+            stack_trace += record.exc_text
         if record.stack_info:
             if stack_trace[-1:] != '\n':
-                stack_trace = stack_trace + '\n'
-            stack_trace = stack_trace + self.formatStack(record.stack_info)
+                stack_trace += '\n'
+            stack_trace += self.formatStack(record.stack_info)
 
         return stack_trace
 

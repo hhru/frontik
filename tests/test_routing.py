@@ -29,7 +29,7 @@ async def nested_page() -> str:
 class TestRouting(FrontikTestBase):
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
-        return FrontikApplication()
+        return FrontikApplication(app_module_name=None)
 
     async def test_extra_slash_in_mapping(self):
         response = await self.fetch('//not_simple')

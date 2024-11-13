@@ -30,7 +30,7 @@ async def get_page(request: Request) -> str:
         if result.error or result.data is None:
             raise HTTPError(500)
 
-        text = text + result.data
+        text += result.data
 
     return text
 

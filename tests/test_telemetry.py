@@ -103,7 +103,7 @@ class TestFrontikTesting(FrontikTestBase):
         options.opentelemetry_enabled = True
         options.opentelemetry_sampler_ratio = 1
 
-        app = FrontikApplication()
+        app = FrontikApplication(app_module_name=None)
 
         test_exporter = TestExporter()
         provider = make_otel_provider(app)

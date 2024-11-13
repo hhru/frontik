@@ -200,8 +200,8 @@ class HttpclientHookMiddleware:
 
 
 class ApplicationWithHttpClientHook(FrontikApplication):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__(app_module_name=None)
         self.asgi_app.add_middleware(HttpclientHookMiddleware)
 
 
@@ -265,7 +265,7 @@ async def long_request(request: Request) -> None:
 class TestRequestCanceled(FrontikTestBase):
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
-        return FrontikApplication()
+        return FrontikApplication(app_module_name=None)
 
     async def test_request_canceled(self, caplog):
         caplog.handler.setFormatter(JSON_FORMATTER)

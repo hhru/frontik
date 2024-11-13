@@ -15,7 +15,7 @@ async def get_page(code: int = 200) -> None:
 class TestHttpError(FrontikTestBase):
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
-        return FrontikApplication()
+        return FrontikApplication(app_module_name=None)
 
     async def test_raise_200(self):
         response = await self.fetch('/http_exception?code=200')

@@ -59,7 +59,7 @@ class TestSentryIntegration(FrontikTestBase):
     def frontik_app(self, _bind_socket) -> FrontikApplication:  # type: ignore
         options.sentry_dsn = f'http://secret@127.0.0.1:{options.port}/2'
         sentry_sdk.set_user({'id': '123456'})
-        return FrontikApplication()
+        return FrontikApplication(app_module_name=None)
 
     async def test_sentry_exception(self):
         await self.fetch('/sentry_error?ip=127.0.0.77&extra_key=extra_val')
@@ -110,7 +110,7 @@ class TestSentryIntegration(FrontikTestBase):
 class TestWithoutSentryIntegration(FrontikTestBase):
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
-        return FrontikApplication()
+        return FrontikApplication(app_module_name=None)
 
     def test_sentry_not_configured(self):
         assert not options.sentry_dsn

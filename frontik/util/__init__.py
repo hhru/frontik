@@ -18,6 +18,10 @@ from tornado.web import httputil
 logger = logging.getLogger('util')
 
 
+class Sentinel:
+    pass
+
+
 def safe_template(format_string: str, **kwargs: Any) -> str:
     """Safe templating using PEP-292 template strings
     (see https://docs.python.org/3/library/string.html#template-strings).

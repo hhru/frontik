@@ -37,15 +37,14 @@ tornado-httpclient-mock = '0.2.3'
 python-multipart = "^0.0.16"
 
 [tool.poetry.group.test.dependencies]
-pytest = '8.1.1'
-pytest-asyncio = '0.21.1'
-pycodestyle = '>=2.5.0'
+pytest = '8.3.3'
+pytest-asyncio = '0.24.0'
 requests = '>=2.0'
 types-requests = '2.31.0.8'
 tox = '4.6.4'
 lxml-asserts = '0.1.2'
 mypy = '1.8.0'
-ruff = '0.3.2'
+ruff = '0.7.3'
 exceptiongroup = '1.2.0'
 tomli = '2.0.1'
 virtualenv = '<=20.26.0'
@@ -116,11 +115,11 @@ ignore = [
     'DTZ005','FURB101','F841','TRY401','S403','PLR2004','ARG001','BLE001','B009','B010','C901','PLR0912','PLR0911',
     'PLC0415','RUF003','TRY201','TRY300','S301','S102','S104','E721','PLW0603','RET503','PLR6201','PERF203',
     'TRY003','EM102','RUF006','PYI055','RET501','PLC1901','RET502','PLC2801','EM101','B028','A002','DTZ006',
-    'PLR0402','PYI024','PYI024','PLW2901','S701','UP006','UP035','PT005',
+    'PLR0402','PYI024','PYI024','PLW2901','S701','UP006','UP035','PT005','A005','A004','B039',
     # should be ignored
     'ANN101','ANN102','D102','D101','CPY001','D100','D107','D106','B008','D103','D104','D105','D202',
     'RET505','RET506','RET504','RSE102','TCH003','TCH002', 'TCH001',
-    'COM812', 'ISC001', 'PT015', 'FIX002'
+    'COM812', 'ISC001', 'PT015', 'FIX002', 'RUF029'
 ]
 
 [tool.ruff.lint.isort]

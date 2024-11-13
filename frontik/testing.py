@@ -70,7 +70,7 @@ class FrontikTestBase:
             self.mock_http_client = mock_http_client
             yield self.mock_http_client
 
-    @pytest.fixture()
+    @pytest.fixture
     def passthrow_hosts(self):
         return ['http://127.0.0.1', 'http://localhost']
 

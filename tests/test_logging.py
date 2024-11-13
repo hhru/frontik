@@ -62,7 +62,7 @@ class TestSyslog(FrontikTestBase):
 
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
-        return FrontikApplication()
+        return FrontikApplication(app_module_name=None)
 
     @classmethod
     def setup_class(cls):
@@ -209,7 +209,7 @@ class TestLogToFile(FrontikTestBase):
 
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
-        return FrontikApplication()
+        return FrontikApplication(app_module_name=None)
 
     @classmethod
     def setup_class(cls):
