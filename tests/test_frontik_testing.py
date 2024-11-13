@@ -41,7 +41,7 @@ async def post_page(request: Request) -> Any:
 class TestFrontikTesting(FrontikTestBase):
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
-        return FrontikApplication()
+        return FrontikApplication(app_module_name=None)
 
     async def test_config(self):
         self.configure_app(config_param='param_value')

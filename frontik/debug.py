@@ -404,7 +404,7 @@ class DebugTransform:
 
         debug_log_data = request_context.get_debug_log_handler().produce_all()  # type: ignore
         debug_log_data.set('code', str(int(response.status_code)))
-        debug_log_data.set('handler-name', handler_name if handler_name else 'unknown handler')
+        debug_log_data.set('handler-name', handler_name or 'unknown handler')
         debug_log_data.set('started', _format_number(tornado_request._start_time))
         debug_log_data.set('request-id', str(tornado_request.request_id))
         debug_log_data.set('stages-total', _format_number((time.time() - tornado_request._start_time) * 1000))

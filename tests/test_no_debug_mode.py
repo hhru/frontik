@@ -38,7 +38,7 @@ class TestNonDebugMode(FrontikTestBase):
         options.debug = False
         options.debug_login = 'user'
         options.debug_password = 'god'
-        return FrontikApplication()
+        return FrontikApplication(app_module_name=None)
 
     async def test_simple(self):
         response = await self.fetch('/simple')

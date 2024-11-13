@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from collections import namedtuple
+from collections import UserDict, namedtuple
 from functools import partial
 from typing import TYPE_CHECKING, Optional
 
@@ -22,7 +22,7 @@ LoggingData = namedtuple(
 )
 
 
-class TimeoutCounter(dict):
+class TimeoutCounter(UserDict):
     def increment(self, k: LoggingData, already_spent_ms: float) -> None:
         count, max_already_spent_ms = super().__getitem__(k)
         super().__setitem__(k, (count + 1, max(already_spent_ms, max_already_spent_ms)))
