@@ -1,5 +1,5 @@
 import asyncio
-import importlib
+import inspect
 import logging
 import multiprocessing
 import os
@@ -35,9 +35,11 @@ from frontik.routing import (
 )
 from frontik.service_discovery import MasterServiceDiscovery, ServiceDiscovery, WorkerServiceDiscovery
 from frontik.tornado_connection_handler import LegacyTornadoConnectionHandler, TornadoConnectionHandler
+from frontik.util import Sentinel
 from frontik.version import version as frontik_version
 
 app_logger = logging.getLogger('app_logger')
+_DEFAULT_ARG = Sentinel()
 
 
 class FrontikApplication(httputil.HTTPServerConnectionDelegate):
@@ -46,13 +48,12 @@ class FrontikApplication(httputil.HTTPServerConnectionDelegate):
     class DefaultConfig:
         pass
 
-    def __init__(self, app_module_name: Optional[str] = None) -> None:
+    def __init__(self, app_module_name: Union[None, str, Sentinel] = _DEFAULT_ARG) -> None:
         self.start_time = time.time()
         self.patch_anyio()
 
-        self.app_module_name: str = app_module_name or self.__class__.__module__
-        app_module = importlib.import_module(self.app_module_name)
-        self.app_root = os.path.dirname(str(app_module.__file__))
+        self.app_module_name: str = app_module_name if isinstance(app_module_name, str) else self.__class__.__module__
+        self.app_root = os.path.dirname(inspect.getfile(self.__class__))
         if options.service_name is None:
             options.service_name = self.app_module_name.rsplit('.', 1)[-1]
         self.app_name = options.service_name
@@ -69,7 +70,8 @@ class FrontikApplication(httputil.HTTPServerConnectionDelegate):
         count_down_lock = multiprocessing.Lock()
         self.worker_state = WorkerState(init_workers_count_down, master_done, count_down_lock)  # type: ignore
 
-        import_all_pages(self.app_module_name)
+        if app_module_name is not None:
+            import_all_pages(self.app_module_name)
 
         self.settings: dict = {}
 

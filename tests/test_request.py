@@ -17,7 +17,7 @@ async def echo_handler(request: Request) -> Response:
 class TestStreamingRequest(FrontikTestBase):
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
-        return FrontikApplication()
+        return FrontikApplication(app_module_name=None)
 
     async def test_post_request_with_body(self):
         response = await self.fetch(

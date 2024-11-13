@@ -34,7 +34,7 @@ class TestStatsdIntegration(FrontikTestBase):
 
     @pytest.fixture(scope='class')
     def frontik_app(self, statsd_socket) -> FrontikApplication:  # type: ignore
-        return FrontikApplication()
+        return FrontikApplication(app_module_name=None)
 
     async def test_send_to_statsd(self, statsd_socket):
         await self.fetch('/statsd')

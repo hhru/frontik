@@ -57,7 +57,7 @@ class TestKafkaIntegration(FrontikTestBase):
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
         options.service_name = 'test_kafka_integration'
-        return KafkaApplication()
+        return KafkaApplication(app_module_name=None)
 
     async def test_kafka(self):
         response_json = await self.fetch_json('/kafka')

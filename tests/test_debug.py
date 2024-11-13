@@ -84,7 +84,7 @@ async def put_debug_page(content_type: str = Query(alias='type')) -> Response:
 class TestDebug(FrontikTestBase):
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
-        return FrontikApplication()
+        return FrontikApplication(app_module_name=None)
 
     def setup_method(self):
         options.debug = True
@@ -169,7 +169,7 @@ class TestDebugFailed(FrontikTestBase):
 
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
-        return FrontikApplication()
+        return FrontikApplication(app_module_name=None)
 
     def setup_method(self):
         options.debug_login = 'user'

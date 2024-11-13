@@ -44,7 +44,7 @@ def _make_service_id(options: Options, *, service_name: Optional[str], hostname:
 def _create_http_check(options: Options, address: Optional[str]) -> dict:
     check_host = options.consul_check_host
     if not check_host:
-        check_host = address if address else '127.0.0.1'
+        check_host = address or '127.0.0.1'
     http_check = Check.http(
         f'http://{check_host}:{options.port}/status',
         f'{options.consul_http_check_interval_sec}s',

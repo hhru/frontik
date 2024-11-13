@@ -74,7 +74,8 @@ def parse_command_line(options: Options, allowed_options: Iterable) -> None:
             if option.type == bool:
                 setattr(options, name, True)
             else:
-                raise Exception('Option %r requires a value' % name)
+                msg = f'Option {name!r} requires a value'
+                raise Exception(msg)
 
         if option.type == bool or get_args(option.type) == (bool, type(None)):
             setattr(options, name, value.lower() not in ('false', '0', 'f'))

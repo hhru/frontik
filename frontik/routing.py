@@ -66,20 +66,21 @@ def _iter_submodules(path: MutableSequence[str], prefix: str = '') -> Generator:
 def import_all_pages(app_module: str) -> None:
     """Import all pages on startup"""
 
-    try:
-        pages_package = importlib.import_module(f'{app_module}.pages')
-    except ModuleNotFoundError:
+    _spec = importlib.util.find_spec(f'{app_module}.pages')
+    if _spec is None:
         routing_logger.warning('There is no pages module')
         return
 
+    pages_package = importlib.import_module(f'{app_module}.pages')
+
     for _, name, __ in _iter_submodules(pages_package.__path__):
         full_name = pages_package.__name__ + '.' + name
-        try:
-            importlib.import_module(full_name)
-        except ModuleNotFoundError:
+
+        _spec = importlib.util.find_spec(full_name)
+        if _spec is None:
             continue
-        except Exception as ex:
-            raise RuntimeError('failed on import page %s %s', full_name, ex)
+
+        importlib.import_module(full_name)
 
 
 router = FastAPIRouter()
@@ -101,7 +102,7 @@ def _find_fastapi_route(scope: dict) -> Optional[APIRoute]:
         if route_path.endswith('/'):
             scope['path'] = scope['path'].rstrip('/')
         else:
-            scope['path'] = scope['path'] + '/'
+            scope['path'] += '/'
 
     for route in _fastapi_routes:
         match, child_scope = route.matches(scope)
