@@ -178,7 +178,7 @@ def _make_event_processor(weak_handler):
 
             request_info['query_string'] = request.query
             request_info['method'] = request.method
-            request_info['env'] = {'REMOTE_ADDR': request.remote_ip}
+            request_info['env'] = {'REMOTE_ADDR': real_ip(request)}
             request_info['headers'] = _filter_headers(dict(request.headers))
 
         with capture_internal_exceptions():
@@ -220,3 +220,7 @@ class TornadoRequestExtractor(RequestExtractor):
     def size_of_file(self, file):
         # type: (Any) -> int
         return len(file.body or ())
+
+
+def real_ip(request):
+    return request.headers.get('X-Real-Ip', None) or request.remote_ip or '127.127.127.127'
