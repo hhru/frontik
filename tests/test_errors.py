@@ -12,6 +12,15 @@ async def get_page(code: int = 200) -> None:
     raise HTTPException(code)
 
 
+class SomeException(Exception):
+    pass
+
+
+@router.get('/some_exception')
+async def some_exception_page() -> None:
+    raise SomeException()
+
+
 class TestHttpError(FrontikTestBase):
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
@@ -33,3 +42,7 @@ class TestHttpError(FrontikTestBase):
         response = await self.fetch('/http_exception', method='PUT')
         assert response.status_code == 405
         assert response.headers['allow'] == 'GET'
+
+    async def test_some_exception(self):
+        response = await self.fetch('/some_exception')
+        assert response.status_code == 500
