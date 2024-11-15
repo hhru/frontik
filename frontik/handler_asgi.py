@@ -161,7 +161,10 @@ async def execute_asgi_page(
         else:
             raise RuntimeError(f'Unsupported response type "{message["type"]}" for asgi app')
 
-    await asgi_app(scope, receive, send)
+    try:
+        await asgi_app(scope, receive, send)
+    except Exception:
+        log.exception('failed to execute page')
 
     return response
 
