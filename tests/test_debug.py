@@ -13,7 +13,7 @@ from tornado.escape import to_unicode
 
 from frontik import media_types
 from frontik.app import FrontikApplication
-from frontik.dependencies import http_client
+from frontik.dependencies import HttpClient
 from frontik.options import options
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
@@ -23,7 +23,7 @@ logger = logging.getLogger('handler')
 
 
 @router.get('/debug')
-async def get_debug_page(request: Request, no_recursion: str = 'false') -> None:
+async def get_debug_page(request: Request, http_client: HttpClient, no_recursion: str = 'false') -> None:
     logger.debug('debug: starting debug page')
 
     def _exception_trace() -> None:

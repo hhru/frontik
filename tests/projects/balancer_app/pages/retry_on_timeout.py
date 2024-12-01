@@ -2,14 +2,14 @@ from fastapi import Request
 from http_client.balancing import Upstream
 from tornado.web import HTTPError
 
-from frontik.dependencies import http_client
+from frontik.dependencies import HttpClient
 from frontik.routing import router
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
 @router.get('/retry_on_timeout')
-async def get_page(request: Request) -> str:
+async def get_page(request: Request, http_client: HttpClient) -> str:
     upstreams = request.app.service_discovery.get_upstreams_unsafe()
     retry_on_timeout = 'retry_on_timeout'
     upstreams[retry_on_timeout] = Upstream(

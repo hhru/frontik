@@ -10,7 +10,7 @@ from tornado.escape import to_unicode
 
 from frontik import media_types
 from frontik.app import FrontikApplication
-from frontik.dependencies import http_client
+from frontik.dependencies import HttpClient
 from frontik.loggers import JSON_FORMATTER
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
@@ -18,7 +18,7 @@ from frontik.util import any_to_bytes, any_to_unicode
 
 
 @router.get('/http_client/custom_headers')
-async def custom_headers_get_page(request: Request):
+async def custom_headers_get_page(request: Request, http_client: HttpClient):
     result = await http_client.post_url(request.headers.get('host'), request.url.path)
     return result.data
 
@@ -29,7 +29,7 @@ async def custom_headers_post_page(request: Request):
 
 
 @router.get('/http_client/fibonacci')
-async def fibonacci_page(n: int, request: Request):
+async def fibonacci_page(n: int, request: Request, http_client: HttpClient):
     if n < 2:
         return Response('1', headers={'Content-Type': media_types.TEXT_PLAIN})
 
@@ -45,7 +45,7 @@ async def fibonacci_page(n: int, request: Request):
 
 
 @router.get('/http_client/raise_error')
-async def unicode_page(request: Request):
+async def unicode_page(request: Request, http_client: HttpClient):
     try:
         await http_client.post_url(request.headers.get('host'), '/a-вот')
     except UnicodeEncodeError:
@@ -72,7 +72,7 @@ FILES: dict[str, list] = {
 
 
 @router.get('/http_client/post_url')
-async def post_url_get_page(request: Request):
+async def post_url_get_page(request: Request, http_client: HttpClient):
     result = await http_client.post_url(request.headers.get('host'), request.url.path, data=FIELDS, files=FILES)
     if not result.failed:
         return result.data
@@ -114,7 +114,7 @@ async def post_url_post_page(request: Request):
 
 
 @router.get('/http_client/parse_response')
-async def parse_response_get_page(request: Request):
+async def parse_response_get_page(request: Request, http_client: HttpClient):
     res = {}
     result = await http_client.post_url(request.headers.get('host'), request.url.path, parse_on_error=True)
     res.update(result.data)
@@ -144,7 +144,7 @@ async def parse_response_delete_page():
 
 
 @router.get('/http_client/parse_error')
-async def parse_error_get_page(request: Request):
+async def parse_error_get_page(request: Request, http_client: HttpClient):
     el_result = await http_client.post_url(request.headers.get('host'), request.url.path + '?mode=xml')
     element = el_result.data
     if element is not None:
@@ -166,7 +166,7 @@ async def parse_error_post_page(mode: str):
 
 
 @router.get('/http_client/post_simple')
-async def post_simple_get_page(request: Request):
+async def post_simple_get_page(request: Request, http_client: HttpClient):
     result = await http_client.post_url(request.headers.get('host'), request.url.path)
     return Response(result.data)
 
@@ -177,7 +177,7 @@ async def post_simple_post_page():
 
 
 @router.get('/http_client/long_page_request')
-async def long_request_page(request: Request):
+async def long_request_page(request: Request, http_client: HttpClient):
     result = await http_client.post_url(request.headers.get('host'), request.url.path, request_timeout=0.5)
     return {'error_received': result.failed}
 
@@ -258,7 +258,7 @@ async def long_page() -> None:
 
 
 @router.get('/long_request')
-async def long_request(request: Request) -> None:
+async def long_request(request: Request, http_client: HttpClient) -> None:
     await http_client.get_url(request.headers.get('host'), '/long_page')
 
 

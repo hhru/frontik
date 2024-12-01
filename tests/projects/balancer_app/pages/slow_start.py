@@ -3,14 +3,14 @@ import asyncio
 from fastapi import Request
 from http_client.balancing import Server, Upstream, UpstreamConfig
 
-from frontik.dependencies import http_client
+from frontik.dependencies import HttpClient
 from frontik.routing import router
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done, check_all_servers_were_occupied
 
 
 @router.get('/slow_start')
-async def get_page(request: Request) -> str:
+async def get_page(request: Request, http_client: HttpClient) -> str:
     server = get_server(request, 'normal')
     server.weight = 5
 

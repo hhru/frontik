@@ -4,14 +4,14 @@ import pytest
 from tornado.escape import to_unicode
 
 from frontik.app import FrontikApplication
-from frontik.dependencies import statsd_client
+from frontik.dependencies import StatsDClient
 from frontik.options import options
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
 
 
 @router.get('/statsd')
-async def get_page() -> None:
+async def get_page(statsd_client: StatsDClient) -> None:
     statsd_client.count('count_metric', 10, tag1='tag1', tag2='tag2')
     statsd_client.gauge('gauge_metric', 100, tag='tag3')
     statsd_client.time('time_metric', 1000, tag='tag4')
