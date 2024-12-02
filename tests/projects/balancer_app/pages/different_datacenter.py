@@ -3,13 +3,13 @@ from http_client.balancing import Upstream
 from http_client.request_response import NoAvailableServerException
 from tornado.web import HTTPError
 
-from frontik.dependencies import http_client
+from frontik.dependencies import HttpClient
 from frontik.routing import router
 from tests.projects.balancer_app import get_server
 
 
 @router.get('/different_datacenter')
-async def get_page(request: Request) -> str:
+async def get_page(request: Request, http_client: HttpClient) -> str:
     free_server = get_server(request, 'free')
     free_server.datacenter = 'dc1'
     normal_server = get_server(request, 'normal')

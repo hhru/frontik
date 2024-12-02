@@ -1,14 +1,14 @@
 from fastapi import Request
 from http_client.balancing import Upstream
 
-from frontik.dependencies import http_client
+from frontik.dependencies import HttpClient
 from frontik.routing import router
 from tests.projects.balancer_app import get_server
 from tests.projects.balancer_app.pages import check_all_requests_done
 
 
 @router.get('/no_retry_error')
-async def get_page(request: Request) -> str:
+async def get_page(request: Request, http_client: HttpClient) -> str:
     upstreams = request.app.service_discovery.get_upstreams_unsafe()
     no_retry_error = 'no_retry_error'
     upstreams[no_retry_error] = Upstream(no_retry_error, {}, [get_server(request, 'broken')])
