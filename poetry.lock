@@ -1533,8 +1533,8 @@ twisted = ["treq", "twisted"]
 [package.source]
 type = "git"
 url = "https://github.com/hhru/python-consul2"
-reference = "v0.2.10"
-resolved_reference = "a9c9256832fdaae5beaea4e3925c9fb7b0adf47e"
+reference = "py312_test"
+resolved_reference = "0557c825b74dc1ff0864b5fc831dacffa6cfece1"
 
 [[package]]
 name = "requests"
@@ -1999,4 +1999,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "~=3.9"
-content-hash = "7fdbb700f80c5f68cee7f26f2dd327574ca4ae7acad21b81578076a37e9b6fd5"
+content-hash = "8e844fbcc9d65ffb4dc8d6c3b560fa36d7f3d0655d75d166619590f547677ffc"
