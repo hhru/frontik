@@ -1,13 +1,14 @@
 ## Frontik
 
-Frontik это питон вебсервер + фреймворк 
+Frontik это питон вебсервер + фреймворк
 
-Ранее (версии 7.* и ниже) был оберткой над [tornado](https://www.tornadoweb.org/). 
-С версии 8.* идет работа над превращением фронтика в [asgi](https://asgi.readthedocs.io/) сервер. 
+Ранее (версии 7.\* и ниже) был оберткой над [tornado](https://www.tornadoweb.org/).
+С версии 8.\* идет работа над превращением фронтика в [asgi](https://asgi.readthedocs.io/) сервер.
 Конечные сервисы должны стремиться использовать asgi фреймворк (fastapi).
-В 8.* все еще является вебсервером + фреймворком.
+В 8.\* все еще является вебсервером + фреймворком.
 
 #### Рекомендуемая структура проекта
+
 ```
 project_name/
     ├── service_name/
@@ -21,7 +22,7 @@ project_name/
 #### Установка
 
 ```shell
-pip install 'frontik@git+ssh://git@github.com/hhru/frontik'
+pip install 'frontik@git+ssh://git@forgejo.pyn.ru/hhru/frontik'
 ```
 
 #### Запуск из кода
