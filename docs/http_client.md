@@ -1,11 +1,12 @@
 ## HttpClient
 
-В проекте используется https://github.com/hhru/balancing-http-client. 
+В проекте используется https://forgejo.pyn.ru/hhru/balancing-http-client.
 Внутри это aiohttp с дополнительной логикой ретраев/балансировки.
-Фронтик сам конструирует экземпляр клиента под каждый запрос. 
+Фронтик сам конструирует экземпляр клиента под каждый запрос.
 В качестве апстримов передается обновляемый список, получаемый из консула
 
 Пример использования
+
 ```python
 from frontik.dependencies import http_client
 from frontik.routing import router
