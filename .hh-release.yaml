@@ -1,4 +1,4 @@
-version: 8.2.16
+version: 8.2.17
 docker_context: .
 build_docker_file: docker/Dockerfile.building
 build_method: pytest_run
