@@ -71,16 +71,15 @@ def import_all_pages(app_module: str) -> None:
         routing_logger.warning('There is no pages module')
         return
 
-    pages_package = importlib.import_module(f'{app_module}.pages')
+    pages_package_path = f'{app_module}.pages'
+    pages_package = importlib.import_module(pages_package_path)
 
-    for _, name, __ in _iter_submodules(pages_package.__path__):
-        full_name = pages_package.__name__ + '.' + name
-
-        _spec = importlib.util.find_spec(full_name)
+    for _, name, __ in _iter_submodules(pages_package.__path__, f'{pages_package_path}.'):
+        _spec = importlib.util.find_spec(name)
         if _spec is None:
             continue
 
-        importlib.import_module(full_name)
+        importlib.import_module(name)
 
 
 router = FastAPIRouter()
