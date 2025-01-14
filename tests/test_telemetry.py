@@ -68,7 +68,7 @@ class TestTelemetry:
 
 @router.get('/page_a')
 async def get_page_a(request: Request, http_client: HttpClient) -> None:
-    await http_client.get_url(request.headers.get('host'), '/page_b')
+    await http_client.get_url(request.headers.get('host'), '/page_b?firstParam=1&secondParam=2')
 
 
 @router.get('/page_b')
@@ -120,7 +120,7 @@ class TestFrontikTesting(FrontikTestBase):
         BATCH_SPAN_PROCESSOR[0].force_flush()
         assert len(SPAN_STORAGE) == 4
         client_a_span = find_span('http.request.cloud.region', 'externalRequest')
-        server_b_span = find_span('http.target', '/page_b')
+        server_b_span = find_span('http.route', '/page_b')
         SPAN_STORAGE.clear()
 
         assert client_a_span is not None
@@ -133,3 +133,4 @@ class TestFrontikTesting(FrontikTestBase):
         assert server_b_span.attributes.get(SpanAttributes.CODE_NAMESPACE) == 'tests.test_telemetry'
         assert server_b_span.attributes.get(SpanAttributes.USER_AGENT_ORIGINAL) == self.app.app_name
         assert server_b_span.attributes.get(SpanAttributes.HTTP_ROUTE) == '/page_b'
+        assert server_b_span.attributes.get(SpanAttributes.HTTP_TARGET) == '/page_b?firstParam=1&secondParam=2'
