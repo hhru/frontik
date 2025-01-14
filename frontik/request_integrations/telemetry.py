@@ -58,7 +58,7 @@ def _get_attributes_from_request(tornado_request: HTTPServerRequest):
         SpanAttributes.HTTP_METHOD: tornado_request.method,
         SpanAttributes.HTTP_SCHEME: tornado_request.protocol,
         SpanAttributes.HTTP_HOST: tornado_request.host,
-        SpanAttributes.HTTP_TARGET: tornado_request.path,
+        SpanAttributes.HTTP_TARGET: tornado_request.uri,
     }
 
     if tornado_request.remote_ip:
