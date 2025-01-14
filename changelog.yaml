@@ -1,3 +1,9 @@
+-   name: 8.2.18
+    date: '2025-01-14T10:36:53.751597+03:00'
+    description: Фикс импорта модулей и телеметрийного атрибута http.target
+    instructions: ''
+    compatible: true
+
 -   name: 8.2.17
     date: '2025-01-09T17:31:09.779203+03:00'
     description: "- [PATCH] **version change** <!--[MAJOR|MINOR|PATCH]-->:\r\n- [Move\
