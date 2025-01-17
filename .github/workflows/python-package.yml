@@ -8,7 +8,7 @@ name: Python package
 
 jobs:
   build:
-    runs-on: infra-k8s-runner
+    runs-on: ${{ vars.RUNNER_NAME }}
     container:
       image: registry.pyn.ru/python3.11-node22-bullseye-building:2024.10.10
       credentials:
