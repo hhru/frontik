@@ -1,27 +1,29 @@
 ---
 name: Python package
-'on':
+"on":
   pull_request:
     branches: ["master"]
   push:
-    branches: ["master"]  # cache from master shared with child branches
+    branches: ["master"] # cache from master shared with child branches
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+    runs-on: infra-k8s-runner
+    container:
+      image: registry.pyn.ru/python3.11-node22-bullseye-building:2024.10.10
+      credentials:
+        username: ${{ secrets.REGISTRY_USER }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
 
     steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
-
-      - name: Install python
-        uses: actions/setup-python@v4
-        id: pinstall
+      - name: Checkout
+        uses: https://src.pyn.ru/actions/checkout@v4
         with:
-          python-version-file: pyproject.toml
-          cache: pip
-          cache-dependency-path: |
-            poetry.lock
+          fetch-depth: 0
+
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Install poetry
         run: |
@@ -37,7 +39,6 @@ jobs:
 
       # true if cache-hit occured on the primary key
       - run: echo '${{ steps.pinstall.outputs.cache-hit }}'
-
 #      - name: Lint with flake8
 #        run: |
 #          # stop the build if there are Python syntax errors or undefined names
