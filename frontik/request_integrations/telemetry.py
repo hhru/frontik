@@ -27,7 +27,7 @@ _excluded_urls = ['/status']
 def _start_span(tracer, tornado_request) -> trace.span.Span:
     span, token = _start_internal_or_server_span(
         tracer=tracer,
-        span_name=_get_default_span_name(tornado_request),
+        span_name='undefinedOperation',
         start_time=time_ns(),
         context_carrier=tornado_request.headers,
         context_getter=textmap.default_getter,
@@ -43,14 +43,6 @@ def _start_span(tracer, tornado_request) -> trace.span.Span:
                 span.set_attributes(custom_attributes)
 
     return span
-
-
-def _get_default_span_name(tornado_request):
-    path = tornado_request.path
-    method = tornado_request.method
-    if method and path:
-        return f'{method} {path}'
-    return f'{method}'
 
 
 def _get_attributes_from_request(tornado_request: HTTPServerRequest):
