@@ -1,3 +1,9 @@
+-   name: 8.2.19
+    date: '2025-01-17T12:14:48.628409+03:00'
+    description: ''
+    instructions: ''
+    compatible: true
+
 -   name: 8.2.18
     date: '2025-01-14T10:36:53.751597+03:00'
     description: Фикс импорта модулей и телеметрийного атрибута http.target
