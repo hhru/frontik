@@ -34,18 +34,18 @@ class KafkaProducerMock:
 class KafkaApplication(FrontikApplication):
     async def init(self):
         await super().init()
-        self.http_client_factory.request_engine_builder.kafka_producer = KafkaProducerMock()
+        self._http_client_factory.request_engine_builder.kafka_producer = KafkaProducerMock()
 
 
 @router.get('/kafka')
 async def get_page(request: Request, http_client: HttpClient) -> JSONResponse:
     rid = request.scope['tornado_request'].request_id
-    request.app.http_client_factory.request_engine_builder.kafka_producer.enable_for_request_id(rid)
+    request.app._http_client_factory.request_engine_builder.kafka_producer.enable_for_request_id(rid)
 
     await http_client.post_url(request.headers.get('host'), request.url.path)
     await asyncio.sleep(0.1)
 
-    return JSONResponse(*request.app.http_client_factory.request_engine_builder.kafka_producer.disable_and_get_data())
+    return JSONResponse(*request.app._http_client_factory.request_engine_builder.kafka_producer.disable_and_get_data())
 
 
 @router.post('/kafka')

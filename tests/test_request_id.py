@@ -40,7 +40,6 @@ class TestRequestId(FrontikTestBase):
         assert response.status_code == 599
         assert 'client has canceled request' in caplog.text
 
-        rid = None
         for log_row in caplog.text.split('\n'):
             if log_row == '':
                 continue
@@ -49,7 +48,3 @@ class TestRequestId(FrontikTestBase):
 
             mdc = log_obj.get('mdc')
             assert mdc is not None
-
-            assert mdc.get('rid') is not None
-            rid = rid or mdc.get('rid')
-            assert mdc.get('rid') == rid

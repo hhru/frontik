@@ -1,6 +1,9 @@
-from typing import Any, Optional
+from __future__ import annotations
 
-from frontik.frontik_response import FrontikResponse
+from typing import TYPE_CHECKING, Any, Optional
+
+if TYPE_CHECKING:
+    from frontik.frontik_response import FrontikResponse
 
 
 class IntegrationDto:
