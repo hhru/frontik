@@ -1,4 +1,5 @@
 import asyncio
+import contextvars
 import inspect
 import logging
 import multiprocessing
@@ -13,7 +14,7 @@ import tornado
 from aiokafka import AIOKafkaProducer
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import ORJSONResponse
-from http_client import AIOHttpClientWrapper, HttpClientFactory
+from http_client import HttpClient, HttpClientFactory
 from http_client import options as http_client_options
 from http_client.balancing import RequestBalancerBuilder
 from lxml import etree
@@ -22,8 +23,7 @@ from tornado import httputil
 
 from frontik import app_integrations
 from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
-from frontik.balancing_client import create_http_client
-from frontik.dependencies import clients
+from frontik.balancing_client import set_extra_client_params
 from frontik.options import options
 from frontik.process import WorkerState
 from frontik.routing import (
@@ -40,9 +40,10 @@ from frontik.version import version as frontik_version
 
 app_logger = logging.getLogger('app_logger')
 _DEFAULT_ARG = Sentinel()
+app_holder: contextvars.ContextVar = contextvars.ContextVar('app_holder')
 
 
-class FrontikApplication(httputil.HTTPServerConnectionDelegate):
+class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
     request_id = ''
 
     class DefaultConfig:
@@ -50,6 +51,7 @@ class FrontikApplication(httputil.HTTPServerConnectionDelegate):
 
     def __init__(self, app_module_name: Union[None, str, Sentinel] = _DEFAULT_ARG) -> None:
         self.start_time = time.time()
+        super().__init__()
         self.patch_anyio()
 
         self.app_module_name: str = app_module_name if isinstance(app_module_name, str) else self.__class__.__module__
@@ -61,9 +63,11 @@ class FrontikApplication(httputil.HTTPServerConnectionDelegate):
         self.config = self.application_config()
 
         self.available_integrations: list[app_integrations.Integration] = []
-        self.http_client_factory: HttpClientFactory
 
         self.statsd_client: Union[StatsDClient, StatsDClientStub] = create_statsd_client(options, self)
+        self.service_discovery: ServiceDiscovery
+        self._http_client_factory: HttpClientFactory
+        self.http_client: HttpClient
 
         init_workers_count_down = multiprocessing.Value(c_int, options.workers)
         master_done = multiprocessing.Value(c_bool, False)
@@ -73,10 +77,16 @@ class FrontikApplication(httputil.HTTPServerConnectionDelegate):
         if app_module_name is not None:
             import_all_pages(self.app_module_name)
 
-        self.settings: dict = {}
+        self.router = router
 
-        self.asgi_app = FrontikAsgiApp(self)
-        self.service_discovery: ServiceDiscovery
+        for _router in routers:
+            if _router is not router:
+                self.include_router(_router)
+
+        if options.openapi_enabled:
+            self.setup()
+
+        self.add_middleware(FrontikMiddleware)
 
     def patch_anyio(self) -> None:
         """
@@ -96,12 +106,14 @@ class FrontikApplication(httputil.HTTPServerConnectionDelegate):
             return WorkerServiceDiscovery(self.worker_state.initial_shared_data)
 
     async def install_integrations(self) -> None:
+        app_holder.set(self)
+
         self.available_integrations, integration_futures = app_integrations.load_integrations(self)
         await asyncio.gather(*[future for future in integration_futures if future])
 
         self.service_discovery = self.make_service_discovery()
-        self.http_client_factory = self.make_http_client_factory()
-        self.asgi_app.http_client_factory = self.http_client_factory  # type: ignore
+        self._http_client_factory = self.make_http_client_factory()
+        self.http_client = self._http_client_factory.get_http_client()
 
     async def init(self) -> None:
         await self.install_integrations()
@@ -131,7 +143,7 @@ class FrontikApplication(httputil.HTTPServerConnectionDelegate):
             statsd_client=self.statsd_client,
             kafka_producer=kafka_producer,
         )
-        return HttpClientFactory(self.app_name, AIOHttpClientWrapper(), request_balancer_builder)
+        return HttpClientFactory(self.app_name, request_balancer_builder)
 
     def application_config(self) -> DefaultConfig:
         return FrontikApplication.DefaultConfig()
@@ -193,26 +205,6 @@ def anyio_noop(*_args: Any, **_kwargs: Any) -> None:
     raise RuntimeError(f'trying to use non async {_args[0]}')
 
 
-class FrontikAsgiApp(FastAPI):
-    def __init__(self, frontik_app: FrontikApplication) -> None:
-        super().__init__()
-        self.router = router
-
-        for _router in routers:
-            if _router is not router:
-                self.include_router(_router)
-
-        if options.openapi_enabled:
-            self.setup()
-
-        self.config = frontik_app.config
-        self.get_current_status = frontik_app.get_current_status
-        self.get_frontik_and_apps_versions = frontik_app.get_frontik_and_apps_versions
-        self.statsd_client = frontik_app.statsd_client
-
-        self.add_middleware(FrontikMiddleware)
-
-
 @router.get('/version')
 async def get_version(request: Request) -> Response:
     data = etree.tostring(request.app.get_frontik_and_apps_versions(), encoding='utf-8', xml_declaration=True)
@@ -233,10 +225,8 @@ class FrontikMiddleware:
             await self.app(scope, receive, send)
             return
 
-        clients.get()['http_client'] = create_http_client(scope)
-        clients.get()['app_config'] = scope['app'].config
-        clients.get()['statsd_client'] = scope['app'].statsd_client
-        await self.app(scope, receive, send)
+        with set_extra_client_params(scope):
+            await self.app(scope, receive, send)
 
 
 @not_found_router.get('__not_found')

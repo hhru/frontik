@@ -176,5 +176,5 @@ async def _deinit_app(app: FrontikApplication) -> None:
         log.exception('failed to deinit, deinit returned: %s', e)
 
     await asyncio.sleep(options.stop_timeout)
-    if app.http_client_factory is not None:
-        await app.http_client_factory.http_client.client_session.close()
+    if app.http_client is not None:
+        await app.http_client.client_session.close()
