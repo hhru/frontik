@@ -67,7 +67,7 @@ def wrap_handle_with_time_logging(app: FrontikApplication, slow_tasks_logger: lo
         delta -= gc_duration
 
         if delta >= options.asyncio_task_threshold_sec:
-            self._context.run(partial(_log_slow_tasks, self, delta))
+            self._request_context.run(partial(_log_slow_tasks, self, delta))
 
     asyncio.Handle._run = run  # type: ignore
 

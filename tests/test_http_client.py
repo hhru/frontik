@@ -202,7 +202,7 @@ class HttpclientHookMiddleware:
 class ApplicationWithHttpClientHook(FrontikApplication):
     def __init__(self):
         super().__init__(app_module_name=None)
-        self.asgi_app.add_middleware(HttpclientHookMiddleware)
+        self.add_middleware(HttpclientHookMiddleware)
 
 
 class TestHttpClient(FrontikTestBase):

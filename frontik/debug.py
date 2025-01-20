@@ -22,11 +22,12 @@ from lxml.builder import E
 from tornado.escape import to_unicode, utf8
 from tornado.httputil import HTTPHeaders
 
-from frontik import media_types, request_context
+from frontik import media_types
 from frontik.auth import check_debug_auth
 from frontik.frontik_response import FrontikResponse
 from frontik.loggers import BufferedHandler
 from frontik.options import options
+from frontik.request_integrations import request_context
 from frontik.util import any_to_unicode, decode_string_from_charset, get_cookie_or_param_from_request
 from frontik.util.xml import dict_to_xml
 
