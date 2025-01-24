@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ${{ vars.RUNNER_NAME }}
     container:
-      image: registry.pyn.ru/python3.11-node22-bullseye-building:2024.10.10
+      image: registry.pyn.ru/python3.12-node22-bookworm-building:2025.01.11
       credentials:
         username: ${{ secrets.REGISTRY_USER }}
         password: ${{ secrets.REGISTRY_PASSWORD }}
