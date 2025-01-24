@@ -1,13 +1,15 @@
 import time
+from contextlib import contextmanager
+from typing import Iterator
 
-from http_client import HttpClient, RequestBuilder
+from http_client import RequestBuilder, extra_client_params
 from http_client.request_response import USER_AGENT_HEADER
 from starlette.datastructures import Headers
 from starlette.types import Scope
 
-from frontik import request_context
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.debug import DEBUG_HEADER_NAME
+from frontik.request_integrations import request_context
 from frontik.timeout_tracking import get_timeout_checker
 from frontik.util import make_url
 
@@ -40,14 +42,18 @@ def modify_http_client_request(scope: Scope, balanced_request: RequestBuilder) -
                 balanced_request.headers[header_name] = authorization
 
 
-def create_http_client(scope: Scope) -> HttpClient:
+@contextmanager
+def set_extra_client_params(scope: Scope) -> Iterator:
     def hook(balanced_request):
         if (local_hook := scope.get('_http_client_hook')) is not None:
             local_hook(balanced_request)
 
         modify_http_client_request(scope, balanced_request)
 
-    return scope['app'].http_client_factory.get_http_client(
-        modify_http_request_hook=hook,
-        debug_enabled=scope['debug_mode'].enabled,
-    )
+    debug_enabled = scope['debug_mode'].enabled
+
+    token = extra_client_params.set((hook, debug_enabled))
+    try:
+        yield
+    finally:
+        extra_client_params.reset(token)

@@ -9,17 +9,16 @@ from typing import TYPE_CHECKING
 
 from tornado import httputil
 
-from frontik import request_context
 from frontik.debug import DebugMode, DebugTransform
 from frontik.frontik_response import FrontikResponse
 from frontik.http_status import CLIENT_CLOSED_REQUEST
 from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
-from frontik.request_integrations import get_integrations
+from frontik.request_integrations import get_integrations, request_context
 from frontik.request_integrations.integrations_dto import IntegrationDto
 from frontik.routing import find_route
 
 if TYPE_CHECKING:
-    from frontik.app import FrontikApplication, FrontikAsgiApp
+    from frontik.app import FrontikApplication
     from frontik.tornado_request import FrontikTornadoServerRequest
 
 CHARSET = 'utf-8'
@@ -28,7 +27,6 @@ log = logging.getLogger('handler')
 
 async def serve_tornado_request(
     frontik_app: FrontikApplication,
-    asgi_app: FrontikAsgiApp,
     tornado_request: FrontikTornadoServerRequest,
 ) -> None:
     with ExitStack() as stack:
@@ -37,9 +35,7 @@ async def serve_tornado_request(
         }
         log.info('requested url: %s', tornado_request.uri)
 
-        process_request_task = asyncio.create_task(
-            process_request(frontik_app, asgi_app, tornado_request, integrations)
-        )
+        process_request_task = asyncio.create_task(process_request(frontik_app, tornado_request, integrations))
         assert tornado_request.connection is not None
         tornado_request.connection.set_close_callback(  # type: ignore
             partial(_on_connection_close, tornado_request, process_request_task, integrations)
@@ -63,7 +59,6 @@ async def serve_tornado_request(
 
 async def process_request(
     frontik_app: FrontikApplication,
-    asgi_app: FrontikAsgiApp,
     tornado_request: FrontikTornadoServerRequest,
     integrations: dict[str, IntegrationDto],
 ) -> FrontikResponse:
@@ -79,7 +74,7 @@ async def process_request(
     scope = find_route(tornado_request.path, tornado_request.method)
     tornado_request._path_format = scope['route'].path_format  # type: ignore
 
-    response = await execute_asgi_page(frontik_app, asgi_app, tornado_request, scope, debug_mode, integrations)
+    response = await execute_asgi_page(frontik_app, tornado_request, scope, debug_mode, integrations)
 
     if debug_mode.debug_response and not response.headers_written:
         debug_transform = DebugTransform(frontik_app, debug_mode)
@@ -90,13 +85,13 @@ async def process_request(
 
 async def execute_asgi_page(
     frontik_app: FrontikApplication,
-    asgi_app: FrontikAsgiApp,
     tornado_request: FrontikTornadoServerRequest,
     scope: dict,
     debug_mode: DebugMode,
     integrations: dict[str, IntegrationDto],
 ) -> FrontikResponse:
     request_context.set_handler_name(scope['route'])
+    tornado_request.handler_name = request_context.get_handler_name()
 
     response = FrontikResponse(status_code=200)
 
@@ -162,7 +157,7 @@ async def execute_asgi_page(
             raise RuntimeError(f'Unsupported response type "{message["type"]}" for asgi app')
 
     try:
-        await asgi_app(scope, receive, send)
+        await frontik_app(scope, receive, send)
     except Exception:
         log.exception('failed to execute page')
 
@@ -184,20 +179,19 @@ def make_debug_mode(frontik_app: FrontikApplication, tornado_request: FrontikTor
 
 
 def _on_connection_close(tornado_request, process_request_task, integrations):
-    request_id = integrations.get('request_id', IntegrationDto()).get_value()
-    with request_context.request_context(request_id):
-        log.info('client has canceled request')
-        response = FrontikResponse(CLIENT_CLOSED_REQUEST)
-        for integration in integrations.values():
-            integration.set_response(response)
+    request_id = integrations.get('request_context', IntegrationDto()).get_value()
+    log.info('client has canceled request rid: %s', request_id)
+    response = FrontikResponse(CLIENT_CLOSED_REQUEST, request_id=request_id)
+    for integration in integrations.values():
+        integration.set_response(response)
 
-        log_request(tornado_request, CLIENT_CLOSED_REQUEST)
-        setattr(tornado_request, 'canceled', False)
-        process_request_task.cancel()  # serve_tornado_request will be interrupted with CanceledError
+    log_request(tornado_request, CLIENT_CLOSED_REQUEST)
+    setattr(tornado_request, 'canceled', False)
+    process_request_task.cancel()  # serve_tornado_request will be interrupted with CanceledError
 
 
 def log_request(tornado_request: FrontikTornadoServerRequest, status_code: int) -> None:
-    # frontik.request_context can't be used in case when client has closed connection
+    # request_context can't be used in case when client has closed connection
     request_time = int(1000.0 * tornado_request.request_time())
     extra = {
         'ip': tornado_request.remote_ip,
@@ -208,8 +202,7 @@ def log_request(tornado_request: FrontikTornadoServerRequest, status_code: int) 
         'uri': tornado_request.uri,
     }
 
-    handler_name = request_context.get_handler_name()
-    if handler_name:
-        extra['controller'] = handler_name
+    if tornado_request.handler_name:
+        extra['controller'] = tornado_request.handler_name
 
     JSON_REQUESTS_LOGGER.info('', extra={CUSTOM_JSON_EXTRA: extra})

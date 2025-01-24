@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Optional
 from tornado.ioloop import PeriodicCallback
 
 from frontik.options import options
-from frontik.request_context import get_handler_name
+from frontik.request_integrations.request_context import get_handler_name
 
 if TYPE_CHECKING:
     from http_client.request_response import RequestBuilder

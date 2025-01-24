@@ -5,7 +5,7 @@ import random
 from typing import TYPE_CHECKING, Optional
 from urllib.parse import urlparse
 
-from http_client import client_request_context, response_status_code_context
+from http_client import current_client_request, current_client_request_status
 from http_client.options import options as http_client_options
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -20,9 +20,9 @@ from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
-from frontik import request_context
 from frontik.app_integrations import Integration, integrations_logger
 from frontik.options import options
+from frontik.request_integrations import request_context
 
 if TYPE_CHECKING:
     from asyncio import Future
@@ -109,7 +109,7 @@ def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams) ->
     if not span or not span.is_recording():
         return
 
-    request: RequestBuilder = client_request_context.get(None)
+    request: RequestBuilder = current_client_request.get(None)
     if request is None:
         return
 
@@ -137,7 +137,7 @@ def _client_response_hook(
 ) -> None:
     if not span or not span.is_recording():
         return
-    response_status_code: int = response_status_code_context.get(None)
+    response_status_code: int = current_client_request_status.get()
     if response_status_code is None:
         return
     span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, response_status_code)

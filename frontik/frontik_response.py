@@ -1,9 +1,9 @@
-from typing import Mapping, Optional, Union
+from typing import Optional, Union
 
 from tornado import httputil
 from tornado.httputil import HTTPHeaders
 
-from frontik import request_context
+from frontik.request_integrations import request_context
 from frontik.version import version as frontik_version
 
 
@@ -14,8 +14,12 @@ class FrontikResponse:
         headers: Union[dict[str, str], None, HTTPHeaders] = None,
         body: bytes = b'',
         reason: Optional[str] = None,
+        request_id: Optional[str] = None,
     ):
-        self.headers = HTTPHeaders(get_default_headers())  # type: ignore
+        self.headers = HTTPHeaders({
+            'Server': f'Frontik/{frontik_version}',
+            'X-Request-Id': request_id or request_context.get_request_id() or '',
+        })
 
         if isinstance(headers, HTTPHeaders):
             for k, v in headers.get_all():
@@ -31,11 +35,3 @@ class FrontikResponse:
     @property
     def reason(self) -> str:
         return self._reason or httputil.responses.get(self.status_code, 'Unknown')
-
-
-def get_default_headers() -> Mapping[str, Optional[str]]:
-    request_id = request_context.get_request_id() or ''
-    return {
-        'Server': f'Frontik/{frontik_version}',
-        'X-Request-Id': request_id,
-    }

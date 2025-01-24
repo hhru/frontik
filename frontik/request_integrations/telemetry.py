@@ -18,7 +18,7 @@ from opentelemetry.util.http import normalise_response_header_name
 from opentelemetry.trace.status import Status, StatusCode
 from tornado import httputil
 from tornado.httputil import HTTPServerRequest
-from frontik import request_context
+from frontik.request_integrations import request_context
 
 _traced_request_attrs = get_traced_request_attrs('TORNADO')
 _excluded_urls = ['/status']
