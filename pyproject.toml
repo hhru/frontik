@@ -47,7 +47,7 @@ mypy = '1.8.0'
 ruff = '0.7.3'
 exceptiongroup = '1.2.0'
 tomli = '2.0.1'
-virtualenv = '<=20.26.0'
+virtualenv = '<=20.26.6'
 
 [tool.poetry.extras]
 sentry = ["sentry-sdk"]
