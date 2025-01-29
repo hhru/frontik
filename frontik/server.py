@@ -5,12 +5,10 @@ import importlib
 import logging
 import signal
 import sys
-from asyncio import Future
-from collections.abc import Coroutine
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from threading import Lock
-from typing import Callable, Optional, Union
+from typing import Callable, Optional
 
 import tornado.autoreload
 from http_client.balancing import Upstream
@@ -164,17 +162,17 @@ async def _init_app(frontik_app: FrontikApplication) -> None:
 
 
 async def _deinit_app(app: FrontikApplication) -> None:
-    deinit_futures: list[Optional[Union[Future, Coroutine]]] = []
-    deinit_futures.extend([integration.deinitialize_app(app) for integration in app.available_integrations])
-
     app.service_discovery.deregister_service_and_close()
+    await asyncio.sleep(options.stop_timeout)
 
     try:
-        await asyncio.gather(*[future for future in deinit_futures if future])
+        if app.http_client is not None:
+            await asyncio.wait_for(app.http_client.http_client_impl.client_session.close(), timeout=1.0)
+
+        for integration in app.available_integrations:
+            integration.deinitialize_app(app)
+
         log.info('Successfully deinited application')
+
     except Exception as e:
         log.exception('failed to deinit, deinit returned: %s', e)
-
-    await asyncio.sleep(options.stop_timeout)
-    if app.http_client_factory is not None:
-        await app.http_client_factory.http_client.client_session.close()

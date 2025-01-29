@@ -39,7 +39,7 @@ class TornadoConnectionHandler(httputil.HTTPMessageDelegate):
 
     def _process_request(self) -> Optional[Awaitable[None]]:
         assert self.request is not None
-        task = asyncio.create_task(serve_tornado_request(self.frontik_app, self.frontik_app.asgi_app, self.request))
+        task = asyncio.create_task(serve_tornado_request(self.frontik_app, self.request))
         _server_tasks.add(task)
         task.add_done_callback(_server_tasks.discard)
         return task
