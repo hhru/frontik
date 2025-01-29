@@ -1,3 +1,12 @@
+-   name: 8.2.27
+    date: '2025-01-29T10:30:37.070221+03:00'
+    description: "- frontik_app и frontik_app.asgi_app теперь единый frontik_app.\
+        \ Все что вызывалось на asgi_app надо вызывать на frontik_app\r\n- http_client\
+        \ теперь один на приложение, дебаг флаги берутся из контекствара\r\n- в frontik.dependencies\
+        \ появились get_app/get_app_config/get_http_client с глобальным доступом"
+    instructions: ''
+    compatible: true
+
 -   name: 8.2.23
     date: '2025-01-24T11:43:33.869868+03:00'
     description: ''
