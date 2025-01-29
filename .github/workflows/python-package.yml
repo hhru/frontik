@@ -1,10 +1,13 @@
 ---
 name: Python package
-"on":
+on:
   pull_request:
-    branches: ["master"]
+    types: [opened, reopened]
+    branches: [master]
+  pull_request_sync:
+    branches: [master]
   push:
-    branches: ["master"] # cache from master shared with child branches
+    branches: [master]
 
 jobs:
   build:
@@ -12,16 +15,16 @@ jobs:
     container:
       image: registry.pyn.ru/python3.12-node22-bookworm-building:2025.01.11
       credentials:
-        username: ${{ secrets.REGISTRY_USER }}
-        password: ${{ secrets.REGISTRY_PASSWORD }}
+        username: ${{ secrets.INFRA_REGISTRY_ACC_LOGIN }}
+        password: ${{ secrets.INFRA_REGISTRY_ACC_PASSWORD }}
 
     steps:
       - name: Checkout
-        uses: https://src.pyn.ru/actions/checkout@v4
+        uses: https://forgejo.pyn.ru/actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: webfactory/ssh-agent@v0.9.0
+      - uses: https://forgejo.pyn.ru/actions/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
