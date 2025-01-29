@@ -1,10 +1,19 @@
+from __future__ import annotations
+
 import logging
 from contextlib import contextmanager
-from typing import Union
+from typing import TYPE_CHECKING, Union
+
+from tornado.httputil import HTTPServerRequest
 
 from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub
 from frontik.options import options
 from frontik.request_integrations.integrations_dto import IntegrationDto
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from frontik.app import FrontikApplication
 
 handlers_count_logger = logging.getLogger('handlers_count')
 
@@ -46,7 +55,7 @@ class ActiveHandlersLimit:
 
 
 @contextmanager
-def request_limiter(frontik_app, _tornado_request):
+def request_limiter(frontik_app: FrontikApplication, _tornado_request: HTTPServerRequest) -> Iterator:
     active_limit = ActiveHandlersLimit(frontik_app.statsd_client)
     dto = IntegrationDto(active_limit.acquired)
     try:

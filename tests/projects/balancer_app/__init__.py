@@ -17,6 +17,4 @@ def get_non_listening_server() -> Server:
 
 
 class TestApplication(FrontikApplication):
-    async def init(self) -> None:
-        await super().init()
-        self.asgi_app.service_discovery = self.service_discovery  # type: ignore
+    pass

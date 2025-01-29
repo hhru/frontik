@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING, Optional, Union
 
 from tornado.log import LogFormatter
 
-from frontik import request_context
 from frontik.options import options
+from frontik.request_integrations import request_context
 from frontik.util.json import json_encode
 
 if TYPE_CHECKING:

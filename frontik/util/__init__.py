@@ -6,6 +6,8 @@ import random
 import re
 import socket
 import sys
+from asyncio import Task
+from collections.abc import Coroutine
 from string import Template
 from typing import Any, Optional
 from urllib.parse import urlencode
@@ -16,6 +18,7 @@ from tornado.escape import utf8
 from tornado.web import httputil
 
 logger = logging.getLogger('util')
+_async_tasks = set()
 
 
 class Sentinel:
@@ -172,3 +175,10 @@ def bind_socket(host: str, port: int) -> socket.socket:
     sock.set_inheritable(True)
     sock.listen()
     return sock
+
+
+def run_async_task(coro: Coroutine) -> Task:
+    task = asyncio.create_task(coro)
+    _async_tasks.add(task)
+    task.add_done_callback(_async_tasks.discard)
+    return task

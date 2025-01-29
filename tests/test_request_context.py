@@ -1,7 +1,7 @@
 import pytest
 
-from frontik import request_context
 from frontik.app import FrontikApplication
+from frontik.request_integrations import request_context
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
 
