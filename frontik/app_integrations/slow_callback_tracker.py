@@ -1,6 +1,7 @@
 import asyncio
 import gc
 import logging
+import sys
 import time
 from asyncio import Future
 from functools import partial
@@ -15,6 +16,7 @@ from frontik.options import options
 
 current_callback_start = None
 long_gc_log = None
+py_ver = sys.version_info[1]
 
 
 class SlowCallbackTrackerIntegration(Integration):
@@ -67,7 +69,10 @@ def wrap_handle_with_time_logging(app: FrontikApplication, slow_tasks_logger: lo
         delta -= gc_duration
 
         if delta >= options.asyncio_task_threshold_sec:
-            self._request_context.run(partial(_log_slow_tasks, self, delta))
+            if py_ver < 12:
+                self._request_context.run(partial(_log_slow_tasks, self, delta))
+            else:
+                self._context.run(partial(_log_slow_tasks, self, delta))
 
     asyncio.Handle._run = run  # type: ignore
 
