@@ -7,7 +7,7 @@ from frontik.testing import FrontikTestBase
 
 
 class AppWithVersion(FrontikApplication):
-    def application_version(self) -> int:
+    def application_version(self) -> str:
         return '0.1.0'
 
 

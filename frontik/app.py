@@ -176,7 +176,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
         return {
             'uptime': uptime_value,
             'datacenter': http_client_options.datacenter,
-            'app_version': self.application_version()
+            'app_version': self.application_version(),
         }
 
     def get_frontik_and_apps_versions(self) -> etree.Element:
