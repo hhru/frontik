@@ -150,7 +150,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
 
     def application_version_xml(self) -> list[etree.Element]:
         version = etree.Element('version')
-        version.text = 'unknown'
+        version.text = self.application_version()
         return [version]
 
     def application_version(self) -> str:
@@ -173,7 +173,11 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
         else:
             uptime_value = f'{cur_uptime / 3600:.2f} hours and {(cur_uptime % 3600) / 60:.2f} minutes'
 
-        return {'uptime': uptime_value, 'datacenter': http_client_options.datacenter}
+        return {
+            'uptime': uptime_value,
+            'datacenter': http_client_options.datacenter,
+            'app_version': self.application_version(),
+        }
 
     def get_frontik_and_apps_versions(self) -> etree.Element:
         versions = etree.Element('versions')
