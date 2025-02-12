@@ -137,7 +137,7 @@ def _client_response_hook(
 ) -> None:
     if not span or not span.is_recording():
         return
-    response_status_code: int = current_client_request_status.get()
+    response_status_code: int = current_client_request_status.get(None)
     if response_status_code is None:
         return
     span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, response_status_code)
