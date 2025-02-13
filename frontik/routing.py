@@ -171,6 +171,7 @@ def find_route(path: str, method: str) -> dict:
 
     if route is None and method == 'HEAD':
         scope = find_route(path, 'GET')
+        scope['method'] = 'HEAD'
         route = scope['route']
 
     if route is None:

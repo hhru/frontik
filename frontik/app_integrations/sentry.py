@@ -16,7 +16,6 @@ from sentry_sdk.integrations.stdlib import StdlibIntegration
 from tornado.web import HTTPError
 
 from frontik.app_integrations import Integration, integrations_logger
-from frontik.app_integrations.sentry_tornado_integration import TornadoIntegration
 from frontik.options import options
 
 if TYPE_CHECKING:
@@ -39,7 +38,6 @@ class SentryIntegration(Integration):
             DedupeIntegration(),
             ModulesIntegration(),
             StdlibIntegration(),
-            TornadoIntegration(),
         ]
 
         if options.sentry_exception_integration:
