@@ -3,6 +3,7 @@ import contextlib
 import gc
 import importlib
 import logging
+import os
 import signal
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -25,6 +26,8 @@ log = logging.getLogger('server')
 
 
 def main(config_file: Optional[str] = None) -> None:
+    _try_init_debugger()
+
     parse_configs(config_files=config_file)
 
     if options.app_class is None:
@@ -65,6 +68,17 @@ def main(config_file: Optional[str] = None) -> None:
     except Exception as e:
         log.exception('frontik application exited with exception: %s', e)
         sys.exit(1)
+
+
+def _try_init_debugger():
+    if debug_setting := os.environ.get('FRONTIK_DEBUGPY_PORT'):
+        import debugpy
+
+        suspend = debug_setting.startswith('suspend:')
+        port = int(debug_setting) if not suspend else int(debug_setting.removeprefix('suspend:'))
+        debugpy.listen(port)
+        if suspend:
+            debugpy.wait_for_client()
 
 
 def _master_before_fork_action(app: FrontikApplication) -> tuple[dict, Optional[Lock]]:
