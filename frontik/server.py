@@ -19,12 +19,15 @@ from frontik.config_parser import parse_configs
 from frontik.loggers import MDC
 from frontik.options import options
 from frontik.process import fork_workers
+from frontik.pydebug import try_init_debugger
 from frontik.util.gc import enable_gc
 
 log = logging.getLogger('server')
 
 
 def main(config_file: Optional[str] = None) -> None:
+    try_init_debugger()
+
     parse_configs(config_files=config_file)
 
     if options.app_class is None:
