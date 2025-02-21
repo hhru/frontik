@@ -1,3 +1,11 @@
+-   name: 8.3.0
+    date: '2025-02-21T20:51:00.354235+03:00'
+    description: "Добавили настройку FRONTIK_PY_DEBUG для включения remote-debug\r\
+        \nвозможные значения:\r\n* `debugpy:suspend:{PORT}`\r\n* `debugpy:{PORT}`\r\
+        \n* `pydevd:{HOST}:suspend:{PORT}`\r\n* `pydevd:{HOST}:{PORT}`"
+    instructions: ''
+    compatible: true
+
 -   name: 8.2.35
     date: '2025-02-12T21:37:01.342933+03:00'
     description: Починили проблемы с использованием сторонних aiohttp клиентов в фронтик-приложениях
