@@ -88,24 +88,27 @@ not_found_router = APIRouter()
 method_not_allowed_router = APIRouter()
 
 
-def _find_fastapi_route(scope: dict) -> Optional[APIRoute]:
+def _find_fastapi_route(scope: dict, min_match: Match = Match.FULL) -> Optional[APIRoute]:
     for route in _fastapi_routes:
         match, child_scope = route.matches(scope)
-        if match == Match.FULL:
+        if match.value >= min_match.value:
             scope.update(child_scope)
             scope['route'] = route
             return route
 
     route_path = scope['path']
-    if route_path != '/':
-        if route_path.endswith('/'):
-            scope['path'] = scope['path'].rstrip('/')
-        else:
-            scope['path'] += '/'
+
+    if route_path == '/':
+        return None
+
+    if route_path.endswith('/'):
+        scope['path'] = scope['path'].rstrip('/')
+    else:
+        scope['path'] += '/'
 
     for route in _fastapi_routes:
         match, child_scope = route.matches(scope)
-        if match == Match.FULL:
+        if match.value >= min_match.value:
             scope.update(child_scope)
             scope['route'] = route
             return route
@@ -152,21 +155,12 @@ def find_route(path: str, method: str) -> dict:
 
         scope['route'] = route
 
-    scope['method'] = next(iter(route.methods))
     scope['endpoint'] = route.endpoint
     return scope
 
 
 def get_allowed_methods(scope: dict) -> list[str]:
-    path: str = scope.get('path')  # type: ignore
-    allowed_methods = []
-    for method in ('GET', 'POST', 'PUT', 'DELETE', 'HEAD'):
-        scope['method'] = method
-        route = _find_fastapi_route(scope)
-        if route is None:
-            route, _ = _find_regex_route(path, method)
-
-        if route is not None:
-            allowed_methods.append(method)
-
-    return allowed_methods
+    route = _find_fastapi_route(scope, min_match=Match.PARTIAL)
+    if route is not None:
+        return list(route.methods)
+    return []

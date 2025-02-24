@@ -11,6 +11,11 @@ async def simple_page() -> str:
     return 'ok'
 
 
+@router.api_route('/multiple', methods=['GET', 'POST'])
+async def multi_method_page(request: Request) -> str:
+    return request.method
+
+
 @router.get('/simple_slash/')
 async def simple_slash_page() -> str:
     return 'ok'
@@ -59,3 +64,9 @@ class TestRouting(FrontikTestBase):
 
         response = await self.fetch('/simple_slash')
         assert response.status_code == 200
+
+    @pytest.mark.parametrize('method', ['GET', 'POST'])
+    async def test_multiple_methods(self, method):
+        response = await self.fetch('/multiple', method=method)
+        assert response.status_code == 200
+        assert response.data == method
