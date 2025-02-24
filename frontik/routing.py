@@ -90,6 +90,8 @@ method_not_allowed_router = APIRouter()
 
 def _find_fastapi_route(scope: dict, min_match: Match = Match.FULL) -> Optional[APIRoute]:
     for route in _fastapi_routes:
+        if min_match == Match.PARTIAL and route.methods == {'OPTIONS'}:
+            continue
         match, child_scope = route.matches(scope)
         if match.value >= min_match.value:
             scope.update(child_scope)
@@ -107,6 +109,8 @@ def _find_fastapi_route(scope: dict, min_match: Match = Match.FULL) -> Optional[
         scope['path'] += '/'
 
     for route in _fastapi_routes:
+        if min_match == Match.PARTIAL and route.methods == {'OPTIONS'}:
+            continue
         match, child_scope = route.matches(scope)
         if match.value >= min_match.value:
             scope.update(child_scope)
