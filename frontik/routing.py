@@ -88,31 +88,57 @@ not_found_router = APIRouter()
 method_not_allowed_router = APIRouter()
 
 
-def _find_fastapi_route(scope: dict, min_match: Match = Match.FULL) -> Optional[APIRoute]:
+def _find_fastapi_route_partial(scope: dict) -> set[str]:
+    result = set()
+
     for route in _fastapi_routes:
-        if min_match == Match.PARTIAL and route.methods == {'OPTIONS'}:
+        if 'OPTIONS' in route.methods:
             continue
         match, child_scope = route.matches(scope)
-        if match.value >= min_match.value:
-            scope.update(child_scope)
-            scope['route'] = route
-            return route
+        if match == Match.PARTIAL:
+            result.update(route.methods)
 
-    route_path = scope['path']
+    if scope['path'] == '/':
+        return result
 
-    if route_path == '/':
-        return None
-
-    if route_path.endswith('/'):
+    if scope['path'].endswith('/'):
         scope['path'] = scope['path'].rstrip('/')
     else:
         scope['path'] += '/'
 
     for route in _fastapi_routes:
-        if min_match == Match.PARTIAL and route.methods == {'OPTIONS'}:
+        if 'OPTIONS' in route.methods:
             continue
         match, child_scope = route.matches(scope)
-        if match.value >= min_match.value:
+        if match == Match.PARTIAL:
+            result.update(route.methods)
+
+    return result
+
+
+def _find_fastapi_route_exact(scope: dict) -> Optional[APIRoute]:
+    for route in _fastapi_routes:
+        if scope['method'] not in route.methods:
+            continue
+        match, child_scope = route.matches(scope)
+        if match == Match.FULL:
+            scope.update(child_scope)
+            scope['route'] = route
+            return route
+
+    if scope['path'] == '/':
+        return None
+
+    if scope['path'].endswith('/'):
+        scope['path'] = scope['path'].rstrip('/')
+    else:
+        scope['path'] += '/'
+
+    for route in _fastapi_routes:
+        if scope['method'] not in route.methods:
+            continue
+        match, child_scope = route.matches(scope)
+        if match == Match.FULL:
             scope.update(child_scope)
             scope['route'] = route
             return route
@@ -141,7 +167,7 @@ def find_route(path: str, method: str) -> dict:
     }
 
     if route is None:
-        route = _find_fastapi_route(scope)
+        route = _find_fastapi_route_exact(scope)
 
     if route is None and method == 'HEAD':
         scope = find_route(path, 'GET')
@@ -164,7 +190,4 @@ def find_route(path: str, method: str) -> dict:
 
 
 def get_allowed_methods(scope: dict) -> list[str]:
-    route = _find_fastapi_route(scope, min_match=Match.PARTIAL)
-    if route is not None:
-        return list(route.methods)
-    return []
+    return list(_find_fastapi_route_partial(scope))
