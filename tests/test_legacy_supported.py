@@ -8,11 +8,7 @@ from frontik.testing import FrontikTestBase
 
 @router.get('/legacy_supported')
 async def legacy_supported_page(request: Request) -> bool:
-    return (
-        request['debug_mode'] is not None
-        and request['tornado_request'] is not None
-        and request['frontik_app'] is not None
-    )
+    return request['debug_mode'] is not None and request['frontik_app'] is not None
 
 
 class TestLegacySupported(FrontikTestBase):

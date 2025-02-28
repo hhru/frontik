@@ -39,7 +39,7 @@ class KafkaApplication(FrontikApplication):
 
 @router.get('/kafka')
 async def get_page(request: Request, http_client: HttpClient) -> JSONResponse:
-    rid = request.scope['tornado_request'].request_id
+    rid = request.scope['request_id']
     request.app._http_client_factory.request_engine_builder.kafka_producer.enable_for_request_id(rid)
 
     await http_client.post_url(request.headers.get('host'), request.url.path)

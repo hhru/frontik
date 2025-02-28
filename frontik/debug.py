@@ -493,9 +493,7 @@ class DebugMode:
         if self.inherited:
             debug_log.debug('debug mode is inherited due to %s request header', DEBUG_HEADER_NAME)
 
-    def require_debug_access(
-        self, tornado_request: FrontikTornadoServerRequest, auth_failed: Optional[bool] = None
-    ) -> None:
+    def require_debug_access(self, headers: HTTPHeaders, auth_failed: Optional[bool] = None) -> None:
         if auth_failed is True:
             self.auth_failed = True
             return
@@ -505,7 +503,7 @@ class DebugMode:
             self.on_auth_ok()
             return
 
-        self.failed_auth_headers = check_debug_auth(tornado_request, options.debug_login, options.debug_password)
+        self.failed_auth_headers = check_debug_auth(headers, options.debug_login, options.debug_password)
         if self.failed_auth_headers is None:
             self.auth_failed = False
             self.on_auth_ok()

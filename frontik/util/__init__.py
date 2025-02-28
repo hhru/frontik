@@ -7,7 +7,9 @@ import re
 import socket
 import sys
 from asyncio import Task
-from collections.abc import Coroutine
+from collections.abc import Coroutine, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from string import Template
 from typing import Any, Optional
 from urllib.parse import urlencode
@@ -182,3 +184,12 @@ def run_async_task(coro: Coroutine) -> Task:
     _async_tasks.add(task)
     task.add_done_callback(_async_tasks.discard)
     return task
+
+
+@contextmanager
+def set_contextvar(contextvar: ContextVar, value: Any) -> Iterator:
+    token = contextvar.set(value)
+    try:
+        yield
+    finally:
+        contextvar.reset(token)

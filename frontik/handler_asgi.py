@@ -107,9 +107,9 @@ async def execute_asgi_page(
         'headers': request_headers,
         'client': (tornado_request.remote_ip, 0),
         'debug_mode': debug_mode,
-        'tornado_request': tornado_request,
         'frontik_app': frontik_app,
         'start_time': tornado_request._start_time,
+        'request_id': tornado_request.request_id,
     })
 
     async def receive():
@@ -171,9 +171,9 @@ def make_debug_mode(frontik_app: FrontikApplication, tornado_request: FrontikTor
         return debug_mode
 
     if hasattr(frontik_app, 'require_debug_access'):
-        frontik_app.require_debug_access(debug_mode, tornado_request)
+        frontik_app.require_debug_access(debug_mode, tornado_request.headers, tornado_request.cookies)
     else:
-        debug_mode.require_debug_access(tornado_request)
+        debug_mode.require_debug_access(tornado_request.headers)
 
     return debug_mode
 
