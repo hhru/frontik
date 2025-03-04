@@ -1,8 +1,9 @@
 import pytest
 from fastapi import Request
+from fastapi.routing import APIRoute
 
 from frontik.app import FrontikApplication
-from frontik.routing import regex_router, router
+from frontik.routing import get_route_sort_key, regex_router, router
 from frontik.testing import FrontikTestBase
 
 
@@ -64,6 +65,22 @@ class TestRouting(FrontikTestBase):
 
         response = await self.fetch('/simple_slash')
         assert response.status_code == 200
+
+    def test_routes_sorting(self):
+        def noop():
+            pass
+
+        routes = [
+            APIRoute('/some/other/{thing2}', noop),
+            APIRoute('/some/{other}/thing', noop),
+            APIRoute('/some', noop),
+            APIRoute('/some/other/{thing}', noop),
+        ]
+        routes.sort(key=get_route_sort_key)
+        assert routes[0].path == '/some'
+        assert routes[1].path == '/some/other/{thing2}'
+        assert routes[2].path == '/some/other/{thing}'
+        assert routes[3].path == '/some/{other}/thing'
 
     @pytest.mark.parametrize('method', ['GET', 'POST'])
     async def test_multiple_methods(self, method):
