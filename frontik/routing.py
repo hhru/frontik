@@ -17,7 +17,16 @@ _regex_mapping: list[tuple[re.Pattern, APIRoute]] = []
 _fastapi_routes: list[APIRoute] = []
 
 
+def get_route_sort_key(route: APIRoute) -> tuple:
+    segments = [s for s in route.path_format.split('/') if s]
+    param_flags = tuple((s.startswith('{') and s.endswith('}')) for s in segments)
+    if sum(param_flags) == 0:  # keep exact urls on first places
+        return (-500, None)
+    return (-len(segments), param_flags)
+
+
 class FrontikRegexRouter(APIRouter):
+    # @deprecated - use FastAPIRouter
     def add_api_route(self, *args: Any, **kwargs: Any) -> None:
         super().add_api_route(*args, **kwargs)
         route: APIRoute = self.routes[-1]  # type: ignore
@@ -38,12 +47,16 @@ class FastAPIRouter(APIRouter):
         route = scope['route']
         await route.handle(scope, receive, send)
 
-    def add_api_route(self, *args: Any, **kwargs: Any) -> None:
-        super().add_api_route(*args, **kwargs)
+    def add_api_route(self, path: str, *args: Any, **kwargs: Any) -> None:
+        if path.endswith('/') and path != '/':
+            path = path.rstrip('/')
+        super().add_api_route(path, *args, **kwargs)
         _fastapi_routes.append(self.routes[-1])  # type: ignore
 
-    def add_route(self, *args: Any, **kwargs: Any) -> None:
-        super().add_api_route(*args, **kwargs)
+    def add_route(self, path: str, *args: Any, **kwargs: Any) -> None:
+        if path.endswith('/') and path != '/':
+            path = path.rstrip('/')
+        super().add_api_route(path, *args, **kwargs)
         _fastapi_routes.append(self.routes[-1])  # type: ignore
 
 
@@ -81,6 +94,8 @@ def import_all_pages(app_module: str) -> None:
 
         importlib.import_module(name)
 
+    _fastapi_routes.sort(key=get_route_sort_key)
+
 
 router = FastAPIRouter()
 regex_router = FrontikRegexRouter()
@@ -98,42 +113,10 @@ def _find_fastapi_route_partial(scope: dict) -> set[str]:
         if match == Match.PARTIAL:
             result.update(route.methods)
 
-    if scope['path'] == '/':
-        return result
-
-    if scope['path'].endswith('/'):
-        scope['path'] = scope['path'].rstrip('/')
-    else:
-        scope['path'] += '/'
-
-    for route in _fastapi_routes:
-        if 'OPTIONS' in route.methods:
-            continue
-        match, child_scope = route.matches(scope)
-        if match == Match.PARTIAL:
-            result.update(route.methods)
-
     return result
 
 
 def _find_fastapi_route_exact(scope: dict) -> Optional[APIRoute]:
-    for route in _fastapi_routes:
-        if scope['method'] not in route.methods:
-            continue
-        match, child_scope = route.matches(scope)
-        if match == Match.FULL:
-            scope.update(child_scope)
-            scope['route'] = route
-            return route
-
-    if scope['path'] == '/':
-        return None
-
-    if scope['path'].endswith('/'):
-        scope['path'] = scope['path'].rstrip('/')
-    else:
-        scope['path'] += '/'
-
     for route in _fastapi_routes:
         if scope['method'] not in route.methods:
             continue
@@ -158,6 +141,10 @@ def _find_regex_route(path: str, method: str) -> Union[tuple[APIRoute, dict], tu
 def find_route(path: str, method: str) -> dict:
     route: APIRoute
     route, path_params = _find_regex_route(path, method)  # type: ignore
+
+    if path.endswith('/'):
+        path = path.rstrip('/')
+
     scope = {
         'type': 'http',
         'path': path,
