@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import http.client
 import logging
 from contextlib import ExitStack
-from functools import partial
-from typing import TYPE_CHECKING
+from functools import partial, wraps
+from typing import TYPE_CHECKING, Callable
 
+import yappi
 from tornado import httputil
 
 from frontik.debug import DebugMode, DebugTransform
@@ -25,6 +27,30 @@ CHARSET = 'utf-8'
 log = logging.getLogger('handler')
 
 
+def profile(func: Callable) -> Callable:
+    @wraps(func)
+    async def wrapper(
+        frontik_app: FrontikApplication,
+        asgi_app: FrontikAsgiApp,
+        tornado_request: FrontikTornadoServerRequest,
+    ) -> None:
+        if 'profile' not in tornado_request.query_arguments:
+            return await func(frontik_app, asgi_app, tornado_request)
+
+        request_id = tornado_request.request_id or str(datetime.datetime.now())
+        profile = 'WALL'
+        yappi.set_clock_type(profile)
+
+        with yappi.run():
+            result = await func(frontik_app, asgi_app, tornado_request)
+        yappi.get_func_stats().save(path=f'/var/log/{request_id}.stats', type='PSTAT')
+        yappi.clear_stats()
+        return result
+
+    return wrapper
+
+
+@profile
 async def serve_tornado_request(
     frontik_app: FrontikApplication,
     tornado_request: FrontikTornadoServerRequest,
