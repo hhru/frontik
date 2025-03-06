@@ -142,7 +142,7 @@ def find_route(path: str, method: str) -> dict:
     route: APIRoute
     route, path_params = _find_regex_route(path, method)  # type: ignore
 
-    if path.endswith('/'):
+    if path.endswith('/') and path != '/':
         path = path.rstrip('/')
 
     scope = {
