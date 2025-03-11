@@ -9,6 +9,9 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from threading import Lock
 from typing import Callable, Optional
+import memray
+import os
+import time
 
 import tornado.autoreload
 from http_client.balancing import Upstream
@@ -26,6 +29,12 @@ log = logging.getLogger('server')
 
 
 def main(config_file: Optional[str] = None) -> None:
+    memray_tracker = memray.Tracker(
+        f'/tmp/memray_dump_{os.getpid()}_{time.time()}.out',
+        file_format=memray.FileFormat.AGGREGATED_ALLOCATIONS,
+    )
+    memray_tracker.__enter__()
+
     try_init_debugger()
 
     parse_configs(config_files=config_file)
@@ -47,6 +56,7 @@ def main(config_file: Optional[str] = None) -> None:
 
     try:
         app = application()
+        app.memray_tracker = memray_tracker
 
         gc.disable()
         gc.collect()
