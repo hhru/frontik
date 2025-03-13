@@ -23,7 +23,7 @@ pydantic = '^2.3.0'
 tornado = '6.3.3'
 orjson = '*'
 http-client = {git = 'git+ssh://git@forgejo.pyn.ru/hhru/balancing-http-client.git', tag = '2.2.1'}
-python-consul2-hh = {git = 'git+ssh://git@forgejo.pyn.ru/hhru/python-consul2', tag = 'v0.2.10'}
+consul = {git = 'git+ssh://git@forgejo.pyn.ru/hhru/python-consul2', tag = '1.0.0'}
 opentelemetry-sdk = '1.25.0'
 opentelemetry-api = '1.25.0'
 opentelemetry-exporter-otlp-proto-grpc = '1.25.0'
@@ -47,7 +47,6 @@ mypy = '1.8.0'
 ruff = '0.7.3'
 exceptiongroup = '1.2.0'
 tomli = '2.0.1'
-virtualenv = '<=20.26.0'
 
 [tool.poetry.extras]
 sentry = ["sentry-sdk"]
