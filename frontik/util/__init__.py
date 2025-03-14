@@ -180,7 +180,13 @@ def bind_socket(host: str, port: int) -> socket.socket:
 
 
 def run_async_task(coro: Coroutine) -> Task:
-    task = asyncio.create_task(coro)
+    async def _wrapped(_coro: Coroutine) -> None:
+        try:
+            await _coro
+        except Exception:
+            logger.exception('frontik async task was failed')
+
+    task = asyncio.create_task(_wrapped(coro))
     _async_tasks.add(task)
     task.add_done_callback(_async_tasks.discard)
     return task
