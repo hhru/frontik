@@ -8,6 +8,7 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 from tornado import httputil
+from tornado.iostream import StreamClosedError
 
 from frontik.debug import DebugMode, DebugTransform
 from frontik.frontik_response import FrontikResponse
@@ -46,14 +47,23 @@ async def serve_tornado_request(
         assert tornado_request.connection is not None
         tornado_request.connection.set_close_callback(None)  # type: ignore
 
-        if not response.headers_written:
-            for integration in integrations.values():
-                integration.set_response(response)
+        if getattr(tornado_request, 'canceled', False):
+            return
 
+        if not response.headers_written:
             start_line = httputil.ResponseStartLine('', response.status_code, response.reason)
-            await tornado_request.connection.write_headers(start_line, response.headers, response.body)
+            try:
+                await tornado_request.connection.write_headers(start_line, response.headers, response.body)
+            except StreamClosedError:
+                response.status_code = CLIENT_CLOSED_REQUEST
+                log.info(
+                    'client closed the connection while writing to the socket, rid: %s',
+                    request_context.get_request_id(),
+                )
 
         log_request(tornado_request, response.status_code)
+        for integration in integrations.values():
+            integration.set_response(response)
         tornado_request.connection.finish()
 
 
@@ -181,12 +191,14 @@ def make_debug_mode(frontik_app: FrontikApplication, tornado_request: FrontikTor
 def _on_connection_close(tornado_request, process_request_task, integrations):
     request_id = integrations.get('request_context', IntegrationDto()).get_value()
     log.info('client has canceled request rid: %s', request_id)
+
     response = FrontikResponse(CLIENT_CLOSED_REQUEST, request_id=request_id)
+    log_request(tornado_request, CLIENT_CLOSED_REQUEST)
+    setattr(tornado_request, 'canceled', True)
+
     for integration in integrations.values():
         integration.set_response(response)
 
-    log_request(tornado_request, CLIENT_CLOSED_REQUEST)
-    setattr(tornado_request, 'canceled', False)
     process_request_task.cancel()  # serve_tornado_request will be interrupted with CanceledError
 
 
