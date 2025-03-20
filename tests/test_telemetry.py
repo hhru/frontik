@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from typing import Any, Optional
@@ -77,6 +78,11 @@ async def get_page_a(request: Request, http_client: HttpClient) -> None:
     await http_client.get_url(request.headers.get('host'), '/page_b?firstParam=1&secondParam=2')
 
 
+@router.get('/long_otel_page')
+async def long_otel_page() -> None:
+    await asyncio.sleep(1)
+
+
 @router.get('/page_b')
 async def get_page_b() -> dict:
     return {}
@@ -140,3 +146,19 @@ class TestFrontikTesting(FrontikTestBase):
         assert server_b_span.attributes.get(SpanAttributes.USER_AGENT_ORIGINAL) == self.app.app_name
         assert server_b_span.attributes.get(SpanAttributes.HTTP_ROUTE) == '/page_b'
         assert server_b_span.attributes.get(SpanAttributes.HTTP_TARGET) == '/page_b?firstParam=1&secondParam=2'
+
+    async def test_client_close_connection(self, frontik_app: FrontikApplication) -> None:
+        await self.fetch('/long_otel_page', request_timeout=0.4)
+        await asyncio.sleep(0.5)
+        BATCH_SPAN_PROCESSOR[0].force_flush()
+        assert len(SPAN_STORAGE) == 2
+        server_span = find_span('http.route', '/long_otel_page')
+        SPAN_STORAGE.clear()
+
+        assert server_span is not None
+        assert server_span.attributes is not None
+        assert server_span.attributes.get(SpanAttributes.CODE_FUNCTION) == 'long_otel_page'
+        assert server_span.attributes.get(SpanAttributes.CODE_NAMESPACE) == 'tests.test_telemetry'
+        assert server_span.attributes.get(SpanAttributes.USER_AGENT_ORIGINAL) == 'test'
+        assert server_span.attributes.get(SpanAttributes.HTTP_ROUTE) == '/long_otel_page'
+        assert server_span.attributes.get(SpanAttributes.HTTP_TARGET) == '/long_otel_page'
