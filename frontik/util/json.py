@@ -36,6 +36,9 @@ def _deep_encode_value(value: Any) -> Any:
     elif hasattr(value, 'to_dict'):
         return _deep_encode_value(value.to_dict())
 
+    elif isinstance(value, bytes):
+        return value.decode('utf-8')
+
     return value
 
 
@@ -55,15 +58,23 @@ def _encode_value(value: Any) -> Any:
     elif hasattr(value, 'to_dict'):
         return value.to_dict()
 
+    elif isinstance(value, bytes):
+        return value.decode('utf-8')
+
     raise TypeError
 
 
-def json_encode_bytes(obj: Any, default: Callable = _encode_value) -> bytes:
-    return orjson.dumps(obj, default=default, option=(orjson.OPT_NON_STR_KEYS | orjson.OPT_SERIALIZE_NUMPY))
+def json_encode_bytes(obj: Any, default: Callable = _encode_value, sort_keys: bool = False) -> bytes:
+    options = (
+        (orjson.OPT_NON_STR_KEYS | orjson.OPT_SERIALIZE_NUMPY | orjson.OPT_SORT_KEYS)
+        if sort_keys
+        else (orjson.OPT_NON_STR_KEYS | orjson.OPT_SERIALIZE_NUMPY)
+    )
+    return orjson.dumps(obj, default=default, option=options)
 
 
-def json_encode(obj: Any, default: Callable = _encode_value) -> str:
-    return json_encode_bytes(obj, default).decode('utf-8')
+def json_encode(obj: Any, default: Callable = _encode_value, sort_keys: bool = False) -> str:
+    return json_encode_bytes(obj, default, sort_keys).decode('utf-8')
 
 
 def json_decode(value: Union[str, bytes]) -> Any:
