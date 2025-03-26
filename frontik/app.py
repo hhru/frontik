@@ -121,6 +121,13 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
         if self.worker_state.is_master:
             self.worker_state.master_done.value = True
 
+    async def deinit(self) -> None:
+        if self.http_client is not None:
+            await asyncio.wait_for(self.http_client.http_client_impl.client_session.close(), timeout=1.0)
+
+        for integration in self.available_integrations:
+            integration.deinitialize_app(self)
+
     def make_http_client_factory(self) -> HttpClientFactory:
         kafka_cluster = options.http_client_metrics_kafka_cluster
         send_metrics_to_kafka = kafka_cluster and kafka_cluster in options.kafka_clusters
