@@ -93,7 +93,7 @@ def _master_after_fork_action(
 
 
 def _master_before_shutdown_action(app: FrontikApplication) -> None:
-    asyncio.run(_deinit_app(app))
+    asyncio.run(_deinit_app(app, with_delay=False))
 
 
 def _worker_listener_handler(app: FrontikApplication, data: list[Upstream]) -> None:
@@ -135,7 +135,7 @@ def run_server(frontik_app: FrontikApplication) -> None:
             loop.call_soon_threadsafe(server_stop)
 
     def server_stop():
-        deinit_task = loop.create_task(_deinit_app(frontik_app))
+        deinit_task = loop.create_task(_deinit_app(frontik_app, with_delay=True))
         http_server.stop()
 
         if loop.is_running():
@@ -164,9 +164,11 @@ async def _init_app(frontik_app: FrontikApplication) -> None:
     frontik_app.service_discovery.register_service()
 
 
-async def _deinit_app(app: FrontikApplication) -> None:
+async def _deinit_app(app: FrontikApplication, with_delay: bool) -> None:
     app.service_discovery.deregister_service_and_close()
-    await asyncio.sleep(options.stop_timeout)
+
+    if with_delay:
+        await asyncio.sleep(options.stop_timeout)
 
     try:
         if app.http_client is not None:
