@@ -11,6 +11,7 @@ from frontik.util import (
     any_to_unicode,
     check_request_id,
     generate_uniq_timestamp_request_id,
+    json,
     make_qs,
     make_url,
     reverse_regex_named_groups,
@@ -148,3 +149,19 @@ class TestUtil(unittest.TestCase):
     def test_check_request_id(self) -> None:
         self.assertTrue(check_request_id('12345678910abcdef'))
         self.assertFalse(check_request_id('not_hex_format_123'))
+
+    def test_serialize_bytes(self):
+        data = {'key': b'C7CB6E41800870B0AC1AAC36A2205FA9'}
+        expected = '{"key":"C7CB6E41800870B0AC1AAC36A2205FA9"}'
+        serialized_data = json.json_encode(data)
+        self.assertEqual(expected, serialized_data)
+
+    def test_json_encode_correct_sort_order(self):
+        data = {'b': 2, 'a': 1, 'c': 3}
+        expected_json = '{"a":1,"b":2,"c":3}'
+
+        json_unsorted = json.json_encode(data)
+        json_sorted = json.json_encode(data, sort_keys=True)
+
+        self.assertNotEqual(json_unsorted, json_sorted)
+        self.assertEqual(json_sorted, expected_json)
