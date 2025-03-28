@@ -1,3 +1,10 @@
+-   name: 8.3.13
+    date: '2025-03-28T11:07:19.268692+03:00'
+    description: для json сериализации добавлена возможность сериализации bytes, а
+        так же сортировка ключей при переданном sort_keys=True
+    instructions: ''
+    compatible: true
+
 -   name: 8.3.12
     date: '2025-03-26T15:49:54.191796+03:00'
     description: ''
