@@ -59,6 +59,10 @@ class FastAPIRouter(APIRouter):
         super().add_api_route(path, *args, **kwargs)
         _fastapi_routes.append(self.routes[-1])  # type: ignore
 
+    def mount(self, path: str, *args: Any, **kwargs: Any) -> None:
+        super().mount(path, *args, **kwargs)
+        _fastapi_routes.append(self.routes[-1])  # type: ignore
+
 
 def _iter_submodules(path: MutableSequence[str], prefix: str = '') -> Generator:
     """Find packages recursively, including PEP420 packages"""
@@ -118,7 +122,7 @@ def _find_fastapi_route_partial(scope: dict) -> set[str]:
 
 def _find_fastapi_route_exact(scope: dict) -> Optional[APIRoute]:
     for route in _fastapi_routes:
-        if scope['method'] not in route.methods:
+        if isinstance(route, APIRoute) and scope['method'] not in route.methods:
             continue
         match, child_scope = route.matches(scope)
         if match == Match.FULL:
@@ -172,8 +176,8 @@ def find_route(path: str, method: str) -> dict:
             route = not_found_router.routes[-1]
 
         scope['route'] = route
-
-    scope['endpoint'] = route.endpoint
+    if isinstance(route, APIRoute):
+        scope['endpoint'] = route.endpoint
     return scope
 
 
