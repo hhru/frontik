@@ -43,7 +43,10 @@ def get_handler_name() -> Optional[str]:
 
 
 def set_handler_name(route: APIRoute) -> None:
-    _request_context.get().handler_name = f'{route.endpoint.__module__}.{route.endpoint.__name__}'
+    if isinstance(route, APIRoute):
+        _request_context.get().handler_name = f'{route.endpoint.__module__}.{route.endpoint.__name__}'
+    else:
+        _request_context.get().handler_name = route.name
 
 
 def get_debug_log_handler() -> Optional[DebugBufferedHandler]:
