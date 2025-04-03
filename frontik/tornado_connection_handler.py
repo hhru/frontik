@@ -56,23 +56,3 @@ class TornadoConnectionHandler(httputil.HTTPMessageDelegate):
     def on_connection_close(self) -> None:
         assert self.request is not None
         self.request.finished = True
-
-
-class LegacyTornadoConnectionHandler(TornadoConnectionHandler):
-    """Used because of
-    1. Debug (requires request.body)
-    2. FrontikPageHandler (full of legacy shit)
-    """
-
-    def process_request(self) -> None: ...
-
-    def data_received(self, chunk: bytes) -> Optional[Awaitable[None]]:
-        assert self.request is not None
-        self.request.body += chunk
-        return super().data_received(chunk)
-
-    def finish(self) -> None:
-        assert self.request is not None
-        self.request._parse_body()
-        super().finish()
-        self._process_request()

@@ -1,4 +1,5 @@
 import importlib
+import importlib.util
 import logging
 import pkgutil
 import re
@@ -8,37 +9,32 @@ from typing import Any, MutableSequence, Optional, Union
 
 from fastapi import APIRouter
 from fastapi.routing import APIRoute
-from starlette.routing import Match
+from starlette.routing import BaseRoute, Match
 
 routing_logger = logging.getLogger('frontik.routing')
 
 routers: list[APIRouter] = []
 _regex_mapping: list[tuple[re.Pattern, APIRoute]] = []
-_fastapi_routes: list[APIRoute] = []
+_fastapi_routes: list[BaseRoute] = []
 
 
-def get_route_sort_key(route: APIRoute) -> tuple:
+def get_route_sort_key(route: BaseRoute) -> tuple:
+    if not isinstance(route, APIRoute):
+        return -500, None
+
     segments = [s for s in route.path_format.split('/') if s]
     param_flags = tuple((s.startswith('{') and s.endswith('}')) for s in segments)
     if sum(param_flags) == 0:  # keep exact urls on first places
-        return (-500, None)
-    return (-len(segments), param_flags)
+        return -500, None
+    return -len(segments), param_flags
 
 
-class FrontikRegexRouter(APIRouter):
-    # @deprecated - use FastAPIRouter
-    def add_api_route(self, *args: Any, **kwargs: Any) -> None:
-        super().add_api_route(*args, **kwargs)
-        route: APIRoute = self.routes[-1]  # type: ignore
-        _regex_mapping.append((re.compile(route.path), route))
-
-
-class FastAPIRouter(APIRouter):
+class FrontikRouter(APIRouter):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         routers.append(self)
 
-    async def __call__(self, scope, receive, send):
+    async def app(self, scope, receive, send):
         assert scope['type'] == 'http'
 
         if 'router' not in scope:
@@ -51,17 +47,25 @@ class FastAPIRouter(APIRouter):
         if path.endswith('/') and path != '/':
             path = path.rstrip('/')
         super().add_api_route(path, *args, **kwargs)
-        _fastapi_routes.append(self.routes[-1])  # type: ignore
+        _fastapi_routes.append(self.routes[-1])
 
     def add_route(self, path: str, *args: Any, **kwargs: Any) -> None:
         if path.endswith('/') and path != '/':
             path = path.rstrip('/')
         super().add_api_route(path, *args, **kwargs)
-        _fastapi_routes.append(self.routes[-1])  # type: ignore
+        _fastapi_routes.append(self.routes[-1])
 
     def mount(self, path: str, *args: Any, **kwargs: Any) -> None:
         super().mount(path, *args, **kwargs)
-        _fastapi_routes.append(self.routes[-1])  # type: ignore
+        _fastapi_routes.append(self.routes[-1])
+
+
+class FrontikRegexRouter(FrontikRouter):
+    # @deprecated - use FrontikRouter
+    def add_api_route(self, *args: Any, **kwargs: Any) -> None:
+        super(FrontikRouter, self).add_api_route(*args, **kwargs)
+        route: APIRoute = self.routes[-1]  # type: ignore
+        _regex_mapping.append((re.compile(route.path), route))
 
 
 def _iter_submodules(path: MutableSequence[str], prefix: str = '') -> Generator:
@@ -101,7 +105,7 @@ def import_all_pages(app_module: str) -> None:
     _fastapi_routes.sort(key=get_route_sort_key)
 
 
-router = FastAPIRouter()
+router = FrontikRouter()
 regex_router = FrontikRegexRouter()
 not_found_router = APIRouter()
 method_not_allowed_router = APIRouter()
@@ -111,16 +115,16 @@ def _find_fastapi_route_partial(scope: dict) -> set[str]:
     result = set()
 
     for route in _fastapi_routes:
-        if 'OPTIONS' in route.methods:
+        if isinstance(route, APIRoute) and 'OPTIONS' in route.methods:
             continue
         match, child_scope = route.matches(scope)
-        if match == Match.PARTIAL:
+        if isinstance(route, APIRoute) and match == Match.PARTIAL:
             result.update(route.methods)
 
     return result
 
 
-def _find_fastapi_route_exact(scope: dict) -> Optional[APIRoute]:
+def _find_fastapi_route_exact(scope: dict) -> Optional[BaseRoute]:
     for route in _fastapi_routes:
         if isinstance(route, APIRoute) and scope['method'] not in route.methods:
             continue
@@ -133,23 +137,22 @@ def _find_fastapi_route_exact(scope: dict) -> Optional[APIRoute]:
     return None
 
 
-def _find_regex_route(path: str, method: str) -> Union[tuple[APIRoute, dict], tuple[None, dict]]:
+def _find_regex_route(path: str, method: str) -> Union[tuple[BaseRoute, dict], tuple[None, dict]]:
     for pattern, route in _regex_mapping:
         match = pattern.match(path)
-        if match and next(iter(route.methods), None) == method:
+        if match and method in route.methods:
             return route, match.groupdict()
 
     return None, {}
 
 
 def find_route(path: str, method: str) -> dict:
-    route: APIRoute
-    route, path_params = _find_regex_route(path, method)  # type: ignore
+    route, path_params = _find_regex_route(path, method)
 
     if path.endswith('/') and path != '/':
         path = path.rstrip('/')
 
-    scope = {
+    scope: dict[str, Any] = {
         'type': 'http',
         'path': path,
         'method': method,
@@ -164,6 +167,8 @@ def find_route(path: str, method: str) -> dict:
         scope = find_route(path, 'GET')
         scope['method'] = 'HEAD'
         route = scope['route']
+        if route is not None and isinstance(route, APIRoute):
+            route.methods.add('HEAD')
 
     if route is None:
         routing_logger.error('match for request url %s "%s" not found', method, path)
@@ -174,6 +179,9 @@ def find_route(path: str, method: str) -> dict:
             route = method_not_allowed_router.routes[-1]
         else:
             route = not_found_router.routes[-1]
+
+        if isinstance(route, APIRoute) and method not in route.methods:
+            route.methods.add(method)
 
         scope['route'] = route
     if isinstance(route, APIRoute):

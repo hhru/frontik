@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Optional
 
 import sentry_sdk
@@ -59,6 +60,8 @@ class SentryIntegration(Integration):
             profiles_sample_rate=options.sentry_profiles_sample_rate,
             ignore_errors=[HTTPError, FailFastError, HTTPException],
         )
+
+        logging.getLogger('sentry_sdk.errors').setLevel(logging.WARNING)
 
         return None
 

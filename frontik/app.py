@@ -1,5 +1,4 @@
 import asyncio
-import contextvars
 import inspect
 import logging
 import multiprocessing
@@ -24,6 +23,7 @@ from tornado import httputil
 from frontik import app_integrations
 from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
 from frontik.balancing_client import set_extra_client_params
+from frontik.dependencies import set_app
 from frontik.options import options
 from frontik.process import WorkerState
 from frontik.routing import (
@@ -34,13 +34,12 @@ from frontik.routing import (
     routers,
 )
 from frontik.service_discovery import MasterServiceDiscovery, ServiceDiscovery, WorkerServiceDiscovery
-from frontik.tornado_connection_handler import LegacyTornadoConnectionHandler, TornadoConnectionHandler
+from frontik.tornado_connection_handler import TornadoConnectionHandler
 from frontik.util import Sentinel
 from frontik.version import version as frontik_version
 
 app_logger = logging.getLogger('app_logger')
 _DEFAULT_ARG = Sentinel()
-app_holder: contextvars.ContextVar = contextvars.ContextVar('app_holder')
 
 
 class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
@@ -106,7 +105,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
             return WorkerServiceDiscovery(self.worker_state.initial_shared_data)
 
     async def install_integrations(self) -> None:
-        app_holder.set(self)
+        set_app(self)
 
         self.available_integrations, integration_futures = app_integrations.load_integrations(self)
         await asyncio.gather(*[future for future in integration_futures if future])
@@ -209,7 +208,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
         server_conn: object,
         request_conn: httputil.HTTPConnection,
     ) -> TornadoConnectionHandler:
-        return LegacyTornadoConnectionHandler(self, request_conn)
+        return TornadoConnectionHandler(self, request_conn)
 
 
 def anyio_noop(*_args: Any, **_kwargs: Any) -> None:
