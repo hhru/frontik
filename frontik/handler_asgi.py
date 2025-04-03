@@ -149,7 +149,7 @@ async def execute_asgi_page(
                     response.headers.add(h[0].decode(CHARSET), h[1].decode(CHARSET))
         elif message['type'] == 'http.response.body':
             chunk = message['body']
-            if debug_mode.debug_response or not message.get('more_body'):
+            if debug_mode.debug_response:
                 response.body += chunk
             elif not response.headers_written:
                 for integration in integrations.values():
