@@ -121,4 +121,8 @@ def _get_sentry_exceptions(name: str) -> list[dict[str, Any]]:
 
 
 def filter_sentry_event(event: dict, name: str) -> bool:
-    return event.get('exception', {}).get('values', [{}])[0].get('value', None) == name
+    for item in event.get('exception', {}).get('values', [{}]):
+        if item.get('value', None) == name:
+            return True
+
+    return False

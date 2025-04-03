@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -97,6 +98,7 @@ class TestSyslog(FrontikTestBase):
 
     async def test_send_to_syslog(self):
         await self.fetch('/log')
+        await asyncio.sleep(0.1)
 
         logs = []
 

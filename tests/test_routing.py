@@ -3,7 +3,7 @@ from fastapi import Request
 from fastapi.routing import APIRoute
 
 from frontik.app import FrontikApplication
-from frontik.routing import get_route_sort_key, regex_router, router
+from frontik.routing import get_route_sort_key, router
 from frontik.testing import FrontikTestBase
 
 
@@ -22,7 +22,7 @@ async def simple_slash_page() -> str:
     return 'ok'
 
 
-@regex_router.get('/id/(?P<id>[^/]+)')
+@router.get('/id/{id}')
 async def id_page(request: Request) -> str:
     return str(request.path_params.get('id'))
 

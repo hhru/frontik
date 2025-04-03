@@ -129,6 +129,7 @@ class TestFrontikTesting(FrontikTestBase):
 
     async def test_parent_span(self, frontik_app: FrontikApplication) -> None:
         await self.fetch('/page_a')
+        await asyncio.sleep(0.1)
         BATCH_SPAN_PROCESSOR[0].force_flush()
         assert len(SPAN_STORAGE) == 4
         client_a_span = find_span('http.request.cloud.region', 'externalRequest')
@@ -149,7 +150,7 @@ class TestFrontikTesting(FrontikTestBase):
 
     async def test_client_close_connection(self, frontik_app: FrontikApplication) -> None:
         await self.fetch('/long_otel_page', request_timeout=0.4)
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.6)
         BATCH_SPAN_PROCESSOR[0].force_flush()
         assert len(SPAN_STORAGE) == 2
         server_span = find_span('http.route', '/long_otel_page')

@@ -7,7 +7,7 @@ import os
 import sys
 import time
 from ctypes import c_bool, c_int
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import aiohttp
 import tornado
@@ -18,7 +18,7 @@ from http_client import HttpClient, HttpClientFactory
 from http_client import options as http_client_options
 from http_client.balancing import RequestBalancerBuilder
 from lxml import etree
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.middleware.base import BaseHTTPMiddleware
 from tornado import httputil
 
 from frontik import app_integrations
@@ -34,7 +34,7 @@ from frontik.routing import (
     routers,
 )
 from frontik.service_discovery import MasterServiceDiscovery, ServiceDiscovery, WorkerServiceDiscovery
-from frontik.tornado_connection_handler import LegacyTornadoConnectionHandler, TornadoConnectionHandler
+from frontik.tornado_connection_handler import TornadoConnectionHandler
 from frontik.util import Sentinel
 from frontik.version import version as frontik_version
 
@@ -209,7 +209,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
         server_conn: object,
         request_conn: httputil.HTTPConnection,
     ) -> TornadoConnectionHandler:
-        return LegacyTornadoConnectionHandler(self, request_conn)
+        return TornadoConnectionHandler(self, request_conn)
 
 
 def anyio_noop(*_args: Any, **_kwargs: Any) -> None:
@@ -227,17 +227,12 @@ async def get_status(request: Request) -> ORJSONResponse:
     return ORJSONResponse(request.app.get_current_status())
 
 
-class FrontikMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
-        self.app = app
+class FrontikMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        with set_extra_client_params(request.scope):
+            response = await call_next(request)
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope['type'] != 'http':
-            await self.app(scope, receive, send)
-            return
-
-        with set_extra_client_params(scope):
-            await self.app(scope, receive, send)
+        return response
 
 
 @not_found_router.get('__not_found')
