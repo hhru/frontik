@@ -18,7 +18,7 @@ from http_client import HttpClient, HttpClientFactory
 from http_client import options as http_client_options
 from http_client.balancing import RequestBalancerBuilder
 from lxml import etree
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
 from tornado import httputil
 
 from frontik import app_integrations
@@ -227,12 +227,17 @@ async def get_status(request: Request) -> ORJSONResponse:
     return ORJSONResponse(request.app.get_current_status())
 
 
-class FrontikMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        with set_extra_client_params(request.scope):
-            response = await call_next(request)
+class FrontikMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
 
-        return response
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope['type'] != 'http':
+            await self.app(scope, receive, send)
+            return
+
+        with set_extra_client_params(scope):
+            await self.app(scope, receive, send)
 
 
 @not_found_router.get('__not_found')
