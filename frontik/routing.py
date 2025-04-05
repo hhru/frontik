@@ -10,6 +10,9 @@ from fastapi import APIRouter
 from fastapi.routing import APIRoute
 from starlette.routing import Match
 
+from frontik.dependencies import get_app
+from frontik.options import options
+
 routing_logger = logging.getLogger('frontik.routing')
 
 routers: list[APIRouter] = []
@@ -143,6 +146,9 @@ def _find_regex_route(path: str, method: str) -> Union[tuple[APIRoute, dict], tu
 
 
 def find_route(path: str, method: str) -> dict:
+    if options.autoreload or options.dev_mode:
+        try_import_by_path(path)
+
     route: APIRoute
     route, path_params = _find_regex_route(path, method)  # type: ignore
 
@@ -183,3 +189,13 @@ def find_route(path: str, method: str) -> dict:
 
 def get_allowed_methods(scope: dict) -> list[str]:
     return list(_find_fastapi_route_partial(scope))
+
+
+def try_import_by_path(path: str) -> None:
+    try:
+        url_parts = path.strip('/').split('/')
+        page_name = '.'.join(filter(None, url_parts))
+        page_module_name = '.'.join(filter(None, (f'{get_app().app_module_name}.pages', page_name)))
+        importlib.import_module(page_module_name)
+    except Exception as ex:
+        routing_logger.error('dev import for %s was failed: %s', path, ex)

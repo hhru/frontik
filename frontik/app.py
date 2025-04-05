@@ -1,5 +1,4 @@
 import asyncio
-import contextvars
 import inspect
 import logging
 import multiprocessing
@@ -24,6 +23,7 @@ from tornado import httputil
 from frontik import app_integrations
 from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
 from frontik.balancing_client import set_extra_client_params
+from frontik.dependencies import set_app
 from frontik.options import options
 from frontik.process import WorkerState
 from frontik.routing import (
@@ -40,7 +40,6 @@ from frontik.version import version as frontik_version
 
 app_logger = logging.getLogger('app_logger')
 _DEFAULT_ARG = Sentinel()
-app_holder: contextvars.ContextVar = contextvars.ContextVar('app_holder')
 
 
 class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
@@ -74,7 +73,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
         count_down_lock = multiprocessing.Lock()
         self.worker_state = WorkerState(init_workers_count_down, master_done, count_down_lock)  # type: ignore
 
-        if app_module_name is not None:
+        if not options.autoreload and not options.dev_mode and app_module_name is not None:
             import_all_pages(self.app_module_name)
 
         self.router = router
@@ -106,7 +105,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
             return WorkerServiceDiscovery(self.worker_state.initial_shared_data)
 
     async def install_integrations(self) -> None:
-        app_holder.set(self)
+        set_app(self)
 
         self.available_integrations, integration_futures = app_integrations.load_integrations(self)
         await asyncio.gather(*[future for future in integration_futures if future])

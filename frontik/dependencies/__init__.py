@@ -1,14 +1,26 @@
-from typing import Annotated, Any, Optional, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Annotated, Any, Optional, Union
 
 import http_client
 from fastapi import Depends, Request
 
-from frontik.app import FrontikApplication, app_holder
 from frontik.app_integrations import statsd
+
+if TYPE_CHECKING:
+    from frontik.app import FrontikApplication
+
+_app_instance: Optional[FrontikApplication] = None
 
 
 def get_app() -> FrontikApplication:
-    return app_holder.get()
+    assert _app_instance is not None
+    return _app_instance
+
+
+def set_app(app: FrontikApplication) -> None:
+    global _app_instance
+    _app_instance = app
 
 
 def get_app_config() -> Any:
