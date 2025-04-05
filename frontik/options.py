@@ -27,6 +27,7 @@ class Options:
     common_executor_pool_size: int = 10
 
     autoreload: bool = False
+    dev_mode: bool = False
     stop_timeout: int = 3
     asyncio_task_threshold_sec: Optional[float] = None
     asyncio_task_critical_threshold_sec: Optional[float] = None
