@@ -32,7 +32,7 @@ def prepare_upstreams():
     upstream_config = {
         Upstream.DEFAULT_PROFILE: UpstreamConfig(
             max_timeout_tries=10,
-            retry_policy={'403': {'idempotent': 'false'}, '500': {'idempotent': 'true'}},
+            retry_policy={'403': {'retry_non_idempotent': 'false'}, '500': {'retry_non_idempotent': 'true'}},
         ),
     }
     return {
