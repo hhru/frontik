@@ -162,6 +162,9 @@ async def execute_asgi_page(
                 )
                 response.headers_written = True
             else:
+                if chunk == b'' and message['more_body'] is False:
+                    setattr(tornado_request, 'response_done', True)
+                    return
                 await tornado_request.connection.write(chunk)
         else:
             raise RuntimeError(f'Unsupported response type "{message["type"]}" for asgi app')
@@ -189,6 +192,9 @@ def make_debug_mode(frontik_app: FrontikApplication, tornado_request: FrontikTor
 
 
 def _on_connection_close(tornado_request, process_request_task, integrations):
+    if getattr(tornado_request, 'response_done', False):
+        return
+
     request_id = integrations.get('request_context', IntegrationDto()).get_value()
     log.info('client has canceled request rid: %s', request_id)
 

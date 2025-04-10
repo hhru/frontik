@@ -30,6 +30,7 @@ def load_integrations(app: FrontikApplication) -> tuple[list[Integration], list[
             importlib.import_module(f'frontik.app_integrations.{module_name}')
         except Exception as e:
             integrations_logger.info('%s integration is not available: %s', module_name, e)
+            raise
 
     available_integrations = []
     init_futures = []
