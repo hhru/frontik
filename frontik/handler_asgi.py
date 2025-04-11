@@ -7,7 +7,7 @@ from contextlib import ExitStack
 from functools import partial
 from typing import TYPE_CHECKING
 
-from tornado import httputil
+from tornado.httputil import ResponseStartLine
 from tornado.iostream import StreamClosedError
 
 from frontik.debug import DebugMode, DebugTransform
@@ -51,15 +51,8 @@ async def serve_tornado_request(
             return
 
         if not response.headers_written:
-            start_line = httputil.ResponseStartLine('', response.status_code, response.reason)
-            try:
-                await tornado_request.connection.write_headers(start_line, response.headers, response.body)
-            except StreamClosedError:
-                response.status_code = CLIENT_CLOSED_REQUEST
-                log.info(
-                    'client closed the connection while writing to the socket, rid: %s',
-                    request_context.get_request_id(),
-                )
+            start_line = ResponseStartLine('', response.status_code, response.reason)
+            await write_start_line(tornado_request, start_line, response, response.body)
 
         log_request(tornado_request, response.status_code)
         for integration in integrations.values():
@@ -155,11 +148,8 @@ async def execute_asgi_page(
                 for integration in integrations.values():
                     integration.set_response(response)
 
-                await tornado_request.connection.write_headers(
-                    start_line=httputil.ResponseStartLine('', response.status_code, response.reason),
-                    headers=response.headers,
-                    chunk=chunk,
-                )
+                start_line = ResponseStartLine('', response.status_code, response.reason)
+                await write_start_line(tornado_request, start_line, response, chunk)
                 response.headers_written = True
             else:
                 if chunk == b'' and message['more_body'] is False:
@@ -224,3 +214,17 @@ def log_request(tornado_request: FrontikTornadoServerRequest, status_code: int) 
         extra['controller'] = tornado_request.handler_name
 
     JSON_REQUESTS_LOGGER.info('', extra={CUSTOM_JSON_EXTRA: extra})
+
+
+async def write_start_line(
+    tornado_request: FrontikTornadoServerRequest, start_line: ResponseStartLine, response: FrontikResponse, chunk: bytes
+) -> None:
+    try:
+        assert tornado_request.connection is not None
+        await tornado_request.connection.write_headers(start_line, response.headers, chunk)
+    except StreamClosedError:
+        response.status_code = CLIENT_CLOSED_REQUEST
+        log.info(
+            'client closed the connection while writing to the socket, rid: %s',
+            request_context.get_request_id(),
+        )
