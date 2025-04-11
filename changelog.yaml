@@ -1,3 +1,10 @@
+-   name: 9.0.0
+    date: '2025-04-11T14:32:59.149858+03:00'
+    description: Обновление balancing-http-client.
+    instructions: Перед обновлением убедитесь, что в конфигах апстримов в консуле
+        для политики ретраев используется ключ `retry_non_idempotent`.
+    compatible: false
+
 -   name: 8.3.18
     date: '2025-04-10T10:05:05.433394+03:00'
     description: ''
