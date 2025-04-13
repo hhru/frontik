@@ -15,7 +15,6 @@ from frontik.loggers import bootstrap_logger
 from frontik.options import options
 
 current_callback_start = None
-long_gc_log = None
 py_ver = sys.version_info[1]
 
 
@@ -32,10 +31,6 @@ class SlowCallbackTrackerIntegration(Integration):
         reprlib.aRepr.maxother = 256
         wrap_handle_with_time_logging(app, slow_tasks_logger)
         gc.callbacks.append(long_gc_tracker)
-
-        if options.long_gc_log_enabled:
-            global long_gc_log
-            long_gc_log = bootstrap_logger('gc_stat', logging.WARNING)
 
         return None
 
@@ -101,6 +96,3 @@ def long_gc_tracker(phase, info):
         elif current_callback_start != GC_STATS.callback_start:
             GC_STATS.callback_start = current_callback_start
             GC_STATS.sum_duration = gc_duration
-
-        if long_gc_log is not None and gc_duration > options.long_gc_log_threshold_sec:
-            long_gc_log.warning(f'GC took {gc_duration * 1000} ms')

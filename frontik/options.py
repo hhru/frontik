@@ -65,8 +65,8 @@ class Options:
     statsd_max_udp_size: int = 508
 
     gc_custom_thresholds: Optional[str] = None
-    gc_metrics_send_interval_ms: Optional[int] = None
-    long_gc_log_enabled: bool = True
+    gc_metrics_send_interval_ms: Optional[int] = 1000
+    long_gc_log_enabled: bool = False
     long_gc_log_threshold_sec: float = 0.01
 
     xml_root: Optional[str] = None
