@@ -69,9 +69,9 @@ def send_metrics(app):
     if GC_STATS.count == 0:
         app.statsd_client.time('gc.duration', 0)
         app.statsd_client.count('gc.count', 0)
-        app.statsd_client.time('gc.max_duration_ms', 0)
+        app.statsd_client.time('gc.max_duration', 0)
     else:
         app.statsd_client.time('gc.duration', int(GC_STATS.duration * 1000))
         app.statsd_client.count('gc.count', GC_STATS.count)
-        app.statsd_client.time('gc.max_duration_ms', int(GC_STATS.max_stw * 1000))
+        app.statsd_client.time('gc.max_duration', int(GC_STATS.max_stw * 1000))
         GC_STATS.clear()
