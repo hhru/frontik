@@ -77,6 +77,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
             import_all_pages(self.app_module_name)
 
         self.router = router
+        self.exception_handlers = {}
 
         for _router in routers:
             if _router is not router:

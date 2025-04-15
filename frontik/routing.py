@@ -60,14 +60,6 @@ class FrontikRouter(APIRouter):
         _fastapi_routes.append(self.routes[-1])
 
 
-class FrontikRegexRouter(FrontikRouter):
-    # @deprecated - use FrontikRouter
-    def add_api_route(self, *args: Any, **kwargs: Any) -> None:
-        super(FrontikRouter, self).add_api_route(*args, **kwargs)
-        route: APIRoute = self.routes[-1]  # type: ignore
-        _regex_mapping.append((re.compile(route.path), route))
-
-
 def _iter_submodules(path: MutableSequence[str], prefix: str = '') -> Generator:
     """Find packages recursively, including PEP420 packages"""
     yield from pkgutil.walk_packages(path, prefix)
@@ -106,7 +98,6 @@ def import_all_pages(app_module: str) -> None:
 
 
 router = FrontikRouter()
-regex_router = FrontikRegexRouter()
 not_found_router = APIRouter()
 method_not_allowed_router = APIRouter()
 
@@ -171,8 +162,6 @@ def find_route(path: str, method: str) -> dict:
             route.methods.add('HEAD')
 
     if route is None:
-        routing_logger.error('match for request url %s "%s" not found', method, path)
-
         allowed_methods = get_allowed_methods(scope)
         if len(allowed_methods) > 0:
             scope['allowed_methods'] = allowed_methods
@@ -183,7 +172,14 @@ def find_route(path: str, method: str) -> dict:
         if isinstance(route, APIRoute) and method not in route.methods:
             route.methods.add(method)
 
+        routing_logger.error(
+            'match for request url %s "%s" not found, using %s',
+            method,
+            path,
+            route.endpoint.__module__ + '.' + route.endpoint.__name__,
+        )
         scope['route'] = route
+
     if isinstance(route, APIRoute):
         scope['endpoint'] = route.endpoint
     return scope
