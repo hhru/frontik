@@ -163,6 +163,8 @@ async def execute_asgi_page(
         await frontik_app(scope, receive, send)
     except Exception:
         log.exception('failed to execute page')
+    finally:
+        scope.clear()
 
     return response
 
