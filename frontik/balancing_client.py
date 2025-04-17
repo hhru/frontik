@@ -2,7 +2,7 @@ import time
 from contextlib import contextmanager
 from typing import Iterator
 
-from http_client import RequestBuilder, extra_client_params
+from http_client import BalancedHttpRequest, extra_client_params
 from http_client.request_response import USER_AGENT_HEADER
 from starlette.datastructures import Headers
 from starlette.types import Scope
@@ -16,7 +16,7 @@ from frontik.util import make_url
 OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
 
 
-def modify_http_client_request(scope: Scope, balanced_request: RequestBuilder) -> None:
+def modify_http_client_request(scope: Scope, balanced_request: BalancedHttpRequest) -> None:
     headers = Headers(scope=scope)
     balanced_request.headers['x-request-id'] = request_context.get_request_id()
     balanced_request.headers[OUTER_TIMEOUT_MS_HEADER] = f'{balanced_request.request_timeout * 1000:.0f}'
