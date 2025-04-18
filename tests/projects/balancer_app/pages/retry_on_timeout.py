@@ -10,7 +10,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 @router.get('/retry_on_timeout')
 async def get_page(request: Request, http_client: HttpClient) -> str:
-    upstreams = request.app.service_discovery.get_upstreams_unsafe()
+    upstreams = request.app.service_discovery._upstreams
     retry_on_timeout = 'retry_on_timeout'
     upstreams[retry_on_timeout] = Upstream(
         retry_on_timeout,

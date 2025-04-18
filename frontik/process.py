@@ -227,10 +227,6 @@ async def _worker_listener(read_fd: int, worker_listener_handler: Callable) -> N
 def __master_function_wrapper(
     worker_state: WorkerState, master_after_fork_action: Callable, shared_data: dict, lock: Lock
 ) -> None:
-    if not lock:
-        master_after_fork_action(None)
-        return
-
     resend_thread = Thread(
         target=__resend,
         args=(worker_state, worker_state.resend_notification, shared_data, lock),

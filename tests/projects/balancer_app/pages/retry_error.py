@@ -11,7 +11,7 @@ from tests.projects.balancer_app.pages import check_all_servers_were_occupied
 
 @router.get('/retry_error')
 async def get_page(request: Request, http_client: HttpClient) -> str:
-    upstreams = request.app.service_discovery.get_upstreams_unsafe()
+    upstreams = request.app.service_discovery._upstreams
     retry_error = 'retry_error'
     upstreams[retry_error] = Upstream(retry_error, {}, [get_server(request, 'broken'), get_server(request, 'normal')])
 

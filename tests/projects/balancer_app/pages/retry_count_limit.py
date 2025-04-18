@@ -21,7 +21,7 @@ async def get_page(request: Request, http_client: HttpClient) -> str:
         ],
     )
 
-    upstreams = request.app.service_discovery.get_upstreams_unsafe()
+    upstreams = request.app.service_discovery._upstreams
     upstreams[retry_count_limit] = upstream
 
     await http_client.get_url(retry_count_limit, retry_count_limit)

@@ -8,7 +8,7 @@ from tests.projects.balancer_app import get_server
 
 @router.get('/speculative_no_retry')
 async def get_page(request: Request, http_client: HttpClient) -> str:
-    upstreams = request.app.service_discovery.get_upstreams_unsafe()
+    upstreams = request.app.service_discovery._upstreams
     speculative_no_retry = 'speculative_no_retry'
     upstreams[speculative_no_retry] = Upstream(
         speculative_no_retry,

@@ -8,7 +8,7 @@ from sentry_sdk.api import continue_trace
 from sentry_sdk.consts import OP
 from sentry_sdk.integrations import Integration
 from sentry_sdk.integrations._wsgi_common import RequestExtractor, _filter_headers, _is_json_content_type
-from sentry_sdk.tracing import TRANSACTION_SOURCE_COMPONENT, TRANSACTION_SOURCE_ROUTE
+from sentry_sdk.tracing import TransactionSource
 from sentry_sdk.utils import capture_internal_exceptions
 from tornado.httputil import HTTPServerRequest
 
@@ -59,7 +59,7 @@ def _make_event_processor(request: HTTPServerRequest) -> Callable:
     def tornado_processor(event, _hint):
         with capture_internal_exceptions():
             event['transaction'] = 'temporarily_undefined'
-            event['transaction_info'] = {'source': TRANSACTION_SOURCE_COMPONENT}
+            event['transaction_info'] = {'source': TransactionSource.COMPONENT}
 
             extractor = TornadoRequestExtractor(request)
             extractor.extract_into_event(event)
@@ -107,7 +107,7 @@ def request_context(_frontik_app: FrontikApplication, tornado_request: HTTPServe
             headers,  # type: ignore
             op=OP.HTTP_SERVER,
             name='generic Tornado request',
-            source=TRANSACTION_SOURCE_ROUTE,
+            source=TransactionSource.ROUTE,
             origin=FrontikIntegration.origin,
         )
 
