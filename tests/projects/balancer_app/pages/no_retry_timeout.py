@@ -11,7 +11,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 @router.get('/no_retry_timeout')
 async def get_page(request: Request, http_client: HttpClient) -> str:
-    upstreams = request.app.service_discovery.get_upstreams_unsafe()
+    upstreams = request.app.service_discovery._upstreams
     no_retry_timeout = 'no_retry_timeout'
     upstreams[no_retry_timeout] = Upstream(no_retry_timeout, {}, [get_server(request, 'broken')])
 

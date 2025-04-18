@@ -10,6 +10,7 @@ from typing import Any, Optional, Union
 
 import aiohttp
 import tornado
+from acsylla.base import Cluster
 from aiokafka import AIOKafkaProducer
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import ORJSONResponse
@@ -107,10 +108,10 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
     async def install_integrations(self) -> None:
         set_app(self)
 
+        self.service_discovery = self.make_service_discovery()
         self.available_integrations, integration_futures = app_integrations.load_integrations(self)
         await asyncio.gather(*[future for future in integration_futures if future])
 
-        self.service_discovery = self.make_service_discovery()
         self._http_client_factory = self.make_http_client_factory()
         self.http_client = self._http_client_factory.get_http_client()
 
@@ -145,7 +146,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
         )
 
         request_balancer_builder = RequestBalancerBuilder(
-            upstreams=self.service_discovery.get_upstreams_unsafe(),
+            upstream_getter=self.service_discovery.get_upstream,
             statsd_client=self.statsd_client,
             kafka_producer=kafka_producer,
         )
@@ -201,6 +202,9 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
         return versions
 
     def get_kafka_producer(self, producer_name: str) -> Optional[AIOKafkaProducer]:  # pragma: no cover
+        pass
+
+    def get_scylla_cluster(self, cluster_name: str) -> Optional[Cluster]:  # pragma: no cover
         pass
 
     def start_request(

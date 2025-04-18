@@ -43,7 +43,7 @@ def prepare_upstreams():
 
 
 def get_upstream_bytes(service_discovery):
-    return pickle.dumps(list(service_discovery.get_upstreams_unsafe().values()))
+    return pickle.dumps(list(service_discovery.get_upstreams_copy().values()))
 
 
 def noop(*_args, **__kwargs):
@@ -111,7 +111,7 @@ class TestProcessFork:
             return
 
         assert send_updates_hook is not None
-        service_discovery.get_upstreams_unsafe().update(upstreams)
+        service_discovery._upstreams.update(upstreams)
         for _i in range(500):
             send_updates_hook(get_upstream_bytes(service_discovery))
 
@@ -124,7 +124,7 @@ class TestProcessFork:
         assert len(worker_shared_data) == 1, 'upstreams size on master and worker should be the same'
 
         # Case 3: add new upstream, check worker get it
-        service_discovery.get_upstreams_unsafe()['upstream2'] = Upstream(
+        service_discovery._upstreams['upstream2'] = Upstream(
             'upstream2',
             {},
             [Server('12.2.3.5', 'dest_host'), Server('12.22.3.5', 'dest_host')],

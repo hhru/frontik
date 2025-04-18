@@ -60,7 +60,7 @@ class TestUpstreamCaches:
         service_discovery._update_upstreams_service('app', value_another_dc)
 
         assert len(service_discovery._upstreams_servers) == 2
-        assert len(service_discovery.get_upstreams_unsafe()['app'].servers) == 2
+        assert len(service_discovery.get_upstream('app').servers) == 2
 
     def test_update_upstreams_servers_same_dc(self) -> None:
         options.upstreams = ['app']
@@ -83,7 +83,7 @@ class TestUpstreamCaches:
         service_discovery._update_upstreams_service('app', value_one_dc)
 
         assert len(service_discovery._upstreams_servers) == 1
-        assert len(service_discovery.get_upstreams_unsafe()['app'].servers) == 1
+        assert len(service_discovery.get_upstream('app').servers) == 1
 
     def test_multiple_update_upstreams_servers_different_dc(self) -> None:
         options.upstreams = ['app']
@@ -121,7 +121,7 @@ class TestUpstreamCaches:
         service_discovery._update_upstreams_service('app', value_one_dc)
 
         assert len(service_discovery._upstreams_servers) == 2
-        assert len(service_discovery.get_upstreams_unsafe()['app'].servers) == 2
+        assert len(service_discovery.get_upstream('app').servers) == 2
 
     def test_remove_upstreams_servers_different_dc(self) -> None:
         options.upstreams = ['app']
@@ -181,14 +181,11 @@ class TestUpstreamCaches:
 
         assert len(service_discovery._upstreams_servers['app-test']) == 1
         assert len(service_discovery._upstreams_servers['app-another']) == 2
-        assert len(service_discovery.get_upstreams_unsafe()['app'].servers) == 3
+        assert len(service_discovery.get_upstream('app').servers) == 3
 
         service_discovery._update_upstreams_service('app', value_another_remove_service_dc)
 
         assert len(service_discovery._upstreams_servers['app-another']) == 1
         assert service_discovery._upstreams_servers['app-another'][0].address == '2.2.2.2:9999'
-        assert len(service_discovery.get_upstreams_unsafe()['app'].servers) == 3
-        assert (
-            len([server for server in service_discovery.get_upstreams_unsafe()['app'].servers if server is not None])
-            == 2
-        )
+        assert len(service_discovery.get_upstream('app').servers) == 3
+        assert len([server for server in service_discovery.get_upstream('app').servers if server is not None]) == 2
