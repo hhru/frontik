@@ -17,7 +17,7 @@ async def get_page(request: Request, http_client: HttpClient) -> str:
 
     different_datacenter = 'different_datacenter'
     upstream = Upstream(different_datacenter, {}, [free_server, normal_server])
-    request.app.service_discovery.get_upstreams_unsafe()[different_datacenter] = upstream
+    request.app.service_discovery._upstreams[different_datacenter] = upstream
 
     result = await http_client.post_url(different_datacenter, different_datacenter)
     for server in upstream.servers:

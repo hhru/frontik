@@ -58,6 +58,7 @@ class Options:
     http_client_metrics_kafka_cluster: Optional[str] = None
 
     kafka_clusters: dict = field(default_factory=lambda: {})
+    scylla_clusters: dict = field(default_factory=lambda: {})
 
     statsd_host: Optional[str] = None
     statsd_port: Optional[int] = None

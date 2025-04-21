@@ -9,7 +9,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 @router.get('/no_available_backend')
 async def get_page(request: Request, http_client: HttpClient) -> str:
-    upstreams = request.app.service_discovery.get_upstreams_unsafe()
+    upstreams = request.app.service_discovery._upstreams
     no_available_backend = 'no_available_backend'
     upstreams[no_available_backend] = Upstream(no_available_backend, {}, [])
 

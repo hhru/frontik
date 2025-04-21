@@ -3,6 +3,7 @@ import itertools
 import logging
 import pickle
 import socket
+from copy import deepcopy
 from random import shuffle
 from threading import Lock
 from typing import Callable, Optional, Union
@@ -71,7 +72,11 @@ def _get_hostname_or_raise(node_name: str) -> str:
 
 class ServiceDiscovery(abc.ABC):
     @abc.abstractmethod
-    def get_upstreams_unsafe(self) -> dict[str, Upstream]:
+    def get_upstreams_copy(self) -> dict[str, Upstream]:
+        pass
+
+    @abc.abstractmethod
+    def get_upstream(self, upstream_name: str, default: None = None) -> Upstream:
         pass
 
     @abc.abstractmethod
@@ -158,20 +163,28 @@ class MasterServiceDiscovery(ServiceDiscovery):
             return allow_cross_dc or dc == http_options.datacenter or upstream in forced_cross_dc_upstreams
 
         for upstream, dc in filter(cross_dc_or_forced, itertools.product(options.upstreams, http_options.datacenters)):
-            health_cache = HealthCache(
-                service=upstream,
-                health_client=self.consul.health,
-                passing=True,
-                watch_seconds=self.consul_weight_watch_seconds,
-                backoff_delay_seconds=self.consul_cache_backoff_delay_seconds,
-                dc=dc,
-                caller=self.service_name,
-            )
-            health_cache.add_listener(self._update_upstreams_service, trigger_current=True)
-            health_cache.start()
+            self.__subscribe_to_service(upstream, dc)
+
+        kafka_upstreams = ['kafka-' + kafka_name for kafka_name in options.kafka_clusters]
+        scylla_upstreams = ['scylla-' + scylla_name for scylla_name in options.scylla_clusters]
+        for upstream, dc in itertools.product(kafka_upstreams + scylla_upstreams, http_options.datacenters):
+            self.__subscribe_to_service(upstream, dc)
 
         if options.fail_start_on_empty_upstream:
             self.__check_empty_upstreams_on_startup()
+
+    def __subscribe_to_service(self, service_name: str, dc: str) -> None:
+        health_cache = HealthCache(
+            service=service_name,
+            health_client=self.consul.health,
+            passing=True,
+            watch_seconds=self.consul_weight_watch_seconds,
+            backoff_delay_seconds=self.consul_cache_backoff_delay_seconds,
+            dc=dc,
+            caller=self.service_name,
+        )
+        health_cache.add_listener(self._update_upstreams_service, trigger_current=True)
+        health_cache.start()
 
     def set_update_shared_data_hook(self, update_shared_data_hook: Callable) -> None:
         self._send_to_all_workers = update_shared_data_hook
@@ -179,8 +192,13 @@ class MasterServiceDiscovery(ServiceDiscovery):
     def get_upstreams_with_lock(self) -> tuple[dict[str, Upstream], Lock]:
         return self._upstreams, self._upstreams_lock
 
-    def get_upstreams_unsafe(self) -> dict[str, Upstream]:
-        return self._upstreams
+    def get_upstreams_copy(self) -> dict[str, Upstream]:
+        with self._upstreams_lock:
+            return deepcopy(self._upstreams)
+
+    def get_upstream(self, upstream_name: str, default: None = None) -> Upstream:
+        with self._upstreams_lock:
+            return self._upstreams.get(upstream_name, default)
 
     def _update_register(self, key, new_value):
         weight = _get_weight_or_default(new_value)
@@ -280,26 +298,29 @@ class MasterServiceDiscovery(ServiceDiscovery):
 
 class WorkerServiceDiscovery(ServiceDiscovery):
     def __init__(self, upstreams: dict[str, Upstream]) -> None:
-        self.upstreams = upstreams
+        self._upstreams = upstreams
 
     def update_upstreams(self, upstreams: list[Upstream]) -> None:
         for upstream in upstreams:
             self.__update_upstream(upstream)
 
     def __update_upstream(self, upstream: Upstream) -> None:
-        current_upstream = self.upstreams.get(upstream.name)
+        current_upstream = self._upstreams.get(upstream.name)
 
         if current_upstream is None:
             shuffle(upstream.servers)
-            self.upstreams[upstream.name] = upstream
+            self._upstreams[upstream.name] = upstream
             log.debug('add %s upstream: %s', upstream.name, str(upstream))
             return
 
         current_upstream.update(upstream)
         log.debug('update %s upstream: %s', upstream.name, str(upstream))
 
-    def get_upstreams_unsafe(self) -> dict[str, Upstream]:
-        return self.upstreams
+    def get_upstreams_copy(self) -> dict[str, Upstream]:
+        return deepcopy(self._upstreams)
+
+    def get_upstream(self, upstream_name: str, default: None = None) -> Upstream:
+        return self._upstreams.get(upstream_name, default)
 
     def register_service(self) -> None:
         pass
@@ -308,7 +329,7 @@ class WorkerServiceDiscovery(ServiceDiscovery):
         pass
 
     def get_upstreams_with_lock(self) -> tuple[dict[str, Upstream], Optional[Lock]]:
-        return {}, None
+        raise RuntimeError('there is no upstream lock in worker service discovery')
 
     def set_update_shared_data_hook(self, update_shared_data_hook: Callable) -> None:
         raise RuntimeError('worker should not use update hook')

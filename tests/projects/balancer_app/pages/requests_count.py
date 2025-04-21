@@ -12,7 +12,7 @@ from tests.projects.balancer_app.pages import check_all_requests_done, check_all
 
 @router.get('/requests_count')
 async def get_page(request: Request, http_client: HttpClient) -> str:
-    upstreams = request.app.service_discovery.get_upstreams_unsafe()
+    upstreams = request.app.service_discovery._upstreams
     requests_count_async = 'requests_count_async'
     upstreams[requests_count_async] = Upstream(requests_count_async, {}, [get_server(request, 'normal')])
     text = ''
@@ -38,6 +38,5 @@ async def get_page(request: Request, http_client: HttpClient) -> str:
 @router.post('/requests_count')
 async def post_page(request: Request) -> str:
     await asyncio.sleep(0.2)
-    upstreams = request.app.service_discovery.get_upstreams_unsafe()
-    servers = upstreams['requests_count_async'].servers
+    servers = request.app.service_discovery.get_upstream('requests_count_async').servers
     return str(servers[0].stat_requests)

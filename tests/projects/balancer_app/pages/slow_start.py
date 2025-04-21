@@ -20,7 +20,7 @@ async def get_page(request: Request, http_client: HttpClient) -> str:
     server_slow_start = Server('127.0.0.1:12345', 'dest_host', weight=5, dc='Test')
 
     upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=0.1)}
-    upstreams = request.app.service_discovery.get_upstreams_unsafe()
+    upstreams = request.app.service_discovery._upstreams
     slow_start = 'slow_start'
     upstreams[slow_start] = Upstream(slow_start, upstream_config, [server])
     text = ''
@@ -46,5 +46,5 @@ async def get_page(request: Request, http_client: HttpClient) -> str:
 
 @router.post('/slow_start')
 async def post_page(request: Request) -> str:
-    upstreams = request.app.service_discovery.get_upstreams_unsafe()
-    return str(upstreams['slow_start'].servers[0].stat_requests)
+    upstream = request.app.service_discovery.get_upstream('slow_start')
+    return str(upstream.servers[0].stat_requests)
