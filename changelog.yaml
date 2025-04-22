@@ -1,3 +1,9 @@
+-   name: 9.0.6
+    date: '2025-04-22T20:34:49.250505+03:00'
+    description: Обновлен balanced-http-client, переименован RequestBuilder в BalancedHttpRequest
+    instructions: ''
+    compatible: true
+
 -   name: 9.0.5
     date: '2025-04-21T13:30:19.880990+03:00'
     description: ''
