@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from asyncio import Future
 
     import aiohttp
-    from http_client.request_response import RequestBuilder
+    from http_client.request_response import BalancedHttpRequest
     from opentelemetry.trace import Span
 
     from frontik.app import FrontikApplication
@@ -109,7 +109,7 @@ def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams) ->
     if not span or not span.is_recording():
         return
 
-    request: RequestBuilder = current_client_request.get(None)
+    request: BalancedHttpRequest = current_client_request.get(None)
     if request is None:
         return
 

@@ -34,7 +34,7 @@ from frontik.util.xml import dict_to_xml
 if TYPE_CHECKING:
     from typing import Any, Optional
 
-    from http_client.request_response import RequestBuilder, RequestResult
+    from http_client.request_response import BalancedHttpRequest, RequestResult
 
     from frontik.app import FrontikApplication
     from frontik.tornado_request import FrontikTornadoServerRequest
@@ -94,7 +94,7 @@ def response_to_xml(result: RequestResult) -> etree.Element:
     return response
 
 
-def request_to_xml(request: RequestBuilder) -> etree.Element:
+def request_to_xml(request: BalancedHttpRequest) -> etree.Element:
     content_type = request.headers.get('Content-Type', '')
     body = etree.Element('body', content_type=content_type)
 
@@ -132,7 +132,7 @@ def request_to_xml(request: RequestBuilder) -> etree.Element:
     return request
 
 
-def balanced_request_to_xml(balanced_request: RequestBuilder, retry: int, datacenter: str) -> etree.Element:
+def balanced_request_to_xml(balanced_request: BalancedHttpRequest, retry: int, datacenter: str) -> etree.Element:
     info = etree.Element('meta-info')
 
     if balanced_request.upstream_name != balanced_request.host:
@@ -146,20 +146,20 @@ def balanced_request_to_xml(balanced_request: RequestBuilder, retry: int, datace
     return info
 
 
-def request_to_curl_string(request: RequestBuilder) -> str:
+def request_to_curl_string(request: BalancedHttpRequest) -> str:
     def _escape_apos(string: str) -> str:
         return string.replace("'", "'\"'\"'")
 
-    try:
-        request_body = _escape_apos(request.body.decode('ascii')) if request.body else None
-        is_binary_body = False
-    except UnicodeError:
-        request_body = repr(request.body).strip('b')
+    if isinstance(request.body, bytes):
+        request_body = repr(request.body).lstrip('b')
         is_binary_body = True
+    else:
+        request_body = _escape_apos(request.raw_body) if request.body else ''
+        is_binary_body = False
 
     curl_headers = HTTPHeaders(request.headers)
     if request.body and 'Content-Length' not in curl_headers:
-        curl_headers['Content-Length'] = str(len(request.body))
+        curl_headers['Content-Length'] = str(len(request.raw_body))
 
     if is_binary_body:
         curl_echo_data = f'echo -e {request_body} |'

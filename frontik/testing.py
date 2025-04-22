@@ -7,7 +7,7 @@ from typing import Any, Optional, Union
 
 import pytest
 from http_client import AIOHttpClientWrapper
-from http_client.request_response import RequestBuilder, RequestResult
+from http_client.request_response import BalancedHttpRequest, RequestResult
 from http_client.testing import MockHttpClient
 from lxml import etree
 from tornado.escape import utf8
@@ -88,13 +88,16 @@ class FrontikTestBase:
         path = make_url(path, **query)
         host = f'http://127.0.0.1:{self.port}'
 
-        request = RequestBuilder(
-            host,
-            'test',
-            path,
-            'test_request',
+        headers = kwargs.pop('headers', {}) or {}
+        headers['User-Agent'] = 'test'
+
+        request = BalancedHttpRequest(
+            host=host,
+            path=path,
+            name='test_request',
             method=method,
             request_timeout=request_timeout,
+            headers=headers,
             **kwargs,
         )
         return await self.http_client.fetch(request)
