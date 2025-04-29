@@ -35,3 +35,6 @@ class FrontikResponse:
     @property
     def reason(self) -> str:
         return self._reason or httputil.responses.get(self.status_code, 'Unknown')
+
+    def __str__(self):
+        return f'FrontikResponse(status_code={self.status_code}, headers={self.headers})'
