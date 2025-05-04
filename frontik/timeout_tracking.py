@@ -12,7 +12,7 @@ from frontik.options import options
 from frontik.request_integrations.request_context import get_handler_name
 
 if TYPE_CHECKING:
-    from http_client.request_response import BalancedHttpRequest
+    from http_client.request_response import RequestBuilder
 
 
 timeout_tracking_logger = logging.getLogger('timeout_tracking')
@@ -92,7 +92,7 @@ class TimeoutChecker:
         self.request_start_time = request_start_time
         self.threshold_ms = threshold_ms
 
-    def check(self, request: BalancedHttpRequest) -> None:
+    def check(self, request: RequestBuilder) -> None:
         if self.outer_timeout_ms:
             already_spent_time_ms = (time.time() - self.request_start_time) * 1000
             expected_timeout_ms = self.outer_timeout_ms - already_spent_time_ms
