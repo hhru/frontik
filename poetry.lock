@@ -748,7 +748,7 @@ protobuf = ["grpcio-tools (>=1.71.0)"]
 
 [[package]]
 name = "http-client"
-version = "3.0.2"
+version = "3.0.1"
 description = "Balancing http client around aiohttp"
 optional = false
 python-versions = "~=3.9"
@@ -765,8 +765,8 @@ yarl = "1.18.3"
 [package.source]
 type = "git"
 url = "ssh://git@forgejo.pyn.ru/hhru/balancing-http-client.git"
-reference = "3.0.2"
-resolved_reference = "2cc2bf6e3adb01a0a774524aaa0689249c0b2019"
+reference = "3.0.1"
+resolved_reference = "2e5f440212e28ab046c085acb9f80f756e54214d"
 
 [[package]]
 name = "idna"
@@ -2379,4 +2379,4 @@ testing = ["tornado-httpclient-mock"]
 [metadata]
 lock-version = "2.1"
 python-versions = "~=3.9"
-content-hash = "4cff60fee353cb6aa865f120f7421af74faa4bfb9a8fbeaebacd9cc65906366f"
+content-hash = "0e8537737068708f3d8cd10543af2e159261cefded7878a1e1ddb2564757afa8"
