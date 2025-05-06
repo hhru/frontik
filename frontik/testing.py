@@ -180,7 +180,7 @@ class FrontikTestBase:
         **kwargs: Any,
     ) -> None:
         """
-        url and request_method are related to mocked resource
+        Url and request_method are related to mocked resource
         other params are related to mocked response
         """
         if isinstance(url, str):

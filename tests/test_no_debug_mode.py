@@ -42,7 +42,7 @@ class TestNonDebugMode(FrontikTestBase):
 
     async def test_simple(self):
         response = await self.fetch('/simple')
-        assert 'ok' == response.data
+        assert response.data == 'ok'
 
     async def test_basic_auth_fail(self):
         response = await self.fetch('/basic_auth')

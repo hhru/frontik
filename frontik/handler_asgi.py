@@ -153,7 +153,7 @@ async def execute_asgi_page(
                 response.headers_written = True
             else:
                 if chunk == b'' and message['more_body'] is False:
-                    setattr(tornado_request, 'response_done', True)
+                    tornado_request.response_done = True
                     return
                 await tornado_request.connection.write(chunk)
         else:
@@ -192,7 +192,7 @@ def _on_connection_close(tornado_request, process_request_task, integrations):
 
     response = FrontikResponse(CLIENT_CLOSED_REQUEST, request_id=request_id)
     log_request(tornado_request, CLIENT_CLOSED_REQUEST)
-    setattr(tornado_request, 'canceled', True)
+    tornado_request.canceled = True
 
     for integration in integrations.values():
         integration.set_response(response)

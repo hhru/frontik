@@ -1,6 +1,7 @@
 import asyncio
 import typing
-from typing import Awaitable, Optional, Union
+from collections.abc import Awaitable
+from typing import Optional, Union
 
 from tornado import httputil
 
@@ -29,7 +30,7 @@ class TornadoConnectionHandler(httputil.HTTPMessageDelegate):
     ) -> None:
         self.request = FrontikTornadoServerRequest(
             connection=self.connection,
-            start_line=typing.cast(httputil.RequestStartLine, start_line),
+            start_line=typing.cast('httputil.RequestStartLine', start_line),
             headers=headers,
         )
         self.process_request()

@@ -41,7 +41,7 @@ class TestTelemetry:
     def test_generate_trace_id_with_hex_request_id(self) -> None:
         with request_context('163897206709842601f90a070699ac44'):
             trace_id = self.trace_id_generator.generate_trace_id()
-            assert '0x163897206709842601f90a070699ac44' == hex(trace_id)
+            assert hex(trace_id) == '0x163897206709842601f90a070699ac44'
 
     def test_generate_trace_id_with_no_hex_request_id(self) -> None:
         with request_context('non-hex-string-1234'):
@@ -51,26 +51,26 @@ class TestTelemetry:
     def test_generate_trace_id_with_hex_request_id_and_postfix(self) -> None:
         with request_context('163897206709842601f90a070699ac44_some_postfix_string'):
             trace_id = self.trace_id_generator.generate_trace_id()
-            assert '0x163897206709842601f90a070699ac44' == hex(trace_id)
+            assert hex(trace_id) == '0x163897206709842601f90a070699ac44'
 
     def test_generate_trace_id_with_no_hex_request_id_in_first_32_characters(self) -> None:
         with request_context('16389720670_NOT_HEX_9842601f90a070699ac44_some_postfix_string'):
             trace_id = self.trace_id_generator.generate_trace_id()
             assert trace_id is not None
-            assert '0x16389720670_NOT_HEX_9842601f90a0' != hex(trace_id)
+            assert hex(trace_id) != '0x16389720670_NOT_HEX_9842601f90a0'
 
     def test_generate_trace_id_with_request_id_len_less_32_characters(self) -> None:
         with request_context('163897206'):
             trace_id = self.trace_id_generator.generate_trace_id()
             assert trace_id is not None
-            assert '0x163897206' != hex(trace_id)
+            assert hex(trace_id) != '0x163897206'
 
     def test_get_netloc(self) -> None:
-        assert 'balancer:7000' == get_netloc('balancer:7000/xml/get-article/')
-        assert 'balancer:7000' == get_netloc('//balancer:7000/xml/get-article/')
-        assert 'balancer:7000' == get_netloc('https://balancer:7000/xml/get-article/')
-        assert 'hh.ru' == get_netloc('https://hh.ru')
-        assert 'ftp:' == get_netloc('ftp://hh.ru')
+        assert get_netloc('balancer:7000/xml/get-article/') == 'balancer:7000'
+        assert get_netloc('//balancer:7000/xml/get-article/') == 'balancer:7000'
+        assert get_netloc('https://balancer:7000/xml/get-article/') == 'balancer:7000'
+        assert get_netloc('https://hh.ru') == 'hh.ru'
+        assert get_netloc('ftp://hh.ru') == 'ftp:'
 
 
 @router.get('/page_a')
