@@ -28,7 +28,8 @@ class Sentinel:
 
 
 def safe_template(format_string: str, **kwargs: Any) -> str:
-    """Safe templating using PEP-292 template strings
+    """
+    Safe templating using PEP-292 template strings
     (see https://docs.python.org/3/library/string.html#template-strings).
 
     :param str format_string: a string to be formatted.

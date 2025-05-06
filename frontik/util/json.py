@@ -17,7 +17,6 @@ def _deep_encode_value(value: Any) -> Any:
     It is only used by ``JsonBuilder.to_dict()``
     which is only used by ``JsonProducer.get_jinja_context()``.
     """
-
     if isinstance(value, dict):
         return {k: _deep_encode_value(v) for k, v in value.items()}
 

@@ -7,7 +7,8 @@ from tests.instances import frontik_test_app
 
 
 class TestHTTPClientKeepAlive:
-    """Tests use frontik_client to send http request to frontik_keep_alive_app.
+    """
+    Tests use frontik_client to send http request to frontik_keep_alive_app.
     Frontik_keep_alive_app proxies the request to backend.
     Backend is just a simple server socket.
     We write http response to accepted socket and check whether it is closed or not.

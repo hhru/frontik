@@ -86,7 +86,7 @@ async def post_url_post_page(request: Request):
     for part in body_parts:
         field_part = re.search(rb'name="(?P<name>.+)"\r\n\r\n(?P<value>.*)', part)
         file_part = re.search(
-            rb'name="(?P<name>.+)"; filename="(?P<filename>.+)"\r\n' rb'Content-Type: \S+\r\n\r\n(?P<value>.*)', part
+            rb'name="(?P<name>.+)"; filename="(?P<filename>.+)"\r\nContent-Type: \S+\r\n\r\n(?P<value>.*)', part
         )
 
         if field_part:

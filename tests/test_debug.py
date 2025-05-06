@@ -193,7 +193,7 @@ class TestDebugFailed(FrontikTestBase):
         for param in ('debug', 'noxsl', 'notpl'):
             response = await self.assert_debug_response_code(f'/debug_simple?{param}', http.client.UNAUTHORIZED)
             assert 'Www-Authenticate' in response.headers
-            assert re.match('Basic realm="[^"]+"', response.headers['Www-Authenticate'])
+            assert re.match(r'Basic realm="[^"]+"', response.headers['Www-Authenticate'])
 
             await self.assert_debug_response_code(
                 f'/debug_simple?{param}',
@@ -224,7 +224,7 @@ class TestDebugFailed(FrontikTestBase):
             response = await self.assert_debug_response_code(f'/debug_simple?{param}', http.client.UNAUTHORIZED)
 
             assert 'Www-Authenticate' in response.headers
-            assert 'Basic realm="Secure Area"' == response.headers['Www-Authenticate']
+            assert response.headers['Www-Authenticate'] == 'Basic realm="Secure Area"'
 
             await self.assert_debug_response_code(
                 f'/debug_simple?{param}',
@@ -247,7 +247,7 @@ class TestDebugFailed(FrontikTestBase):
             )
 
             assert 'Www-Authenticate' in response.headers
-            assert 'Frontik-Debug-Auth-Header realm="Secure Area"' == response.headers['Www-Authenticate']
+            assert response.headers['Www-Authenticate'] == 'Frontik-Debug-Auth-Header realm="Secure Area"'
 
     async def test_debug_by_cookie(self):
         for param in ('debug', 'noxsl', 'notpl'):

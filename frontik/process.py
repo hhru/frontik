@@ -41,12 +41,12 @@ class WorkerState:
     master_done: Synchronized
     count_down_lock: LockBase
     is_master: bool = True
-    children: dict = field(default_factory=lambda: {})  # pid: worker_id
-    write_pipes: dict = field(default_factory=lambda: {})  # pid: write_pipe
+    children: dict = field(default_factory=dict)  # pid: worker_id
+    write_pipes: dict = field(default_factory=dict)  # pid: write_pipe
     resend_notification: Queue = field(default_factory=lambda: Queue(maxsize=1))
-    resend_dict: dict = field(default_factory=lambda: {})  # pid: flag
+    resend_dict: dict = field(default_factory=dict)  # pid: flag
     terminating: bool = False
-    initial_shared_data: dict = field(default_factory=lambda: {})
+    initial_shared_data: dict = field(default_factory=dict)
 
 
 def fork_workers(
@@ -217,7 +217,7 @@ async def _worker_listener(read_fd: int, worker_listener_handler: Callable) -> N
             log.debug('received data from master, length: %d', size)
             data = pickle.loads(data_raw)
             worker_listener_handler(data)
-        except asyncio.IncompleteReadError as e:
+        except asyncio.IncompleteReadError:
             log.exception('master shared data pipe is closed')
             sys.exit(1)
         except Exception as e:

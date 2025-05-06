@@ -3,9 +3,9 @@ import importlib.util
 import logging
 import pkgutil
 import re
-from collections.abc import Generator
+from collections.abc import Generator, MutableSequence
 from pathlib import Path
-from typing import Any, MutableSequence, Optional, Union
+from typing import Any, Optional, Union
 
 from fastapi import APIRouter
 from fastapi.routing import APIRoute
@@ -78,7 +78,6 @@ def _iter_submodules(path: MutableSequence[str], prefix: str = '') -> Generator:
 
 def import_all_pages(app_module: str) -> None:
     """Import all pages on startup"""
-
     _spec = importlib.util.find_spec(f'{app_module}.pages')
     if _spec is None:
         routing_logger.warning('There is no pages module')

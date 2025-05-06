@@ -1,6 +1,6 @@
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 from http_client import RequestBuilder, extra_client_params
 from http_client.request_response import USER_AGENT_HEADER

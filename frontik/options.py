@@ -49,7 +49,7 @@ class Options:
     syslog_tag: str = ''
     syslog_facility: str = 'user'
 
-    suppressed_loggers: list = field(default_factory=lambda: [])
+    suppressed_loggers: list = field(default_factory=list)
 
     debug: bool = False
     debug_login: Optional[str] = None
@@ -57,8 +57,8 @@ class Options:
 
     http_client_metrics_kafka_cluster: Optional[str] = None
 
-    kafka_clusters: dict = field(default_factory=lambda: {})
-    scylla_clusters: dict = field(default_factory=lambda: {})
+    kafka_clusters: dict = field(default_factory=dict)
+    scylla_clusters: dict = field(default_factory=dict)
 
     statsd_host: Optional[str] = None
     statsd_port: Optional[int] = None
@@ -102,7 +102,7 @@ class Options:
     consul_check_host: Optional[str] = None
     consul_http_check_interval_sec: int = 10
     consul_http_check_timeout_sec: float = 1
-    consul_tags: list = field(default_factory=lambda: [])
+    consul_tags: list = field(default_factory=list)
     consul_weight_watch_seconds: int = 600
     consul_weight_total_timeout_sec: int = 650
     consul_cache_initial_warmup_timeout_sec: int = 2
@@ -112,9 +112,9 @@ class Options:
     consul_deregister_critical_timeout: str = '120h'
 
     # upstream options
-    upstreams: list = field(default_factory=lambda: [])
+    upstreams: list = field(default_factory=list)
     fail_start_on_empty_upstream: bool = True
-    skip_empty_upstream_check_for_upstreams: list = field(default_factory=lambda: [])
+    skip_empty_upstream_check_for_upstreams: list = field(default_factory=list)
 
     # opentelemetry options
     opentelemetry_collector_url: str = 'http://127.0.0.1:2360'

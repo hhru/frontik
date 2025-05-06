@@ -1,5 +1,6 @@
 import base64
-from typing import Mapping, MutableMapping, Optional, Union
+from collections.abc import Mapping, MutableMapping
+from typing import Optional, Union
 
 from tornado.escape import to_unicode
 from tornado.web import Finish
