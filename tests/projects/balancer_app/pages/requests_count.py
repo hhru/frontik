@@ -15,7 +15,6 @@ async def get_page(request: Request, http_client: HttpClient) -> str:
     upstreams = request.app.service_discovery._upstreams
     requests_count_async = 'requests_count_async'
     upstreams[requests_count_async] = Upstream(requests_count_async, {}, [get_server(request, 'normal')])
-    text = ''
 
     result1 = http_client.post_url(requests_count_async, 'requests_count')
     result2 = http_client.post_url(requests_count_async, 'requests_count')
