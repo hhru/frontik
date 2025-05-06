@@ -15,7 +15,7 @@ readme = 'README.md'
 frontik = 'frontik.server:main'
 
 [tool.poetry.dependencies]
-python = '~=3.9'
+python = '>=3.9,<3.14'
 aiohttp = '3.11.11'
 lxml = '5.3.0'
 pydantic = '^2.3.0'
@@ -43,10 +43,8 @@ requests = '>=2.0'
 types-requests = '2.31.0.8'
 tox = '4.6.4'
 lxml-asserts = '0.1.2'
-mypy = '1.8.0'
-ruff = '0.7.3'
 exceptiongroup = '1.2.0'
-tomli = '2.0.1'
+pystolint = '0.1.2'
 
 [tool.poetry.extras]
 sentry = ["sentry-sdk"]
@@ -60,85 +58,20 @@ addopts = '''
 '''
 
 [tool.mypy]
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_unused_configs = true
-show_error_codes = true
-ignore_missing_imports = true
-follow_imports = 'silent'
-disallow_untyped_calls = true
-disallow_incomplete_defs = true
-disallow_untyped_decorators = true
-check_untyped_defs = true
 exclude = [
     '.*/api/2.*',
     'tests/test_process_fork.py',
     'http_client',
     'frontik/request_integrations/telemetry.py',
 ]
-# should be fixed and enabled
-#strict = true
-#disallow_untyped_defs = true
-#disallow_any_generics = true
-#disallow_subclassing_any = true
-#warn_return_any = true
 
 
 [tool.ruff]
-line-length = 120
-target-version = 'py39'
-preview = true
 exclude = [
     'sentry_tornado_integration.py',
     'frontik/request_integrations/telemetry.py',
     'frontik/request_integrations/sentry.py',
 ]
 
-[tool.ruff.format]
-quote-style = 'single'
-#skip-magic-trailing-comma = true
-
-[tool.ruff.lint]
-select = [
-    'F','E','W','C90','I','N','D','UP','YTT','ANN','ASYNC','S','BLE','FBT','B','A','COM','CPY','C4','DTZ',
-    'T10','DJ','EM','EXE','FA','ISC','ICN','G','INP','PIE','T20','PYI','PT','Q','RSE','RET','SLF','SLOT','SIM',
-    'TID','TCH','INT','ARG','PTH','TD','FIX','ERA','PGH','PL','TRY','FLY','NPY','PERF','FURB','LOG','RUF'
-]
-ignore = [
-    # should be fixed and enabled
-    'SLF001','ANN001','ANN002','ANN003','ANN201','ANN202','ANN204','ANN205','ANN206','ANN401',
-    'PTH','PLR6301','FBT003','TRY400','TRY301','PLR0917','PIE807',
-    'PGH003','B904','S101','FA100','PLR0913','ARG002','PGH004','S311','A001','FBT001','FBT002',
-    'RUF012','UP007','TRY002','PLR0904','PLW1510','N818','Q000','S320',
-    'D212','D200','D213','D401','D205','D404','D203','D400','D415',
-    'DTZ005','FURB101','F841','TRY401','S403','PLR2004','ARG001','BLE001','B009','B010','C901','PLR0912','PLR0911',
-    'PLC0415','RUF003','TRY201','TRY300','S301','S102','S104','E721','PLW0603','RET503','PLR6201','PERF203',
-    'TRY003','EM102','RUF006','PYI055','RET501','PLC1901','RET502','PLC2801','EM101','B028','A002','DTZ006',
-    'PLR0402','PYI024','PYI024','PLW2901','S701','UP006','UP035','PT005','A005','A004','B039',
-    # should be ignored
-    'ANN101','ANN102','D102','D101','CPY001','D100','D107','D106','B008','D103','D104','D105','D202',
-    'RET505','RET506','RET504','RSE102','TCH003','TCH002', 'TCH001',
-    'COM812', 'ISC001', 'PT015', 'FIX002', 'RUF029'
-]
-
 [tool.ruff.lint.isort]
 known-third-party = ['http_client']
-#split-on-trailing-comma=false
-
-[tool.ruff.lint.per-file-ignores]
-'tests/**/*.py' = [
-    'S101', # asserts allowed in tests
-    'ARG', # Unused function args -> fixtures nevertheless are functionally relevant
-    'FBT', # Don't care about booleans as positional arguments in tests, e.g. via @pytest.mark.parametrize()
-    'PLR2004', # Magic value used in comparison
-    'S311', 'S105',
-    'PT009', 'PT027', 'B011',
-    'ANN201', 'PLC2701',
-    'RUF001',
-    'E722','ERA001','SIM108',
-    # should be fixed
-    'SIM300','PLC0414','S602','S404','S110','S603','INP001','SIM110',
-]
-
-[tool.ruff.lint.flake8-quotes]
-inline-quotes = 'single'

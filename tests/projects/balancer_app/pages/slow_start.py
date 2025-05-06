@@ -23,7 +23,6 @@ async def get_page(request: Request, http_client: HttpClient) -> str:
     upstreams = request.app.service_discovery._upstreams
     slow_start = 'slow_start'
     upstreams[slow_start] = Upstream(slow_start, upstream_config, [server])
-    text = ''
 
     await http_client.post_url(slow_start, slow_start)
 
