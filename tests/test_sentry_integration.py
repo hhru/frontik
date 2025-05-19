@@ -62,7 +62,9 @@ class TestSentryIntegration(FrontikTestBase):
         return FrontikApplication(app_module_name=None)
 
     async def test_sentry_exception(self):
-        await self.fetch('/sentry_error?ip=127.0.0.77&extra_key=extra_val')
+        response = await self.fetch('/sentry_error?ip=127.0.0.77&extra_key=extra_val')
+        frontik_request_id = response.headers.get('X-Request-Id')
+        assert frontik_request_id is not None
         await asyncio.sleep(0.1)
         sentry_events = _get_sentry_exceptions('My_sentry_exception')
 
@@ -73,6 +75,7 @@ class TestSentryIntegration(FrontikTestBase):
         assert event['request']['query_string'] == 'ip=127.0.0.77&extra_key=extra_val'
         assert event['user']['real_ip'] == '127.0.0.77'
         assert event['extra']['extra_key'] == 'extra_val'
+        assert event['trace']['trace_id'] == frontik_request_id
 
         # second request for check that sentry scope was overwritten
         await self.fetch('/sentry_error')
@@ -82,7 +85,7 @@ class TestSentryIntegration(FrontikTestBase):
         assert len(sentry_events) == 2
         event = sentry_events[1]
         assert event.get('user', {}).get('real_ip') is None
-        assert event.get('extra') is None
+        assert event['trace']['trace_id'] != frontik_request_id
 
     async def test_sentry_message(self):
         await self.fetch('/sentry_error', method='PUT', headers={'MaHeaderKey': 'MaHeaderValue'})
