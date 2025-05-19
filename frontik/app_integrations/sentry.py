@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 import sentry_sdk
 from fastapi import HTTPException
@@ -22,7 +22,24 @@ from frontik.options import options
 if TYPE_CHECKING:
     from asyncio import Future
 
+    from sentry_sdk._types import Event as SentryEvent
+    from sentry_sdk._types import Hint
+
     from frontik.app import FrontikApplication
+
+    class Event(SentryEvent):
+        trace: dict[str, Any]
+
+
+def before_send(event: SentryEvent, hint: Hint) -> SentryEvent | None:
+    event_dict = cast('dict[str, Any]', event)
+    event_dict['trace'] = event_dict.get('trace', {})
+    old_trace_id = event_dict['trace'].get('trace_id')
+    new_trace_id = event_dict.get('extra', {}).get('request_id', old_trace_id)
+
+    if new_trace_id:
+        event_dict['trace']['trace_id'] = new_trace_id
+    return event
 
 
 class SentryIntegration(Integration):
@@ -59,6 +76,7 @@ class SentryIntegration(Integration):
             in_app_include=list(filter(None, options.sentry_in_app_include.split(','))),
             profiles_sample_rate=options.sentry_profiles_sample_rate,
             ignore_errors=[HTTPError, FailFastError, HTTPException],
+            before_send=before_send,
         )
 
         logging.getLogger('sentry_sdk.errors').setLevel(logging.WARNING)

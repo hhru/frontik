@@ -1794,14 +1794,14 @@ testing = ["covdefaults (>=2.3)", "pytest (>=8.3.4)", "pytest-cov (>=6)", "pytes
 
 [[package]]
 name = "pystolint"
-version = "0.1.2"
+version = "0.2.5"
 description = "Linters composer"
 optional = false
 python-versions = "<3.14,>=3.9"
 groups = ["test"]
 files = [
-    {file = "pystolint-0.1.2-py3-none-any.whl", hash = "sha256:c144f2c34e66f6c378e207f5b90797cfe421ea01a4e72c4d879486639c184d2c"},
-    {file = "pystolint-0.1.2.tar.gz", hash = "sha256:68915a76b057dad0f68ff59f34351b91e55e6ecd6ffe96af1e743c957c683d02"},
+    {file = "pystolint-0.2.5-py3-none-any.whl", hash = "sha256:938fa378e1a99e55fb2f59ae7ae590a7dffcf3c27ee8063684b81e6f3011507a"},
+    {file = "pystolint-0.2.5.tar.gz", hash = "sha256:3742971523aabde575d0ebd84868fde672729efaa5cc02dd5ff66187374e63c2"},
 ]
 
 [package.dependencies]
@@ -2453,4 +2453,4 @@ testing = ["tornado-httpclient-mock"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.14"
-content-hash = "fdd34e906624a2f8a7a90fcbba31231337c39f01d92c3b9f39322ce091175945"
+content-hash = "cc666e739a6f9b5ff0b96616f19a72cc66c15cb045e54ea707c17b381b471dfb"
