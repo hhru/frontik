@@ -60,7 +60,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
             options.service_name = self.app_module_name.rsplit('.', 1)[-1]
         self.app_name = options.service_name
 
-        self.config = self.application_config()
+        self.config: Any = self.application_config()
 
         self.available_integrations: list[app_integrations.Integration] = []
 
