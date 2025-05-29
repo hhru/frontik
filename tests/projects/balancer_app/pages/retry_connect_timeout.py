@@ -13,7 +13,11 @@ from tests.projects.balancer_app.pages import check_all_servers_were_occupied
 async def get_page(request: Request, http_client: HttpClient) -> str:
     retry_connect_timeout = 'retry_connect_timeout'
     upstreams = request.app.service_discovery._upstreams
-    upstreams[retry_connect_timeout] = Upstream(retry_connect_timeout, {}, [get_server(request, 'normal')])
+    upstreams[retry_connect_timeout] = Upstream(
+        retry_connect_timeout,
+        {},
+        [get_server(request, 'free'), get_server(request, 'normal')],
+    )
     text = ''
 
     requests = [
