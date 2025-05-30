@@ -4,7 +4,7 @@ build-backend = 'poetry.core.masonry.api'
 
 [tool.poetry]
 name = 'frontik'
-version = '9.0.13'
+version = '9.0.14'
 description = 'Frontik is an asyncronous Tornado-based application server'
 authors = ['platform <platform@hh.ru>']
 repository = 'https://forgejo.pyn.ru/hhru/frontik'
@@ -35,6 +35,7 @@ acsylla='1.0.0'
 sentry-sdk = '>=2.7,<3'
 tornado-httpclient-mock = '0.2.3'
 python-multipart = "^0.0.16"
+objgraph = "^3.6.2"
 
 [tool.poetry.group.test.dependencies]
 pytest = '8.3.3'

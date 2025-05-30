@@ -1168,6 +1168,21 @@ files = [
 ]
 
 [[package]]
+name = "objgraph"
+version = "3.6.2"
+description = "Draws Python object reference graphs with graphviz"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "objgraph-3.6.2-py3-none-any.whl", hash = "sha256:8114c97712291c3ba30d882406a384d0a7651b307ea9a06e0d83836ccde85e15"},
+    {file = "objgraph-3.6.2.tar.gz", hash = "sha256:00b9f2f40f7422e3c7f45a61c4dafdaf81f03ff0649d6eaec866f01030e51ad8"},
+]
+
+[package.extras]
+ipython = ["graphviz"]
+
+[[package]]
 name = "opentelemetry-api"
 version = "1.25.0"
 description = "OpenTelemetry Python API"
@@ -2453,4 +2468,4 @@ testing = ["tornado-httpclient-mock"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.14"
-content-hash = "82873ee3b5c55241aea3183c48421e48753476febae231551dd36ed7e7fd9f19"
+content-hash = "b0320000e4b19810cd2aab998935535ffe0c9974855c9d00f102532b8adf4230"

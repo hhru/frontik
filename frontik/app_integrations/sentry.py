@@ -44,9 +44,15 @@ def before_send(event: SentryEvent, hint: Hint) -> SentryEvent | None:
 
 class SentryIntegration(Integration):
     def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
-        if not options.sentry_dsn:
-            integrations_logger.info('sentry integration is disabled: sentry_dsn option is not configured')
-            return None
+
+        @app.middleware("http")
+        async def clear_contextvar_middleware(request, call_next):
+            try:
+                return await call_next(request)
+            finally:
+                integration = sentry_sdk.get_client().get_integration(DedupeIntegration)
+                if integration:
+                    integration._last_seen.set(None)
 
         integrations = [
             AioHttpIntegration(),
