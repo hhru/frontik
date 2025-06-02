@@ -25,6 +25,7 @@ class Options:
     port: int = 8080
     node_name: str = ''
     common_executor_pool_size: int = 10
+    datacenter: Optional[str] = None
 
     autoreload: bool = False
     stop_timeout: int = 3

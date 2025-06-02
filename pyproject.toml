@@ -44,7 +44,7 @@ types-requests = '2.31.0.8'
 tox = '4.6.4'
 lxml-asserts = '0.1.2'
 exceptiongroup = '1.2.0'
-pystolint = '0.2.5'
+pystolint = '0.2.12'
 
 [tool.poetry.extras]
 sentry = ["sentry-sdk"]
@@ -75,3 +75,8 @@ exclude = [
 
 [tool.ruff.lint.isort]
 known-third-party = ['http_client']
+
+[tool.ruff.lint.per-file-ignores]
+'options.py' = [
+    'FA100'
+]
