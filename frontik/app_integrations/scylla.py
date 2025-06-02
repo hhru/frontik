@@ -26,6 +26,7 @@ class ScyllaIntegration(Integration):
         app.get_scylla_cluster = get_scylla_cluster  # type: ignore
 
         if options.scylla_clusters:
+            assert options.datacenter is not None
             upstreams = app.service_discovery.get_upstreams_copy()
 
             for cluster_name in options.scylla_clusters:
@@ -36,6 +37,9 @@ class ScyllaIntegration(Integration):
                 self.scylla_clusters[cluster_name] = acsylla.create_cluster(
                     scylla_servers,
                     port=scylla_port,
+                    # load_balance_dc_aware should be explicitly specified, because client knows every node in cluster
+                    # and takes random one every time even with consistency_level=LOCAL_QUORUM
+                    load_balance_dc_aware=options.datacenter,
                 )
 
         return None
