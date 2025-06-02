@@ -51,9 +51,10 @@ def set_extra_client_params(scope: Scope) -> Iterator:
     headers = Headers(scope=scope)
     start_time = scope['start_time']
     debug_mode = scope['debug_mode']
+    http_client_hook = scope.get('_http_client_hook')
 
     def hook(balanced_request):
-        if (local_hook := scope.get('_http_client_hook')) is not None:
+        if (local_hook := http_client_hook) is not None:
             local_hook(balanced_request)
 
         modify_http_client_request(headers, start_time, debug_mode, balanced_request)
