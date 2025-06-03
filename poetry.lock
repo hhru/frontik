@@ -2223,6 +2223,18 @@ docs = ["furo (>=2023.5.20)", "sphinx (>=7.0.1)", "sphinx-argparse-cli (>=1.11.1
 testing = ["build[virtualenv] (>=0.10)", "covdefaults (>=2.3)", "detect-test-pollution (>=1.1.1)", "devpi-process (>=0.3.1)", "diff-cover (>=7.6)", "distlib (>=0.3.6)", "flaky (>=3.7)", "hatch-vcs (>=0.3)", "hatchling (>=1.17.1)", "psutil (>=5.9.5)", "pytest (>=7.4)", "pytest-cov (>=4.1)", "pytest-mock (>=3.11.1)", "pytest-xdist (>=3.3.1)", "re-assert (>=1.1)", "time-machine (>=2.10) ; implementation_name != \"pypy\"", "wheel (>=0.40)"]
 
 [[package]]
+name = "types-pyyaml"
+version = "6.0.2"
+description = "Typing stubs for PyYAML"
+optional = false
+python-versions = "*"
+groups = ["test"]
+files = [
+    {file = "types-PyYAML-6.0.2.tar.gz", hash = "sha256:86b1d13eed3a9841264376dae0fc3168b0b593a162a64effeba066efd7198572"},
+    {file = "types_PyYAML-6.0.2-py3-none-any.whl", hash = "sha256:87f2c64e4b2de3e134dce991f920f5c9ae2cbe06ec43f21e2866cc90b920230b"},
+]
+
+[[package]]
 name = "types-requests"
 version = "2.31.0.8"
 description = "Typing stubs for requests"
@@ -2516,4 +2528,4 @@ testing = ["tornado-httpclient-mock"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.14"
-content-hash = "17bfbb58e17c5a3ed8f8d8e897fbe427a0ce70ee8ab9c7b817ac87ea1ee605cb"
+content-hash = "79edeb6ef58caf63cd6c1bdb06fa1fdb4a85967da8778d9ef14bf3acb2f1d8d8"
