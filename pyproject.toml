@@ -13,6 +13,7 @@ readme = 'README.md'
 
 [tool.poetry.scripts]
 frontik = 'frontik.server:main'
+frontik_openapi = 'frontik.util.generate_openapi:main'
 
 [tool.poetry.dependencies]
 python = '>=3.9,<3.14'
@@ -37,6 +38,7 @@ tornado-httpclient-mock = '0.2.3'
 python-multipart = "^0.0.16"
 
 [tool.poetry.group.test.dependencies]
+pyyaml = "^6.0.2"
 pytest = '8.3.3'
 pytest-asyncio = '0.24.0'
 requests = '>=2.0'
