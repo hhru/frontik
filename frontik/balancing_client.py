@@ -8,7 +8,7 @@ from starlette.datastructures import Headers
 from starlette.types import Scope
 
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
-from frontik.debug import DEBUG_HEADER_NAME
+from frontik.debug import DEBUG_HEADER_NAME, DebugMode
 from frontik.request_integrations import request_context
 from frontik.timeout_tracking import get_timeout_checker
 from frontik.util import make_url
@@ -16,8 +16,12 @@ from frontik.util import make_url
 OUTER_TIMEOUT_MS_HEADER = 'X-Outer-Timeout-Ms'
 
 
-def modify_http_client_request(scope: Scope, balanced_request: RequestBuilder) -> None:
-    headers = Headers(scope=scope)
+def modify_http_client_request(
+    headers: Headers,
+    start_time: float,
+    debug_mode: DebugMode,
+    balanced_request: RequestBuilder,
+) -> None:
     balanced_request.headers['x-request-id'] = request_context.get_request_id()
     balanced_request.headers[OUTER_TIMEOUT_MS_HEADER] = f'{balanced_request.request_timeout * 1000:.0f}'
 
@@ -26,11 +30,11 @@ def modify_http_client_request(scope: Scope, balanced_request: RequestBuilder) -
         timeout_checker = get_timeout_checker(
             headers.get(USER_AGENT_HEADER.lower()),
             float(outer_timeout),
-            scope['start_time'],
+            start_time,
         )
         timeout_checker.check(balanced_request)
 
-    if scope['debug_mode'].pass_debug:
+    if debug_mode.pass_debug:
         balanced_request.headers[DEBUG_HEADER_NAME] = 'true'
 
         # debug_timestamp is added to avoid caching of debug responses
@@ -44,11 +48,16 @@ def modify_http_client_request(scope: Scope, balanced_request: RequestBuilder) -
 
 @contextmanager
 def set_extra_client_params(scope: Scope) -> Iterator:
+    headers = Headers(scope=scope)
+    start_time = scope['start_time']
+    debug_mode = scope['debug_mode']
+    http_client_hook = scope.get('_http_client_hook')
+
     def hook(balanced_request):
-        if (local_hook := scope.get('_http_client_hook')) is not None:
+        if (local_hook := http_client_hook) is not None:
             local_hook(balanced_request)
 
-        modify_http_client_request(scope, balanced_request)
+        modify_http_client_request(headers, start_time, debug_mode, balanced_request)
 
     debug_enabled = scope['debug_mode'].enabled
 
