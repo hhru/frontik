@@ -13,7 +13,7 @@ readme = 'README.md'
 
 [tool.poetry.scripts]
 frontik = 'frontik.server:main'
-frontik_openapi = 'frontik.util.generate_openapi:main'
+frontik-generate-openapi = 'frontik.util.generate_openapi:main'
 
 [tool.poetry.dependencies]
 python = '>=3.9,<3.14'
