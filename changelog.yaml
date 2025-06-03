@@ -1,3 +1,9 @@
+-   name: 9.1.1
+    date: '2025-06-03T15:19:09.261772+03:00'
+    description: Обновление balancing-http-client.
+    instructions: ''
+    compatible: true
+
 -   name: 9.1.0
     date: '2025-06-03T15:11:36.606958+03:00'
     description: ''
