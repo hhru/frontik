@@ -20,6 +20,7 @@ from frontik.loggers import MDC
 from frontik.options import options
 from frontik.process import fork_workers
 from frontik.pydebug import try_init_debugger
+from frontik.service_discovery import WorkerServiceDiscovery
 from frontik.util.gc import enable_gc
 
 log = logging.getLogger('server')
@@ -82,9 +83,9 @@ def _master_before_fork_action(app: FrontikApplication) -> tuple[dict, Optional[
 
 def _master_after_fork_action(
     app: FrontikApplication,
-    update_shared_data_hook: Optional[Callable],
+    update_shared_data_hook: Callable[[bytes], None],
 ) -> None:
-    if update_shared_data_hook is None:
+    if isinstance(app.service_discovery, WorkerServiceDiscovery):
         return
 
     app.service_discovery.set_update_shared_data_hook(update_shared_data_hook)

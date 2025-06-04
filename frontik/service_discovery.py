@@ -299,6 +299,7 @@ class MasterServiceDiscovery(ServiceDiscovery):
 class WorkerServiceDiscovery(ServiceDiscovery):
     def __init__(self, upstreams: dict[str, Upstream]) -> None:
         self._upstreams = upstreams
+        self._upstreams_lock = Lock()
 
     def update_upstreams(self, upstreams: list[Upstream]) -> None:
         for upstream in upstreams:
@@ -329,7 +330,7 @@ class WorkerServiceDiscovery(ServiceDiscovery):
         pass
 
     def get_upstreams_with_lock(self) -> tuple[dict[str, Upstream], Optional[Lock]]:
-        raise RuntimeError('there is no upstream lock in worker service discovery')
+        return self._upstreams, self._upstreams_lock
 
     def set_update_shared_data_hook(self, update_shared_data_hook: Callable) -> None:
         raise RuntimeError('worker should not use update hook')
