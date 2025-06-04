@@ -1,4 +1,4 @@
-version: 9.1.2
+version: 9.1.3
 docker_context: .
 build_docker_file: docker/Dockerfile.building
 build_method: pytest_run
