@@ -8,7 +8,6 @@ from fastapi import HTTPException
 from http_client.request_response import FailFastError
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from sentry_sdk.integrations.atexit import AtexitIntegration
-from sentry_sdk.integrations.dedupe import DedupeIntegration
 from sentry_sdk.integrations.excepthook import ExcepthookIntegration
 from sentry_sdk.integrations.fastapi import FastApiIntegration, StarletteIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
@@ -53,7 +52,6 @@ class SentryIntegration(Integration):
             FastApiIntegration(),
             StarletteIntegration(),
             AtexitIntegration(),
-            DedupeIntegration(),
             ModulesIntegration(),
             StdlibIntegration(),
         ]
