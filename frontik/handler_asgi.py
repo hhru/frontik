@@ -223,6 +223,8 @@ async def write_start_line(
 ) -> None:
     try:
         assert tornado_request.connection is not None
+        if tornado_request.method == 'HEAD':
+            chunk = b''
         await tornado_request.connection.write_headers(start_line, response.headers, chunk)
     except StreamClosedError:
         response.status_code = CLIENT_CLOSED_REQUEST
