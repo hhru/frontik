@@ -1,3 +1,9 @@
+-   name: 9.1.4
+    date: '2025-06-04T12:38:46.695188+03:00'
+    description: ''
+    instructions: ''
+    compatible: true
+
 -   name: 9.1.3
     date: '2025-06-04T12:23:49.022819+03:00'
     description: Отключена интеграция Dedupe, приводившая к утечкам памяти sentry
