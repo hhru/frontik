@@ -1,3 +1,9 @@
+-   name: 9.1.6
+    date: '2025-06-05T11:23:43.918808+03:00'
+    description: Вынес зависимости для генерации спеки в extras
+    instructions: ''
+    compatible: true
+
 -   name: 9.1.5
     date: '2025-06-04T17:49:01.177524+03:00'
     description: ''
