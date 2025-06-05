@@ -40,6 +40,8 @@ class ScyllaIntegration(Integration):
                     # load_balance_dc_aware should be explicitly specified, because client knows every node in cluster
                     # and takes random one every time even with consistency_level=LOCAL_QUORUM
                     load_balance_dc_aware=options.datacenter,
+                    log_level=options.scylla_log_level,
+                    retry_policy_logging=options.scylla_retry_policy_logging,
                 )
 
         return None

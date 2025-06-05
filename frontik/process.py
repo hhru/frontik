@@ -86,7 +86,8 @@ def fork_workers(
     while worker_state.init_workers_count_down.value > 0:
         if time.time() > timeout:
             for pid in worker_state.children:
-                os.kill(pid, signal.SIGKILL)
+                with suppress(ProcessLookupError):
+                    os.kill(pid, signal.SIGKILL)
             raise Exception(
                 f'workers did not started after {options.init_workers_timeout_sec} seconds, do not started '
                 f'{worker_state.init_workers_count_down.value} workers',
@@ -102,10 +103,11 @@ def fork_workers(
                 except Exception:  # noqa: BLE001
                     log.warning('failed to close pipe for %d', pid)
 
-                if os.WIFSIGNALED(status) or os.WEXITSTATUS(status) != 0:
+                if os.WIFSIGNALED(status) or os.WIFEXITED(status):
                     log.warning('child %d (pid %d) failed during initialization, attempting restart', worker_id, pid)
                     worker_pid = _start_child(worker_id, worker_state, shared_data, lock, worker_function_wrapped, ctx)
                     on_worker_restart(worker_state, worker_pid)
+                    time.sleep(options.init_workers_restart_timeout_sec)
         except OSError as e:
             if _errno_from_exception(e) == errno.EINTR:
                 continue

@@ -17,7 +17,7 @@ class Integration:
     def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
         raise NotImplementedError()  # pragma: no cover
 
-    def deinitialize_app(self, app: FrontikApplication) -> Optional[Future]:
+    def deinitialize_app(self, app: FrontikApplication) -> None:
         pass  # pragma: no cover
 
     def initialize_handler(self, handler):

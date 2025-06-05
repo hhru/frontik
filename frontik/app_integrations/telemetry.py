@@ -95,7 +95,7 @@ class TelemetryIntegration(Integration):
         frontik_app.otel_tracer = self.frontik_instrumentor.tracer  # type: ignore
         return None
 
-    def deinitialize_app(self, app: FrontikApplication) -> Optional[Future]:
+    def deinitialize_app(self, app: FrontikApplication) -> None:
         if not options.opentelemetry_enabled:
             return None
 

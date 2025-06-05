@@ -4,6 +4,6 @@ build_docker_file: docker/Dockerfile.building
 build_method: pytest_run
 update_method: python_update
 python_version_file: frontik/version.py
-deploy_method: nope_deploy
+deploy_method: python_upload_to_index
 type: library
 changelog: true
