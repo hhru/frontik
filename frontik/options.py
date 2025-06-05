@@ -11,6 +11,7 @@ class Options:
     app_class: Optional[str] = None
     workers: int = 1
     init_workers_timeout_sec: int = 60
+    init_workers_restart_timeout_sec: int = 1
     tornado_settings: Optional[dict] = None
     max_active_handlers: int = 100
     reuse_port: bool = True
@@ -60,6 +61,8 @@ class Options:
 
     kafka_clusters: dict = field(default_factory=dict)
     scylla_clusters: dict = field(default_factory=dict)
+    scylla_log_level: str = 'warn'
+    scylla_retry_policy_logging: bool = False
 
     statsd_host: Optional[str] = None
     statsd_port: Optional[int] = None
