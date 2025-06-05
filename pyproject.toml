@@ -36,9 +36,10 @@ acsylla='1.0.0'
 sentry-sdk = '>=2.7,<3'
 tornado-httpclient-mock = '0.2.3'
 python-multipart = "^0.0.16"
+pyyaml = { version = "6.0.2", optional = true }
+types-pyyaml = { version = "6.0.2", optional = true }
 
 [tool.poetry.group.test.dependencies]
-pyyaml = "6.0.2"
 pytest = '8.3.3'
 pytest-asyncio = '0.24.0'
 requests = '>=2.0'
@@ -47,11 +48,11 @@ tox = '4.6.4'
 lxml-asserts = '0.1.2'
 exceptiongroup = '1.2.0'
 pystolint = '0.2.12'
-types-pyyaml = "6.0.2"
 
 [tool.poetry.extras]
 sentry = ["sentry-sdk"]
 testing = ["tornado-httpclient-mock"]
+openapi = ["pyyaml", "types-pyyaml"]
 
 [tool.pytest.ini_options]
 addopts = '''
