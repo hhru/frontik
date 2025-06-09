@@ -37,9 +37,11 @@ class ScyllaIntegration(Integration):
                 self.scylla_clusters[cluster_name] = acsylla.create_cluster(
                     scylla_servers,
                     port=scylla_port,
+                    local_port_range_min=None,
+                    local_port_range_max=None,
                     # load_balance_dc_aware should be explicitly specified, because client knows every node in cluster
                     # and takes random one every time even with consistency_level=LOCAL_QUORUM
-                    load_balance_dc_aware=options.datacenter,
+                    load_balance_dc_aware=None if options.scylla_cross_dc_enabled else options.datacenter,
                     log_level=options.scylla_log_level,
                     retry_policy_logging=options.scylla_retry_policy_logging,
                 )

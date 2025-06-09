@@ -63,6 +63,7 @@ class Options:
     scylla_clusters: dict = field(default_factory=dict)
     scylla_log_level: str = 'warn'
     scylla_retry_policy_logging: bool = False
+    scylla_cross_dc_enabled: bool = False
 
     statsd_host: Optional[str] = None
     statsd_port: Optional[int] = None
