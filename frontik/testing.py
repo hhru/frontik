@@ -1,9 +1,8 @@
 import asyncio
 import json
 import logging
-import re
-from collections.abc import Callable
-from typing import Any, Optional, Union
+from collections.abc import Callable, Generator
+from typing import Any, Optional
 
 import pytest
 from http_client import AIOHttpClientWrapper
@@ -12,8 +11,6 @@ from http_client.testing import MockHttpClient
 from lxml import etree
 from tornado.escape import utf8
 from tornado.httpserver import HTTPServer
-from tornado_mock.httpclient import patch_http_client, set_stub
-from yarl import URL
 
 from frontik.app import FrontikApplication
 from frontik.media_types import APPLICATION_JSON, APPLICATION_PROTOBUF, APPLICATION_XML, TEXT_PLAIN
@@ -48,23 +45,16 @@ class FrontikTestBase:
         http_server.stop()
         await asyncio.wait_for(http_server.close_all_connections(), timeout=5)
 
-    @pytest.fixture(scope='class')
-    def with_tornado_mocks(self):
-        return False
-
     @pytest.fixture(autouse=True)
     async def _setup_app_links(self, frontik_app: FrontikApplication, _run_app: None) -> None:
         self.app = frontik_app
         self.port = options.port
 
     @pytest.fixture(autouse=True)
-    def setup_mock_http_client(self, frontik_app, passthrow_hosts, with_tornado_mocks):
+    def setup_mock_http_client(
+        self, frontik_app: FrontikApplication, passthrow_hosts: list[str]
+    ) -> Generator[MockHttpClient]:
         self.http_client: AIOHttpClientWrapper = frontik_app.http_client.http_client_impl
-
-        self.use_tornado_mocks = with_tornado_mocks
-        if with_tornado_mocks:
-            patch_http_client(self.http_client, fail_on_unknown=False)
-
         with MockHttpClient(passthrough=passthrow_hosts) as mock_http_client:
             self.mock_http_client = mock_http_client
             yield self.mock_http_client
@@ -126,59 +116,6 @@ class FrontikTestBase:
         repeat: bool = True,
         **kwargs: Any,
     ) -> None:
-        _set_stub = self.set_stub_old if self.use_tornado_mocks else self.set_stub_new
-        _set_stub(  # type: ignore
-            url,
-            request_method,
-            response_function,
-            response_file,
-            response_body,
-            response_code,
-            response_headers,
-            response_body_processor,
-            repeat,
-            **kwargs,
-        )
-
-    def set_stub_old(
-        self,
-        url: str,
-        request_method: str = 'GET',
-        response_function: Optional[Callable] = None,
-        response_file: Optional[str] = None,
-        response_body: Any = '',
-        response_code: int = 200,
-        response_headers: Any = None,
-        response_body_processor: Callable = safe_template,
-        repeat: bool = True,
-        **kwargs: Any,
-    ) -> None:
-        set_stub(
-            self.http_client,
-            url,
-            request_method,
-            response_function,
-            response_file,
-            response_body,
-            response_code,
-            response_headers,
-            response_body_processor,
-            **kwargs,
-        )
-
-    def set_stub_new(
-        self,
-        url: Union[URL, str, re.Pattern],
-        request_method: str = 'GET',
-        response_function: None = None,
-        response_file: Optional[str] = None,
-        response_body: Any = '',
-        response_code: int = 200,
-        response_headers: Optional[dict] = None,
-        response_body_processor: Callable = safe_template,
-        repeat: bool = True,
-        **kwargs: Any,
-    ) -> None:
         """
         Url and request_method are related to mocked resource
         other params are related to mocked response
@@ -207,6 +144,7 @@ class FrontikTestBase:
             headers=headers,
             body=content,
             repeat=repeat,
+            response_function=response_function,
         )
 
     def configure_app(self, **kwargs: Any) -> None:
