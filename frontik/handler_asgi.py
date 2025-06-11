@@ -39,7 +39,12 @@ async def serve_tornado_request(
         process_request_task = asyncio.create_task(process_request(frontik_app, tornado_request, integrations))
         assert tornado_request.connection is not None
         tornado_request.connection.set_close_callback(  # type: ignore
-            partial(_on_connection_close, tornado_request, process_request_task, integrations)
+            partial(
+                _on_connection_close,
+                tornado_request,
+                process_request_task,
+                integrations,
+            )
         )
 
         response: FrontikResponse = await process_request_task
@@ -111,12 +116,17 @@ async def execute_asgi_page(
         'client': (tornado_request.remote_ip, 0),
         'debug_mode': debug_mode,
         'frontik_app': frontik_app,
-        'start_time': tornado_request._start_time,
+        'start_time': tornado_request._start_time,  # noqa:SLF001
         'request_id': tornado_request.request_id,
     })
 
     async def receive():
         await asyncio.sleep(0)
+
+        if tornado_request.canceled:
+            return {
+                'type': 'http.disconnect',
+            }
 
         if tornado_request.finished and tornado_request.body_chunks.empty():
             return {
@@ -219,7 +229,10 @@ def log_request(tornado_request: FrontikTornadoServerRequest, status_code: int) 
 
 
 async def write_start_line(
-    tornado_request: FrontikTornadoServerRequest, start_line: ResponseStartLine, response: FrontikResponse, chunk: bytes
+    tornado_request: FrontikTornadoServerRequest,
+    start_line: ResponseStartLine,
+    response: FrontikResponse,
+    chunk: bytes,
 ) -> None:
     try:
         assert tornado_request.connection is not None
