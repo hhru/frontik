@@ -1,6 +1,6 @@
 import asyncio
-import math
 
+import httpx
 import pytest
 from fastapi import Request
 from fastapi.responses import Response
@@ -11,19 +11,17 @@ from frontik.media_types import TEXT_PLAIN
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
 
-DATA = b'x' * 10_000_000
+DATA = b'x' * 10 * 1024 * 1024
 
 RESULT_HOLDER = {'streaming_request_client_disconnect': 'not_set'}
 
 
 @router.post('/streaming_request')
 async def get_page(request: Request) -> Response:
-    chunks_count = 0
+    received_data = b''
     async for chunk in request.stream():
-        if chunk != b'':
-            chunks_count += 1
-    assert chunks_count == math.ceil(len(DATA) / 65536)
-
+        received_data += chunk
+    assert DATA in received_data
     return Response(headers={'Content-type': TEXT_PLAIN})
 
 
@@ -47,16 +45,20 @@ class TestStreamingRequest(FrontikTestBase):
             path='/streaming_request',
             data={'field': 'value'},
             files={'file_file': [{'filename': 'file_name', 'body': DATA}]},
+            request_timeout=10,
         )
         assert response.status_code == 200
 
     async def test_streaming_request_canceled(self) -> None:
-        await self.fetch(
-            method='POST',
-            path='/streaming_request_client_disconnect',
-            data={'field': 'value'},
-            files={'file_file': [{'filename': 'file_name', 'body': DATA}]},
-            request_timeout=0.01,
-        )
-        await asyncio.sleep(1)
+        with pytest.raises(httpx.WriteTimeout):
+            async with httpx.AsyncClient() as client:
+                await client.request(
+                    method='POST',
+                    url=f'http://127.0.0.1:{self.port}/streaming_request_client_disconnect',
+                    data={'field': 'value'},
+                    files={'file_file': ('file_name', DATA)},
+                    timeout=(1, 1, 0.001, 1),  # connect, read, write, pool
+                )
+
+        await asyncio.sleep(0.5)
         assert RESULT_HOLDER['streaming_request_client_disconnect'] == 'success'

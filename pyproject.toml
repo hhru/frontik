@@ -57,6 +57,7 @@ tox = '4.6.4'
 lxml-asserts = '0.1.2'
 exceptiongroup = '1.2.0'
 pystolint = '0.2.13'
+httpx = ">=0.22"
 
 [tool.poetry.extras]
 sentry = ["sentry-sdk"]
