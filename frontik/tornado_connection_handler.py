@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import typing
 from collections.abc import Awaitable
 from typing import Optional, Union
@@ -11,6 +12,8 @@ from frontik.tornado_request import FrontikTornadoServerRequest
 
 if typing.TYPE_CHECKING:
     from frontik.app import FrontikApplication
+
+log = logging.getLogger('tornado_connection_handler')
 
 
 class TornadoConnectionHandler(httputil.HTTPMessageDelegate):
@@ -55,5 +58,7 @@ class TornadoConnectionHandler(httputil.HTTPMessageDelegate):
         self.request.finished = True
 
     def on_connection_close(self) -> None:
+        log.warning('tornado connection is closed, marking request as canceled')
         assert self.request is not None
         self.request.finished = True
+        self.request.canceled = True

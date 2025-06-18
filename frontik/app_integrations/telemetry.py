@@ -97,12 +97,12 @@ class TelemetryIntegration(Integration):
 
     def deinitialize_app(self, app: FrontikApplication) -> None:
         if not options.opentelemetry_enabled:
-            return None
+            return
 
         integrations_logger.info('stop telemetry')
         self.frontik_instrumentor.uninstrument()
         self.aiohttp_instrumentor.uninstrument()
-        return None
+        return
 
 
 def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams) -> None:

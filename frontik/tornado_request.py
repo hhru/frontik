@@ -10,4 +10,5 @@ class FrontikTornadoServerRequest(httputil.HTTPServerRequest):
         self.body_chunks: asyncio.Queue = asyncio.Queue(maxsize=100000)
         self.request_id = None
         self.finished = False
+        self.canceled = False
         self.handler_name: Optional[str] = None
