@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
+from http_client.request_response import SERVER_TIMEOUT
 from tornado.escape import to_unicode
 
 from frontik import media_types
@@ -272,7 +273,7 @@ class TestRequestCanceled(FrontikTestBase):
         response = await self.fetch('/long_request', request_timeout=0.1)
         await asyncio.sleep(2)
 
-        assert response.status_code == 599
+        assert response.status_code == SERVER_TIMEOUT
 
         for log_row in caplog.text.split('\n'):
             if log_row == '':

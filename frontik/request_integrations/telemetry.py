@@ -1,24 +1,29 @@
-from frontik.request_integrations.integrations_dto import IntegrationDto
-from frontik.options import options
 from contextlib import contextmanager
 from time import time_ns
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.utils import _start_internal_or_server_span
+from opentelemetry.instrumentation.utils import (
+    _start_internal_or_server_span,  # noqa: PLC2701
+    extract_attributes_from_object,
+    http_status_to_status_code,
+)
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.util.http import get_traced_request_attrs
-from opentelemetry.instrumentation.utils import extract_attributes_from_object
-from opentelemetry.util.http import OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
-from opentelemetry.util.http import normalise_request_header_name
-from opentelemetry.util.http import get_custom_headers
-from opentelemetry.instrumentation.utils import http_status_to_status_code
-from opentelemetry.util.http import OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
-from opentelemetry.util.http import normalise_response_header_name
 from opentelemetry.trace.status import Status, StatusCode
-from tornado import httputil
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    get_custom_headers,
+    get_traced_request_attrs,
+    normalise_request_header_name,
+    normalise_response_header_name,
+)
 from tornado.httputil import HTTPServerRequest
+
+from frontik.http_status import HTTP_REASON
+from frontik.options import options
 from frontik.request_integrations import request_context
+from frontik.request_integrations.integrations_dto import IntegrationDto
 
 _traced_request_attrs = get_traced_request_attrs('TORNADO')
 _excluded_urls = ['/status']
@@ -94,7 +99,7 @@ def _finish_span(span, dto: IntegrationDto, tornado_request: HTTPServerRequest):
     otel_status_code = http_status_to_status_code(status_code, server_span=True)
     otel_status_description = None
     if otel_status_code is StatusCode.ERROR:
-        otel_status_description = httputil.responses.get(status_code, 'Unknown')
+        otel_status_description = HTTP_REASON.get(status_code, 'Unknown')
     span.set_status(
         Status(
             status_code=otel_status_code,

@@ -17,13 +17,14 @@ from fastapi.responses import ORJSONResponse
 from http_client import HttpClient, HttpClientFactory
 from http_client import options as http_client_options
 from http_client.balancing import RequestBalancerBuilder
+from http_client.request_response import FailFastError
 from lxml import etree
 from starlette.types import ASGIApp, Receive, Scope, Send
 from tornado import httputil
 
 from frontik import app_integrations
 from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
-from frontik.balancing_client import set_extra_client_params
+from frontik.balancing_client import fail_fast_error_handler, set_extra_client_params
 from frontik.dependencies import set_app
 from frontik.options import options
 from frontik.process import WorkerState
@@ -37,6 +38,7 @@ from frontik.routing import (
 from frontik.service_discovery import MasterServiceDiscovery, ServiceDiscovery, WorkerServiceDiscovery
 from frontik.tornado_connection_handler import TornadoConnectionHandler
 from frontik.util import Sentinel
+from frontik.util.fastapi import make_plain_response
 from frontik.version import version as frontik_version
 
 app_logger = logging.getLogger('app_logger')
@@ -87,6 +89,8 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
             self.setup()
 
         self.add_middleware(FrontikMiddleware)
+        self.add_exception_handler(FailFastError, fail_fast_error_handler)  # type: ignore[arg-type]
+        self.add_exception_handler(Exception, default_exception_handler)
 
     def patch_anyio(self) -> None:
         """
@@ -251,3 +255,7 @@ async def default_404() -> Response:
 @method_not_allowed_router.get('__method_not_allowed')
 async def default_405(request: Request) -> Response:
     return Response(status_code=405, headers={'Allow': ', '.join(request.scope['allowed_methods'])})
+
+
+async def default_exception_handler(server_request: Request, exc: Exception) -> Response:
+    return make_plain_response(status_code=500)

@@ -58,6 +58,7 @@ class Options:
     debug_password: Optional[str] = None
 
     http_client_metrics_kafka_cluster: Optional[str] = None
+    http_client_decrease_timeout_by_deadline: Optional[bool] = True
 
     kafka_clusters: dict = field(default_factory=dict)
     scylla_clusters: dict = field(default_factory=dict)

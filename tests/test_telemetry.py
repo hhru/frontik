@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import Request
+from http_client.request_response import INSUFFICIENT_TIMEOUT
 from opentelemetry import trace
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ReadableSpan, SpanExporter, SpanExportResult
 from opentelemetry.semconv.trace import SpanAttributes
@@ -85,6 +86,7 @@ async def long_otel_page() -> None:
 
 @router.get('/page_b')
 async def get_page_b() -> dict:
+    await asyncio.sleep(0.1)
     return {}
 
 
@@ -108,7 +110,7 @@ class TestExporter(SpanExporter):
         pass
 
 
-class TestFrontikTesting(FrontikTestBase):
+class TestOtelSpans(FrontikTestBase):
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
         options.consul_enabled = False
@@ -162,3 +164,12 @@ class TestFrontikTesting(FrontikTestBase):
         assert server_span.attributes.get(SpanAttributes.USER_AGENT_ORIGINAL) == 'test'
         assert server_span.attributes.get(SpanAttributes.HTTP_ROUTE) == '/long_otel_page'
         assert server_span.attributes.get(SpanAttributes.HTTP_TARGET) == '/long_otel_page'
+
+    async def test_otel_http_client_hook(self, frontik_app: FrontikApplication) -> None:
+        await self.fetch('/page_a', headers={'X-Outer-Timeout-Ms': '1200', 'X-Deadline-Timeout-Ms': '5'})
+        BATCH_SPAN_PROCESSOR[0].force_flush()
+        client_a_span = find_span('http.request.cloud.region', 'externalRequest')
+        SPAN_STORAGE.clear()
+        assert client_a_span is not None
+        assert client_a_span.attributes is not None
+        assert client_a_span.attributes.get(SpanAttributes.HTTP_STATUS_CODE) == INSUFFICIENT_TIMEOUT

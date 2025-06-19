@@ -2,6 +2,7 @@ import asyncio
 import json
 
 import pytest
+from http_client.request_response import SERVER_TIMEOUT
 
 from frontik.app import FrontikApplication
 from frontik.loggers import JSON_FORMATTER
@@ -37,7 +38,7 @@ class TestRequestId(FrontikTestBase):
         response = await self.fetch('/asgi_request_id_long', request_timeout=0.1)
         await asyncio.sleep(1)
 
-        assert response.status_code == 599
+        assert response.status_code == SERVER_TIMEOUT
         assert 'client has canceled request' in caplog.text
 
         for log_row in caplog.text.split('\n'):
