@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 
 from http_client import current_client_request, current_client_request_status
 from http_client.options import options as http_client_options
+from http_client.request_response import OUTER_TIMEOUT_MS_HEADER
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation import aiohttp_client
@@ -124,6 +125,8 @@ def _client_request_hook(span: Span, params: aiohttp.TraceRequestStartParams) ->
     span.update_name(' '.join(el for el in [request.method, upstream_name] if el))
     span.set_attribute(SpanAttributes.PEER_SERVICE, upstream_name)
     span.set_attribute('http.request.timeout', request.request_timeout * 1000)
+    if OUTER_TIMEOUT_MS_HEADER in request.headers:
+        span.set_attribute('http.request.original.timeout', request.headers[OUTER_TIMEOUT_MS_HEADER])
     span.set_attribute('destination.address', upstream_hostname)
     if upstream_datacenter is not None:
         span.set_attribute('http.request.cloud.region', upstream_datacenter)

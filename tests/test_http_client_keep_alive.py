@@ -47,7 +47,7 @@ class TestHTTPClientKeepAlive:
             backend_socket.recv(1024)
             response = self.client.get_response()
 
-            assert response.split('\r\n')[-1] == '599'
+            assert response.split('\r\n')[-1] == '577'
 
             backend_socket.setblocking(0)
             assert backend_socket.recv(1024) == b'', 'backend socket is not closed'
@@ -60,7 +60,7 @@ class TestHTTPClientKeepAlive:
             backend_socket.send(b'HTTP/1.1')
             response = self.client.get_response()
 
-            assert response.split('\r\n')[-1] == '599'
+            assert response.split('\r\n')[-1] == '577'
 
             backend_socket.setblocking(0)
             assert backend_socket.recv(1024) == b'', 'backend socket is not closed'

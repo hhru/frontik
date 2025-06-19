@@ -1,8 +1,8 @@
 from typing import Optional, Union
 
-from tornado import httputil
 from tornado.httputil import HTTPHeaders
 
+from frontik.http_status import HTTP_REASON
 from frontik.request_integrations import request_context
 from frontik.version import version as frontik_version
 
@@ -34,7 +34,7 @@ class FrontikResponse:
 
     @property
     def reason(self) -> str:
-        return self._reason or httputil.responses.get(self.status_code, 'Unknown')
+        return self._reason or HTTP_REASON.get(self.status_code, 'Unknown')
 
     def __repr__(self) -> str:
         return f'FrontikResponse(status_code={self.status_code}, headers={self.headers})'
