@@ -11,7 +11,6 @@ class Options:
     app_class: Optional[str] = None
     workers: int = 1
     init_workers_timeout_sec: int = 60
-    init_workers_restart_timeout_sec: int = 1
     tornado_settings: Optional[dict] = None
     max_active_handlers: int = 100
     reuse_port: bool = True
