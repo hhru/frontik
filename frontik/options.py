@@ -64,6 +64,16 @@ class Options:
     scylla_log_level: str = 'warn'
     scylla_retry_policy_logging: bool = False
     scylla_cross_dc_enabled: bool = False
+    scylla_metrics_allowed: tuple[str, ...] = (
+        'requests_max',
+        'requests_percentile_75th',
+        'requests_percentile_95th',
+        'requests_percentile_99th',
+        'errors_connection_timeouts',
+        'errors_request_timeouts',
+    )
+    scylla_metrics_send_stats: bool = True
+    scylla_metrics_report_interval: int = 60000
 
     statsd_host: Optional[str] = None
     statsd_port: Optional[int] = None
