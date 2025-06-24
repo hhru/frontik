@@ -43,6 +43,12 @@ def modify_http_client_request(
     if not options.http_client_decrease_timeout_by_deadline or DEADLINE_TIMEOUT_MS_HEADER not in server_request_headers:
         balanced_request.headers[DEADLINE_TIMEOUT_MS_HEADER] = f'{balanced_request_timeout_ms:.0f}'
     else:
+        if DEADLINE_TIMEOUT_MS_HEADER in server_request_headers:
+            log.error(f'QQQ --- DEADLINE_TIMEOUT_MS_HEADER: {server_request_headers[DEADLINE_TIMEOUT_MS_HEADER]}')
+
+        if OUTER_TIMEOUT_MS_HEADER in server_request_headers:
+            log.error(f'QQQ --- OUTER_TIMEOUT_MS_HEADER: {server_request_headers[OUTER_TIMEOUT_MS_HEADER]}')
+
         spent_time_ms = (time.time() - start_time) * 1000
         deadline_timeout_ms = min(
             int(server_request_headers[DEADLINE_TIMEOUT_MS_HEADER]) - spent_time_ms, balanced_request_timeout_ms
