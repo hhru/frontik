@@ -123,10 +123,10 @@ async def execute_asgi_page(
     async def receive():
         await asyncio.sleep(0)
 
-        if tornado_request.canceled:
-            return {
-                'type': 'http.disconnect',
-            }
+        # if tornado_request.canceled:
+        #     return {
+        #         'type': 'http.disconnect',
+        #     }
 
         if tornado_request.finished and tornado_request.body_chunks.empty():
             return {
