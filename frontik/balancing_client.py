@@ -20,7 +20,7 @@ from starlette.types import Scope
 
 from frontik.auth import DEBUG_AUTH_HEADER_NAME
 from frontik.debug import DEBUG_HEADER_NAME, DebugMode
-from frontik.http_status import NON_CRITICAL_BAD_GATEWAY
+from frontik.http_status import CLIENT_CLOSED_REQUEST, NON_CRITICAL_BAD_GATEWAY
 from frontik.options import options
 from frontik.request_integrations import request_context
 from frontik.timeout_tracking import get_timeout_checker
@@ -28,6 +28,10 @@ from frontik.util import make_url
 from frontik.util.fastapi import make_plain_response
 
 log = logging.getLogger('handler')
+
+
+class OutOfRequestTime(Exception):
+    pass
 
 
 def modify_http_client_request(
@@ -40,22 +44,26 @@ def modify_http_client_request(
     balanced_request_timeout_ms = balanced_request.request_timeout * 1000
     balanced_request.headers[OUTER_TIMEOUT_MS_HEADER] = f'{balanced_request_timeout_ms:.0f}'
 
-    if not options.http_client_decrease_timeout_by_deadline or DEADLINE_TIMEOUT_MS_HEADER not in server_request_headers:
-        balanced_request.headers[DEADLINE_TIMEOUT_MS_HEADER] = f'{balanced_request_timeout_ms:.0f}'
-    else:
+    if options.http_client_decrease_timeout_by_deadline and (
+        DEADLINE_TIMEOUT_MS_HEADER in server_request_headers or OUTER_TIMEOUT_MS_HEADER in server_request_headers
+    ):
+        if DEADLINE_TIMEOUT_MS_HEADER in server_request_headers:
+            header_timeout = int(server_request_headers[DEADLINE_TIMEOUT_MS_HEADER])
+        else:
+            header_timeout = int(server_request_headers[OUTER_TIMEOUT_MS_HEADER])
+
         spent_time_ms = (time.time() - start_time) * 1000
-        deadline_timeout_ms = min(
-            int(server_request_headers[DEADLINE_TIMEOUT_MS_HEADER]) - spent_time_ms, balanced_request_timeout_ms
-        )
+        deadline_timeout_ms = min(int(header_timeout - spent_time_ms), balanced_request_timeout_ms)
         if deadline_timeout_ms <= 0:
-            msg = 'negative http timeout is not allowed'
-            raise RuntimeError(msg)
+            raise OutOfRequestTime()
 
         balanced_request.headers[DEADLINE_TIMEOUT_MS_HEADER] = f'{deadline_timeout_ms:.0f}'
         balanced_request.request_timeout = deadline_timeout_ms / 1000
         balanced_request.timeout = aiohttp.ClientTimeout(
             total=balanced_request.request_timeout, connect=balanced_request.connect_timeout
         )
+    else:
+        balanced_request.headers[DEADLINE_TIMEOUT_MS_HEADER] = f'{balanced_request_timeout_ms:.0f}'
 
     outer_timeout = server_request_headers.get(OUTER_TIMEOUT_MS_HEADER.lower())
     if outer_timeout:
@@ -98,6 +106,11 @@ def set_extra_client_params(scope: Scope) -> Iterator:
         yield
     finally:
         extra_client_params.reset(token)
+
+
+async def out_of_request_time_error_handler(server_request: Request, exc: OutOfRequestTime) -> Response:
+    log.warning('reached deadline timeout')
+    return make_plain_response(CLIENT_CLOSED_REQUEST)
 
 
 async def fail_fast_error_handler(server_request: Request, exc: FailFastError) -> Response:

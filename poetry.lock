@@ -883,7 +883,7 @@ name = "http-client"
 version = "3.0.9"
 description = "Balancing http client around aiohttp"
 optional = false
-python-versions = "<3.14,>=3.9"
+python-versions = ">=3.9,<3.14"
 groups = ["main"]
 files = []
 develop = false
@@ -897,8 +897,8 @@ yarl = "1.18.3"
 [package.source]
 type = "git"
 url = "ssh://git@forgejo.pyn.ru/hhru/balancing-http-client.git"
-reference = "3.0.9"
-resolved_reference = "1544f8c30fd6b810d9d5f39a170a963d6a005c04"
+reference = "HH-265800"
+resolved_reference = "943b74bb40a1decf6a83c349d6e85435f0a5abb3"
 
 [[package]]
 name = "httpcore"
@@ -2974,4 +2974,4 @@ testing = []
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.14"
-content-hash = "f3580618df5161d3888cf0fa1185eb5c05b3c38ee6688826f2dc53323ae9de25"
+content-hash = "9e870683a9337d914dca31b8e4e2569b5b4c0cc9098a8691867653210163fbb3"
