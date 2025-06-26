@@ -30,6 +30,10 @@ from frontik.util.fastapi import make_plain_response
 log = logging.getLogger('handler')
 
 
+class OutOfRequestTime(Exception):
+    pass
+
+
 def modify_http_client_request(
     server_request_headers: Headers,
     start_time: float,
@@ -40,22 +44,30 @@ def modify_http_client_request(
     balanced_request_timeout_ms = balanced_request.request_timeout * 1000
     balanced_request.headers[OUTER_TIMEOUT_MS_HEADER] = f'{balanced_request_timeout_ms:.0f}'
 
-    if not options.http_client_decrease_timeout_by_deadline or DEADLINE_TIMEOUT_MS_HEADER not in server_request_headers:
-        balanced_request.headers[DEADLINE_TIMEOUT_MS_HEADER] = f'{balanced_request_timeout_ms:.0f}'
-    else:
-        spent_time_ms = (time.time() - start_time) * 1000
-        deadline_timeout_ms = min(
-            int(server_request_headers[DEADLINE_TIMEOUT_MS_HEADER]) - spent_time_ms, balanced_request_timeout_ms
+    if options.http_client_decrease_timeout_by_deadline and (
+        DEADLINE_TIMEOUT_MS_HEADER in server_request_headers
+        or (
+            OUTER_TIMEOUT_MS_HEADER in server_request_headers
+            and int(server_request_headers[OUTER_TIMEOUT_MS_HEADER]) > 0
         )
+    ):
+        if DEADLINE_TIMEOUT_MS_HEADER in server_request_headers:
+            header_timeout = int(server_request_headers[DEADLINE_TIMEOUT_MS_HEADER])
+        else:
+            header_timeout = int(server_request_headers[OUTER_TIMEOUT_MS_HEADER])
+
+        spent_time_ms = (time.time() - start_time) * 1000
+        deadline_timeout_ms = min(int(header_timeout - spent_time_ms), balanced_request_timeout_ms)
         if deadline_timeout_ms <= 0:
-            msg = 'negative http timeout is not allowed'
-            raise RuntimeError(msg)
+            raise OutOfRequestTime()
 
         balanced_request.headers[DEADLINE_TIMEOUT_MS_HEADER] = f'{deadline_timeout_ms:.0f}'
         balanced_request.request_timeout = deadline_timeout_ms / 1000
         balanced_request.timeout = aiohttp.ClientTimeout(
             total=balanced_request.request_timeout, connect=balanced_request.connect_timeout
         )
+    else:
+        balanced_request.headers[DEADLINE_TIMEOUT_MS_HEADER] = f'{balanced_request_timeout_ms:.0f}'
 
     outer_timeout = server_request_headers.get(OUTER_TIMEOUT_MS_HEADER.lower())
     if outer_timeout:
@@ -100,14 +112,25 @@ def set_extra_client_params(scope: Scope) -> Iterator:
         extra_client_params.reset(token)
 
 
-async def fail_fast_error_handler(server_request: Request, exc: FailFastError) -> Response:
-    log.warning(exc)
-
+def __check_if_timeout_was_reduced(server_request: Request) -> bool:
     deadline_timeout = server_request.headers.get(DEADLINE_TIMEOUT_MS_HEADER)
     outer_timeout = server_request.headers.get(OUTER_TIMEOUT_MS_HEADER)
     server_has_insufficient_timeout = (
         deadline_timeout is not None and outer_timeout is not None and int(deadline_timeout) < int(outer_timeout)
     )
+    return server_has_insufficient_timeout
+
+
+async def out_of_request_time_error_handler(server_request: Request, exc: OutOfRequestTime) -> Response:
+    log.warning('reached deadline timeout')
+    server_has_insufficient_timeout = __check_if_timeout_was_reduced(server_request)
+    return make_plain_response(INSUFFICIENT_TIMEOUT if server_has_insufficient_timeout else SERVER_TIMEOUT)
+
+
+async def fail_fast_error_handler(server_request: Request, exc: FailFastError) -> Response:
+    log.warning(exc)
+
+    server_has_insufficient_timeout = __check_if_timeout_was_reduced(server_request)
 
     if exc.failed_result.status_code == INSUFFICIENT_TIMEOUT:
         status_code = INSUFFICIENT_TIMEOUT if server_has_insufficient_timeout else SERVER_TIMEOUT

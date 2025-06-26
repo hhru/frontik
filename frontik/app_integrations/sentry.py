@@ -16,6 +16,7 @@ from sentry_sdk.integrations.stdlib import StdlibIntegration
 from tornado.web import HTTPError
 
 from frontik.app_integrations import Integration, integrations_logger
+from frontik.balancing_client import OutOfRequestTime
 from frontik.options import options
 
 if TYPE_CHECKING:
@@ -73,7 +74,7 @@ class SentryIntegration(Integration):
             traces_sample_rate=options.sentry_traces_sample_rate,
             in_app_include=list(filter(None, options.sentry_in_app_include.split(','))),
             profiles_sample_rate=options.sentry_profiles_sample_rate,
-            ignore_errors=[HTTPError, FailFastError, HTTPException],
+            ignore_errors=[HTTPError, FailFastError, HTTPException, OutOfRequestTime],
             before_send=before_send,
         )
 

@@ -880,10 +880,10 @@ reference = "pypi-mirror"
 
 [[package]]
 name = "http-client"
-version = "3.0.9"
+version = "3.0.10"
 description = "Balancing http client around aiohttp"
 optional = false
-python-versions = "<3.14,>=3.9"
+python-versions = ">=3.9,<3.14"
 groups = ["main"]
 files = []
 develop = false
@@ -897,8 +897,8 @@ yarl = "1.18.3"
 [package.source]
 type = "git"
 url = "ssh://git@forgejo.pyn.ru/hhru/balancing-http-client.git"
-reference = "3.0.9"
-resolved_reference = "1544f8c30fd6b810d9d5f39a170a963d6a005c04"
+reference = "3.0.10"
+resolved_reference = "618363af0a1b10a3c0cee67875650ae47d88fbc2"
 
 [[package]]
 name = "httpcore"
@@ -2974,4 +2974,4 @@ testing = []
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.14"
-content-hash = "f3580618df5161d3888cf0fa1185eb5c05b3c38ee6688826f2dc53323ae9de25"
+content-hash = "c238f617cc043b1447b4d0d00d122b957b40b9996af78e3b1e3888dfa27f0db7"
