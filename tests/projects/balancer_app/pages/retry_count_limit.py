@@ -1,5 +1,5 @@
 from fastapi import Request
-from http_client.balancing import Upstream, UpstreamConfig
+from http_client.balancing import Upstream, UpstreamConfig, UpstreamConfigs
 
 from frontik.dependencies import HttpClient
 from frontik.routing import router
@@ -12,7 +12,7 @@ async def get_page(request: Request, http_client: HttpClient) -> str:
     retry_count_limit = 'retry_count_limit'
     upstream = Upstream(
         retry_count_limit,
-        {Upstream.DEFAULT_PROFILE: UpstreamConfig(max_tries=3)},
+        UpstreamConfigs({Upstream.DEFAULT_PROFILE: UpstreamConfig(max_tries=3)}),
         [
             get_server_with_port(find_free_port(11000, 20000)),
             get_server_with_port(find_free_port(12000, 20000)),

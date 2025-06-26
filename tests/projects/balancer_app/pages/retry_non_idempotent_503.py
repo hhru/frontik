@@ -1,5 +1,6 @@
 from fastapi import Request
-from http_client.balancing import Upstream, UpstreamConfig
+from http_client.balancing import Upstream, UpstreamConfig, UpstreamConfigs
+from http_client.model.consul_config import RetryPolicyItem
 from tornado.web import HTTPError
 
 from frontik.dependencies import HttpClient
@@ -11,17 +12,19 @@ from tests.projects.balancer_app.pages import check_all_requests_done
 
 @router.get('/retry_non_idempotent_503')
 async def get_page(request: Request, http_client: HttpClient) -> str:
-    upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(retry_policy={503: {'retry_non_idempotent': 'true'}})}
+    upstream_config = {
+        Upstream.DEFAULT_PROFILE: UpstreamConfig(retry_policy={503: RetryPolicyItem(retry_non_idempotent=True)})
+    }
     upstreams = request.app.service_discovery._upstreams
     retry_non_idempotent = 'retry_non_idempotent_503'
     upstreams[retry_non_idempotent] = Upstream(
         retry_non_idempotent,
-        upstream_config,
+        UpstreamConfigs(upstream_config),
         [get_server(request, 'broken'), get_server(request, 'normal')],
     )
     upstreams['do_not_retry_non_idempotent_503'] = Upstream(
         'do_not_retry_non_idempotent_503',
-        {},
+        UpstreamConfigs({}),
         [get_server(request, 'broken'), get_server(request, 'normal')],
     )
 

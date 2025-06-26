@@ -1,5 +1,5 @@
 from fastapi import Request
-from http_client.balancing import Upstream, UpstreamConfig
+from http_client.balancing import Upstream, UpstreamConfig, UpstreamConfigs
 
 from frontik.dependencies import HttpClient
 from frontik.routing import router
@@ -18,7 +18,7 @@ async def get_page(request: Request, http_client: HttpClient) -> str:
     upstreams = request.app.service_discovery._upstreams
     upstreams[profile_without_retry] = Upstream(
         profile_without_retry,
-        upstream_config,
+        UpstreamConfigs(upstream_config),
         servers,
     )
     result = await http_client.put_url(profile_without_retry, profile_without_retry, profile=profile_without_retry)

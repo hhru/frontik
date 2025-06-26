@@ -7,7 +7,8 @@ from multiprocessing import Lock, Queue, Value
 from typing import Callable, Optional
 
 from http_client import options as http_client_options
-from http_client.balancing import Server, Upstream, UpstreamConfig
+from http_client.balancing import Server, Upstream, UpstreamConfig, UpstreamConfigs
+from http_client.model.consul_config import RetryPolicyItem
 
 import frontik.process
 from frontik.options import options
@@ -32,12 +33,17 @@ def prepare_upstreams():
     upstream_config = {
         Upstream.DEFAULT_PROFILE: UpstreamConfig(
             max_timeout_tries=10,
-            retry_policy={'403': {'retry_non_idempotent': 'false'}, '500': {'retry_non_idempotent': 'true'}},
+            retry_policy={
+                403: RetryPolicyItem(retry_non_idempotent=False),
+                500: RetryPolicyItem(retry_non_idempotent=True),
+            },
         ),
     }
     return {
         'upstream': Upstream(
-            'upstream', upstream_config, [Server('12.2.3.5', 'dest_host'), Server('12.22.3.5', 'dest_host')]
+            'upstream',
+            UpstreamConfigs(upstream_config),
+            [Server('12.2.3.5', 'dest_host'), Server('12.22.3.5', 'dest_host')],
         )
     }
 
@@ -126,7 +132,7 @@ class TestProcessFork:
         # Case 3: add new upstream, check worker get it
         service_discovery._upstreams['upstream2'] = Upstream(
             'upstream2',
-            {},
+            UpstreamConfigs({}),
             [Server('12.2.3.5', 'dest_host'), Server('12.22.3.5', 'dest_host')],
         )
         send_updates_hook(get_upstream_bytes(service_discovery))

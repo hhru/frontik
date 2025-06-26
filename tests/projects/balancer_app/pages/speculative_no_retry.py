@@ -1,5 +1,5 @@
 from fastapi import Request
-from http_client.balancing import Upstream
+from http_client.balancing import Upstream, UpstreamConfigs
 
 from frontik.dependencies import HttpClient
 from frontik.routing import router
@@ -12,7 +12,7 @@ async def get_page(request: Request, http_client: HttpClient) -> str:
     speculative_no_retry = 'speculative_no_retry'
     upstreams[speculative_no_retry] = Upstream(
         speculative_no_retry,
-        {},
+        UpstreamConfigs({}),
         [get_server(request, 'broken'), get_server(request, 'normal')],
     )
 

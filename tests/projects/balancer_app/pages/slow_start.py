@@ -1,7 +1,7 @@
 import asyncio
 
 from fastapi import Request
-from http_client.balancing import Upstream, UpstreamConfig
+from http_client.balancing import Upstream, UpstreamConfig, UpstreamConfigs
 
 from frontik.dependencies import HttpClient
 from frontik.routing import router
@@ -23,13 +23,15 @@ async def get_page(request: Request, http_client: HttpClient) -> str:
     upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=0.1)}
     upstreams = request.app.service_discovery._upstreams
     slow_start = 'slow_start'
-    upstreams[slow_start] = Upstream(slow_start, upstream_config, [server])
+    upstreams[slow_start] = Upstream(slow_start, UpstreamConfigs(upstream_config), [server])
 
     await http_client.post_url(slow_start, slow_start)
 
     await asyncio.sleep(0.2)
     upstream_config = {Upstream.DEFAULT_PROFILE: UpstreamConfig(slow_start_interval=1)}
-    upstreams[slow_start].update(Upstream(slow_start, upstream_config, [same_server, server_slow_start]))
+    upstreams[slow_start].update(
+        Upstream(slow_start, UpstreamConfigs(upstream_config), [same_server, server_slow_start])
+    )
 
     await http_client.post_url(slow_start, slow_start)
 
