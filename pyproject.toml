@@ -33,7 +33,7 @@ pydantic = '^2.3.0'
 tornado = '6.3.3'
 orjson = '*'
 packaging = '<25.0'
-http-client = {git = 'git+ssh://git@forgejo.pyn.ru/hhru/balancing-http-client.git', tag = '3.0.9'}
+http-client = {git = 'git+ssh://git@forgejo.pyn.ru/hhru/balancing-http-client.git', tag = '3.0.10'}
 consul = {git = 'git+ssh://git@forgejo.pyn.ru/hhru/python-consul2', tag = '1.0.0'}
 opentelemetry-sdk = '1.25.0'
 opentelemetry-api = '1.25.0'
@@ -93,5 +93,5 @@ known-third-party = ['http_client']
 
 [tool.ruff.lint]
 ignore = [
-    'FA100',
+    'FA100','N818',
 ]

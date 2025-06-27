@@ -19,13 +19,20 @@ from http_client import options as http_client_options
 from http_client.balancing import RequestBalancerBuilder
 from http_client.request_response import FailFastError
 from lxml import etree
+from starlette.requests import ClientDisconnect
 from starlette.types import ASGIApp, Receive, Scope, Send
 from tornado import httputil
 
 from frontik import app_integrations
 from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
-from frontik.balancing_client import fail_fast_error_handler, set_extra_client_params
+from frontik.balancing_client import (
+    OutOfRequestTime,
+    fail_fast_error_handler,
+    out_of_request_time_error_handler,
+    set_extra_client_params,
+)
 from frontik.dependencies import set_app
+from frontik.http_status import CLIENT_CLOSED_REQUEST
 from frontik.options import options
 from frontik.process import WorkerState
 from frontik.routing import (
@@ -90,6 +97,8 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
 
         self.add_middleware(FrontikMiddleware)
         self.add_exception_handler(FailFastError, fail_fast_error_handler)  # type: ignore[arg-type]
+        self.add_exception_handler(ClientDisconnect, client_disconnect_error_handler)  # type: ignore[arg-type]
+        self.add_exception_handler(OutOfRequestTime, out_of_request_time_error_handler)  # type: ignore[arg-type]
         self.add_exception_handler(Exception, default_exception_handler)
 
     def patch_anyio(self) -> None:
@@ -255,6 +264,10 @@ async def default_404() -> Response:
 @method_not_allowed_router.get('__method_not_allowed')
 async def default_405(request: Request) -> Response:
     return Response(status_code=405, headers={'Allow': ', '.join(request.scope['allowed_methods'])})
+
+
+async def client_disconnect_error_handler(server_request: Request, exc: ClientDisconnect) -> Response:
+    return make_plain_response(CLIENT_CLOSED_REQUEST)
 
 
 async def default_exception_handler(server_request: Request, exc: Exception) -> Response:
