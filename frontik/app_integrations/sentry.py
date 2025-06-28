@@ -13,6 +13,7 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration, StarletteIntegra
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.integrations.modules import ModulesIntegration
 from sentry_sdk.integrations.stdlib import StdlibIntegration
+from starlette.requests import ClientDisconnect
 from tornado.web import HTTPError
 
 from frontik.app_integrations import Integration, integrations_logger
@@ -74,7 +75,7 @@ class SentryIntegration(Integration):
             traces_sample_rate=options.sentry_traces_sample_rate,
             in_app_include=list(filter(None, options.sentry_in_app_include.split(','))),
             profiles_sample_rate=options.sentry_profiles_sample_rate,
-            ignore_errors=[HTTPError, FailFastError, HTTPException, OutOfRequestTime],
+            ignore_errors=[HTTPError, FailFastError, HTTPException, OutOfRequestTime, ClientDisconnect],
             before_send=before_send,
         )
 
