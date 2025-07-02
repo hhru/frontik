@@ -78,7 +78,7 @@ class Options:
     statsd_host: Optional[str] = None
     statsd_port: Optional[int] = None
     statsd_default_periodic_send_interval_sec: int = 60
-    statsd_max_udp_size: int = 508
+    statsd_max_udp_size: Optional[int] = None
 
     gc_custom_thresholds: Optional[str] = None
     gc_metrics_send_interval_ms: Optional[int] = 1000

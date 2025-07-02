@@ -22,9 +22,9 @@ if TYPE_CHECKING:
         SessionMetrics,
     )
     from http_client.balancing import Upstream
+    from pystatsd import StatsDClientABC
 
     from frontik.app import FrontikApplication
-    from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub
 
 LOGGER = logging.getLogger('scylla')
 
@@ -55,17 +55,18 @@ class ScyllaIntegration(Integration):
 
 
 def create_monitored_cluster(
-    cluster_name: str, upstream: Upstream, statsd_client: StatsDClient | StatsDClientStub
+    cluster_name: str, upstream: Upstream, statsd_client: StatsDClientABC
 ) -> _DecoratedCluster:
-    scylla_servers = [server.address.split(':')[0] for server in upstream.servers if server is not None]
-    upstream_server = upstream.servers[0]
+    scylla_servers = [server for server in upstream.servers if server is not None]
+    scylla_servers_address = [server.address.split(':')[0] for server in scylla_servers]
+    upstream_server = scylla_servers[0]
     if upstream_server is None:
         msg = f'Servers are not specified for %{cluster_name}'
         raise RuntimeError(msg)
     scylla_port = int(upstream_server.address.split(':')[1])
 
     native_cluster = create_cluster(
-        scylla_servers,
+        scylla_servers_address,
         port=scylla_port,
         local_port_range_min=None,
         local_port_range_max=None,
@@ -87,7 +88,7 @@ def create_monitored_cluster(
 class StatsdMetricsReporter:
     def __init__(
         self,
-        statsd_client: StatsDClient | StatsDClientStub,
+        statsd_client: StatsDClientABC,
         cluster: _DecoratedCluster,
         cluster_name: str,
     ) -> None:

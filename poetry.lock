@@ -1002,26 +1002,29 @@ reference = "pypi-mirror"
 
 [[package]]
 name = "http-client"
-version = "4.0.0"
+version = "4.0.1"
 description = "Balancing http client around aiohttp"
 optional = false
 python-versions = ">=3.9,<3.14"
 groups = ["main"]
-files = []
-develop = false
+files = [
+    {file = "http_client-4.0.1-py3-none-any.whl", hash = "sha256:7578af6b968119a5060039f2aa706aabdae2ce5ae53fee26807409ec2d4af387"},
+    {file = "http_client-4.0.1.tar.gz", hash = "sha256:a46942e16a168f74210a4e8861ca961d1e9faf61cda105210ee6bf4180df19a8"},
+]
 
 [package.dependencies]
-aiohttp = ">=3.8.3, <4.0.0"
+aiohttp = ">=3.8.3,<4.0.0"
+aiokafka = "*"
 lxml = "5.3.0"
 orjson = "*"
 pydantic = ">2,<3"
+pystatsd = ">=1,<2"
 yarl = "1.18.3"
 
 [package.source]
-type = "git"
-url = "ssh://git@forgejo.pyn.ru/hhru/balancing-http-client.git"
-reference = "4.0.0"
-resolved_reference = "8c2dd541f07fa0950fc87238e0a77589d05046fa"
+type = "legacy"
+url = "https://devpi.pyn.ru/hh/hhdev/+simple"
+reference = "hhdev"
 
 [[package]]
 name = "httpcore"
@@ -1942,6 +1945,23 @@ url = "https://devpi.pyn.ru/root/pypi/+simple"
 reference = "pypi-mirror"
 
 [[package]]
+name = "poetry-core"
+version = "2.1.3"
+description = "Poetry PEP 517 Build Backend"
+optional = false
+python-versions = ">=3.9, <4.0"
+groups = ["test"]
+files = [
+    {file = "poetry_core-2.1.3-py3-none-any.whl", hash = "sha256:2c704f05016698a54ca1d327f46ce2426d72eaca6ff614132c8477c292266771"},
+    {file = "poetry_core-2.1.3.tar.gz", hash = "sha256:0522a015477ed622c89aad56a477a57813cace0c8e7ff2a2906b7ef4a2e296a4"},
+]
+
+[package.source]
+type = "legacy"
+url = "https://devpi.pyn.ru/root/pypi/+simple"
+reference = "pypi-mirror"
+
+[[package]]
 name = "propcache"
 version = "0.3.1"
 description = "Accelerated property cache"
@@ -2250,19 +2270,37 @@ url = "https://devpi.pyn.ru/root/pypi/+simple"
 reference = "pypi-mirror"
 
 [[package]]
+name = "pystatsd"
+version = "1.0.3"
+description = "Python client for statsd"
+optional = false
+python-versions = ">=3.9,<3.14"
+groups = ["main"]
+files = [
+    {file = "pystatsd-1.0.3-py3-none-any.whl", hash = "sha256:13b0d26e0d476d5e5133a788ad97de7b5d9a9ff3a23248cbc572c5f0737ac73f"},
+    {file = "pystatsd-1.0.3.tar.gz", hash = "sha256:3a60dd18f1f25aa45b320f2e049e01edca0195b40e100058279b0a5e3f1e3a1f"},
+]
+
+[package.source]
+type = "legacy"
+url = "https://devpi.pyn.ru/hh/hhdev/+simple"
+reference = "hhdev"
+
+[[package]]
 name = "pystolint"
-version = "0.2.13"
+version = "0.2.14"
 description = "Linters composer"
 optional = false
 python-versions = "<3.14,>=3.9"
 groups = ["test"]
 files = [
-    {file = "pystolint-0.2.13-py3-none-any.whl", hash = "sha256:7b2326b715b08a7e74ee6ff2608eed233f9cbcf599b36cf300af769702ac4a44"},
-    {file = "pystolint-0.2.13.tar.gz", hash = "sha256:88dfb6f9d8a2e6946634c236c2064f69d4f4a9f7211ec21557685fc7c5ec3190"},
+    {file = "pystolint-0.2.14-py3-none-any.whl", hash = "sha256:5df8f1eb9a7c9b1a16a4b71b9b9d3bb2bcd7c9d7158f08ca8055e910e2d3e181"},
+    {file = "pystolint-0.2.14.tar.gz", hash = "sha256:89d1c9c8cf1742ac651b881150ed6849e9c1881a0218013b24c9d52ce8b963c1"},
 ]
 
 [package.dependencies]
 mypy = "1.15.0"
+poetry-core = ">=2,<3"
 ruff = "0.11.6"
 tomli = {version = "2.2.1", markers = "python_version == \"3.9\""}
 tomli-w = "1.2.0"
@@ -3208,4 +3246,4 @@ testing = []
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.14"
-content-hash = "1ccb70034d2a6018b06af96452b53097c513d5f980085ac1227e69de438ddae1"
+content-hash = "fea95b9abb9db1b906f156185ae3145e754ba60daea1a75bb0f613b9a0a1da6c"

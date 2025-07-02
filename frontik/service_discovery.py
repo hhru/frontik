@@ -6,14 +6,14 @@ import socket
 from copy import deepcopy
 from random import shuffle
 from threading import Lock
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional
 
 from consul.base import Check, ConsistencyMode, HealthCache, KVCache, Weight
 from http_client import consul_parser
 from http_client import options as http_options
 from http_client.balancing import Server, Upstream, UpstreamConfigs
+from pystatsd import StatsDClientABC
 
-from frontik.app_integrations.statsd import Counters, StatsDClient, StatsDClientStub
 from frontik.consul_client import ClientEventCallback, SyncConsulClient
 from frontik.options import Options, options
 from frontik.version import version
@@ -105,7 +105,7 @@ class ServiceDiscovery(abc.ABC):
 
 
 class MasterServiceDiscovery(ServiceDiscovery):
-    def __init__(self, statsd_client: Union[StatsDClient, StatsDClientStub], app_name: str) -> None:
+    def __init__(self, statsd_client: StatsDClientABC, app_name: str) -> None:
         self._upstreams_config: dict[str, UpstreamConfigs] = {}
         self._upstreams_servers: dict[str, list[Server]] = {}
 
@@ -340,19 +340,20 @@ class WorkerServiceDiscovery(ServiceDiscovery):
 
 
 class ConsulMetricsTracker(ClientEventCallback):
-    def __init__(self, statsd_client: Union[StatsDClient, StatsDClientStub]) -> None:
+    def __init__(self, statsd_client: StatsDClientABC) -> None:
         self._statsd_client = statsd_client
-        self._request_counters = Counters()
-        self._statsd_client.send_periodically(self._send_metrics)
 
     def on_http_request_success(self, method: str, path: str, response_code: int) -> None:
-        self._request_counters.add(1, result=CONSUL_REQUEST_SUCCESSFUL_RESULT, type=response_code)
+        self._statsd_client.count(
+            CONSUL_REQUESTS_METRIC, 1, result=CONSUL_REQUEST_SUCCESSFUL_RESULT, type=str(response_code)
+        )
 
     def on_http_request_failure(self, method: str, path: str, ex: BaseException) -> None:
-        self._request_counters.add(1, result=CONSUL_REQUEST_FAILED_RESULT, type=type(ex).__name__)
+        self._statsd_client.count(
+            CONSUL_REQUESTS_METRIC, 1, result=CONSUL_REQUEST_FAILED_RESULT, type=type(ex).__name__
+        )
 
     def on_http_request_invalid(self, method: str, path: str, response_code: int) -> None:
-        self._request_counters.add(1, result=CONSUL_REQUEST_FAILED_RESULT, type=response_code)
-
-    def _send_metrics(self):
-        self._statsd_client.counters(CONSUL_REQUESTS_METRIC, self._request_counters)
+        self._statsd_client.count(
+            CONSUL_REQUESTS_METRIC, 1, result=CONSUL_REQUEST_FAILED_RESULT, type=str(response_code)
+        )
