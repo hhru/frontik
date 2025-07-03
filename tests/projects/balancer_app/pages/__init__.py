@@ -1,7 +1,7 @@
 from fastapi import HTTPException, Request
-from http_client.balancing import Upstream
+from http_client.balancing import Upstream, UpstreamConfigs
 
-noop_upstream = Upstream('', {}, [])
+noop_upstream = Upstream('', UpstreamConfigs({}), [])
 
 
 def check_all_servers_occupied(request: Request, name: str) -> None:

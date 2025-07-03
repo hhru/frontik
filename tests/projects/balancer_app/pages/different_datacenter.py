@@ -1,5 +1,5 @@
 from fastapi import Request
-from http_client.balancing import Upstream
+from http_client.balancing import Upstream, UpstreamConfigs
 from http_client.request_response import NoAvailableServerException
 from tornado.web import HTTPError
 
@@ -16,7 +16,7 @@ async def get_page(request: Request, http_client: HttpClient) -> str:
     normal_server.datacenter = 'dc2'
 
     different_datacenter = 'different_datacenter'
-    upstream = Upstream(different_datacenter, {}, [free_server, normal_server])
+    upstream = Upstream(different_datacenter, UpstreamConfigs({}), [free_server, normal_server])
     request.app.service_discovery._upstreams[different_datacenter] = upstream
 
     result = await http_client.post_url(different_datacenter, different_datacenter)

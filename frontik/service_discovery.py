@@ -6,12 +6,12 @@ import socket
 from copy import deepcopy
 from random import shuffle
 from threading import Lock
-from typing import Callable, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 from consul.base import Check, ConsistencyMode, HealthCache, KVCache, Weight
 from http_client import consul_parser
 from http_client import options as http_options
-from http_client.balancing import Server, Upstream
+from http_client.balancing import Server, Upstream, UpstreamConfigs
 
 from frontik.app_integrations.statsd import Counters, StatsDClient, StatsDClientStub
 from frontik.consul_client import ClientEventCallback, SyncConsulClient
@@ -106,7 +106,7 @@ class ServiceDiscovery(abc.ABC):
 
 class MasterServiceDiscovery(ServiceDiscovery):
     def __init__(self, statsd_client: Union[StatsDClient, StatsDClientStub], app_name: str) -> None:
-        self._upstreams_config: dict[str, dict] = {}
+        self._upstreams_config: dict[str, UpstreamConfigs] = {}
         self._upstreams_servers: dict[str, list[Server]] = {}
 
         self._upstreams: dict[str, Upstream] = {}
@@ -246,7 +246,7 @@ class MasterServiceDiscovery(ServiceDiscovery):
             self._upstreams_servers[f'{key}-{dc}'] = servers
             self._update_upstreams(key)
 
-    def _update_upstreams_config(self, key, values):
+    def _update_upstreams_config(self, key: str, values: Optional[list[dict[str, Any]]]) -> None:
         if values is not None:
             for value in values:
                 if value['Value'] is not None:
@@ -282,7 +282,7 @@ class MasterServiceDiscovery(ServiceDiscovery):
     def _create_upstream(self, key: str) -> Upstream:
         servers = self._combine_servers(key)
         shuffle(servers)
-        return Upstream(key, self._upstreams_config.get(key, {}), servers)
+        return Upstream(key, self._upstreams_config.get(key, UpstreamConfigs({})), servers)
 
     def _combine_servers(self, key: str) -> list[Server]:
         servers_from_all_dc = []

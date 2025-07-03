@@ -1,5 +1,5 @@
 from fastapi import Request
-from http_client.balancing import Upstream
+from http_client.balancing import Upstream, UpstreamConfigs
 from tornado.web import HTTPError
 
 from frontik.dependencies import HttpClient
@@ -13,7 +13,7 @@ async def get_page(request: Request, http_client: HttpClient) -> str:
     speculative_retry = 'speculative_retry'
     upstreams[speculative_retry] = Upstream(
         speculative_retry,
-        {},
+        UpstreamConfigs({}),
         [get_server(request, 'broken'), get_server(request, 'normal')],
     )
 

@@ -1,5 +1,5 @@
 from fastapi import Request
-from http_client.balancing import Upstream
+from http_client.balancing import Upstream, UpstreamConfigs
 from tornado.web import HTTPError
 
 from frontik.dependencies import HttpClient
@@ -15,7 +15,7 @@ async def get_page(request: Request, http_client: HttpClient) -> str:
     upstreams = request.app.service_discovery._upstreams
     upstreams[retry_connect_timeout] = Upstream(
         retry_connect_timeout,
-        {},
+        UpstreamConfigs({}),
         [get_server(request, 'free'), get_server(request, 'normal')],
     )
     text = ''
