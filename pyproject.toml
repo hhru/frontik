@@ -59,6 +59,8 @@ lxml-asserts = '0.1.2'
 exceptiongroup = '1.2.0'
 pystolint = '0.2.13'
 httpx = ">=0.22"
+cassandra-driver='3.29.2'
+testcontainers='4.10.0'
 
 [tool.poetry.extras]
 sentry = ["sentry-sdk"]
