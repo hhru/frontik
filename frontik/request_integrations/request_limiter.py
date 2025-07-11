@@ -2,16 +2,17 @@ from __future__ import annotations
 
 import logging
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from tornado.httputil import HTTPServerRequest
 
-from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub
 from frontik.options import options
 from frontik.request_integrations.integrations_dto import IntegrationDto
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+    from pystatsd import StatsDClientABC
 
     from frontik.app import FrontikApplication
 
@@ -22,7 +23,7 @@ class ActiveHandlersLimit:
     count = 0
     high_watermark_ratio = 0.75
 
-    def __init__(self, statsd_client: Union[StatsDClient, StatsDClientStub]) -> None:
+    def __init__(self, statsd_client: StatsDClientABC) -> None:
         self.acquired = False
         self._statsd_client = statsd_client
         self._high_watermark = int(options.max_active_handlers * self.high_watermark_ratio)

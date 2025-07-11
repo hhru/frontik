@@ -20,6 +20,7 @@ frontik.egg-info/
 /asyncio
 /tornado
 /http_client
+/pystatsd
 
 *.log
 *.slog

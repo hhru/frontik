@@ -6,7 +6,7 @@ import os
 import sys
 import time
 from ctypes import c_bool, c_int
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import aiohttp
 import tornado
@@ -24,7 +24,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from tornado import httputil
 
 from frontik import app_integrations
-from frontik.app_integrations.statsd import StatsDClient, StatsDClientStub, create_statsd_client
+from frontik.app_integrations.statsd import create_statsd_client
 from frontik.balancing_client import (
     OutOfRequestTime,
     fail_fast_error_handler,
@@ -47,6 +47,9 @@ from frontik.tornado_connection_handler import TornadoConnectionHandler
 from frontik.util import Sentinel
 from frontik.util.fastapi import make_plain_response
 from frontik.version import version as frontik_version
+
+if TYPE_CHECKING:
+    from pystatsd import StatsDClientABC
 
 app_logger = logging.getLogger('app_logger')
 _DEFAULT_ARG = Sentinel()
@@ -73,7 +76,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
 
         self.available_integrations: list[app_integrations.Integration] = []
 
-        self.statsd_client: Union[StatsDClient, StatsDClientStub] = create_statsd_client(options, self)
+        self.statsd_client: StatsDClientABC = create_statsd_client(options, self)
         self.service_discovery: ServiceDiscovery
         self._http_client_factory: HttpClientFactory
         self.http_client: HttpClient
