@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 import aiohttp
 import tornado
-from acsylla.base import Cluster
 from aiokafka import AIOKafkaProducer
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import ORJSONResponse
@@ -24,6 +23,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from tornado import httputil
 
 from frontik import app_integrations
+from frontik.app_integrations.scylla import ScyllaCluster
 from frontik.app_integrations.statsd import create_statsd_client
 from frontik.balancing_client import (
     OutOfRequestTime,
@@ -220,7 +220,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
     def get_kafka_producer(self, producer_name: str) -> Optional[AIOKafkaProducer]:  # pragma: no cover
         pass
 
-    def get_scylla_cluster(self, cluster_name: str) -> Optional[Cluster]:  # pragma: no cover
+    def get_scylla_cluster(self, cluster_name: str) -> Optional[ScyllaCluster]:
         pass
 
     def start_request(
