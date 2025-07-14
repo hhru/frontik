@@ -4,11 +4,17 @@ import asyncio
 import logging
 from asyncio import Future
 from dataclasses import fields
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
-from acsylla import (
-    create_cluster,
-)
+scylla_imports_exception = None
+try:
+    from acsylla import create_cluster
+    from acsylla.base import Cluster, Session, SessionMetrics
+
+    ScyllaCluster = Cluster
+except ImportError as exc:
+    scylla_imports_exception = exc
+    ScyllaCluster = Any  # type: ignore[assignment, misc]
 
 from frontik.app_integrations import Integration
 from frontik.options import options
@@ -16,11 +22,6 @@ from frontik.util import run_async_task
 from frontik.util.abc import Delegator
 
 if TYPE_CHECKING:
-    from acsylla.base import (
-        Cluster,
-        Session,
-        SessionMetrics,
-    )
     from http_client.balancing import Upstream
     from pystatsd import StatsDClientABC
 
@@ -34,6 +35,9 @@ class ScyllaIntegration(Integration):
         self.scylla_clusters: dict[str, Cluster] = {}
 
     def initialize_app(self, app: FrontikApplication) -> Optional[Future]:
+        if options.scylla_clusters and scylla_imports_exception:
+            raise scylla_imports_exception
+
         def get_scylla_cluster(cluster_name: str) -> Optional[Cluster]:
             return self.scylla_clusters.get(cluster_name)
 
