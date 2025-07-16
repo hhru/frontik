@@ -394,10 +394,23 @@ class DebugTransform:
         if not self.is_enabled():
             return response
 
+        cors_headers = {
+            header: response.headers[header]
+            for header in (
+                'access-control-allow-credentials',
+                'access-control-allow-origin',
+            )
+            if header in response.headers
+        }
+
         if not self.is_inherited():
-            wrap_headers = {'Content-Type': media_types.TEXT_HTML}
+            wrap_headers = {'Content-Type': media_types.TEXT_HTML, **cors_headers}
         else:
-            wrap_headers = {'Content-Type': media_types.APPLICATION_XML, DEBUG_HEADER_NAME: 'true'}
+            wrap_headers = {
+                'Content-Type': media_types.APPLICATION_XML,
+                DEBUG_HEADER_NAME: 'true',
+                **cors_headers,
+            }
 
         chunk = b'Streamable response' if response.headers_written else _data_to_chunk(response.body)
         start_time = time.time()
