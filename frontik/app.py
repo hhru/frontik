@@ -5,8 +5,9 @@ import multiprocessing
 import os
 import sys
 import time
+from collections.abc import Awaitable
 from ctypes import c_bool, c_int
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 import aiohttp
 import tornado
@@ -18,6 +19,7 @@ from http_client import options as http_client_options
 from http_client.balancing import RequestBalancerBuilder
 from http_client.request_response import FailFastError
 from lxml import etree
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import ClientDisconnect
 from starlette.types import ASGIApp, Receive, Scope, Send
 from tornado import httputil
@@ -50,6 +52,7 @@ from frontik.version import version as frontik_version
 
 if TYPE_CHECKING:
     from pystatsd import StatsDClientABC
+    from starlette.datastructures import FormData
 
 app_logger = logging.getLogger('app_logger')
 _DEFAULT_ARG = Sentinel()
@@ -98,7 +101,9 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
         if options.openapi_enabled:
             self.setup()
 
-        self.add_middleware(FrontikMiddleware)
+        self.add_middleware(ModifyHttpClientMiddleware)
+        if options.xsrf_cookies:
+            self.add_middleware(XsrfMiddleware)
         self.add_exception_handler(FailFastError, fail_fast_error_handler)  # type: ignore[arg-type]
         self.add_exception_handler(ClientDisconnect, client_disconnect_error_handler)  # type: ignore[arg-type]
         self.add_exception_handler(OutOfRequestTime, out_of_request_time_error_handler)  # type: ignore[arg-type]
@@ -230,6 +235,18 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
     ) -> TornadoConnectionHandler:
         return TornadoConnectionHandler(self, request_conn)
 
+    @staticmethod
+    async def check_xsrf_cookie(request: Request) -> None:
+        body_form: FormData = await request.form()
+
+        token = body_form.get('_xsrf') or request.headers.get('X-Xsrftoken') or request.headers.get('X-Csrftoken')
+        if not token:
+            raise HTTPException(403, '"_xsrf" argument missing from POST')
+
+        expected_token = request.cookies.get('_xsrf')
+        if token != expected_token:
+            raise HTTPException(403, 'XSRF cookie does not match POST argument')
+
 
 def anyio_noop(*_args: Any, **_kwargs: Any) -> None:
     raise RuntimeError(f'trying to use non async {_args[0]}')
@@ -246,7 +263,7 @@ async def get_status(request: Request) -> ORJSONResponse:
     return ORJSONResponse(request.app.get_current_status())
 
 
-class FrontikMiddleware:
+class ModifyHttpClientMiddleware:
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
@@ -257,6 +274,16 @@ class FrontikMiddleware:
 
         with set_extra_client_params(scope):
             await self.app(scope, receive, send)
+
+
+class XsrfMiddleware(BaseHTTPMiddleware):
+    @staticmethod
+    async def dispatch(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+        if request.method not in {'GET', 'HEAD', 'OPTIONS'}:
+            await request.app.check_xsrf_cookie(request)
+
+        response: Response = await call_next(request)
+        return response
 
 
 @not_found_router.get('__not_found')
@@ -274,4 +301,6 @@ async def client_disconnect_error_handler(server_request: Request, exc: ClientDi
 
 
 async def default_exception_handler(server_request: Request, exc: Exception) -> Response:
+    if isinstance(exc, HTTPException):
+        return make_plain_response(status_code=exc.status_code)
     return make_plain_response(status_code=500)
