@@ -139,6 +139,13 @@ class Options:
 
 options = Options()
 
+ENV_OPTIONS = {
+    'node_name': 'NODE_NAME',
+}
+__available_options = {f.name for f in fields(Options)}
+for env in ENV_OPTIONS:
+    assert env in __available_options, f'{env} unknown member of Options'
+
 
 def parse_config_file(path: str) -> None:
     config: dict = {}

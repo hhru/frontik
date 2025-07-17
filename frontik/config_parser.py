@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from dataclasses import asdict, fields
 from typing import TYPE_CHECKING, Optional, get_args
@@ -10,7 +11,7 @@ from http_client.options import options as http_client_options
 from http_client.options import parse_config_file as http_client_parse_config_file
 
 from frontik.loggers import MDC, bootstrap_core_logging
-from frontik.options import options, parse_config_file
+from frontik.options import ENV_OPTIONS, options, parse_config_file
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -40,6 +41,11 @@ def parse_configs(config_files: Optional[str]) -> None:
     for config in configs_to_read_filter:
         http_client_parse_config_file(config)
         parse_config_file(config)
+
+    for opt_name, env_name in ENV_OPTIONS.items():
+        value = os.environ.get(env_name, getattr(options, opt_name))
+        setattr(options, opt_name, value)
+        setattr(http_client_options, opt_name, value)
 
     # override options from config with command line options
     parse_command_line(options, allowed_options)
