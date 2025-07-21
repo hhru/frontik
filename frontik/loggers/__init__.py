@@ -7,7 +7,7 @@ import time
 from functools import cache
 from logging import Filter, Formatter, Handler
 from logging.handlers import SysLogHandler
-from typing import TYPE_CHECKING, Optional, Union
+from typing import IO, TYPE_CHECKING, Optional, Union
 
 from tornado.log import LogFormatter
 
@@ -162,7 +162,7 @@ def bootstrap_logger(
         handlers.extend(_configure_file(logger_name, use_json_formatter, formatter))
 
     if options.stderr_log:
-        handlers.extend(_configure_stderr(formatter))
+        handlers.extend(_configure_stderr(use_json_formatter=use_json_formatter, formatter=formatter))
 
     if options.syslog:
         handlers.extend(_configure_syslog(logger_name, use_json_formatter, formatter))
@@ -198,10 +198,16 @@ def _configure_file(
     return [file_handler]
 
 
-def _configure_stderr(formatter: Optional[Formatter] = None) -> list[logging.StreamHandler]:
+def _configure_stderr(
+    *,
+    use_json_formatter: bool = True,
+    formatter: Formatter | None = None,
+) -> list[logging.StreamHandler[IO[str]]]:
     stderr_handler = logging.StreamHandler()
     if formatter is not None:
         stderr_handler.setFormatter(formatter)
+    elif use_json_formatter:
+        stderr_handler.setFormatter(JSON_FORMATTER)
     else:
         stderr_handler.setFormatter(get_stderr_formatter())
         stderr_handler.addFilter(_CONTEXT_FILTER)
