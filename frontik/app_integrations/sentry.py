@@ -14,7 +14,6 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.integrations.modules import ModulesIntegration
 from sentry_sdk.integrations.stdlib import StdlibIntegration
 from starlette.requests import ClientDisconnect
-from tornado.web import HTTPError
 
 from frontik.app_integrations import Integration, integrations_logger
 from frontik.balancing_client import OutOfRequestTime
@@ -64,6 +63,10 @@ class SentryIntegration(Integration):
         if options.sentry_logging_integration:
             integrations.append(LoggingIntegration())
 
+        ignore_errors = [HTTPException, FailFastError, OutOfRequestTime, ClientDisconnect]
+        if hasattr(app, 'get_sentry_ignored_exceptions'):
+            ignore_errors += app.get_sentry_ignored_exceptions()
+
         sentry_sdk.init(
             dsn=options.sentry_dsn,
             max_breadcrumbs=options.sentry_max_breadcrumbs,
@@ -75,7 +78,7 @@ class SentryIntegration(Integration):
             traces_sample_rate=options.sentry_traces_sample_rate,
             in_app_include=list(filter(None, options.sentry_in_app_include.split(','))),
             profiles_sample_rate=options.sentry_profiles_sample_rate,
-            ignore_errors=[HTTPError, FailFastError, HTTPException, OutOfRequestTime, ClientDisconnect],
+            ignore_errors=ignore_errors,
             before_send=before_send,
         )
 

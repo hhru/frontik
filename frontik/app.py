@@ -56,8 +56,6 @@ _DEFAULT_ARG = Sentinel()
 
 
 class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
-    request_id = ''
-
     class DefaultConfig:
         pass
 
