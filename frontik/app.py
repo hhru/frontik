@@ -32,8 +32,9 @@ from frontik.balancing_client import (
     set_extra_client_params,
 )
 from frontik.dependencies import set_app
+from frontik.dev_route_manager import DevRouteManager
 from frontik.http_status import CLIENT_CLOSED_REQUEST
-from frontik.options import options
+from frontik.options import DEV_MODE_ON_DEMAND_ROUTING, options
 from frontik.process import WorkerState
 from frontik.routing import (
     import_all_pages,
@@ -59,7 +60,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
     class DefaultConfig:
         pass
 
-    def __init__(self, app_module_name: Union[None, str, Sentinel] = _DEFAULT_ARG) -> None:
+    def __init__(self, app_module_name: Union[str, Sentinel, None] = _DEFAULT_ARG) -> None:
         self.start_time = time.time()
         super().__init__()
         self.patch_anyio()
@@ -69,6 +70,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
         if options.service_name is None:
             options.service_name = self.app_module_name.rsplit('.', 1)[-1]
         self.app_name = options.service_name
+        self.route_manager: Union[DevRouteManager, None] = None
 
         self.config: Any = self.application_config()
 
@@ -85,7 +87,12 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
         self.worker_state = WorkerState(init_workers_count_down, master_done, count_down_lock)  # type: ignore
 
         if app_module_name is not None:
-            import_all_pages(self.app_module_name)
+            if options.dev_mode == DEV_MODE_ON_DEMAND_ROUTING:
+                self.route_manager = DevRouteManager()
+                self.route_manager.import_all_pages(self.app_module_name)
+                self.include_router(self.route_manager.fake_dev_router, prefix='/fake')
+            else:
+                import_all_pages(self.app_module_name)
 
         self.router = router
 

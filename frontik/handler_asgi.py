@@ -79,7 +79,9 @@ async def process_request(
 
     assert tornado_request.method is not None
 
-    scope = find_route(tornado_request.path, tornado_request.method)
+    if frontik_app.route_manager:
+        frontik_app.route_manager.import_route(tornado_request.path, tornado_request.method)
+    scope = find_route(tornado_request.path, tornado_request.method, None)
     tornado_request._path_format = scope['route'].path_format  # type: ignore
 
     response = await execute_asgi_page(frontik_app, tornado_request, scope, debug_mode, integrations)
