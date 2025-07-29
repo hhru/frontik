@@ -87,3 +87,61 @@ class TestRouting(FrontikTestBase):
         response = await self.fetch('/multiple', method=method)
         assert response.status_code == 200
         assert response.data == method
+
+
+def create_mock_route(path: str) -> APIRoute:
+    return APIRoute(path, endpoint=lambda: None, methods=['GET'])
+
+
+class TestRoutingOrder:
+    def test_exact_routes_before_param_routes(self) -> None:
+        routes = [
+            create_mock_route('/{param}'),
+            create_mock_route('/specific'),
+        ]
+        sorted_routes = sorted(routes, key=get_route_sort_key)
+        assert sorted_routes[0].path_format == '/specific'
+        assert sorted_routes[1].path_format == '/{param}'
+
+    def test_longer_paths_before_shorter(self) -> None:
+        routes = [
+            create_mock_route('/short'),
+            create_mock_route('/longer/path'),
+        ]
+        sorted_routes = sorted(routes, key=get_route_sort_key)
+        assert sorted_routes[0].path_format == '/longer/path'
+        assert sorted_routes[1].path_format == '/short'
+
+    def test_param_position_matters(self) -> None:
+        routes = [
+            create_mock_route('/{param}/detail'),
+            create_mock_route('/static/{param}'),
+        ]
+        sorted_routes = sorted(routes, key=get_route_sort_key)
+        assert sorted_routes[0].path_format == '/static/{param}'
+        assert sorted_routes[1].path_format == '/{param}/detail'
+
+    def test_complex_case(self) -> None:
+        routes = [
+            create_mock_route('/{param}'),
+            create_mock_route('/admin/addservice'),
+            create_mock_route('/admin/{action}'),
+            create_mock_route('/short'),
+        ]
+        expected_order = [
+            '/admin/addservice',  # Exact + longer
+            '/short',  # Exact but shorter
+            '/admin/{action}',  # Param, same length as above but param
+            '/{param}',  # Param + shortest
+        ]
+        sorted_routes = sorted(routes, key=get_route_sort_key)
+        assert [r.path_format for r in sorted_routes] == expected_order
+
+    def test_path_parameters_with_suffix(self) -> None:
+        routes = [
+            create_mock_route('/{param}.mvc'),
+            create_mock_route('/static.mvc'),
+        ]
+        sorted_routes = sorted(routes, key=get_route_sort_key)
+        assert sorted_routes[0].path_format == '/static.mvc'
+        assert sorted_routes[1].path_format == '/{param}.mvc'
