@@ -2,10 +2,9 @@ import importlib
 import importlib.util
 import logging
 import pkgutil
-import re
 from collections.abc import Generator, MutableSequence
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from fastapi import APIRouter
 from fastapi.routing import APIRoute
@@ -14,19 +13,29 @@ from starlette.routing import BaseRoute, Match
 routing_logger = logging.getLogger('frontik.routing')
 
 routers: list[APIRouter] = []
-_regex_mapping: list[tuple[re.Pattern, APIRoute]] = []
 _fastapi_routes: list[BaseRoute] = []
+
+
+def is_param_segment(segment: str) -> bool:
+    return '{' in segment
 
 
 def get_route_sort_key(route: BaseRoute) -> tuple:
     if not isinstance(route, APIRoute):
-        return -500, None
+        return 3, 0, ()  # Non-APIRoute last (3)
 
     segments = [s for s in route.path_format.split('/') if s]
-    param_flags = tuple((s.startswith('{') and s.endswith('}')) for s in segments)
-    if sum(param_flags) == 0:  # keep exact urls on first places
-        return -500, None
-    return -len(segments), param_flags
+    has_params = any(is_param_segment(s) for s in segments)
+
+    if not has_params:
+        # Exact routes first (1), sorted by segment count (longer first)
+        return 1, -len(segments), ()
+    else:
+        # Routes with params come after exact routes (2), sorted by:
+        # 1. By segment count (longer first)
+        # 2. Position of params (later params = higher priority)
+        param_flags = tuple(is_param_segment(s) for s in segments)
+        return 2, -len(segments), param_flags
 
 
 class FrontikRouter(APIRouter):
@@ -127,18 +136,7 @@ def _find_fastapi_route_exact(scope: dict) -> Optional[BaseRoute]:
     return None
 
 
-def _find_regex_route(path: str, method: str) -> Union[tuple[BaseRoute, dict], tuple[None, dict]]:
-    for pattern, route in _regex_mapping:
-        match = pattern.match(path)
-        if match and method in route.methods:
-            return route, match.groupdict()
-
-    return None, {}
-
-
 def find_route(path: str, method: str) -> dict:
-    route, path_params = _find_regex_route(path, method)
-
     if path.endswith('/') and path != '/':
         path = path.rstrip('/')
 
@@ -146,12 +144,10 @@ def find_route(path: str, method: str) -> dict:
         'type': 'http',
         'path': path,
         'method': method,
-        'route': route,
-        'path_params': path_params,
+        'route': None,
     }
 
-    if route is None:
-        route = _find_fastapi_route_exact(scope)
+    route = _find_fastapi_route_exact(scope)
 
     if route is None and method == 'HEAD':
         scope = find_route(path, 'GET')
