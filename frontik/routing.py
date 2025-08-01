@@ -4,6 +4,7 @@ import importlib
 import importlib.util
 import logging
 import pkgutil
+import dill
 from collections.abc import Generator, MutableSequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -109,6 +110,11 @@ def import_all_pages(app_module: str) -> None:
         importlib.import_module(name)
 
     _fastapi_routes.sort(key=get_route_sort_key)
+
+    cache_file = 'cache.pkl'
+
+    with open(cache_file, 'wb') as f:
+        dill.dump(_fastapi_routes[0], f)
 
 
 router = FrontikRouter()
