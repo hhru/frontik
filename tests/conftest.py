@@ -20,6 +20,7 @@ def _teardown_module() -> Iterator[None]:
         frontik_no_debug_app,
         frontik_re_app,
         frontik_test_app,
+        frontik_test_app_with_dev_router,
     )
 
     frontik_broken_config_app.stop()
@@ -27,6 +28,7 @@ def _teardown_module() -> Iterator[None]:
     frontik_no_debug_app.stop()
     frontik_re_app.stop()
     frontik_test_app.stop()
+    frontik_test_app_with_dev_router.stop()
     frontik_balancer_app.stop()
     frontik_broken_balancer_app.stop()
     frontik_consul_mock_app.stop()

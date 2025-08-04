@@ -12,6 +12,7 @@
 build
 dist/
 frontik.egg-info/
+frontik/routes_map_exclude-dev-watcher_.py
 .eggs/
 .pytest_cache/
 .venv/

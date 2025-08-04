@@ -138,6 +138,12 @@ frontik_test_app = FrontikTestInstance(
     f'{FRONTIK_RUN} --app_class=tests.projects.test_app.TestApplication '
     f' --config={TEST_PROJECTS}/frontik_debug.cfg {common_frontik_start_options} '
 )
+
+frontik_test_app_with_dev_router = FrontikTestInstance(
+    f'{FRONTIK_RUN} --app_class=tests.projects.test_app.TestApplication '
+    f' --config={TEST_PROJECTS}/frontik_dev_config.cfg {common_frontik_start_options} '
+)
+
 frontik_re_app = FrontikTestInstance(
     f'{FRONTIK_RUN} --app_class=tests.projects.re_app.TestApplication '
     f' --config={TEST_PROJECTS}/frontik_debug.cfg {common_frontik_start_options} '
