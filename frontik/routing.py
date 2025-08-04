@@ -1,14 +1,20 @@
+from __future__ import annotations
+
 import importlib
 import importlib.util
 import logging
 import pkgutil
 from collections.abc import Generator, MutableSequence
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter
 from fastapi.routing import APIRoute
 from starlette.routing import BaseRoute, Match
+
+if TYPE_CHECKING:
+    from collections.abc import Generator, MutableSequence
+
 
 routing_logger = logging.getLogger('frontik.routing')
 
@@ -123,11 +129,12 @@ def _find_fastapi_route_partial(scope: dict) -> set[str]:
     return result
 
 
-def _find_fastapi_route_exact(scope: dict) -> Optional[BaseRoute]:
-    for route in _fastapi_routes:
+def _find_fastapi_route_exact(scope: dict[str, Any], fastapi_routes: list[BaseRoute]) -> BaseRoute | None:
+    for route in fastapi_routes:
         if isinstance(route, APIRoute) and scope['method'] not in route.methods:
             continue
         match, child_scope = route.matches(scope)
+
         if match == Match.FULL:
             scope.update(child_scope)
             scope['route'] = route
@@ -136,21 +143,24 @@ def _find_fastapi_route_exact(scope: dict) -> Optional[BaseRoute]:
     return None
 
 
-def find_route(path: str, method: str) -> dict:
+def find_route(path: str, method: str, fastapi_routes: list[BaseRoute] | None, prefix: str = '') -> dict[str, Any]:
     if path.endswith('/') and path != '/':
         path = path.rstrip('/')
 
     scope: dict[str, Any] = {
         'type': 'http',
-        'path': path,
-        'method': method,
+        'path': f'{prefix}{path}',
+        'method': method.upper(),
         'route': None,
     }
 
-    route = _find_fastapi_route_exact(scope)
+    route = _find_fastapi_route_exact(scope, fastapi_routes if fastapi_routes is not None else _fastapi_routes)
+
+    if fastapi_routes is not None:
+        route = _find_fastapi_route_exact(scope, fastapi_routes)
 
     if route is None and method == 'HEAD':
-        scope = find_route(path, 'GET')
+        scope = find_route(path, 'GET', fastapi_routes)
         scope['method'] = 'HEAD'
         route = scope['route']
         if route is not None and isinstance(route, APIRoute):

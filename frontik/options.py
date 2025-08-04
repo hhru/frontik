@@ -6,6 +6,11 @@ LOG_DIR_OPTION_NAME = 'log_dir'
 STDERR_LOG_OPTION_NAME = 'stderr_log'
 
 
+DEV_MODE_DEFAULT = 'DEFAULT'
+DEV_MODE_DISABLED = 'DISABLED'
+DEV_MODE_ON_DEMAND_ROUTING = 'ON_DEMAND_ROUTING'
+
+
 @dataclass
 class Options:
     app_class: Optional[str] = None
@@ -28,6 +33,7 @@ class Options:
     datacenter: Optional[str] = None
 
     autoreload: bool = False
+    dev_mode: str = DEV_MODE_DISABLED
     stop_timeout: int = 3
     asyncio_task_threshold_sec: Optional[float] = None
     asyncio_task_critical_threshold_sec: Optional[float] = None
