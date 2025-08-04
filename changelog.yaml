@@ -1,3 +1,13 @@
+-   name: 10.3.0
+    date: '2025-08-04T12:46:31.526212+03:00'
+    description: "- [MINOR] **version change** <!--[MAJOR|MINOR|PATCH]-->:\r\n- [Добавлен\
+        \ route_manager, который позволяет в dev режиме ускорить пересборку апки,\
+        \ за счет того, что не делаем импорта всех модулей на каждое изменение] **description**:\r\
+        \n- [false] **requires_changes_in_hh** <!-- [true|false] -->:\r\n- [ ] **instructions**\
+        \ <!-- [if requires_changes_in_hh]-->:"
+    instructions: ''
+    compatible: true
+
 -   name: 10.2.6
     date: '2025-07-29T17:36:48.033711+03:00'
     description: ''
