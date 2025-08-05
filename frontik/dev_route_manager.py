@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Callable, TypedDict
 
 from fastapi import APIRouter
 
+from frontik.options import options
 from frontik.routing import (
     _fastapi_routes,
     find_route,
@@ -25,11 +26,8 @@ routing_logger = logging.getLogger('frontik.routing')
 DELIMITER = ','
 SRC_FOLDER = '/source-site-packages/'
 ROUTES_MAP_MODULE_NAME = 'routes_map_exclude-dev-watcher_'
-ROUTES_MAP_PATH = f'/{SRC_FOLDER}/frontik/{ROUTES_MAP_MODULE_NAME}.py'
 MAX_CHANGED_FILES_COUNT_TO_INVALIDATE = 15
 EMPTY_FS_PATH = 'empty'
-
-SRC_FOLDER_LEN = len(SRC_FOLDER)
 
 
 def make_route_endpoint(endpoint: str) -> Callable[[], str]:
@@ -112,28 +110,24 @@ class DiffResult(TypedDict):
     need_delete: dict[str, PageMtime]
 
 
-def fs_path_to_entry(fs_path: str) -> str:
-    return fs_path[SRC_FOLDER_LEN:].replace('/__init__.py', '').replace('.py', '').replace('/', '.')
+def fs_path_to_entry(fs_path: str, src_folder_len: int) -> str:
+    return fs_path[src_folder_len:].replace('/__init__.py', '').replace('.py', '').replace('/', '.')
 
 
-def map_py_files_mtime(root_folder: str) -> dict[str, PageMtime]:
+def map_py_files_mtime(root_folder: str, src_folder_len: int) -> dict[str, PageMtime]:
     py_files_mtime: dict[str, PageMtime] = {}
     for dirpath, _, filenames in os.walk(root_folder):
         for filename in filenames:
             if filename.endswith('.py') and '.null-ls_' not in filename:
                 full_path = str(pathlib.Path(dirpath) / filename)
                 mtime = pathlib.Path(full_path).stat().st_mtime
-                endpoint = fs_path_to_entry(full_path)
+                endpoint = fs_path_to_entry(full_path, src_folder_len)
                 py_files_mtime[endpoint] = {
                     'mtime': mtime,
                     'fs_path': full_path,
                     'endpoint': endpoint,
                 }
     return py_files_mtime
-
-
-def delete_empty_modules(pages: list[PageMtime]) -> list[PageMtime]:
-    return [page for page in pages if page.get('fs_path') != EMPTY_FS_PATH]
 
 
 def convert_fastapi_route_to_cache(route: BaseRoute, fs_path: str, mtime: float) -> RouteCache:
@@ -160,11 +154,19 @@ class DevRouteManager:
         self.fastapi_routes: list[BaseRoute] = _fastapi_routes
         self.not_found_router: APIRouter = not_found_router
 
+    def get_site_packages_folder(self) -> str:  # noqa: PLR6301
+        return options.site_packages_folder if options.site_packages_folder is not None else SRC_FOLDER
+
+    def get_route_map_path(self) -> str:
+        return f'{self.get_site_packages_folder()}frontik/{ROUTES_MAP_MODULE_NAME}.py'
+
+    def get_site_packages_folder_len(self) -> int:
+        return len(self.get_site_packages_folder())
+
     def import_all_pages(self, app_module: str) -> None:
         pages_root_folder = str(pathlib.Path(SRC_FOLDER) / app_module / 'pages')
-        self.py_files_mtime = map_py_files_mtime(pages_root_folder)
-
-        if pathlib.Path(ROUTES_MAP_PATH).is_file():
+        self.py_files_mtime = map_py_files_mtime(pages_root_folder, self.get_site_packages_folder_len())
+        if pathlib.Path(self.get_route_map_path()).is_file():
             routing_logger.info('Importing routes_map module')
 
             module = importlib.import_module(f'frontik.{ROUTES_MAP_MODULE_NAME}')
@@ -210,7 +212,7 @@ class DevRouteManager:
             self.create_route_map_module(app_module)
 
     def create_route_map_module(self, app_module: str) -> None:
-        routing_logger.info('Routes map file not found, creating: %s', ROUTES_MAP_PATH)
+        routing_logger.info('Routes map file not found, creating: %s', self.get_route_map_path())
         import_all_pages(app_module)
 
         self.proccess_fastapi_routes_to_dev_route(self.py_files_mtime)
@@ -261,7 +263,7 @@ class DevRouteManager:
         self.proccess_fastapi_routes_to_dev_route(self.py_files_mtime)
 
     def update_file_cache(self) -> None:
-        with pathlib.Path(ROUTES_MAP_PATH).open('w', encoding='utf-8') as file:
+        with pathlib.Path(self.get_route_map_path()).open('w', encoding='utf-8') as file:
             file.write(f'routes_map = {json.dumps(list(self.routes_map_module.values()))}\n')
             file.write(f'exclude_pages_to_add = {json.dumps(self.exclude_pages_to_add)}\n')
             mandatory_for_import = [convert_fastapi_route_to_cache(self.not_found_router.routes[-1], EMPTY_FS_PATH, 0)]
