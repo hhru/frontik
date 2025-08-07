@@ -1,3 +1,9 @@
+-   name: 10.3.2
+    date: '2025-08-07T11:15:38.054510+03:00'
+    description: ''
+    instructions: ''
+    compatible: true
+
 -   name: 10.3.1
     date: '2025-08-05T15:19:04.483632+03:00'
     description: Добавлены тесты на модуль dev_route_manager
