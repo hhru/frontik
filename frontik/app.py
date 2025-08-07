@@ -33,6 +33,7 @@ from frontik.balancing_client import (
 )
 from frontik.dependencies import set_app
 from frontik.dev_route_manager import DevRouteManager
+from frontik.handler_asgi import default_exception_handler
 from frontik.http_status import CLIENT_CLOSED_REQUEST
 from frontik.options import DEV_MODE_ON_DEMAND_ROUTING, options
 from frontik.process import WorkerState
@@ -276,7 +277,3 @@ async def default_405(request: Request) -> Response:
 
 async def client_disconnect_error_handler(server_request: Request, exc: ClientDisconnect) -> Response:
     return make_plain_response(CLIENT_CLOSED_REQUEST)
-
-
-async def default_exception_handler(server_request: Request, exc: Exception) -> Response:
-    return make_plain_response(status_code=500)

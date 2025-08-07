@@ -17,8 +17,11 @@ from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.request_integrations import get_integrations, request_context
 from frontik.request_integrations.integrations_dto import IntegrationDto
 from frontik.routing import find_route
+from frontik.util.fastapi import make_plain_response
 
 if TYPE_CHECKING:
+    from fastapi import Request, Response
+
     from frontik.app import FrontikApplication
     from frontik.tornado_request import FrontikTornadoServerRequest
 
@@ -174,7 +177,7 @@ async def execute_asgi_page(
     try:
         await frontik_app(scope, receive, send)
     except Exception:
-        log.exception('failed to execute page')
+        pass
     finally:
         scope.clear()
 
@@ -247,3 +250,8 @@ async def write_start_line(
             'client closed the connection while writing to the socket, rid: %s',
             request_context.get_request_id(),
         )
+
+
+async def default_exception_handler(server_request: Request, exc: Exception) -> Response:
+    log.error('failed to execute page', exc_info=exc)
+    return make_plain_response(status_code=500)
