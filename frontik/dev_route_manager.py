@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Callable, TypedDict
 
 from fastapi import APIRouter
 
-from frontik.options import options
 from frontik.routing import (
     _fastapi_routes,
     find_route,
@@ -154,18 +153,18 @@ class DevRouteManager:
         self.fastapi_routes: list[BaseRoute] = _fastapi_routes
         self.not_found_router: APIRouter = not_found_router
 
-    def get_site_packages_folder(self) -> str:  # noqa: PLR6301
-        return options.site_packages_folder if options.site_packages_folder is not None else SRC_FOLDER
+    def get_frontik_path(self) -> str:  # noqa: PLR6301
+        return __file__.replace('dev_route_manager.py', '')
 
     def get_route_map_path(self) -> str:
-        return f'{self.get_site_packages_folder()}frontik/{ROUTES_MAP_MODULE_NAME}.py'
+        return f'{self.get_frontik_path()}/{ROUTES_MAP_MODULE_NAME}.py'
 
-    def get_site_packages_folder_len(self) -> int:
-        return len(self.get_site_packages_folder())
+    def get_frontik_folder_len(self) -> int:
+        return len(self.get_frontik_path())
 
     def import_all_pages(self, app_module: str) -> None:
         pages_root_folder = str(pathlib.Path(SRC_FOLDER) / app_module / 'pages')
-        self.py_files_mtime = map_py_files_mtime(pages_root_folder, self.get_site_packages_folder_len())
+        self.py_files_mtime = map_py_files_mtime(pages_root_folder, self.get_frontik_folder_len())
         if pathlib.Path(self.get_route_map_path()).is_file():
             routing_logger.info('Importing routes_map module')
 

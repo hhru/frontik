@@ -34,7 +34,6 @@ class Options:
 
     autoreload: bool = False
     dev_mode: str = DEV_MODE_DISABLED
-    site_packages_folder: Optional[str] = None
     stop_timeout: int = 3
     asyncio_task_threshold_sec: Optional[float] = None
     asyncio_task_critical_threshold_sec: Optional[float] = None
