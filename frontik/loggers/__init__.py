@@ -7,6 +7,7 @@ import time
 from functools import cache
 from logging import Filter, Formatter, Handler
 from logging.handlers import SysLogHandler
+from pathlib import Path
 from typing import IO, TYPE_CHECKING, Optional, Union
 
 from tornado.log import LogFormatter
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
     from logging import LogRecord
 
 ROOT_LOGGER = logging.root
+ROOT_LOGGER_NAME = 'service'
 JSON_REQUESTS_LOGGER = logging.getLogger('requests')
 
 CUSTOM_JSON_EXTRA = 'custom_json'
@@ -74,6 +76,10 @@ class JSONFormatter(Formatter):
         mdc = JSONFormatter.get_mdc()
 
         json_message = {'ts': timestamp}
+
+        logger = logging.getLogger(record.name)
+        if options.log_json_with_appender_name:
+            json_message['appender'] = _get_logger_filename(logger)
 
         custom_json = getattr(record, CUSTOM_JSON_EXTRA, None)
         if custom_json:
@@ -159,7 +165,7 @@ def bootstrap_logger(
     handlers = []
 
     if options.log_dir:
-        handlers.extend(_configure_file(logger_name, use_json_formatter, formatter))
+        handlers.extend(_configure_file(logger, use_json_formatter, formatter))
 
     if options.stderr_log:
         handlers.extend(_configure_stderr(use_json_formatter=use_json_formatter, formatter=formatter))
@@ -173,19 +179,25 @@ def bootstrap_logger(
 
     logger.addHandler(DebugLogHandler())
     logger.propagate = False
+    logger.appender = logger_name  # type: ignore[attr-defined]
 
     return logger
 
 
+def _get_logger_filename(logger: logging.Logger) -> str:
+    return getattr(logger, 'appender', ROOT_LOGGER_NAME)
+
+
 def _configure_file(
-    logger_name: str,
+    logger: logging.Logger,
     use_json_formatter: bool = True,
     formatter: Optional[Formatter] = None,
 ) -> list[Handler]:
+    assert options.log_dir is not None
+    filename = _get_logger_filename(logger)
+
     log_extension = '.slog' if use_json_formatter else '.log'
-    file_handler = logging.handlers.WatchedFileHandler(
-        os.path.join(options.log_dir, f'{logger_name}{log_extension}'),  # type: ignore
-    )
+    file_handler = logging.handlers.WatchedFileHandler(Path(options.log_dir) / f'{filename}{log_extension}')
 
     if formatter is not None:
         file_handler.setFormatter(formatter)
@@ -248,7 +260,7 @@ def bootstrap_core_logging(log_level: str, use_json: bool, suppressed_loggers: l
     level = getattr(logging, log_level.upper())
     ROOT_LOGGER.setLevel(logging.NOTSET)
 
-    bootstrap_logger((ROOT_LOGGER, 'service'), level, use_json_formatter=use_json)
+    bootstrap_logger((ROOT_LOGGER, ROOT_LOGGER_NAME), level, use_json_formatter=use_json)
     bootstrap_logger('server', level, use_json_formatter=use_json)
 
     if use_json:

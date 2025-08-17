@@ -143,7 +143,9 @@ def _find_fastapi_route_exact(scope: dict[str, Any], fastapi_routes: list[BaseRo
     return None
 
 
-def find_route(path: str, method: str, fastapi_routes: list[BaseRoute] | None, prefix: str = '') -> dict[str, Any]:
+def find_route(
+    path: str, method: str, fastapi_routes: list[BaseRoute] | None = None, prefix: str = ''
+) -> dict[str, Any]:
     if path.endswith('/') and path != '/':
         path = path.rstrip('/')
 
