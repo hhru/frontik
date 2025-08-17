@@ -42,6 +42,7 @@ class Options:
     log_level: str = 'info'
     update_log_level_interval_in_seconds: int = 300
     log_json: bool = True
+    log_write_appender_name: bool = False
     log_text_format: str = '[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s'
 
     stderr_log: bool = False

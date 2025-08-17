@@ -22,17 +22,19 @@ from tests import FRONTIK_ROOT
 FRONTIK_RUN = f'{FRONTIK_ROOT}/frontik-test'
 TEST_PROJECTS = f'{FRONTIK_ROOT}/tests/projects'
 handler_logger = logging.getLogger('handler')
+service_logger = logging.getLogger('service')
 custom_logger = logging.getLogger('custom_logger')
 
 
 def add_syslog_handler_for_logger(logger_name: str) -> None:
-    handler = _configure_syslog(logger_name)[0]
+    logger = logging.getLogger(logger_name)
+    handler = _configure_syslog(logger)[0]
     handler.setLevel(logging.DEBUG)
-    logging.getLogger(logger_name).addHandler(handler)
+    logger.addHandler(handler)
 
 
 def add_syslog_handler_for_root_logger() -> None:
-    handler = _configure_syslog('service')[0]
+    handler = _configure_syslog(service_logger)[0]
     handler.setLevel(logging.DEBUG)
     logging.root.addHandler(handler)
 
@@ -72,6 +74,7 @@ class TestSyslog(FrontikTestBase):
 
         port = cls.s.getsockname()[1]
 
+        options.log_write_appender_name = True
         options.syslog = True
         options.syslog_port = port
         options.syslog_tag = 'test'
@@ -119,9 +122,23 @@ class TestSyslog(FrontikTestBase):
             parsed_logs[tag].append({'priority': priority, 'message': message})
 
         expected_service_logs = [
-            {'priority': '14', 'message': {'lvl': 'INFO', 'logger': r'handler', 'msg': 'requested url: /log'}},
-            {'priority': '15', 'message': {'lvl': 'DEBUG', 'logger': r'handler', 'msg': 'debug'}},
-            {'priority': '14', 'message': {'lvl': 'INFO', 'logger': r'handler', 'msg': 'info'}},
+            {
+                'priority': '14',
+                'message': {
+                    'lvl': 'INFO',
+                    'logger': r'handler',
+                    'msg': 'requested url: /log',
+                    'appender': 'service.slog',
+                },
+            },
+            {
+                'priority': '15',
+                'message': {'lvl': 'DEBUG', 'logger': r'handler', 'msg': 'debug', 'appender': 'service.slog'},
+            },
+            {
+                'priority': '14',
+                'message': {'lvl': 'INFO', 'logger': r'handler', 'msg': 'info', 'appender': 'service.slog'},
+            },
             {
                 'priority': '11',
                 'message': {
@@ -130,6 +147,7 @@ class TestSyslog(FrontikTestBase):
                     'msg': 'exception',
                     'exception': '.*raise Exception.*',
                 },
+                'appender': 'service.slog',
             },
             {
                 'priority': '11',
@@ -138,8 +156,12 @@ class TestSyslog(FrontikTestBase):
                     'logger': r'handler',
                     'msg': 'error',
                 },
+                'appender': 'service.slog',
             },
-            {'priority': '10', 'message': {'lvl': 'CRITICAL', 'logger': r'handler', 'msg': 'critical'}},
+            {
+                'priority': '10',
+                'message': {'lvl': 'CRITICAL', 'logger': r'handler', 'msg': 'critical', 'appender': 'service.slog'},
+            },
         ]
 
         self.assert_json_logs_match(expected_service_logs, parsed_logs['test/service.slog/'])
@@ -151,6 +173,7 @@ class TestSyslog(FrontikTestBase):
                     'lvl': 'INFO',
                     'logger': r'server',
                     'msg': r'Successfully inited application app',
+                    'appender': 'server.slog',
                 },
             },
         ]
@@ -160,7 +183,15 @@ class TestSyslog(FrontikTestBase):
         expected_requests_logs = [
             {
                 'priority': '14',
-                'message': {'ip': '.+', 'rid': '.+', 'status': '200', 'time': '.+', 'method': 'GET', 'uri': '/log'},
+                'message': {
+                    'ip': '.+',
+                    'rid': '.+',
+                    'status': '200',
+                    'time': '.+',
+                    'method': 'GET',
+                    'uri': '/log',
+                    'appender': 'requests.slog',
+                },
             },
         ]
 
@@ -169,7 +200,7 @@ class TestSyslog(FrontikTestBase):
         expected_custom_logs = [
             {
                 'priority': '10',
-                'message': r'\[\d+\] [\d-]+ [\d:,]+ CRITICAL '
+                'message': r'\["appender":"service.slog"\] \[\d+\] [\d-]+ [\d:,]+ CRITICAL '
                 r'custom_logger\.tests\.test_logging\.get_page\.tests\.test_logging\.get_page: fatal',  # seems weird
             },
         ]
@@ -215,8 +246,10 @@ class TestLogToFile(FrontikTestBase):
     def setup_class(cls):
         cls.tmp_log_dir = tempfile.mkdtemp()
         options.log_dir = cls.tmp_log_dir
-        cls.handler = _configure_file('server')[0]
-        logging.getLogger('server').addHandler(cls.handler)
+        options.log_write_appender_name = True
+        server_logger = logging.getLogger('server')
+        cls.handler = _configure_file(server_logger)[0]
+        server_logger.addHandler(cls.handler)
 
     @classmethod
     def teardown_class(cls):

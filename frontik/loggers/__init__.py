@@ -7,6 +7,7 @@ import time
 from functools import cache
 from logging import Filter, Formatter, Handler
 from logging.handlers import SysLogHandler
+from pathlib import Path
 from typing import IO, TYPE_CHECKING, Optional, Union
 
 from tornado.log import LogFormatter
@@ -75,6 +76,10 @@ class JSONFormatter(Formatter):
 
         json_message = {'ts': timestamp}
 
+        if options.log_write_appender_name:
+            logger = logging.getLogger(record.name)
+            json_message['appender'] = _get_logger_filename(logger)
+
         custom_json = getattr(record, CUSTOM_JSON_EXTRA, None)
         if custom_json:
             json_message.update(custom_json)
@@ -131,7 +136,26 @@ class StderrFormatter(LogFormatter):
         if not record.msg:
             record.msg = ', '.join(f'{k}={v}' for k, v in getattr(record, CUSTOM_JSON_EXTRA, {}).items())
 
-        return super().format(record)
+        formatted_message = super().format(record)
+
+        if options.log_write_appender_name:
+            logger = logging.getLogger(record.name)
+            appender_name = _get_logger_filename(logger)
+            formatted_message = f'["appender":"{appender_name}"] {formatted_message}'
+
+        return formatted_message
+
+
+class TextFormatter(Formatter):
+    def format(self, record: LogRecord) -> str:
+        formatted_message = super().format(record)
+
+        if options.log_write_appender_name:
+            logger = logging.getLogger(record.name)
+            appender_name = _get_logger_filename(logger)
+            formatted_message = f'["appender":"{appender_name}"] {formatted_message}'
+
+        return formatted_message
 
 
 @cache
@@ -140,8 +164,8 @@ def get_stderr_formatter() -> StderrFormatter:
 
 
 @cache
-def get_text_formatter() -> Formatter:
-    return Formatter(options.log_text_format)
+def get_text_formatter() -> TextFormatter:
+    return TextFormatter(options.log_text_format)
 
 
 def bootstrap_logger(
@@ -156,16 +180,18 @@ def bootstrap_logger(
     else:
         logger, logger_name = logging.getLogger(logger_info), logger_info
 
+    log_extension = '.slog' if use_json_formatter else '.log'
+    logger.appender = logger_name + log_extension  # type: ignore[attr-defined]
     handlers = []
 
     if options.log_dir:
-        handlers.extend(_configure_file(logger_name, use_json_formatter, formatter))
+        handlers.extend(_configure_file(logger, use_json_formatter, formatter))
 
     if options.stderr_log:
         handlers.extend(_configure_stderr(use_json_formatter=use_json_formatter, formatter=formatter))
 
     if options.syslog:
-        handlers.extend(_configure_syslog(logger_name, use_json_formatter, formatter))
+        handlers.extend(_configure_syslog(logger, use_json_formatter, formatter))
 
     for handler in handlers:
         handler.setLevel(logger_level)
@@ -177,15 +203,19 @@ def bootstrap_logger(
     return logger
 
 
+def _get_logger_filename(logger: logging.Logger) -> str:
+    return getattr(logger, 'appender', ROOT_LOGGER.appender)  # type: ignore[return-value, attr-defined]
+
+
 def _configure_file(
-    logger_name: str,
+    logger: logging.Logger,
     use_json_formatter: bool = True,
     formatter: Optional[Formatter] = None,
 ) -> list[Handler]:
-    log_extension = '.slog' if use_json_formatter else '.log'
-    file_handler = logging.handlers.WatchedFileHandler(
-        os.path.join(options.log_dir, f'{logger_name}{log_extension}'),  # type: ignore
-    )
+    assert options.log_dir is not None
+    filename = _get_logger_filename(logger)
+
+    file_handler = logging.handlers.WatchedFileHandler(Path(options.log_dir) / f'{filename}')
 
     if formatter is not None:
         file_handler.setFormatter(formatter)
@@ -216,18 +246,19 @@ def _configure_stderr(
 
 
 def _configure_syslog(
-    logger_name: str,
+    logger: logging.Logger,
     use_json_formatter: bool = True,
     formatter: Optional[Formatter] = None,
 ) -> list[Handler]:
+    filename = _get_logger_filename(logger)
+
     try:
         syslog_handler = SysLogHandler(
             address=(options.syslog_host, options.syslog_port),
             facility=SysLogHandler.facility_names[options.syslog_facility],
             socktype=socket.SOCK_DGRAM,
         )
-        log_extension = '.slog' if use_json_formatter else '.log'
-        syslog_handler.ident = f'{options.syslog_tag}/{logger_name}{log_extension}/: '
+        syslog_handler.ident = f'{options.syslog_tag}/{filename}/: '
         if formatter is not None:
             syslog_handler.setFormatter(formatter)
         elif use_json_formatter:
