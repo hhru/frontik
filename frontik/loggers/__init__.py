@@ -162,6 +162,7 @@ def bootstrap_logger(
     else:
         logger, logger_name = logging.getLogger(logger_info), logger_info
 
+    logger.appender = logger_name  # type: ignore[attr-defined]
     handlers = []
 
     if options.log_dir:
@@ -179,7 +180,6 @@ def bootstrap_logger(
 
     logger.addHandler(DebugLogHandler())
     logger.propagate = False
-    logger.appender = logger_name  # type: ignore[attr-defined]
 
     return logger
 
