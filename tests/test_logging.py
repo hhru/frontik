@@ -22,17 +22,19 @@ from tests import FRONTIK_ROOT
 FRONTIK_RUN = f'{FRONTIK_ROOT}/frontik-test'
 TEST_PROJECTS = f'{FRONTIK_ROOT}/tests/projects'
 handler_logger = logging.getLogger('handler')
+service_logger = logging.getLogger('service')
 custom_logger = logging.getLogger('custom_logger')
 
 
 def add_syslog_handler_for_logger(logger_name: str) -> None:
-    handler = _configure_syslog(logger_name)[0]
+    logger = logging.getLogger(logger_name)
+    handler = _configure_syslog(logger)[0]
     handler.setLevel(logging.DEBUG)
-    logging.getLogger(logger_name).addHandler(handler)
+    logger.addHandler(handler)
 
 
 def add_syslog_handler_for_root_logger() -> None:
-    handler = _configure_syslog('service')[0]
+    handler = _configure_syslog(service_logger)[0]
     handler.setLevel(logging.DEBUG)
     logging.root.addHandler(handler)
 

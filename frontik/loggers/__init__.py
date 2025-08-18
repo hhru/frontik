@@ -172,7 +172,7 @@ def bootstrap_logger(
         handlers.extend(_configure_stderr(use_json_formatter=use_json_formatter, formatter=formatter))
 
     if options.syslog:
-        handlers.extend(_configure_syslog(logger_name, use_json_formatter, formatter))
+        handlers.extend(_configure_syslog(logger, use_json_formatter, formatter))
 
     for handler in handlers:
         handler.setLevel(logger_level)
@@ -228,10 +228,12 @@ def _configure_stderr(
 
 
 def _configure_syslog(
-    logger_name: str,
+    logger: logging.Logger,
     use_json_formatter: bool = True,
     formatter: Optional[Formatter] = None,
 ) -> list[Handler]:
+    filename = _get_logger_filename(logger)
+
     try:
         syslog_handler = SysLogHandler(
             address=(options.syslog_host, options.syslog_port),
@@ -239,7 +241,7 @@ def _configure_syslog(
             socktype=socket.SOCK_DGRAM,
         )
         log_extension = '.slog' if use_json_formatter else '.log'
-        syslog_handler.ident = f'{options.syslog_tag}/{logger_name}{log_extension}/: '
+        syslog_handler.ident = f'{options.syslog_tag}/{filename}{log_extension}/: '
         if formatter is not None:
             syslog_handler.setFormatter(formatter)
         elif use_json_formatter:
