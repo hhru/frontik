@@ -77,8 +77,8 @@ class JSONFormatter(Formatter):
 
         json_message = {'ts': timestamp}
 
-        logger = logging.getLogger(record.name)
         if options.log_json_with_appender_name:
+            logger = logging.getLogger(record.name)
             json_message['appender'] = _get_logger_filename(logger)
 
         custom_json = getattr(record, CUSTOM_JSON_EXTRA, None)
