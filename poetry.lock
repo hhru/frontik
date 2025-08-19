@@ -598,22 +598,23 @@ name = "consul"
 version = "1.0.0"
 description = "Python client for Consul (http://www.consul.io/)"
 optional = false
-python-versions = ">=3.9,<4.0"
+python-versions = ">=3.9"
 groups = ["main"]
-files = []
-develop = false
+files = [
+    {file = "consul-1.0.0-py3-none-any.whl", hash = "sha256:c3bbc67dda94d9bd5b7e422f8acdd9d07faba618c14a3dc524b0cfcb65bf158e"},
+    {file = "consul-1.0.0.tar.gz", hash = "sha256:4a99483fc7f4dbfd400e6aec7dc02d98aced8d6dbadf98ca7a6c11ee2aef0078"},
+]
 
 [package.dependencies]
-aiohttp = ">=3.8.3,<4.0"
+aiohttp = ">=3.8.3"
 packaging = ">=21.0"
 requests = "*"
 six = ">=1.4"
 
 [package.source]
-type = "git"
-url = "ssh://git@forgejo.pyn.ru/hhru/python-consul2"
-reference = "1.0.0"
-resolved_reference = "48baf939ec82641f47cd062d7a77938b2bfae7e3"
+type = "legacy"
+url = "https://devpi.pyn.ru/hh/hhdev/+simple"
+reference = "hhdev"
 
 [[package]]
 name = "deprecated"
@@ -1002,23 +1003,23 @@ reference = "pypi-mirror"
 
 [[package]]
 name = "http-client"
-version = "4.0.1"
+version = "4.0.4"
 description = "Balancing http client around aiohttp"
 optional = false
-python-versions = ">=3.9,<3.14"
+python-versions = ">=3.9,<4"
 groups = ["main"]
 files = [
-    {file = "http_client-4.0.1-py3-none-any.whl", hash = "sha256:7578af6b968119a5060039f2aa706aabdae2ce5ae53fee26807409ec2d4af387"},
-    {file = "http_client-4.0.1.tar.gz", hash = "sha256:a46942e16a168f74210a4e8861ca961d1e9faf61cda105210ee6bf4180df19a8"},
+    {file = "http_client-4.0.4-py3-none-any.whl", hash = "sha256:c961ec87d5b3afd69f421d1ced996b0dc75c436a75839d9bb51e30e1be66d634"},
+    {file = "http_client-4.0.4.tar.gz", hash = "sha256:eb8601c4d1802e8a1ddb400bc4ebafbca313047eb5322ad62728e477e066616a"},
 ]
 
 [package.dependencies]
-aiohttp = ">=3.8.3,<4.0.0"
+aiohttp = ">=3.8.3"
 aiokafka = "*"
 lxml = "5.3.0"
 orjson = "*"
 pydantic = ">2,<3"
-pystatsd = ">=1,<2"
+pystatsd = ">=1"
 yarl = "1.18.3"
 
 [package.source]
@@ -2271,14 +2272,14 @@ reference = "pypi-mirror"
 
 [[package]]
 name = "pystatsd"
-version = "1.0.3"
+version = "1.0.4"
 description = "Python client for statsd"
 optional = false
-python-versions = ">=3.9,<3.14"
+python-versions = ">=3.9,<4"
 groups = ["main"]
 files = [
-    {file = "pystatsd-1.0.3-py3-none-any.whl", hash = "sha256:13b0d26e0d476d5e5133a788ad97de7b5d9a9ff3a23248cbc572c5f0737ac73f"},
-    {file = "pystatsd-1.0.3.tar.gz", hash = "sha256:3a60dd18f1f25aa45b320f2e049e01edca0195b40e100058279b0a5e3f1e3a1f"},
+    {file = "pystatsd-1.0.4-py3-none-any.whl", hash = "sha256:8700c71e2b5cc1ce43aa0f61592f4a96430f979b7fef0f4b18e6ba006a7be01b"},
+    {file = "pystatsd-1.0.4.tar.gz", hash = "sha256:5939e685432c80ca82c80f0327ea2954df0af37f8ca082b2f78ffab1f46c272d"},
 ]
 
 [package.source]
@@ -2288,14 +2289,14 @@ reference = "hhdev"
 
 [[package]]
 name = "pystolint"
-version = "0.2.14"
+version = "0.2.17"
 description = "Linters composer"
 optional = false
-python-versions = "<3.14,>=3.9"
+python-versions = ">=3.9"
 groups = ["test"]
 files = [
-    {file = "pystolint-0.2.14-py3-none-any.whl", hash = "sha256:5df8f1eb9a7c9b1a16a4b71b9b9d3bb2bcd7c9d7158f08ca8055e910e2d3e181"},
-    {file = "pystolint-0.2.14.tar.gz", hash = "sha256:89d1c9c8cf1742ac651b881150ed6849e9c1881a0218013b24c9d52ce8b963c1"},
+    {file = "pystolint-0.2.17-py3-none-any.whl", hash = "sha256:bb456a481b93acbae1091192190b7e071c517adf92d380da0fed64dc448c0bc7"},
+    {file = "pystolint-0.2.17.tar.gz", hash = "sha256:5dc7d4ee7ffa6df39c4f072c303e491e2f87832a00bb3a61719a4624e5f4779f"},
 ]
 
 [package.dependencies]
@@ -3245,5 +3246,5 @@ testing = []
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.9,<3.14"
-content-hash = "fea95b9abb9db1b906f156185ae3145e754ba60daea1a75bb0f613b9a0a1da6c"
+python-versions = ">=3.9,<4"
+content-hash = "c1e84d4ec56477f7c12e34fa584a95351218bf931c0c9c19825d95863ea0f5fe"
