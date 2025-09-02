@@ -9,9 +9,9 @@ from threading import Lock
 from typing import Any, Callable, Optional
 
 from consul.base import Check, ConsistencyMode, HealthCache, KVCache, Weight
-from http_client import consul_parser
 from http_client import options as http_options
 from http_client.balancing import Server, Upstream, UpstreamConfigs
+from http_client.parsing import consul_parser
 from pystatsd import StatsDClientABC
 
 from frontik.consul_client import ClientEventCallback, SyncConsulClient
