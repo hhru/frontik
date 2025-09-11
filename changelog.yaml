@@ -1,3 +1,10 @@
+-   name: 10.3.7
+    date: '2025-09-11T09:07:56.005592+03:00'
+    description: Поддержали актульные версии pydevd - имена параметров stdout_to_server
+        и stderr_to_server теперь в snake_case
+    instructions: ''
+    compatible: true
+
 -   name: 10.3.6
     date: '2025-09-09T09:05:11.883619+03:00'
     description: ''
