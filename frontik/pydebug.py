@@ -25,4 +25,4 @@ def try_init_debugger() -> None:
         debug_setting = debug_setting.removeprefix('pydevd:')
         host, _, debug_setting = debug_setting.partition(':')
         suspend, port = _parse_debug_setting(debug_setting)
-        pydevd_pycharm.settrace(host, port=port, stdoutToServer=True, stderrToServer=True, suspend=suspend)
+        pydevd_pycharm.settrace(host, port=port, stdout_to_server=True, stderr_to_server=True, suspend=suspend)
