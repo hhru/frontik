@@ -1,0 +1,9 @@
+on: [pull_request]
+
+jobs:
+    Security_pipeline:
+        runs-on: k8s-security-scan
+        container: 
+            image: ${{vars.DEVSECOPS_IMAGE_CURLJQ}}
+        steps:
+            - uses: https://${{secrets.DEVSECOPS_FORGEJO_API_TOKEN}}@forgejo.pyn.ru/hhru/devsecops-security-scan/multiaction/@master
