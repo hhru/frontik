@@ -3,7 +3,7 @@ from fastapi import Request
 from fastapi.routing import APIRoute
 
 from frontik.app import FrontikApplication
-from frontik.routing import get_route_sort_key, router
+from frontik.routing import get_route_sort_key, router, preflight_method_router
 from frontik.testing import FrontikTestBase
 
 
@@ -30,6 +30,11 @@ async def id_page(request: Request) -> str:
 @router.get('/nested/nested/nested')
 async def nested_page() -> str:
     return 'OK'
+
+
+@router.options('/simple_options')
+async def simple_preflight_options() -> str:
+    return 'preflight ok'
 
 
 class TestRouting(FrontikTestBase):
@@ -87,6 +92,18 @@ class TestRouting(FrontikTestBase):
         response = await self.fetch('/multiple', method=method)
         assert response.status_code == 200
         assert response.data == method
+
+    async def test_options_request_on_existing_route(self):
+        response = await self.fetch('/simple', method='OPTIONS')
+        assert response.status_code == 204
+
+    async def test_options_request_on_undefined_route(self):
+        response = await self.fetch('/nonexistent_route', method='OPTIONS')
+        assert response.status_code == 204
+
+    async def test_options_request_on_defined_route(self):
+        response = await self.fetch('/simple_options', method='OPTIONS')
+        assert response.data == 'preflight ok'
 
 
 def create_mock_route(path: str) -> APIRoute:

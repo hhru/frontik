@@ -114,6 +114,7 @@ def import_all_pages(app_module: str) -> None:
 router = FrontikRouter()
 not_found_router = APIRouter()
 method_not_allowed_router = APIRouter()
+preflight_method_router = APIRouter()
 
 
 def _find_fastapi_route_partial(scope: dict) -> set[str]:
@@ -169,23 +170,27 @@ def find_route(
             route.methods.add('HEAD')
 
     if route is None:
-        allowed_methods = get_allowed_methods(scope)
-        if len(allowed_methods) > 0:
-            scope['allowed_methods'] = allowed_methods
-            route = method_not_allowed_router.routes[-1]
-        else:
-            route = not_found_router.routes[-1]
-
-        if isinstance(route, APIRoute) and method not in route.methods:
+        if method == 'OPTIONS':
+            route = preflight_method_router.routes[-1]
             route.methods.add(method)
+        else:
+            allowed_methods = get_allowed_methods(scope)
+            if len(allowed_methods) > 0:
+                scope['allowed_methods'] = allowed_methods
+                route = method_not_allowed_router.routes[-1]
+            else:
+                route = not_found_router.routes[-1]
 
-        assert isinstance(route, APIRoute)
-        routing_logger.error(
-            'match for request url %s "%s" not found, using %s',
-            method,
-            path,
-            route.endpoint.__module__ + '.' + route.endpoint.__name__,
-        )
+            if isinstance(route, APIRoute) and method not in route.methods:
+                route.methods.add(method)
+
+            assert isinstance(route, APIRoute)
+            routing_logger.error(
+                'match for request url %s "%s" not found, using %s',
+                method,
+                path,
+                route.endpoint.__module__ + '.' + route.endpoint.__name__,
+            )
         scope['route'] = route
 
     if isinstance(route, APIRoute):
