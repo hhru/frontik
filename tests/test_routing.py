@@ -3,7 +3,7 @@ from fastapi import Request
 from fastapi.routing import APIRoute
 
 from frontik.app import FrontikApplication
-from frontik.routing import get_route_sort_key, router, preflight_method_router
+from frontik.routing import get_route_sort_key, router
 from frontik.testing import FrontikTestBase
 
 
