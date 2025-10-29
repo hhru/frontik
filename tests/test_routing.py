@@ -93,15 +93,15 @@ class TestRouting(FrontikTestBase):
         assert response.status_code == 200
         assert response.data == method
 
-    async def test_options_request_on_existing_route(self):
+    async def test_options_request_on_existing_route(self) -> None:
         response = await self.fetch('/simple', method='OPTIONS')
         assert response.status_code == 204
 
-    async def test_options_request_on_undefined_route(self):
+    async def test_options_request_on_undefined_route(self) -> None:
         response = await self.fetch('/nonexistent_route', method='OPTIONS')
         assert response.status_code == 204
 
-    async def test_options_request_on_defined_route(self):
+    async def test_options_request_on_defined_route(self) -> None:
         response = await self.fetch('/simple_options', method='OPTIONS')
         assert response.data == 'preflight ok'
 

@@ -171,7 +171,8 @@ def find_route(
 
     if route is None and method == 'OPTIONS':
         route = preflight_router.routes[-1]
-        route.methods.add(method)
+        if isinstance(route, APIRoute):
+            route.methods.add(method)
         scope['route'] = route
 
     if route is None:
