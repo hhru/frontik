@@ -32,6 +32,11 @@ async def nested_page() -> str:
     return 'OK'
 
 
+@router.options('/simple_options')
+async def simple_preflight_options() -> str:
+    return 'preflight ok'
+
+
 class TestRouting(FrontikTestBase):
     @pytest.fixture(scope='class')
     def frontik_app(self) -> FrontikApplication:
@@ -87,6 +92,18 @@ class TestRouting(FrontikTestBase):
         response = await self.fetch('/multiple', method=method)
         assert response.status_code == 200
         assert response.data == method
+
+    async def test_options_request_on_existing_route(self) -> None:
+        response = await self.fetch('/simple', method='OPTIONS')
+        assert response.status_code == 204
+
+    async def test_options_request_on_undefined_route(self) -> None:
+        response = await self.fetch('/nonexistent_route', method='OPTIONS')
+        assert response.status_code == 204
+
+    async def test_options_request_on_defined_route(self) -> None:
+        response = await self.fetch('/simple_options', method='OPTIONS')
+        assert response.data == 'preflight ok'
 
 
 def create_mock_route(path: str) -> APIRoute:
