@@ -114,6 +114,7 @@ def import_all_pages(app_module: str) -> None:
 router = FrontikRouter()
 not_found_router = APIRouter()
 method_not_allowed_router = APIRouter()
+preflight_router = APIRouter()
 
 
 def _find_fastapi_route_partial(scope: dict) -> set[str]:
@@ -167,6 +168,12 @@ def find_route(
         route = scope['route']
         if route is not None and isinstance(route, APIRoute):
             route.methods.add('HEAD')
+
+    if route is None and method == 'OPTIONS':
+        route = preflight_router.routes[-1]
+        if isinstance(route, APIRoute):
+            route.methods.add(method)
+        scope['route'] = route
 
     if route is None:
         allowed_methods = get_allowed_methods(scope)

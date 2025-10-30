@@ -41,6 +41,7 @@ from frontik.routing import (
     import_all_pages,
     method_not_allowed_router,
     not_found_router,
+    preflight_router,
     router,
     routers,
 )
@@ -273,6 +274,12 @@ async def default_404() -> Response:
 @method_not_allowed_router.get('__method_not_allowed')
 async def default_405(request: Request) -> Response:
     return Response(status_code=405, headers={'Allow': ', '.join(request.scope['allowed_methods'])})
+
+
+@preflight_router.options('__preflight_options')
+async def default_preflight_options() -> Response:
+    # CORS should be handled by CORSMiddleware in application code
+    return Response(status_code=204)
 
 
 async def client_disconnect_error_handler(server_request: Request, exc: ClientDisconnect) -> Response:
