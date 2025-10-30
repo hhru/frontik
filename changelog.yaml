@@ -1,3 +1,9 @@
+-   name: 10.3.8
+    date: '2025-10-30T14:26:47.344127+03:00'
+    description: Добавлена дефолтная обработка OPTIONS preflight запросов
+    instructions: ''
+    compatible: true
+
 -   name: 10.3.7
     date: '2025-09-11T09:07:56.005592+03:00'
     description: Поддержали актульные версии pydevd - имена параметров stdout_to_server
