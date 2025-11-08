@@ -193,8 +193,8 @@ def _params_to_xml(url: str) -> etree.Element:
         for value in values:
             try:
                 params.append(E.param(to_unicode(value), name=to_unicode(name)))
-            except UnicodeDecodeError:
-                debug_log.exception('cannot decode parameter name or value')
+            except ValueError:  # noqa: PERF203
+                debug_log.exception('bad parameter name or value')
                 params.append(E.param(repr(value), name=repr(name)))
     return params
 
@@ -318,7 +318,7 @@ class DebugBufferedHandler(BufferedHandler):
 
         entry.set('asctime', str(datetime.fromtimestamp(record.created)))
 
-        if record.exc_info is not None:
+        if record.exc_info:
             entry.append(_exception_to_xml(record.exc_info))
 
         if hasattr(record, '_response') and getattr(record, '_response', None) is not None:

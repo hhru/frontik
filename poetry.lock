@@ -1155,14 +1155,14 @@ reference = "pypi-mirror"
 
 [[package]]
 name = "http-client"
-version = "4.0.6"
+version = "4.0.9"
 description = "Balancing http client around aiohttp"
 optional = false
 python-versions = ">=3.9,<4"
 groups = ["main"]
 files = [
-    {file = "http_client-4.0.6-py3-none-any.whl", hash = "sha256:f1275fdb04398db80f8712f8ff7b8f2211f72bcf1ad5578a5efe3c1e63768944"},
-    {file = "http_client-4.0.6.tar.gz", hash = "sha256:6ae090b74001294b5d3656d52905dae4c0cce9142d72f3808f0c6b5ba6dee207"},
+    {file = "http_client-4.0.9-py3-none-any.whl", hash = "sha256:f4954da6965f105ed58b301749308c96518ab100a90f800468fb6ccda81ed29c"},
+    {file = "http_client-4.0.9.tar.gz", hash = "sha256:ef1e6e24e7e5f879782c0ecc666d242463701eeaa5b02dfd674711315404933b"},
 ]
 
 [package.dependencies]
@@ -3399,4 +3399,4 @@ testing = []
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<4"
-content-hash = "ea551e05859b19604f10909a76536329efc7126f18bf4397ea37f6763c942bc3"
+content-hash = "52241b3790ba1302a3a8f4052274823cba4da7dbc04ef53874e2bef2f7aa00b2"
