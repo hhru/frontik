@@ -161,7 +161,7 @@
 
             .time {
                 display: inline-block;
-                width: 4em;
+                width: 5em;
             }
             .label {
                 margin-right: 8px;
@@ -245,6 +245,7 @@
             .exception {
                 padding-left: 20px;
                 color: #c00;
+                font-family: monospace;
             }
 
             .iframe {
