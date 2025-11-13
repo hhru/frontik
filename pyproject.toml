@@ -30,23 +30,26 @@ python = '>=3.9,<4'
 aiohttp = '3.11.11'
 lxml = '5.3.0'
 pydantic = '^2.3.0'
-tornado = '6.3.3'
+tornado = '6.5.2'
 orjson = '*'
 packaging = '<25.0'
 http-client = {version = '>=4.0.9,<5', source = 'hhdev'}
 consul = {version = '1.0.0', source = 'hhdev'}
-pystatsd = {version = '>=1.0.4', source = 'hhdev'}
-opentelemetry-sdk = '1.25.0'
-opentelemetry-api = '1.25.0'
-opentelemetry-exporter-otlp-proto-grpc = '1.25.0'
-opentelemetry-instrumentation-fastapi = '0.46b0'
-opentelemetry-instrumentation-aiohttp-client = '0.46b0'
-opentelemetry-instrumentation-tornado = '0.46b0'
-fastapi = '0.115.2'
+pystatsd = {version = '>=1.0.4,<2', source = 'hhdev'}
+opentelemetry-sdk = '1.38.0'
+opentelemetry-api = '1.38.0'
+opentelemetry-exporter-otlp-proto-grpc = '1.38.0'
+opentelemetry-exporter-otlp-proto-http = '1.38.0'
+opentelemetry-instrumentation-fastapi = '0.59b0'
+opentelemetry-instrumentation-aiohttp-client = '0.59b0'
+opentelemetry-instrumentation-tornado = '0.59b0'
+grpcio = '>=1.73.1'
+fastapi = '0.121.1'
 aiokafka = {extras = ['lz4'], version = '0.12.0'}
 acsylla='1.0.0'
 sentry-sdk = '>=2.7,<3'
-python-multipart = "^0.0.16"
+python-multipart = '^0.0.19'
+virtualenv = '20.31.1'
 pyyaml = { version = "6.0.2", optional = true }
 types-pyyaml = { version = "6.0.2", optional = true }
 

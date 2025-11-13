@@ -142,6 +142,7 @@ class Options:
     opentelemetry_collector_url: str = 'http://127.0.0.1:2360'
     opentelemetry_sampler_ratio: float = 0.01
     opentelemetry_enabled: bool = False
+    opentelemetry_exporter_type: str = 'grpc'
 
 
 options = Options()

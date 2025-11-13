@@ -9,13 +9,14 @@ from http_client import current_client_request, current_client_request_status
 from http_client.options import options as http_client_options
 from http_client.request_response import OUTER_TIMEOUT_MS_HEADER
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GrpcExporter
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HttpExporter
 from opentelemetry.instrumentation import aiohttp_client
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore
 from opentelemetry.propagate import set_global_textmap
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import IdGenerator, TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExporter
 from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
@@ -87,7 +88,12 @@ class TelemetryIntegration(Integration):
         integrations_logger.info('start telemetry')
         provider = make_otel_provider(frontik_app)
 
-        otlp_exporter = OTLPSpanExporter(endpoint=options.opentelemetry_collector_url, insecure=True)
+        if options.opentelemetry_exporter_type == 'grpc':
+            otlp_exporter: SpanExporter = GrpcExporter(endpoint=options.opentelemetry_collector_url, insecure=True)
+        elif options.opentelemetry_exporter_type == 'http':
+            otlp_exporter = HttpExporter(endpoint=options.opentelemetry_collector_url)
+        else:
+            raise ValueError(f'unknown opentelemetry_exporter_type = {options.opentelemetry_exporter_type}')
         provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
         trace.set_tracer_provider(provider)
 
