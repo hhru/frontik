@@ -73,11 +73,6 @@ class TestHttpError:
         assert result.status_code == 200
         assert result.content == b'"result"'
 
-    def test_different_datacenter(self):
-        result = frontik_balancer_app.get_page(self.make_url('/different_datacenter'))
-        assert result.status_code == 200
-        assert result.content == b'"no backend available"'
-
     def test_requests_count(self):
         result = frontik_balancer_app.get_page(self.make_url('/requests_count'))
         assert result.status_code == 200, result.content

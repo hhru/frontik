@@ -155,15 +155,17 @@ class MasterServiceDiscovery(ServiceDiscovery):
         upstream_cache.add_listener(self._update_upstreams_config, trigger_current=True)
         upstream_cache.start()
 
-        allow_cross_dc = http_options.http_client_allow_cross_datacenter_requests
-        forced_cross_dc_upstreams = http_options.force_allow_cross_datacenter_for_upstreams
+        cross_datacenter_upstreams = (
+            options.cross_datacenter_upstreams.split(',') if options.cross_datacenter_upstreams else []
+        )
 
-        def cross_dc_or_forced(entry):
-            upstream, dc = entry
-            return allow_cross_dc or dc == http_options.datacenter or upstream in forced_cross_dc_upstreams
-
-        for upstream, dc in filter(cross_dc_or_forced, itertools.product(options.upstreams, http_options.datacenters)):
-            self.__subscribe_to_service(upstream, dc)
+        for upstream, dc in itertools.product(options.upstreams, http_options.datacenters):
+            if (
+                dc == http_options.datacenter
+                or '*' in cross_datacenter_upstreams
+                or upstream in cross_datacenter_upstreams
+            ):
+                self.__subscribe_to_service(upstream, dc)
 
         kafka_upstreams = ['kafka-' + kafka_name for kafka_name in options.kafka_clusters]
         scylla_upstreams = ['scylla-' + scylla_name for scylla_name in options.scylla_clusters]
