@@ -1,3 +1,16 @@
+-   name: 11.0.0
+    date: '2025-11-25T12:24:06.310241+03:00'
+    description: Обновление http-client до 5.0.0. Настройка `force_allow_cross_datacenter_for_upstreams`
+        переименована в `cross_datacenter_upstreams`. Настройка `http_client_allow_cross_datacenter_requests`
+        больше не обрабатывается.
+    instructions: В конфиге вашего сервиса (в файле `frontik.cfg`) удалить настройки
+        `http_client_allow_cross_datacenter_requests` и `force_allow_cross_datacenter_for_upstreams`,
+        если они присутствуют. Далее если в `group_vars` для вашего сервиса (в файле
+        `group_vars/service-name-docker`) задана настройка `cross_datacenter_upstream`,
+        то ее необходимо удалить И вместо этого перечислить апстримы, в которые необходимо
+        ходить кросс дц, в настройке `cross_datacenter_upstream` в файле `group_vars/all`
+    compatible: false
+
 -   name: 10.4.0
     date: '2025-11-13T15:30:59.591115+03:00'
     description: ''
