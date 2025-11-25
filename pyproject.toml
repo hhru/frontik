@@ -33,7 +33,7 @@ pydantic = '^2.3.0'
 tornado = '6.5.2'
 orjson = '*'
 packaging = '<25.0'
-http-client = {version = '>=4.0.9,<5', source = 'hhdev'}
+http-client = {version = '>=5.0.0,<6', source = 'hhdev'}
 consul = {version = '1.0.0', source = 'hhdev'}
 pystatsd = {version = '>=1.0.4,<2', source = 'hhdev'}
 opentelemetry-sdk = '1.38.0'

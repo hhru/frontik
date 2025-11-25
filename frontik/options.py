@@ -135,6 +135,7 @@ class Options:
 
     # upstream options
     upstreams: list = field(default_factory=list)
+    cross_datacenter_upstreams: str = ''
     fail_start_on_empty_upstream: bool = True
     skip_empty_upstream_check_for_upstreams: list = field(default_factory=list)
 
