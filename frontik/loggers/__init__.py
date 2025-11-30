@@ -180,7 +180,7 @@ def bootstrap_logger(
     else:
         logger, logger_name = logging.getLogger(logger_info), logger_info
 
-    log_extension = '.slog' if use_json_formatter else '.log'
+    log_extension = '.slog' if use_json_formatter else '.rlog'
     logger.appender = logger_name + log_extension  # type: ignore[attr-defined]
     handlers = []
 

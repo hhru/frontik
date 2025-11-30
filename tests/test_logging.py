@@ -205,7 +205,7 @@ class TestSyslog(FrontikTestBase):
             },
         ]
 
-        self.assert_text_logs_match(expected_custom_logs, parsed_logs['test/custom_logger.log/'])
+        self.assert_text_logs_match(expected_custom_logs, parsed_logs['test/custom_logger.rlog/'])
 
     @staticmethod
     def assert_json_logs_match(expected_logs: list, parsed_logs: list) -> None:

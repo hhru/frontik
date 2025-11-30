@@ -24,6 +24,7 @@ frontik/routes_map_exclude-dev-watcher_.py
 /pystatsd
 
 *.log
+*.rlog
 *.slog
 .coverage*
 !.coveragerc
