@@ -42,7 +42,7 @@ class Options:
     log_level: str = 'info'
     update_log_level_interval_in_seconds: int = 300
     log_json: bool = True
-    log_write_appender_name: bool = False
+    log_write_appender_name: bool = True
     log_text_format: str = '[%(process)s] %(asctime)s %(levelname)s %(name)s: %(message)s'
 
     stderr_log: bool = False
@@ -131,7 +131,7 @@ class Options:
     consul_cache_backoff_delay_seconds: int = 10
     consul_consistency_mode: str = 'default'
     consul_weight_consistency_mode: str = 'default'  # options.consul_consistency_mode
-    consul_deregister_critical_timeout: str = '120h'
+    consul_deregister_critical_timeout: str = '10m'
 
     # upstream options
     upstreams: list = field(default_factory=list)
