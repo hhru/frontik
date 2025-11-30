@@ -38,8 +38,11 @@ MDC = Mdc()
 
 class ContextFilter(Filter):
     def filter(self, record):
-        handler_name = request_context.get_handler_name()
-        record.name = '.'.join(filter(None, [record.name, handler_name]))
+        if not hasattr(record, 'original_name'):
+            handler_name = request_context.get_handler_name()
+            record.original_name = record.name
+            record.name = '.'.join(filter(None, [record.name, handler_name]))
+
         return True
 
 
@@ -77,7 +80,7 @@ class JSONFormatter(Formatter):
         json_message = {'ts': timestamp}
 
         if options.log_write_appender_name:
-            logger = logging.getLogger(record.name)
+            logger = logging.getLogger(_get_record_logger_name(record))
             json_message['appender'] = _get_logger_filename(logger)
 
         custom_json = getattr(record, CUSTOM_JSON_EXTRA, None)
@@ -139,7 +142,7 @@ class StderrFormatter(LogFormatter):
         formatted_message = super().format(record)
 
         if options.log_write_appender_name:
-            logger = logging.getLogger(record.name)
+            logger = logging.getLogger(_get_record_logger_name(record))
             appender_name = _get_logger_filename(logger)
             formatted_message = f'["appender":"{appender_name}"] {formatted_message}'
 
@@ -151,7 +154,7 @@ class TextFormatter(Formatter):
         formatted_message = super().format(record)
 
         if options.log_write_appender_name:
-            logger = logging.getLogger(record.name)
+            logger = logging.getLogger(_get_record_logger_name(record))
             appender_name = _get_logger_filename(logger)
             formatted_message = f'["appender":"{appender_name}"] {formatted_message}'
 
@@ -201,6 +204,10 @@ def bootstrap_logger(
     logger.propagate = False
 
     return logger
+
+
+def _get_record_logger_name(record: LogRecord) -> str:
+    return getattr(record, 'original_name', record.name)
 
 
 def _get_logger_filename(logger: logging.Logger) -> str:

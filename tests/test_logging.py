@@ -200,8 +200,8 @@ class TestSyslog(FrontikTestBase):
         expected_custom_logs = [
             {
                 'priority': '10',
-                'message': r'\["appender":"service.slog"\] \[\d+\] [\d-]+ [\d:,]+ CRITICAL '
-                r'custom_logger\.tests\.test_logging\.get_page\.tests\.test_logging\.get_page: fatal',  # seems weird
+                'message': r'\["appender":"custom_logger.rlog"\] \[\d+\] [\d-]+ [\d:,]+ CRITICAL '
+                r'custom_logger\.tests\.test_logging\.get_page: fatal',
             },
         ]
 
