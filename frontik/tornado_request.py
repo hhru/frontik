@@ -3,6 +3,8 @@ from typing import Optional
 
 from tornado import httputil
 
+EOF = object()
+
 
 class FrontikTornadoServerRequest(httputil.HTTPServerRequest):
     def __init__(self, *args, **kwargs) -> None:  # type: ignore

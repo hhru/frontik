@@ -8,7 +8,7 @@ from tornado import httputil
 
 from frontik.handler_asgi import serve_tornado_request
 from frontik.server_tasks import _server_tasks
-from frontik.tornado_request import FrontikTornadoServerRequest
+from frontik.tornado_request import EOF, FrontikTornadoServerRequest
 
 if typing.TYPE_CHECKING:
     from frontik.app import FrontikApplication
@@ -56,9 +56,11 @@ class TornadoConnectionHandler(httputil.HTTPMessageDelegate):
     def finish(self) -> None:
         assert self.request is not None
         self.request.finished = True
+        self.request.body_chunks.put_nowait(EOF)
 
     def on_connection_close(self) -> None:
         log.warning('tornado connection is closed, marking request as canceled')
         assert self.request is not None
         self.request.finished = True
         self.request.canceled = True
+        self.request.body_chunks.put_nowait(EOF)
