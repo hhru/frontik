@@ -17,6 +17,7 @@ from frontik.loggers import CUSTOM_JSON_EXTRA, JSON_REQUESTS_LOGGER
 from frontik.request_integrations import get_integrations, request_context
 from frontik.request_integrations.integrations_dto import IntegrationDto
 from frontik.routing import find_route
+from frontik.tornado_request import EOF
 from frontik.util.fastapi import make_plain_response
 
 if TYPE_CHECKING:
@@ -126,25 +127,24 @@ async def execute_asgi_page(
     })
 
     async def receive():
-        await asyncio.sleep(0)
+        chunk = await tornado_request.body_chunks.get()
 
         if tornado_request.canceled:
             return {
                 'type': 'http.disconnect',
             }
 
-        if tornado_request.finished and tornado_request.body_chunks.empty():
+        if tornado_request.finished and chunk == EOF:
             return {
                 'body': b'',
                 'type': 'http.request',
                 'more_body': False,
             }
 
-        chunk = await tornado_request.body_chunks.get()
         return {
             'body': chunk,
             'type': 'http.request',
-            'more_body': not tornado_request.finished or not tornado_request.body_chunks.empty(),
+            'more_body': not tornado_request.finished or chunk != EOF,
         }
 
     async def send(message):
