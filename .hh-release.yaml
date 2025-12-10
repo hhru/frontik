@@ -1,4 +1,4 @@
-version: 11.0.2
+version: 11.0.3
 docker_context: .
 build_docker_file: docker/Dockerfile.building
 build_method: pytest_run
