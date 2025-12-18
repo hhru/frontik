@@ -33,9 +33,9 @@ pydantic = '^2.3.0'
 tornado = '6.5.2'
 orjson = '*'
 packaging = '<25.0'
-http-client = { version = '>=5.0.0,<6', source = 'hhdev' }
+http-client = { version = '>=7.0.0,<8', source = 'hhdev' }
 consul = { version = '1.0.0', source = 'hhdev' }
-pystatsd = { version = '>=1.0.4,<2', source = 'hhdev' }
+pystatsd = { version = '>=2,<3', source = 'hhdev' }
 opentelemetry-sdk = '1.38.0'
 opentelemetry-api = '1.38.0'
 opentelemetry-exporter-otlp-proto-grpc = '1.38.0'

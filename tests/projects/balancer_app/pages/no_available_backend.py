@@ -1,6 +1,6 @@
 from fastapi import Request
 from http_client.balancing import Upstream, UpstreamConfigs
-from http_client.request_response import NoAvailableServerException
+from http_client.exceptions import NoAvailableServerError
 
 from frontik.dependencies import HttpClient
 from frontik.routing import router
@@ -18,7 +18,7 @@ async def get_page(request: Request, http_client: HttpClient) -> str:
 
     result = await req
 
-    if result.exc is not None and isinstance(result.exc, NoAvailableServerException):
+    if result.exc is not None and isinstance(result.exc, NoAvailableServerError):
         return 'no backend available'
 
     check_all_requests_done(request, no_available_backend)

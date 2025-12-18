@@ -31,6 +31,7 @@ class Options:
     node_name: str = ''
     common_executor_pool_size: int = 10
     datacenter: Optional[str] = None
+    datacenters: list[str] = field(default_factory=list)
 
     autoreload: bool = False
     dev_mode: str = DEV_MODE_DISABLED
