@@ -15,7 +15,6 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import ORJSONResponse
 from http_client import HttpClient, HttpClientFactory
 from http_client import options as http_client_options
-from http_client.balancing import RequestBalancerBuilder
 from http_client.request_response import FailFastError
 from lxml import etree
 from starlette.requests import ClientDisconnect
@@ -124,7 +123,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
 
     def make_service_discovery(self) -> ServiceDiscovery:
         if self.worker_state.is_master and options.consul_enabled:
-            return MasterServiceDiscovery(self.statsd_client, self.app_name)
+            return MasterServiceDiscovery(options, self.statsd_client)
         else:
             return WorkerServiceDiscovery(self.worker_state.initial_shared_data)
 
@@ -167,13 +166,12 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
         kafka_producer = (
             self.get_kafka_producer(kafka_cluster) if send_metrics_to_kafka and kafka_cluster is not None else None
         )
-
-        request_balancer_builder = RequestBalancerBuilder(
+        return HttpClientFactory(
+            source_app=self.app_name,
             upstream_getter=self.service_discovery.get_upstream,
             statsd_client=self.statsd_client,
             kafka_producer=kafka_producer,
         )
-        return HttpClientFactory(self.app_name, request_balancer_builder)
 
     def application_config(self) -> DefaultConfig:
         return FrontikApplication.DefaultConfig()

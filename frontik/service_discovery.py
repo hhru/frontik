@@ -9,13 +9,12 @@ from threading import Lock
 from typing import Any, Callable, Optional
 
 from consul.base import Check, ConsistencyMode, HealthCache, KVCache, Weight
-from http_client import options as http_options
 from http_client.balancing import Server, Upstream, UpstreamConfigs
 from http_client.parsing import consul_parser
 from pystatsd import StatsDClientABC
 
 from frontik.consul_client import ClientEventCallback, SyncConsulClient
-from frontik.options import Options, options
+from frontik.options import Options
 from frontik.version import version
 
 DEFAULT_WEIGHT = 100
@@ -105,7 +104,9 @@ class ServiceDiscovery(abc.ABC):
 
 
 class MasterServiceDiscovery(ServiceDiscovery):
-    def __init__(self, statsd_client: StatsDClientABC, app_name: str) -> None:
+    def __init__(self, options: Options, statsd_client: StatsDClientABC) -> None:
+        self.options = options
+
         self._upstreams_config: dict[str, UpstreamConfigs] = {}
         self._upstreams_servers: dict[str, list[Server]] = {}
 
@@ -118,7 +119,7 @@ class MasterServiceDiscovery(ServiceDiscovery):
             port=options.consul_port,
             client_event_callback=ConsulMetricsTracker(statsd_client),
         )
-        self.service_name = app_name
+        self.service_name = options.service_name
         self.hostname = _get_hostname_or_raise(options.node_name)
         self.service_id = _make_service_id(options, service_name=self.service_name, hostname=self.hostname)
         self.address = _get_service_address(options)
@@ -159,17 +160,13 @@ class MasterServiceDiscovery(ServiceDiscovery):
             options.cross_datacenter_upstreams.split(',') if options.cross_datacenter_upstreams else []
         )
 
-        for upstream, dc in itertools.product(options.upstreams, http_options.datacenters):
-            if (
-                dc == http_options.datacenter
-                or '*' in cross_datacenter_upstreams
-                or upstream in cross_datacenter_upstreams
-            ):
+        for upstream, dc in itertools.product(options.upstreams, options.datacenters):
+            if dc == options.datacenter or '*' in cross_datacenter_upstreams or upstream in cross_datacenter_upstreams:
                 self.__subscribe_to_service(upstream, dc)
 
         kafka_upstreams = ['kafka-' + kafka_name for kafka_name in options.kafka_clusters]
         scylla_upstreams = ['scylla-' + scylla_name for scylla_name in options.scylla_clusters]
-        for upstream, dc in itertools.product(kafka_upstreams + scylla_upstreams, http_options.datacenters):
+        for upstream, dc in itertools.product(kafka_upstreams + scylla_upstreams, options.datacenters):
             self.__subscribe_to_service(upstream, dc)
 
         if options.fail_start_on_empty_upstream:
@@ -215,9 +212,9 @@ class MasterServiceDiscovery(ServiceDiscovery):
         register_params = {
             'service_id': self.service_id,
             'address': self.address,
-            'port': options.port,
+            'port': self.options.port,
             'check': self.http_check,
-            'tags': options.consul_tags,
+            'tags': self.options.consul_tags,
             'weights': Weight.weights(weight, 0),
             'caller': self.service_name,
         }
@@ -234,7 +231,7 @@ class MasterServiceDiscovery(ServiceDiscovery):
             log.info('Failed to deregister service %s normally', self.service_id)
 
     def __check_empty_upstreams_on_startup(self) -> None:
-        skip_check_upstreams = options.skip_empty_upstream_check_for_upstreams
+        skip_check_upstreams = self.options.skip_empty_upstream_check_for_upstreams
         empty_upstreams = [k for k, v in self._upstreams.items() if not v.servers and k not in skip_check_upstreams]
         if empty_upstreams:
             msg = f'failed startup application, because for next upstreams got empty servers: {empty_upstreams}'
@@ -253,7 +250,7 @@ class MasterServiceDiscovery(ServiceDiscovery):
             for value in values:
                 if value['Value'] is not None:
                     key = value['Key'].split('/')[1]
-                    if key in options.upstreams:
+                    if key in self.options.upstreams:
                         config = consul_parser.parse_consul_upstream_config(value)
                         log.info('parsed upstream config for %s:%s', key, config)
                         self._upstreams_config[key] = config
@@ -288,7 +285,7 @@ class MasterServiceDiscovery(ServiceDiscovery):
 
     def _combine_servers(self, key: str) -> list[Server]:
         servers_from_all_dc = []
-        for dc in http_options.datacenters:
+        for dc in self.options.datacenters:
             servers = self._upstreams_servers.get(f'{key}-{dc}')
             if servers:
                 servers_from_all_dc += servers

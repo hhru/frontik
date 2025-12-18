@@ -3,12 +3,14 @@ from typing import Callable, Optional
 
 from http_client import options as http_client_options
 
-from frontik.options import options
+from frontik.options import Options, options
 from frontik.service_discovery import MasterServiceDiscovery
 
 
 class StubServiceDiscovery(MasterServiceDiscovery):
-    def __init__(self) -> None:
+    def __init__(self, test_options: Options) -> None:
+        self.options = test_options
+
         self._upstreams_config: dict = {}
         self._upstreams_servers: dict = {}
 
@@ -18,17 +20,10 @@ class StubServiceDiscovery(MasterServiceDiscovery):
 
 
 class TestUpstreamCaches:
-    @classmethod
-    def setup_class(cls):
-        options.consul_enabled = False
-
-    @classmethod
-    def teardown_class(cls):
-        options.consul_enabled = True
-
     def test_update_upstreams_servers_different_dc(self) -> None:
         options.upstreams = ['app']
         http_client_options.datacenters = ['Test', 'AnoTher']
+        options.datacenters = ['Test', 'AnoTher']
         value_one_dc = [
             {
                 'Node': {'ID': '1', 'Node': '', 'Address': '1.1.1.1', 'Datacenter': 'test'},
@@ -55,7 +50,7 @@ class TestUpstreamCaches:
             },
         ]
 
-        service_discovery = StubServiceDiscovery()
+        service_discovery = StubServiceDiscovery(options)
         service_discovery._update_upstreams_service('app', value_one_dc)
         service_discovery._update_upstreams_service('app', value_another_dc)
 
@@ -65,6 +60,7 @@ class TestUpstreamCaches:
     def test_update_upstreams_servers_same_dc(self) -> None:
         options.upstreams = ['app']
         http_client_options.datacenters = ['test', 'another']
+        options.datacenters = ['test', 'another']
         value_one_dc = [
             {
                 'Node': {'ID': '1', 'Node': '', 'Address': '1.1.1.1', 'Datacenter': 'test'},
@@ -78,7 +74,7 @@ class TestUpstreamCaches:
             },
         ]
 
-        service_discovery = StubServiceDiscovery()
+        service_discovery = StubServiceDiscovery(options)
         service_discovery._update_upstreams_service('app', value_one_dc)
         service_discovery._update_upstreams_service('app', value_one_dc)
 
@@ -88,6 +84,7 @@ class TestUpstreamCaches:
     def test_multiple_update_upstreams_servers_different_dc(self) -> None:
         options.upstreams = ['app']
         http_client_options.datacenters = ['test', 'another']
+        options.datacenters = ['test', 'another']
         value_one_dc = [
             {
                 'Node': {'ID': '1', 'Node': '', 'Address': '1.1.1.1', 'Datacenter': 'test'},
@@ -114,7 +111,7 @@ class TestUpstreamCaches:
             },
         ]
 
-        service_discovery = StubServiceDiscovery()
+        service_discovery = StubServiceDiscovery(options)
         service_discovery._update_upstreams_service('app', value_one_dc)
         service_discovery._update_upstreams_service('app', value_another_dc)
         service_discovery._update_upstreams_service('app', value_another_dc)
@@ -126,6 +123,7 @@ class TestUpstreamCaches:
     def test_remove_upstreams_servers_different_dc(self) -> None:
         options.upstreams = ['app']
         http_client_options.datacenters = ['test', 'another']
+        options.datacenters = ['test', 'another']
         value_test_dc = [
             {
                 'Node': {'ID': '1', 'Node': '', 'Address': '1.1.1.1', 'Datacenter': 'test'},
@@ -175,7 +173,7 @@ class TestUpstreamCaches:
             },
         ]
 
-        service_discovery = StubServiceDiscovery()
+        service_discovery = StubServiceDiscovery(options)
         service_discovery._update_upstreams_service('app', value_test_dc)
         service_discovery._update_upstreams_service('app', value_another_dc)
 

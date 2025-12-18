@@ -38,9 +38,9 @@ def create_statsd_client(options: Options, app: FrontikApplication) -> StatsDCli
         statsd_client = StatsDClient(
             options.statsd_host,
             options.statsd_port,
-            app.app_name,
-            options.statsd_default_periodic_send_interval_sec,
-            options.statsd_max_udp_size,
+            default_periodic_send_interval_sec=options.statsd_default_periodic_send_interval_sec,
+            max_udp_size_bytes=options.statsd_max_udp_size,
             udp_socket=udp_socket,
+            default_tags={'app': app.app_name},
         )
     return statsd_client
