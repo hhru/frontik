@@ -133,6 +133,7 @@ class Options:
     consul_consistency_mode: str = 'default'
     consul_weight_consistency_mode: str = 'default'  # options.consul_consistency_mode
     consul_deregister_critical_timeout: str = '120h'
+    consul_self_register: bool = True
 
     # upstream options
     upstreams: list = field(default_factory=list)

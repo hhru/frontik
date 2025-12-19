@@ -120,27 +120,30 @@ class MasterServiceDiscovery(ServiceDiscovery):
             client_event_callback=ConsulMetricsTracker(statsd_client),
         )
         self.service_name = options.service_name
-        self.hostname = _get_hostname_or_raise(options.node_name)
-        self.service_id = _make_service_id(options, service_name=self.service_name, hostname=self.hostname)
-        self.address = _get_service_address(options)
-        self.http_check = _create_http_check(options, self.address)
+        assert self.service_name is not None
         self.consul_weight_watch_seconds = f'{options.consul_weight_watch_seconds}s'
         self.consul_weight_total_timeout_sec = options.consul_weight_total_timeout_sec
         self.consul_weight_consistency_mode = ConsistencyMode(options.consul_weight_consistency_mode.lower())
         self.consul_cache_initial_warmup_timeout_sec = options.consul_cache_initial_warmup_timeout_sec
         self.consul_cache_backoff_delay_seconds = options.consul_cache_backoff_delay_seconds
-        self.kvCache = KVCache(
-            self.consul.kv,
-            path=f'host/{self.hostname}/weight',
-            watch_seconds=self.consul_weight_watch_seconds,
-            backoff_delay_seconds=self.consul_cache_backoff_delay_seconds,
-            total_timeout=self.consul_weight_total_timeout_sec,
-            cache_initial_warmup_timeout=self.consul_cache_initial_warmup_timeout_sec,
-            consistency_mode=self.consul_weight_consistency_mode,
-            recurse=False,
-            caller=self.service_name,
-        )
-        self.kvCache.add_listener(self._update_register)
+
+        if options.consul_self_register:
+            self.hostname = _get_hostname_or_raise(options.node_name)
+            self.service_id = _make_service_id(options, service_name=self.service_name, hostname=self.hostname)
+            self.address = _get_service_address(options)
+            self.http_check = _create_http_check(options, self.address)
+            self.kvCache = KVCache(
+                self.consul.kv,
+                path=f'host/{self.hostname}/weight',
+                watch_seconds=self.consul_weight_watch_seconds,
+                backoff_delay_seconds=self.consul_cache_backoff_delay_seconds,
+                total_timeout=self.consul_weight_total_timeout_sec,
+                cache_initial_warmup_timeout=self.consul_cache_initial_warmup_timeout_sec,
+                consistency_mode=self.consul_weight_consistency_mode,
+                recurse=False,
+                caller=self.service_name,
+            )
+            self.kvCache.add_listener(self._update_register)  # type: ignore[no-untyped-call]
 
         upstream_cache = KVCache(
             self.consul.kv,
