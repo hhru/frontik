@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 import importlib
 import importlib.util
 import logging
@@ -93,6 +94,7 @@ def _iter_submodules(path: MutableSequence[str], prefix: str = '') -> Generator:
 
 def import_all_pages(app_module: str) -> None:
     """Import all pages on startup"""
+    routing_logger.info(f'Importing all pages on startup {app_module=}')
     _spec = importlib.util.find_spec(f'{app_module}.pages')
     if _spec is None:
         routing_logger.warning('There is no pages module')
@@ -105,10 +107,14 @@ def import_all_pages(app_module: str) -> None:
         _spec = importlib.util.find_spec(name)
         if _spec is None:
             continue
-
+        start_time = time.perf_counter()
         importlib.import_module(name)
+        elapsed_time = time.perf_counter() - start_time
+        if elapsed_time > 1:
+            routing_logger.info(f'Importing import_module {name=} in {elapsed_time:.4f} seconds')
 
     _fastapi_routes.sort(key=get_route_sort_key)
+    routing_logger.info(f'Importing all pages on startup finished')
 
 
 router = FrontikRouter()

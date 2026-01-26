@@ -62,6 +62,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
         pass
 
     def __init__(self, app_module_name: Union[str, Sentinel, None] = _DEFAULT_ARG) -> None:
+        app_logger.info("Frontik initialized start")
         self.start_time = time.time()
         super().__init__()
         self.patch_anyio()
@@ -87,6 +88,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
         count_down_lock = multiprocessing.Lock()
         self.worker_state = WorkerState(init_workers_count_down, master_done, count_down_lock)  # type: ignore
 
+        app_logger.info("Frontik start import pages")
         if app_module_name is not None:
             if options.dev_mode == DEV_MODE_ON_DEMAND_ROUTING:
                 self.route_manager = DevRouteManager()
@@ -94,21 +96,30 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
                 self.include_router(self.route_manager.fake_dev_router, prefix='/fake')
             else:
                 import_all_pages(self.app_module_name)
+        app_logger.info("Frontik finish import pages")
 
         self.router = router
 
         for _router in routers:
             if _router is not router:
+                start_time = time.perf_counter()
                 self.include_router(_router)
+                elapsed_time = time.perf_counter() - start_time
+                app_logger.info(f"Frontik include_router {_router} in {elapsed_time:.4f} seconds")
+
+        app_logger.info("Frontik after include_router")
 
         if options.openapi_enabled:
             self.setup()
+
+        app_logger.info("Frontik after setup")
 
         self.add_middleware(FrontikMiddleware)
         self.add_exception_handler(FailFastError, fail_fast_error_handler)  # type: ignore[arg-type]
         self.add_exception_handler(ClientDisconnect, client_disconnect_error_handler)  # type: ignore[arg-type]
         self.add_exception_handler(OutOfRequestTime, out_of_request_time_error_handler)  # type: ignore[arg-type]
         self.add_exception_handler(Exception, default_exception_handler)
+        app_logger.info("Frontik initialized finished")
 
     def patch_anyio(self) -> None:
         """
