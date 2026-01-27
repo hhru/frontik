@@ -105,7 +105,7 @@ class FrontikApplication(FastAPI, httputil.HTTPServerConnectionDelegate):
                 start_time = time.perf_counter()
                 self.include_router(_router)
                 elapsed_time = time.perf_counter() - start_time
-                app_logger.info(f"Frontik include_router {_router} in {elapsed_time:.4f} seconds")
+                app_logger.info(f"Frontik include_router {_router} in {elapsed_time:.4f} seconds {len(_router.routes)}")
 
         app_logger.info("Frontik after include_router")
 

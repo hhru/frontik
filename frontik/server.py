@@ -5,6 +5,7 @@ import importlib
 import logging
 import signal
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from threading import Lock
@@ -47,7 +48,12 @@ def main(config_file: Optional[str] = None) -> None:
     application = getattr(app_module, app_class_name) if app_class_name is not None else FrontikApplication
 
     try:
+        start_time = time.perf_counter()
         app = application()
+        elapsed_time = time.perf_counter() - start_time
+        log.info('start time: %f', elapsed_time)
+        # before - start time: 10.430625
+        # after - start time: 10.276717
 
         gc.disable()
         gc.collect()

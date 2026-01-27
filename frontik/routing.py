@@ -46,9 +46,10 @@ def get_route_sort_key(route: BaseRoute) -> tuple:
 
 
 class FrontikRouter(APIRouter):
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, main_router: bool = True, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        routers.append(self)
+        if main_router:
+            routers.append(self)
 
     async def app(self, scope, receive, send):
         assert scope['type'] == 'http'
@@ -95,6 +96,7 @@ def _iter_submodules(path: MutableSequence[str], prefix: str = '') -> Generator:
 def import_all_pages(app_module: str) -> None:
     """Import all pages on startup"""
     routing_logger.info(f'Importing all pages on startup {app_module=}')
+    import_all_pages_time = time.perf_counter()
     _spec = importlib.util.find_spec(f'{app_module}.pages')
     if _spec is None:
         routing_logger.warning('There is no pages module')
@@ -114,7 +116,8 @@ def import_all_pages(app_module: str) -> None:
             routing_logger.info(f'Importing import_module {name=} in {elapsed_time:.4f} seconds')
 
     _fastapi_routes.sort(key=get_route_sort_key)
-    routing_logger.info(f'Importing all pages on startup finished')
+    elapsed_time = time.perf_counter() - import_all_pages_time
+    routing_logger.info(f'Importing all pages on startup finished in {elapsed_time:.4f} seconds')
 
 
 router = FrontikRouter()
