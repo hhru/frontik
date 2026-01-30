@@ -8,7 +8,7 @@ from functools import cache
 from logging import Filter, Formatter, Handler
 from logging.handlers import SysLogHandler
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, Optional, Union
+from typing import IO, TYPE_CHECKING, Any, Optional, Union
 
 from tornado.log import LogFormatter
 
@@ -68,34 +68,39 @@ class DebugLogHandler(Handler):
 class JSONFormatter(Formatter):
     DATE_FORMAT = '%Y-%m-%d %H:%M:%S.%%03d%z'
 
-    def format(self, record):
+    def _produce_message(self, record: LogRecord) -> dict[str, Any]:
         message = record.getMessage() if record.msg is not None else None
         timestamp = time.strftime(JSONFormatter.DATE_FORMAT, time.localtime(record.created)) % record.msecs
         stack_trace = self.format_stack_trace(record)
         mdc = JSONFormatter.get_mdc()
 
-        json_message = {'ts': timestamp}
+        json_message: dict[str, Any] = {'ts': timestamp}
 
         if options.log_write_appender_name:
             logger = logging.getLogger(record.name)
             json_message['appender'] = _get_logger_filename(logger)
 
         custom_json = getattr(record, CUSTOM_JSON_EXTRA, None)
+
+        json_message['lvl'] = record.levelname
+        json_message['logger'] = record.name
+        json_message['mdc'] = mdc
+        json_message['msg'] = message
+
+        if stack_trace:
+            json_message['exception'] = stack_trace
+
         if custom_json:
             json_message.update(custom_json)
-        else:
-            json_message['lvl'] = record.levelname
-            json_message['logger'] = record.name
-            json_message['mdc'] = mdc
-            json_message['msg'] = message
 
-            if stack_trace:
-                json_message['exception'] = stack_trace
+        return json_message
 
-        return json_encode(json_message)
+    def format(self, record: LogRecord) -> str:
+        msg = self._produce_message(record=record)
+        return json_encode(msg)
 
     @staticmethod
-    def get_mdc() -> dict:
+    def get_mdc() -> dict[str, Any]:
         mdc: dict = {'thread': os.getpid()}
 
         if MDC.role is not None:
