@@ -12,8 +12,14 @@ from frontik.app import FrontikApplication
 from frontik.options import options
 from frontik.routing import router
 from frontik.testing import FrontikTestBase
+from frontik.util import run_async_task
 
 exceptions = []
+
+
+async def async_task():
+    await asyncio.sleep(2)
+    raise Exception('My_sentry_exception')
 
 
 @router.get('/sentry_error')
@@ -22,7 +28,7 @@ async def get_page(ip: Optional[str] = None, extra_key: Optional[str] = None) ->
         sentry_sdk.set_user({'real_ip': ip})
         sentry_sdk.set_extra('extra_key', extra_key)
 
-    raise Exception('My_sentry_exception')
+    run_async_task(async_task())
 
 
 @router.post('/sentry_error')
@@ -65,7 +71,7 @@ class TestSentryIntegration(FrontikTestBase):
         response = await self.fetch('/sentry_error?ip=127.0.0.77&extra_key=extra_val')
         frontik_request_id = response.headers.get('X-Request-Id')
         assert frontik_request_id is not None
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(4)
         sentry_events = _get_sentry_exceptions('My_sentry_exception')
 
         assert len(sentry_events) == 1
